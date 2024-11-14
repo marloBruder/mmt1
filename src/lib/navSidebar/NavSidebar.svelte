@@ -27,11 +27,11 @@
   };
 </script>
 
-<div class="h-full border-8 border-red-600">
+<div class="h-full">
   <div class="h-full w-12 float-left">
     <NavSidebarButtons {activeTab} {tabInfo} onClick={onNavButtonClick} />
   </div>
-  <div class="ml-12">
+  <div class="h-full ml-12 border-l border-gray-400">
     <TabComponent></TabComponent>
   </div>
 </div>
