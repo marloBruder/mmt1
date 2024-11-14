@@ -1,8 +1,8 @@
 <script lang="ts">
   import NavSidebarButtons from "./NavSidebarButtons.svelte";
-  import NavSidebarExplorer from "./NavSideBarComponents/NavSidebarExplorer.svelte";
-  import NavSidebarSearch from "./NavSideBarComponents/NavSidebarSearch.svelte";
-  import NavSidebarEditor from "./NavSideBarComponents/NavSidebarEditor.svelte";
+  import NavSidebarExplorer from "./NavSidebarExplorer.svelte";
+  import NavSidebarSearch from "./NavSidebarSearch.svelte";
+  import NavSidebarEditor from "./NavSidebarEditor.svelte";
 
   let tabInfo = [
     {
