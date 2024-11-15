@@ -1,9 +1,25 @@
-let nextID = 1;
+class EditorTabs {
+  nextID = 1;
 
-export const editorTabs = $state({
-  tabs: [{ id: 0, name: "test", text: "TTTTTEEEXXXTT" }],
-  addTab: function () {
-    this.tabs.push({ id: nextID, name: "Theorem " + nextID, text: "" });
-    nextID++;
-  },
-});
+  #tabs = $state([{ id: 0, name: "test", text: "TTTTTEEEXXXTT" }]);
+
+  addTab = () => {
+    this.#tabs.push({ id: this.nextID, name: "Theorem " + this.nextID, text: "" });
+    this.nextID++;
+  };
+
+  getTabByID = (id: number) => {
+    for (let tab of this.#tabs) {
+      if (tab.id == id) {
+        return tab;
+      }
+    }
+    return null;
+  };
+
+  get tabs() {
+    return this.#tabs;
+  }
+}
+
+export default new EditorTabs();

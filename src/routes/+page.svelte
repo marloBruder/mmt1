@@ -18,7 +18,7 @@
       <a href="/main/theorem/ax-rep" class="inline-block mt-4">Example theorem 3</a>
     </div>
     <div>
-      <a href="/main/editor/ax-rep" class="inline-block mt-4">Editor</a>
+      <a href="/main/editor/0" class="inline-block mt-4">Editor</a>
     </div>
   </div>
 </main>

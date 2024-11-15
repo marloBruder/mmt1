@@ -2,6 +2,6 @@ import type { PageLoad } from "./$types";
 
 export const load: PageLoad = ({ params }) => {
   return {
-    theoremName: params.theoremName,
+    tabName: params.tabName,
   };
 };

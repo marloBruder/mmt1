@@ -1,5 +1,5 @@
 <script>
-  import { editorTabs } from "$lib/sharedState/mainData.svelte";
+  import editorTabs from "$lib/sharedState/mainData.svelte";
 </script>
 
 <div>
@@ -8,8 +8,8 @@
   </div>
   <div>In Progress theorems:</div>
   {#each editorTabs.tabs as tab}
-    <div>
-      <p>{tab.name}</p>
+    <div class="hover:bg-gray-100">
+      <a href="/main/editor/{tab.id}" class="block">{tab.name}</a>
     </div>
   {/each}
 </div>

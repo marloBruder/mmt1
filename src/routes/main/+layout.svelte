@@ -9,7 +9,7 @@
   <div class="h-full w-80 fixed top-0 left-0">
     <NavSidebar></NavSidebar>
   </div>
-  <div class="h-full ml-80 border-l border-gray-400">
+  <div class="h-full ml-80 border-l border-gray-400 overflow-y-scroll overflow-x-hidden">
     {@render children()}
   </div>
 </div>
