@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import editorTabs from "$lib/sharedState/mainData.svelte";
 </script>
 
@@ -8,8 +8,8 @@
   </div>
   <div>In Progress theorems:</div>
   {#each editorTabs.tabs as tab}
-    <div class="hover:bg-gray-100">
-      <a href="/main/editor/{tab.id}" class="block">{tab.name}</a>
+    <div>
+      <a href="/main/editor/{tab.id}" class="block {editorTabs.openedTabID == tab.id ? 'bg-gray-300' : 'hover:bg-gray-100'}">{tab.name}</a>
     </div>
   {/each}
 </div>
