@@ -1,12 +1,23 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
   import { invoke } from "@tauri-apps/api/core";
+  import { save } from "@tauri-apps/plugin-dialog";
+
+  let createNewDB = async () => {
+    // Allow user to select file location
+    const filePath = await save({ filters: [{ name: "Metamath SQLite Database", extensions: ["mm.sqlite"] }] });
+    if (filePath) {
+      invoke("create_database", { filePath });
+      goto("/main");
+    }
+  };
 </script>
 
 <main>
   <div class="m-40 text-center">
     <h1 class="text-4xl">Welcome to mmdbt!</h1>
     <div>
-      <a href="/main" class="inline-block mt-4">Create new Metamath database </a>
+      <button onclick={createNewDB} class="inline-block mt-4">Create new Metamath database</button>
     </div>
     <div>
       <a href="/main/theorem/sp" class="inline-block mt-4">Example theorem 1</a>
