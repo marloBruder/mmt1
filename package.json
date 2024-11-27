@@ -1,7 +1,7 @@
 {
   "name": "mmdbt",
   "version": "0.1.0",
-  "description": "",
+  "description": "The javascript/svelte side of mmdbt, a tauri application for creating and managing metamath databases.",
   "type": "module",
   "scripts": {
     "dev": "vite dev",
