@@ -1,14 +1,26 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { invoke } from "@tauri-apps/api/core";
-  import { save } from "@tauri-apps/plugin-dialog";
+  import { save, confirm } from "@tauri-apps/plugin-dialog";
 
   let createNewDB = async () => {
     // Allow user to select file location
     const filePath = await save({ filters: [{ name: "Metamath SQLite Database", extensions: ["mm.sqlite"] }] });
     if (filePath) {
-      invoke("create_database", { filePath });
-      goto("/main");
+      invoke("create_database", { filePath })
+        .then(() => {
+          goto("/main");
+        })
+        .catch(async (error) => {
+          if (error == "DatabaseExistsError") {
+            let confirmed = await confirm("You are about to override and delete an existing database. Are you sure?", { title: "Warning (mmdbt)", kind: "warning" });
+            if (confirmed) {
+              invoke("create_or_override_database", { filePath }).then(() => {
+                goto("/main");
+              });
+            }
+          }
+        });
     }
   };
 </script>
