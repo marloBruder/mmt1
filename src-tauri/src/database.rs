@@ -1,3 +1,5 @@
+// use futures::TryStreamExt;
+// use sqlx::Row;
 use sqlx::{migrate::MigrateDatabase, Connection, Sqlite, SqliteConnection};
 use std::fmt;
 use tauri::async_runtime::Mutex;
@@ -36,19 +38,80 @@ async fn create_or_override_database_pure(
     Sqlite::create_database(file_path)
         .await
         .or(Err(Error::CreateDatabaseError))?;
-    let con = SqliteConnection::connect(file_path)
+
+    let mut conn = SqliteConnection::connect(file_path)
         .await
         .or(Err(Error::ConnectDatabaseError))?;
+
+    // sqlx::query(
+    //     "CREATE TABLE test (
+    //         testVar int
+    //     )",
+    // )
+    // .execute(&mut conn)
+    // .await
+    // .or(Err(Error::SqlError))?;
+
     let mut app_state = state.lock().await;
-    app_state.db_con = Some(con);
+    app_state.db_conn = Some(conn);
     Ok(())
 }
+
+#[tauri::command]
+pub async fn open_database(
+    file_path: &str,
+    state: tauri::State<'_, Mutex<AppState>>,
+) -> Result<(), Error> {
+    let mut app_state = state.lock().await;
+
+    let conn = SqliteConnection::connect(file_path)
+        .await
+        .or(Err(Error::ConnectDatabaseError))?;
+
+    app_state.db_conn = Some(conn);
+
+    Ok(())
+}
+
+// #[tauri::command]
+// pub async fn insert_test(state: tauri::State<'_, Mutex<AppState>>) -> Result<(), ()> {
+//     let mut app_state = state.lock().await;
+
+//     if let Some(ref mut conn) = app_state.db_conn {
+//         sqlx::query("INSERT INTO test (testVar) VALUES (3)")
+//             .execute(conn)
+//             .await
+//             .or(Err(()))?;
+//     }
+
+//     Ok(())
+// }
+
+// #[tauri::command]
+// pub async fn select_test(state: tauri::State<'_, Mutex<AppState>>) -> Result<Vec<i32>, ()> {
+//     let mut app_state = state.lock().await;
+
+//     let mut test_nums: Vec<i32> = Vec::new();
+
+//     if let Some(ref mut conn) = app_state.db_conn {
+//         let mut rows = sqlx::query("SELECT * FROM test").fetch(conn);
+
+//         while let Some(row) = rows.try_next().await.or(Err(()))? {
+//             let num: i32 = row.try_get("testVar").or(Err(()))?;
+
+//             test_nums.push(num);
+//         }
+//     }
+
+//     Ok(test_nums)
+// }
 
 #[derive(Debug)]
 pub enum Error {
     DatabaseExistsError,
     CreateDatabaseError,
     ConnectDatabaseError,
+    // SqlError,
 }
 
 impl fmt::Display for Error {

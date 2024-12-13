@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { invoke } from "@tauri-apps/api/core";
-  import { save, confirm } from "@tauri-apps/plugin-dialog";
+  import { save, confirm, open } from "@tauri-apps/plugin-dialog";
 
   let createNewDB = async () => {
     // Allow user to select file location
@@ -23,6 +23,16 @@
         });
     }
   };
+
+  let openDB = async () => {
+    const filePath = await open({ multiple: false, directory: false });
+
+    if (filePath) {
+      invoke("open_database", { filePath }).then(() => {
+        goto("/main");
+      });
+    }
+  };
 </script>
 
 <main>
@@ -30,6 +40,9 @@
     <h1 class="text-4xl">Welcome to mmdbt!</h1>
     <div>
       <button onclick={createNewDB} class="inline-block mt-4">Create new Metamath database</button>
+    </div>
+    <div>
+      <button onclick={openDB} class="inline-block mt-4">Open Metamath database</button>
     </div>
     <div>
       <a href="/main/theorem/sp" class="inline-block mt-4">Example theorem 1</a>

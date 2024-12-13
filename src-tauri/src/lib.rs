@@ -4,11 +4,11 @@ use tauri::{async_runtime::Mutex, App, Manager};
 mod database;
 
 pub struct AppState {
-    db_con: Option<SqliteConnection>,
+    db_conn: Option<SqliteConnection>,
 }
 
 fn app_setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
-    app.manage(Mutex::new(AppState { db_con: None }));
+    app.manage(Mutex::new(AppState { db_conn: None }));
     Ok(())
 }
 
@@ -19,7 +19,8 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             database::create_database,
-            database::create_or_override_database
+            database::create_or_override_database,
+            database::open_database,
         ])
         .setup(|app| app_setup(app))
         .run(tauri::generate_context!())
