@@ -1,12 +1,15 @@
 class EditorTabs {
   #nextID = 1;
 
-  #tabs = $state([{ id: 0, name: "test", text: "TTTTTEEEXXXTT" }]);
+  #tabs: { id: number; name: string; text: string }[] = $state([]);
 
   // id of opened tab or NaN, if no editor tab is opened
   openedTabID = $state(NaN);
 
   addTab = () => {
+    while (this.nameExists(this.#nextID, "Theorem " + this.#nextID)) {
+      this.#nextID++;
+    }
     this.#tabs.push({ id: this.#nextID, name: "Theorem " + this.#nextID, text: "" });
     this.#nextID++;
   };
@@ -18,6 +21,16 @@ class EditorTabs {
       }
     }
     return null;
+  };
+
+  // Checks whether there exists a tab with different id, but the same name
+  nameExists = (id: number, name: string): boolean => {
+    for (let t of this.#tabs) {
+      if (t.id != id && t.name == name) {
+        return true;
+      }
+    }
+    return false;
   };
 
   get tabs() {
