@@ -43,17 +43,14 @@ async fn create_or_override_database_pure(
         .await
         .or(Err(Error::ConnectDatabaseError))?;
 
-    // sqlx::query(
-    //     "CREATE TABLE test (
-    //         testVar int
-    //     )",
-    // )
-    // .execute(&mut conn)
-    // .await
-    // .or(Err(Error::SqlError))?;
+    sqlx::query(sql::IN_PROGRESS_THEOREM_TABLE_CREATE)
+        .execute(&mut conn)
+        .await
+        .or(Err(Error::SqlError))?;
 
     let mut app_state = state.lock().await;
     app_state.db_conn = Some(conn);
+
     Ok(())
 }
 
@@ -62,12 +59,20 @@ pub async fn open_database(
     file_path: &str,
     state: tauri::State<'_, Mutex<AppState>>,
 ) -> Result<(), Error> {
-    let mut app_state = state.lock().await;
-
-    let conn = SqliteConnection::connect(file_path)
+    let mut conn = SqliteConnection::connect(file_path)
         .await
         .or(Err(Error::ConnectDatabaseError))?;
 
+    let rows = sqlx::query(sql::IN_PROGRESS_THEOREM_TABLE_CHECK)
+        .fetch_all(&mut conn)
+        .await
+        .or(Err(Error::SqlError))?;
+
+    if rows.len() == 0 {
+        return Err(Error::WrongDatabaseFormatError);
+    }
+
+    let mut app_state = state.lock().await;
     app_state.db_conn = Some(conn);
 
     Ok(())
@@ -111,7 +116,8 @@ pub enum Error {
     DatabaseExistsError,
     CreateDatabaseError,
     ConnectDatabaseError,
-    // SqlError,
+    WrongDatabaseFormatError,
+    SqlError,
 }
 
 impl fmt::Display for Error {
@@ -127,4 +133,14 @@ impl serde::Serialize for Error {
     {
         serializer.serialize_str(self.to_string().as_ref())
     }
+}
+
+mod sql {
+    pub const IN_PROGRESS_THEOREM_TABLE_CREATE: &str = "CREATE TABLE inProgressTheorem (
+        name TEXT,
+        text TEXT
+    );";
+
+    pub const IN_PROGRESS_THEOREM_TABLE_CHECK: &str =
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='inProgressTheorem';";
 }
