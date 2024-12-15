@@ -11,6 +11,7 @@
     if (filePath) {
       invoke("create_database", { filePath })
         .then(() => {
+          editorTabs.clearTabs();
           goto("/main");
         })
         .catch(async (error) => {
@@ -18,6 +19,7 @@
             let confirmed = await confirm("You are about to override and delete an existing database. Are you sure?", { title: "Warning (mmdbt)", kind: "warning" });
             if (confirmed) {
               invoke("create_or_override_database", { filePath }).then(() => {
+                editorTabs.clearTabs();
                 goto("/main");
               });
             }

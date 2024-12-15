@@ -5,6 +5,10 @@
 
   let { data }: { data: PageData } = $props();
 
+  $effect(() => {
+    editorTabs.openedTabID = data.tabID;
+  });
+
   let tab = $derived(editorTabs.getTabByID(data.tabID));
 
   let oldName: string = $state("");
@@ -35,9 +39,18 @@
     }
   };
 
-  $effect(() => {
-    editorTabs.openedTabID = data.tabID;
-  });
+  let textChanged: boolean = $state(false);
+
+  let saveText = () => {
+    if (tab) {
+      invoke("set_in_progress_theorem", { name: tab.name, text: tab.text });
+      textChanged = false;
+    }
+  };
+
+  let textChange = () => {
+    textChanged = true;
+  };
 </script>
 
 {#if tab}
@@ -50,8 +63,11 @@
     <button onclick={saveName} disabled={nameDisabled} class="ml-4 border border-black rounded px-1 disabled:bg-gray-300">Save name</button>
     <button onclick={abortNameSave} disabled={nameDisabled} class="ml-4 border border-black rounded px-1 disabled:bg-gray-300">Abort edit</button>
   </div>
+  <div class="p-2 border-t border-gray-400">
+    <button onclick={saveText} disabled={!textChanged} class="border border-black rounded px-1 disabled:bg-gray-300">Save</button>
+  </div>
   <div>
-    <textarea bind:value={tab.text} class="w-full resize-none h-96"></textarea>
+    <textarea bind:value={tab.text} oninput={textChange} class="w-full resize-none h-96"></textarea>
   </div>
 {:else}
   <p>Opened editor tab with id "{data.tabID}" has no data associated with it.</p>
