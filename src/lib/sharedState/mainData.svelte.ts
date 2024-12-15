@@ -1,3 +1,5 @@
+import { invoke } from "@tauri-apps/api/core";
+
 class EditorTabs {
   #nextID = 1;
 
@@ -6,12 +8,25 @@ class EditorTabs {
   // id of opened tab or NaN, if no editor tab is opened
   openedTabID = $state(NaN);
 
-  addTab = () => {
+  addDefaultTab = () => {
     while (this.nameExists(this.#nextID, "Theorem " + this.#nextID)) {
       this.#nextID++;
     }
     this.#tabs.push({ id: this.#nextID, name: "Theorem " + this.#nextID, text: "" });
+
+    invoke("add_in_progress_theorem", { name: "Theorem " + this.#nextID, text: "" });
+
     this.#nextID++;
+  };
+
+  addTab = (name: string, text: string) => {
+    this.#tabs.push({ id: this.#nextID, name, text });
+    this.#nextID++;
+  };
+
+  clearTabs = () => {
+    this.#tabs = [];
+    this.#nextID = 1;
   };
 
   getTabByID = (id: number) => {

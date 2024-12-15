@@ -5,7 +5,6 @@ use tauri::async_runtime::Mutex;
 use super::Error;
 use crate::AppState;
 
-#[tauri::command]
 pub async fn get_in_progress_theorems(
     state: tauri::State<'_, Mutex<AppState>>,
 ) -> Result<Vec<InProgressTheorem>, Error> {
@@ -100,7 +99,7 @@ impl serde::Serialize for InProgressTheorem {
         use serde::ser::SerializeStruct;
 
         // 3 is the number of fields in the struct.
-        let mut state = serializer.serialize_struct("InProgressTheorem", 2)?;
+        let mut state = serializer.serialize_struct("InProgressTheorem", 6)?;
         state.serialize_field("name", &self.name)?;
         state.serialize_field("text", &self.text)?;
         state.end()

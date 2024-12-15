@@ -2,6 +2,8 @@
   import { goto } from "$app/navigation";
   import { invoke } from "@tauri-apps/api/core";
   import { save, confirm, open } from "@tauri-apps/plugin-dialog";
+  import type { MetamathData } from "$lib/sharedState/model.svelte";
+  import editorTabs from "$lib/sharedState/mainData.svelte";
 
   let createNewDB = async () => {
     // Allow user to select file location
@@ -28,7 +30,12 @@
     const filePath = await open({ multiple: false, directory: false });
 
     if (filePath) {
-      invoke("open_database", { filePath }).then(() => {
+      invoke("open_database", { filePath }).then((metamathDataUnknown) => {
+        let metamathData = metamathDataUnknown as MetamathData;
+        editorTabs.clearTabs();
+        for (let theorem of metamathData.in_progress_theorems) {
+          editorTabs.addTab(theorem.name, theorem.text);
+        }
         goto("/main");
       });
     }

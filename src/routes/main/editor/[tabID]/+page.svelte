@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { PageData } from "./$types";
   import editorTabs from "$lib/sharedState/mainData.svelte";
+  import { invoke } from "@tauri-apps/api/core";
 
   let { data }: { data: PageData } = $props();
 
@@ -16,10 +17,15 @@
   };
 
   let saveName = () => {
-    if (tab && editorTabs.nameExists(tab.id, tab.name)) {
-      return;
+    if (tab) {
+      if (editorTabs.nameExists(tab.id, tab.name)) {
+        return;
+      }
+      nameDisabled = true;
+      if (oldName != tab.name) {
+        invoke("set_in_progress_theorem_name", { oldName, newName: tab.name });
+      }
     }
-    nameDisabled = true;
   };
 
   let abortNameSave = () => {

@@ -58,7 +58,7 @@ async fn create_or_override_database_pure(
 pub async fn open_database(
     file_path: &str,
     state: tauri::State<'_, Mutex<AppState>>,
-) -> Result<(), Error> {
+) -> Result<MetamathData, Error> {
     let mut conn = SqliteConnection::connect(file_path)
         .await
         .or(Err(Error::ConnectDatabaseError))?;
@@ -74,8 +74,11 @@ pub async fn open_database(
 
     let mut app_state = state.lock().await;
     app_state.db_conn = Some(conn);
+    drop(app_state); // Unlock Mutex
 
-    Ok(())
+    Ok(MetamathData {
+        in_progress_theorems: in_progress_theorem::get_in_progress_theorems(state).await?,
+    })
 }
 
 // #[tauri::command]
@@ -110,6 +113,24 @@ pub async fn open_database(
 
 //     Ok(test_nums)
 // }
+
+pub struct MetamathData {
+    in_progress_theorems: Vec<in_progress_theorem::InProgressTheorem>,
+}
+
+impl serde::Serialize for MetamathData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        // 3 is the number of fields in the struct.
+        let mut state = serializer.serialize_struct("MetamathData", 3)?;
+        state.serialize_field("in_progress_theorems", &self.in_progress_theorems)?;
+        state.end()
+    }
+}
 
 #[derive(Debug)]
 pub enum Error {
