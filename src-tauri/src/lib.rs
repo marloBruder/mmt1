@@ -21,6 +21,10 @@ pub fn run() {
             database::create_database,
             database::create_or_override_database,
             database::open_database,
+            database::in_progress_theorem::get_in_progress_theorems,
+            database::in_progress_theorem::add_in_progress_theorem,
+            database::in_progress_theorem::set_in_progress_theorem_name,
+            database::in_progress_theorem::set_in_progress_theorem
         ])
         .setup(|app| app_setup(app))
         .run(tauri::generate_context!())

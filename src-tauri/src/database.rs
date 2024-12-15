@@ -1,10 +1,10 @@
-// use futures::TryStreamExt;
-// use sqlx::Row;
 use sqlx::{migrate::MigrateDatabase, Connection, Sqlite, SqliteConnection};
 use std::fmt;
 use tauri::async_runtime::Mutex;
 
 use crate::AppState;
+
+pub mod in_progress_theorem;
 
 // Tauri Command for creating a new database
 // If the database already exists, it will instead return an DatabaseExistsError
