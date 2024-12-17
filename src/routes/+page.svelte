@@ -4,6 +4,12 @@
   import { save, confirm, open } from "@tauri-apps/plugin-dialog";
   import type { MetamathData } from "$lib/sharedState/model.svelte";
   import { inProgressTheoremData } from "$lib/sharedState/mainData.svelte";
+  import { tabManager } from "$lib/sharedState/tabData.svelte";
+
+  let resetApp = () => {
+    inProgressTheoremData.resetTheoremsLocal();
+    tabManager.resetTabs();
+  };
 
   let createNewDB = async () => {
     // Allow user to select file location
@@ -11,7 +17,7 @@
     if (filePath) {
       invoke("create_database", { filePath })
         .then(() => {
-          inProgressTheoremData.clearTheorems();
+          resetApp();
           goto("/main");
         })
         .catch(async (error) => {
@@ -19,7 +25,7 @@
             let confirmed = await confirm("You are about to override and delete an existing database. Are you sure?", { title: "Warning (mmdbt)", kind: "warning" });
             if (confirmed) {
               invoke("create_or_override_database", { filePath }).then(() => {
-                inProgressTheoremData.clearTheorems();
+                resetApp();
                 goto("/main");
               });
             }
@@ -34,9 +40,9 @@
     if (filePath) {
       invoke("open_database", { filePath }).then((metamathDataUnknown) => {
         let metamathData = metamathDataUnknown as MetamathData;
-        inProgressTheoremData.clearTheorems();
+        resetApp();
         for (let theorem of metamathData.in_progress_theorems) {
-          inProgressTheoremData.addTheorem(theorem.name, theorem.text);
+          inProgressTheoremData.addTheoremLocal(theorem.name, theorem.text);
         }
         goto("/main");
       });

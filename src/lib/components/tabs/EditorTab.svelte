@@ -47,6 +47,10 @@
     textChanged = false;
   };
 
+  let deleteTheorem = () => {
+    inProgressTheoremData.deleteTheorem(theorem.id);
+  };
+
   let textChange = () => {
     textChanged = true;
   };
@@ -63,6 +67,7 @@
 </div>
 <div class="p-2 border-t border-gray-400">
   <button onclick={saveText} disabled={!textChanged} class="border border-black rounded px-1 disabled:bg-gray-300">Save</button>
+  <button onclick={deleteTheorem} class="border border-black rounded px-1 bg-red-500">Delete</button>
 </div>
 <div>
   <textarea bind:value={theorem.text} oninput={textChange} class="w-full resize-none h-96"></textarea>

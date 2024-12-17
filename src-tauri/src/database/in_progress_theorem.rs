@@ -86,6 +86,24 @@ pub async fn set_in_progress_theorem(
     Ok(())
 }
 
+#[tauri::command]
+pub async fn delete_in_progress_theorem(
+    state: tauri::State<'_, Mutex<AppState>>,
+    name: &str,
+) -> Result<(), Error> {
+    let mut app_state = state.lock().await;
+
+    if let Some(ref mut conn) = app_state.db_conn {
+        sqlx::query(sql::IN_PROGRESS_THEOREM_DELETE)
+            .bind(name)
+            .execute(conn)
+            .await
+            .or(Err(Error::SqlError))?;
+    }
+
+    Ok(())
+}
+
 pub struct InProgressTheorem {
     pub name: String,
     pub text: String,
@@ -120,4 +138,6 @@ mod sql {
     pub const IN_PROGRESS_THEOREM_UPDATE: &str = "UPDATE inProgressTheorem
         SET text = ?
         WHERE name = ?;";
+
+    pub const IN_PROGRESS_THEOREM_DELETE: &str = "DELETE FROM inProgressTheorem WHERE name = ?";
 }

@@ -36,14 +36,26 @@ class TabManager {
   }
 
   closeTab(tabIndex: number) {
-    console.log("Before: " + this.#openedTabIndex);
     if (tabIndex >= 0 && tabIndex < this.#tabs.length) {
       if (this.#openedTabIndex > tabIndex || (this.#openedTabIndex == tabIndex && tabIndex == this.#tabs.length - 1)) {
         this.#openedTabIndex--;
       }
       this.#tabs.splice(tabIndex, 1);
     }
-    console.log("After: " + this.#openedTabIndex);
+  }
+
+  closeSameTab(tab: Tab) {
+    for (let [index, otherTab] of this.#tabs.entries()) {
+      if (tab.sameTab(otherTab)) {
+        this.closeTab(index);
+        return;
+      }
+    }
+  }
+
+  resetTabs() {
+    this.#tabs = [];
+    this.#openedTabIndex = -1;
   }
 
   get tabs() {

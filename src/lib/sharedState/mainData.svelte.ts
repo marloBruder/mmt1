@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { EditorTabClass, tabManager } from "./tabData.svelte";
 
 class InProgressTheoremData {
   #nextID = 1;
@@ -16,12 +17,23 @@ class InProgressTheoremData {
     this.#nextID++;
   }
 
-  addTheorem(name: string, text: string) {
+  addTheoremLocal(name: string, text: string) {
     this.#theorems.push({ id: this.#nextID, name, text });
     this.#nextID++;
   }
 
-  clearTheorems() {
+  deleteTheorem(localID: number) {
+    for (let [index, theorem] of this.#theorems.entries()) {
+      if (theorem.id == localID) {
+        invoke("delete_in_progress_theorem", { name: theorem.name });
+        tabManager.closeSameTab(new EditorTabClass(localID));
+        this.#theorems.splice(index, 1);
+        return;
+      }
+    }
+  }
+
+  resetTheoremsLocal() {
     this.#theorems = [];
     this.#nextID = 1;
   }
