@@ -1,7 +1,7 @@
 <script lang="ts">
   import NavSidebar from "$lib/nav/navSidebar/NavSidebar.svelte";
 
-  import tabManager from "$lib/sharedState/tabData.svelte";
+  import { tabManager } from "$lib/sharedState/tabData.svelte";
   import { EditorTabClass, TheoremTabClass } from "$lib/sharedState/tabData.svelte";
   import EmptyTab from "$lib/tabs/EmptyTab.svelte";
   import TheoremTab from "$lib/tabs/TheoremTab.svelte";

@@ -5,7 +5,7 @@ class InProgressTheoremData {
 
   #theorems: { id: number; name: string; text: string }[] = $state([]);
 
-  addDefaultTheorem = () => {
+  addDefaultTheorem() {
     while (this.nameExists(this.#nextID, "Theorem " + this.#nextID)) {
       this.#nextID++;
     }
@@ -14,49 +14,51 @@ class InProgressTheoremData {
     invoke("add_in_progress_theorem", { name: "Theorem " + this.#nextID, text: "" });
 
     this.#nextID++;
-  };
+  }
 
-  addTheorem = (name: string, text: string) => {
+  addTheorem(name: string, text: string) {
     this.#theorems.push({ id: this.#nextID, name, text });
     this.#nextID++;
-  };
+  }
 
-  clearTheorems = () => {
+  clearTheorems() {
     this.#theorems = [];
     this.#nextID = 1;
-  };
+  }
 
-  getTheoremByName = (name: string) => {
-    for (let tab of this.#theorems) {
-      if (tab.name == name) {
-        return tab;
-      }
-    }
-    return null;
-  };
-
-  getTheoremByID = (id: number) => {
+  getTheoremByID(id: number) {
     for (let tab of this.#theorems) {
       if (tab.id == id) {
         return tab;
       }
     }
     return null;
-  };
+  }
+
+  validID(id: number): boolean {
+    for (let tab of this.#theorems) {
+      if (tab.id == id) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   // Checks whether there exists a tab with different id, but the same name
-  nameExists = (id: number, name: string): boolean => {
+  nameExists(id: number, name: string): boolean {
     for (let t of this.#theorems) {
       if (t.id != id && t.name == name) {
         return true;
       }
     }
     return false;
-  };
+  }
 
   get theorems() {
     return this.#theorems;
   }
 }
 
-export default new InProgressTheoremData();
+let inProgressTheoremData = new InProgressTheoremData();
+
+export { inProgressTheoremData };

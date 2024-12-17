@@ -1,11 +1,15 @@
-import inProgressTheoremData from "./mainData.svelte";
+import { inProgressTheoremData } from "./mainData.svelte";
 
 class TabManager {
   #tabs: Tab[] = $state([]);
 
   #openedTabIndex: number = $state(-1);
 
-  addTabAndOpen = (newTab: Tab) => {
+  addTabAndOpen(newTab: Tab) {
+    if (!newTab.validTab()) {
+      return;
+    }
+
     for (let [index, tab] of this.#tabs.entries()) {
       if (newTab.sameTab(tab)) {
         this.#openedTabIndex = index;
@@ -15,17 +19,21 @@ class TabManager {
 
     this.#tabs.push(newTab);
     this.#openedTabIndex = this.#tabs.length - 1;
-  };
+  }
 
-  getOpenedTab = () => {
+  getOpenedTab() {
     return this.#openedTabIndex != -1 ? this.#tabs[this.#openedTabIndex] : null;
-  };
+  }
 
-  openTab = (tabIndex: number) => {
+  openTab(tabIndex: number) {
     if (tabIndex >= 0 && tabIndex < this.#tabs.length) {
       this.#openedTabIndex = tabIndex;
     }
-  };
+  }
+
+  openEmptyTab() {
+    this.#openedTabIndex = -1;
+  }
 
   get tabs() {
     return this.#tabs;
@@ -36,6 +44,8 @@ export abstract class Tab {
   abstract name(): string;
 
   abstract sameTab(tab: Tab): boolean;
+
+  abstract validTab(): boolean;
 }
 
 export class TheoremTabClass extends Tab {
@@ -52,6 +62,10 @@ export class TheoremTabClass extends Tab {
 
   sameTab(tab: Tab): boolean {
     return tab instanceof TheoremTabClass && this.#theoremName == tab.theoremName;
+  }
+
+  validTab(): boolean {
+    return true;
   }
 
   get theoremName() {
@@ -76,9 +90,15 @@ export class EditorTabClass extends Tab {
     return tab instanceof EditorTabClass && this.#localID == tab.localID;
   }
 
+  validTab(): boolean {
+    return inProgressTheoremData.validID(this.#localID);
+  }
+
   get localID() {
     return this.#localID;
   }
 }
 
-export default new TabManager();
+let tabManager = new TabManager();
+
+export { tabManager };

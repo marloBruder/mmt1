@@ -1,6 +1,6 @@
 <script lang="ts">
-  import inProgressTheoremData from "$lib/sharedState/mainData.svelte";
-  import tabManager, { EditorTabClass } from "$lib/sharedState/tabData.svelte";
+  import { inProgressTheoremData } from "$lib/sharedState/mainData.svelte";
+  import { tabManager, EditorTabClass } from "$lib/sharedState/tabData.svelte";
 
   let theoremClick = (id: number) => {
     return () => {

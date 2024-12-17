@@ -1,5 +1,5 @@
 <script>
-  import tabManager from "$lib/sharedState/tabData.svelte";
+  import { tabManager } from "$lib/sharedState/tabData.svelte";
 </script>
 
 <div class="h-8 border-b border-gray-400">

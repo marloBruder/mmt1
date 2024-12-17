@@ -3,15 +3,15 @@
   import { invoke } from "@tauri-apps/api/core";
   import { save, confirm, open } from "@tauri-apps/plugin-dialog";
   import type { MetamathData } from "$lib/sharedState/model.svelte";
-  import editorTabs from "$lib/sharedState/mainData.svelte";
+  import { inProgressTheoremData } from "$lib/sharedState/mainData.svelte";
 
   let createNewDB = async () => {
     // Allow user to select file location
-    const filePath = await save({ filters: [{ name: "Metamath SQLite Database", extensions: ["mm.sqlite"] }] });
+    const filePath = await save({ filters: [{ name: "Metamath SQLite Database", extensions: ["mm.sqlite", "mm.db"] }] });
     if (filePath) {
       invoke("create_database", { filePath })
         .then(() => {
-          editorTabs.clearTheorems();
+          inProgressTheoremData.clearTheorems();
           goto("/main");
         })
         .catch(async (error) => {
@@ -19,7 +19,7 @@
             let confirmed = await confirm("You are about to override and delete an existing database. Are you sure?", { title: "Warning (mmdbt)", kind: "warning" });
             if (confirmed) {
               invoke("create_or_override_database", { filePath }).then(() => {
-                editorTabs.clearTheorems();
+                inProgressTheoremData.clearTheorems();
                 goto("/main");
               });
             }
@@ -29,14 +29,14 @@
   };
 
   let openDB = async () => {
-    const filePath = await open({ multiple: false, directory: false });
+    const filePath = await open({ multiple: false, directory: false, filters: [{ name: "Metamath SQLite Database", extensions: ["mm.sqlite", "mm.db"] }] });
 
     if (filePath) {
       invoke("open_database", { filePath }).then((metamathDataUnknown) => {
         let metamathData = metamathDataUnknown as MetamathData;
-        editorTabs.clearTheorems();
+        inProgressTheoremData.clearTheorems();
         for (let theorem of metamathData.in_progress_theorems) {
-          editorTabs.addTheorem(theorem.name, theorem.text);
+          inProgressTheoremData.addTheorem(theorem.name, theorem.text);
         }
         goto("/main");
       });
@@ -52,18 +52,6 @@
     </div>
     <div>
       <button onclick={openDB} class="inline-block mt-4">Open Metamath database</button>
-    </div>
-    <div>
-      <a href="/main/theorem/sp" class="inline-block mt-4">Example theorem 1</a>
-    </div>
-    <div>
-      <a href="/main/theorem/ax-sep" class="inline-block mt-4">Example theorem 2</a>
-    </div>
-    <div>
-      <a href="/main/theorem/ax-rep" class="inline-block mt-4">Example theorem 3</a>
-    </div>
-    <div>
-      <a href="/main/editor/0" class="inline-block mt-4">Editor</a>
     </div>
   </div>
 </main>
