@@ -35,6 +35,17 @@ class TabManager {
     this.#openedTabIndex = -1;
   }
 
+  closeTab(tabIndex: number) {
+    console.log("Before: " + this.#openedTabIndex);
+    if (tabIndex >= 0 && tabIndex < this.#tabs.length) {
+      if (this.#openedTabIndex > tabIndex || (this.#openedTabIndex == tabIndex && tabIndex == this.#tabs.length - 1)) {
+        this.#openedTabIndex--;
+      }
+      this.#tabs.splice(tabIndex, 1);
+    }
+    console.log("After: " + this.#openedTabIndex);
+  }
+
   get tabs() {
     return this.#tabs;
   }
