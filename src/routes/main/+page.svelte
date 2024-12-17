@@ -1,11 +1,12 @@
 <script lang="ts">
-  import NavSidebar from "$lib/navSidebar/NavSidebar.svelte";
+  import NavSidebar from "$lib/nav/navSidebar/NavSidebar.svelte";
 
-  import tabManager, { Tab } from "$lib/sharedState/tabData.svelte";
+  import tabManager from "$lib/sharedState/tabData.svelte";
   import { EditorTabClass, TheoremTabClass } from "$lib/sharedState/tabData.svelte";
   import EmptyTab from "$lib/tabs/EmptyTab.svelte";
   import TheoremTab from "$lib/tabs/TheoremTab.svelte";
   import EditorTab from "$lib/tabs/EditorTab.svelte";
+  import TabBar from "$lib/nav/TabBar.svelte";
 
   let openedTab = $derived(tabManager.getOpenedTab());
 </script>
@@ -15,16 +16,7 @@
     <NavSidebar></NavSidebar>
   </div>
   <div class="h-full ml-80 border-l border-gray-400 overflow-y-scroll overflow-x-hidden">
-    <div class="h-8 border-b border-gray-400">
-      {#each tabManager.tabs as tab, index}
-        <button
-          onclick={() => {
-            tabManager.openTab(index);
-          }}
-          class="h-full px-2 border-r border-gray-400">{tab.name()}</button
-        >
-      {/each}
-    </div>
+    <TabBar></TabBar>
     {#if openedTab instanceof TheoremTabClass}
       <TheoremTab theoremName={openedTab.theoremName}></TheoremTab>
     {:else if openedTab instanceof EditorTabClass}

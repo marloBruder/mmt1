@@ -6,14 +6,13 @@ class TabManager {
   #openedTabIndex: number = $state(-1);
 
   addTabAndOpen = (newTab: Tab) => {
-    if (newTab instanceof EditorTabClass) {
-      for (let [index, tab] of this.#tabs.entries()) {
-        if (tab instanceof EditorTabClass && tab.localID == newTab.localID) {
-          this.#openedTabIndex = index;
-          return;
-        }
+    for (let [index, tab] of this.#tabs.entries()) {
+      if (newTab.sameTab(tab)) {
+        this.#openedTabIndex = index;
+        return;
       }
     }
+
     this.#tabs.push(newTab);
     this.#openedTabIndex = this.#tabs.length - 1;
   };
@@ -35,6 +34,8 @@ class TabManager {
 
 export abstract class Tab {
   abstract name(): string;
+
+  abstract sameTab(tab: Tab): boolean;
 }
 
 export class TheoremTabClass extends Tab {
@@ -47,6 +48,10 @@ export class TheoremTabClass extends Tab {
 
   name(): string {
     return this.#theoremName;
+  }
+
+  sameTab(tab: Tab): boolean {
+    return tab instanceof TheoremTabClass && this.#theoremName == tab.theoremName;
   }
 
   get theoremName() {
@@ -65,6 +70,10 @@ export class EditorTabClass extends Tab {
   name(): string {
     let theorem = inProgressTheoremData.getTheoremByID(this.#localID);
     return theorem ? theorem.name : "";
+  }
+
+  sameTab(tab: Tab): boolean {
+    return tab instanceof EditorTabClass && this.#localID == tab.localID;
   }
 
   get localID() {
