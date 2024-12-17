@@ -1,49 +1,44 @@
 <script lang="ts">
-  import type { PageData } from "./$types";
-  import editorTabs from "$lib/sharedState/mainData.svelte";
+  import inProgressTheoremData from "$lib/sharedState/mainData.svelte";
   import { invoke } from "@tauri-apps/api/core";
 
-  let { data }: { data: PageData } = $props();
+  let { localID } = $props();
 
-  $effect(() => {
-    editorTabs.openedTabID = data.tabID;
-  });
+  let theorem = $derived(inProgressTheoremData.getTheoremByID(localID));
 
-  let tab = $derived(editorTabs.getTabByID(data.tabID));
-
-  let oldName: string = $state("");
+  let oldName: string = "";
 
   let nameDisabled: boolean = $state(true);
 
   let editName = () => {
-    oldName = tab ? tab.name : "";
+    oldName = theorem ? theorem.name : "";
     nameDisabled = false;
   };
 
   let saveName = () => {
-    if (tab) {
-      if (editorTabs.nameExists(tab.id, tab.name)) {
+    if (theorem) {
+      if (inProgressTheoremData.nameExists(theorem.id, oldName)) {
         return;
       }
       nameDisabled = true;
-      if (oldName != tab.name) {
-        invoke("set_in_progress_theorem_name", { oldName, newName: tab.name });
+      if (oldName != theorem.name) {
+        invoke("set_in_progress_theorem_name", { oldName, newName: theorem.name });
       }
     }
   };
 
   let abortNameSave = () => {
     nameDisabled = true;
-    if (tab) {
-      tab.name = oldName;
+    if (theorem) {
+      theorem.name = oldName;
     }
   };
 
   let textChanged: boolean = $state(false);
 
   let saveText = () => {
-    if (tab) {
-      invoke("set_in_progress_theorem", { name: tab.name, text: tab.text });
+    if (theorem) {
+      invoke("set_in_progress_theorem", { name: theorem.name, text: theorem.text });
       textChanged = false;
     }
   };
@@ -53,11 +48,11 @@
   };
 </script>
 
-{#if tab}
+{#if theorem}
   <div class="m-2">
     <div class="mb-2">
       <label for="tabName">Theorem name:</label>
-      <input id="tabName" type="text" bind:value={tab.name} disabled={nameDisabled} class="disabled:bg-gray-300" />
+      <input id="tabName" type="text" bind:value={theorem.name} disabled={nameDisabled} class="disabled:bg-gray-300" />
     </div>
     <button onclick={editName} disabled={!nameDisabled} class="border border-black rounded px-1 disabled:bg-gray-300">Edit name</button>
     <button onclick={saveName} disabled={nameDisabled} class="ml-4 border border-black rounded px-1 disabled:bg-gray-300">Save name</button>
@@ -67,8 +62,8 @@
     <button onclick={saveText} disabled={!textChanged} class="border border-black rounded px-1 disabled:bg-gray-300">Save</button>
   </div>
   <div>
-    <textarea bind:value={tab.text} oninput={textChange} class="w-full resize-none h-96"></textarea>
+    <textarea bind:value={theorem.text} oninput={textChange} class="w-full resize-none h-96"></textarea>
   </div>
 {:else}
-  <p>Opened editor tab with id "{data.tabID}" has no data associated with it.</p>
+  <p>Opened editor tab with id "{localID}" has no data associated with it.</p>
 {/if}

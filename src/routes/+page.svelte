@@ -11,7 +11,7 @@
     if (filePath) {
       invoke("create_database", { filePath })
         .then(() => {
-          editorTabs.clearTabs();
+          editorTabs.clearTheorems();
           goto("/main");
         })
         .catch(async (error) => {
@@ -19,7 +19,7 @@
             let confirmed = await confirm("You are about to override and delete an existing database. Are you sure?", { title: "Warning (mmdbt)", kind: "warning" });
             if (confirmed) {
               invoke("create_or_override_database", { filePath }).then(() => {
-                editorTabs.clearTabs();
+                editorTabs.clearTheorems();
                 goto("/main");
               });
             }
@@ -34,9 +34,9 @@
     if (filePath) {
       invoke("open_database", { filePath }).then((metamathDataUnknown) => {
         let metamathData = metamathDataUnknown as MetamathData;
-        editorTabs.clearTabs();
+        editorTabs.clearTheorems();
         for (let theorem of metamathData.in_progress_theorems) {
-          editorTabs.addTab(theorem.name, theorem.text);
+          editorTabs.addTheorem(theorem.name, theorem.text);
         }
         goto("/main");
       });

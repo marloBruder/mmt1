@@ -1,15 +1,22 @@
 <script lang="ts">
-  import editorTabs from "$lib/sharedState/mainData.svelte";
+  import inProgressTheoremData from "$lib/sharedState/mainData.svelte";
+  import tabManager, { EditorTabClass } from "$lib/sharedState/tabData.svelte";
+
+  let theoremClick = (id: number) => {
+    return () => {
+      tabManager.addTabAndOpen(new EditorTabClass(id));
+    };
+  };
 </script>
 
 <div>
   <div class="py-4 flex flex-col items-center">
-    <button class="border border-black" onclick={() => editorTabs.addDefaultTab()}>Add new theorem</button>
+    <button class="border border-black" onclick={() => inProgressTheoremData.addDefaultTheorem()}>Add new theorem</button>
   </div>
   <div>In Progress theorems:</div>
-  {#each editorTabs.tabs as tab}
+  {#each inProgressTheoremData.theorems as theorem}
     <div>
-      <a href="/main/editor/{tab.id}" class="block {editorTabs.openedTabID == tab.id ? 'bg-gray-300' : 'hover:bg-gray-100'}">{tab.name}</a>
+      <button onclick={theoremClick(theorem.id)}>{theorem.name}</button>
     </div>
   {/each}
 </div>

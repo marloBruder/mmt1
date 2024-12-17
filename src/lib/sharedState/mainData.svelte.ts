@@ -1,36 +1,42 @@
 import { invoke } from "@tauri-apps/api/core";
 
-class EditorTabs {
+class InProgressTheoremData {
   #nextID = 1;
 
-  #tabs: { id: number; name: string; text: string }[] = $state([]);
+  #theorems: { id: number; name: string; text: string }[] = $state([]);
 
-  // id of opened tab or NaN, if no editor tab is opened
-  openedTabID = $state(NaN);
-
-  addDefaultTab = () => {
+  addDefaultTheorem = () => {
     while (this.nameExists(this.#nextID, "Theorem " + this.#nextID)) {
       this.#nextID++;
     }
-    this.#tabs.push({ id: this.#nextID, name: "Theorem " + this.#nextID, text: "" });
+    this.#theorems.push({ id: this.#nextID, name: "Theorem " + this.#nextID, text: "" });
 
     invoke("add_in_progress_theorem", { name: "Theorem " + this.#nextID, text: "" });
 
     this.#nextID++;
   };
 
-  addTab = (name: string, text: string) => {
-    this.#tabs.push({ id: this.#nextID, name, text });
+  addTheorem = (name: string, text: string) => {
+    this.#theorems.push({ id: this.#nextID, name, text });
     this.#nextID++;
   };
 
-  clearTabs = () => {
-    this.#tabs = [];
+  clearTheorems = () => {
+    this.#theorems = [];
     this.#nextID = 1;
   };
 
-  getTabByID = (id: number) => {
-    for (let tab of this.#tabs) {
+  getTheoremByName = (name: string) => {
+    for (let tab of this.#theorems) {
+      if (tab.name == name) {
+        return tab;
+      }
+    }
+    return null;
+  };
+
+  getTheoremByID = (id: number) => {
+    for (let tab of this.#theorems) {
       if (tab.id == id) {
         return tab;
       }
@@ -40,7 +46,7 @@ class EditorTabs {
 
   // Checks whether there exists a tab with different id, but the same name
   nameExists = (id: number, name: string): boolean => {
-    for (let t of this.#tabs) {
+    for (let t of this.#theorems) {
       if (t.id != id && t.name == name) {
         return true;
       }
@@ -48,9 +54,9 @@ class EditorTabs {
     return false;
   };
 
-  get tabs() {
-    return this.#tabs;
+  get theorems() {
+    return this.#theorems;
   }
 }
 
-export default new EditorTabs();
+export default new InProgressTheoremData();
