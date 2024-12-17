@@ -1,12 +1,12 @@
 <script lang="ts">
-  import NavSidebar from "$lib/nav/navSidebar/NavSidebar.svelte";
+  import NavSidebar from "$lib/components/nav/navSidebar/NavSidebar.svelte";
 
   import { tabManager } from "$lib/sharedState/tabData.svelte";
   import { EditorTabClass, TheoremTabClass } from "$lib/sharedState/tabData.svelte";
-  import EmptyTab from "$lib/tabs/EmptyTab.svelte";
-  import TheoremTab from "$lib/tabs/TheoremTab.svelte";
-  import EditorTab from "$lib/tabs/EditorTab.svelte";
-  import TabBar from "$lib/nav/TabBar.svelte";
+  import EmptyTab from "$lib/components/tabs/EmptyTab.svelte";
+  import TheoremTab from "$lib/components/tabs/TheoremTab.svelte";
+  import EditorTab from "$lib/components/tabs/EditorTab.svelte";
+  import TabBar from "$lib/components/nav/TabBar.svelte";
 
   let openedTab = $derived(tabManager.getOpenedTab());
 </script>
