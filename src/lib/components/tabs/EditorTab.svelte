@@ -26,8 +26,8 @@
   };
 
   let saveName = () => {
-    if (inProgressTheoremData.nameExists(theorem.id, oldName)) {
-      return;
+    if (theorem.name === "" || inProgressTheoremData.nameExists(theorem.id, theorem.name)) {
+      throw Error("Invalid Name");
     }
     nameDisabled = true;
     if (oldName != theorem.name) {
@@ -38,6 +38,24 @@
   let abortNameSave = () => {
     nameDisabled = true;
     theorem.name = oldName;
+  };
+
+  let unfocusName = () => {
+    try {
+      saveName();
+    } catch (error) {
+      abortNameSave();
+    }
+  };
+
+  let keyDownName = (event: KeyboardEvent) => {
+    if (event.key == "Enter") {
+      try {
+        saveName();
+      } catch (error) {}
+    } else if (event.key == "Escape") {
+      abortNameSave();
+    }
   };
 
   let textChanged: boolean = $state(false);
@@ -59,11 +77,9 @@
 <div class="m-2">
   <div class="mb-2">
     <label for="tabName">Theorem name:</label>
-    <input id="tabName" type="text" bind:value={theorem.name} disabled={nameDisabled} class="disabled:bg-gray-300" />
+    <input id="tabName" type="text" bind:value={theorem.name} onfocusout={unfocusName} onkeydown={keyDownName} disabled={nameDisabled} autocomplete="off" class="disabled:bg-gray-300" />
   </div>
   <button onclick={editName} disabled={!nameDisabled} class="border border-black rounded px-1 disabled:bg-gray-300">Edit name</button>
-  <button onclick={saveName} disabled={nameDisabled} class="ml-4 border border-black rounded px-1 disabled:bg-gray-300">Save name</button>
-  <button onclick={abortNameSave} disabled={nameDisabled} class="ml-4 border border-black rounded px-1 disabled:bg-gray-300">Abort edit</button>
 </div>
 <div class="p-2 border-t border-gray-400">
   <button onclick={saveText} disabled={!textChanged} class="border border-black rounded px-1 disabled:bg-gray-300">Save</button>

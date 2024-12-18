@@ -47,6 +47,10 @@ async fn create_or_override_database_pure(
         .execute(&mut conn)
         .await
         .or(Err(Error::SqlError))?;
+    // .map_err(|e| {
+    //     print!("{:?}", e);
+    //     Error::SqlError
+    // })?;
 
     let mut app_state = state.lock().await;
     app_state.db_conn = Some(conn);
@@ -158,7 +162,7 @@ impl serde::Serialize for Error {
 
 mod sql {
     pub const IN_PROGRESS_THEOREM_TABLE_CREATE: &str = "CREATE TABLE inProgressTheorem (
-        name TEXT,
+        name TEXT PRIMARY KEY,
         text TEXT
     );";
 
