@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { EditorTabClass, tabManager } from "../tabData.svelte";
+import type { InProgressTheorem } from "../model.svelte";
 
 class InProgressTheoremData {
   #nextID = 1;
@@ -17,8 +18,8 @@ class InProgressTheoremData {
     this.#nextID++;
   }
 
-  addTheoremLocal(name: string, text: string) {
-    this.#theorems.push({ id: this.#nextID, name, text });
+  addInProgressTheoremLocal(inProgressTheorem: InProgressTheorem) {
+    this.#theorems.push({ id: this.#nextID, name: inProgressTheorem.name, text: inProgressTheorem.text });
     this.#nextID++;
   }
 

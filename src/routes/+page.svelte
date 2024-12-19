@@ -5,10 +5,20 @@
   import type { MetamathData } from "$lib/sharedState/model.svelte";
   import { inProgressTheoremData } from "$lib/sharedState/metamathData/inProgressTheoremData.svelte";
   import { tabManager } from "$lib/sharedState/tabData.svelte";
+  import { theoremData } from "$lib/sharedState/metamathData/theoremData.svelte";
 
   let resetApp = () => {
     inProgressTheoremData.resetTheoremsLocal();
     tabManager.resetTabs();
+  };
+
+  let populateApp = (metamathData: MetamathData) => {
+    for (let theorem of metamathData.in_progress_theorems) {
+      inProgressTheoremData.addInProgressTheoremLocal(theorem);
+    }
+    for (let theorem of metamathData.theorems) {
+      theoremData.addTheoremLocal(theorem);
+    }
   };
 
   let createNewDB = async () => {
@@ -41,9 +51,7 @@
       invoke("open_database", { filePath }).then((metamathDataUnknown) => {
         let metamathData = metamathDataUnknown as MetamathData;
         resetApp();
-        for (let theorem of metamathData.in_progress_theorems) {
-          inProgressTheoremData.addTheoremLocal(theorem.name, theorem.text);
-        }
+        populateApp(metamathData);
         goto("/main");
       });
     }

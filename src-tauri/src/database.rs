@@ -86,9 +86,9 @@ impl serde::Serialize for MetamathData {
     {
         use serde::ser::SerializeStruct;
 
-        // 3 is the number of fields in the struct.
-        let mut state = serializer.serialize_struct("MetamathData", 3)?;
+        let mut state = serializer.serialize_struct("MetamathData", 2)?;
         state.serialize_field("in_progress_theorems", &self.in_progress_theorems)?;
+        state.serialize_field("theorems", &self.theorems)?;
         state.end()
     }
 }

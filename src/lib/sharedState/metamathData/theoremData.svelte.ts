@@ -15,6 +15,10 @@ class TheoremData {
     }
   }
 
+  addTheoremLocal(theorem: Theorem) {
+    this.#theorems.push(theorem);
+  }
+
   get theorems() {
     return this.#theorems;
   }

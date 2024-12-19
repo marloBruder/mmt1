@@ -1,5 +1,6 @@
 export interface MetamathData {
   in_progress_theorems: InProgressTheorem[];
+  theorems: Theorem[];
 }
 
 export interface InProgressTheorem {
