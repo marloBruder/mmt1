@@ -72,6 +72,10 @@
   let textChange = () => {
     textChanged = true;
   };
+
+  let turnIntoAxiom = () => {
+    invoke("text_to_axium", { text: theorem.text });
+  };
 </script>
 
 <div class="m-2">
@@ -84,6 +88,7 @@
 <div class="p-2 border-t border-gray-400">
   <button onclick={saveText} disabled={!textChanged} class="border border-black rounded px-1 disabled:bg-gray-300">Save</button>
   <button onclick={deleteTheorem} class="border border-black rounded px-1 bg-red-500">Delete</button>
+  <button onclick={turnIntoAxiom} class="border border-black rounded px-1">Turn into axiom</button>
 </div>
 <div>
   <textarea bind:value={theorem.text} oninput={textChange} class="w-full resize-none h-96"></textarea>

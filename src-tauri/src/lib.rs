@@ -3,6 +3,8 @@ use tauri::{async_runtime::Mutex, App, Manager};
 
 mod database;
 
+mod metamath;
+
 pub struct AppState {
     db_conn: Option<SqliteConnection>,
 }
@@ -25,6 +27,7 @@ pub fn run() {
             database::in_progress_theorem::set_in_progress_theorem_name,
             database::in_progress_theorem::set_in_progress_theorem,
             database::in_progress_theorem::delete_in_progress_theorem,
+            metamath::text_to_axium,
         ])
         .setup(|app| app_setup(app))
         .run(tauri::generate_context!())
