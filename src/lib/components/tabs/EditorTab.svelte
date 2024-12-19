@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { inProgressTheoremData } from "$lib/sharedState/mainData.svelte";
+  import { inProgressTheoremData } from "$lib/sharedState/metamathData/inProgressTheoremData.svelte";
   import { invoke } from "@tauri-apps/api/core";
 
   import { tabManager } from "$lib/sharedState/tabData.svelte";
+  import { theoremData } from "$lib/sharedState/metamathData/theoremData.svelte";
 
   let { localID } = $props();
 
@@ -74,7 +75,7 @@
   };
 
   let turnIntoAxiom = () => {
-    invoke("text_to_axium", { text: theorem.text });
+    theoremData.convertToTheorem(theorem.id);
   };
 </script>
 

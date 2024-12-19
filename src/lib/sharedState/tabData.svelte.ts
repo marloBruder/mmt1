@@ -1,4 +1,4 @@
-import { inProgressTheoremData } from "./mainData.svelte";
+import { inProgressTheoremData } from "./metamathData/inProgressTheoremData.svelte";
 
 class TabManager {
   #tabs: Tab[] = $state([]);

@@ -1,16 +1,11 @@
-<script>
-  import { goto } from "$app/navigation";
+<script lang="ts">
+  import { theoremData } from "$lib/sharedState/metamathData/theoremData.svelte";
 </script>
 
 <div>
-  <p>This is the Explorer Component</p>
-
-  <div>
-    <button
-      class="border border-black ml-2 mt-2 rounded p-1"
-      onclick={() => {
-        goto("/");
-      }}>Back to main menu (temp)</button
-    >
-  </div>
+  {#each theoremData.theorems as theorem}
+    <div>
+      <button>{theorem.name}</button>
+    </div>
+  {/each}
 </div>

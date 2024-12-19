@@ -3,7 +3,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { save, confirm, open } from "@tauri-apps/plugin-dialog";
   import type { MetamathData } from "$lib/sharedState/model.svelte";
-  import { inProgressTheoremData } from "$lib/sharedState/mainData.svelte";
+  import { inProgressTheoremData } from "$lib/sharedState/metamathData/inProgressTheoremData.svelte";
   import { tabManager } from "$lib/sharedState/tabData.svelte";
 
   let resetApp = () => {

@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { EditorTabClass, tabManager } from "./tabData.svelte";
+import { EditorTabClass, tabManager } from "../tabData.svelte";
 
 class InProgressTheoremData {
   #nextID = 1;
