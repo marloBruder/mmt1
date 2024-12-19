@@ -17,21 +17,12 @@ pub async fn create_database(
     if Sqlite::database_exists(file_path).await.unwrap_or(false) {
         return Err(Error::DatabaseExistsError);
     }
-    create_or_override_database_pure(file_path, state).await
+    create_or_override_database(file_path, state).await
 }
 
 // Tauri Command for creating a new database or overriding it if it already exists
 #[tauri::command]
 pub async fn create_or_override_database(
-    file_path: &str,
-    state: tauri::State<'_, Mutex<AppState>>,
-) -> Result<(), Error> {
-    create_or_override_database_pure(file_path, state).await
-}
-
-// The function that actually creates a new database or overrides it if it already exists
-// It had to be it's own funtion, so that it can be called by multiple Tauri commands
-async fn create_or_override_database_pure(
     file_path: &str,
     state: tauri::State<'_, Mutex<AppState>>,
 ) -> Result<(), Error> {
@@ -43,7 +34,7 @@ async fn create_or_override_database_pure(
         .await
         .or(Err(Error::ConnectDatabaseError))?;
 
-    sqlx::query(sql::IN_PROGRESS_THEOREM_TABLE_CREATE)
+    sqlx::query(sql::INIT_DB)
         .execute(&mut conn)
         .await
         .or(Err(Error::SqlError))?;
@@ -67,14 +58,8 @@ pub async fn open_database(
         .await
         .or(Err(Error::ConnectDatabaseError))?;
 
-    let rows = sqlx::query(sql::IN_PROGRESS_THEOREM_TABLE_CHECK)
-        .fetch_all(&mut conn)
-        .await
-        .or(Err(Error::SqlError))?;
-
-    if rows.len() == 0 {
-        return Err(Error::WrongDatabaseFormatError);
-    }
+    sql::check_returns_rows_or_error(sql::IN_PROGRESS_THEOREM_TABLE_CHECK, &mut conn).await?;
+    sql::check_returns_rows_or_error(sql::THEOREM_TABLE_CHECK, &mut conn).await?;
 
     let mut app_state = state.lock().await;
     app_state.db_conn = Some(conn);
@@ -84,39 +69,6 @@ pub async fn open_database(
         in_progress_theorems: in_progress_theorem::get_in_progress_theorems(state).await?,
     })
 }
-
-// #[tauri::command]
-// pub async fn insert_test(state: tauri::State<'_, Mutex<AppState>>) -> Result<(), ()> {
-//     let mut app_state = state.lock().await;
-
-//     if let Some(ref mut conn) = app_state.db_conn {
-//         sqlx::query("INSERT INTO test (testVar) VALUES (3)")
-//             .execute(conn)
-//             .await
-//             .or(Err(()))?;
-//     }
-
-//     Ok(())
-// }
-
-// #[tauri::command]
-// pub async fn select_test(state: tauri::State<'_, Mutex<AppState>>) -> Result<Vec<i32>, ()> {
-//     let mut app_state = state.lock().await;
-
-//     let mut test_nums: Vec<i32> = Vec::new();
-
-//     if let Some(ref mut conn) = app_state.db_conn {
-//         let mut rows = sqlx::query("SELECT * FROM test").fetch(conn);
-
-//         while let Some(row) = rows.try_next().await.or(Err(()))? {
-//             let num: i32 = row.try_get("testVar").or(Err(()))?;
-
-//             test_nums.push(num);
-//         }
-//     }
-
-//     Ok(test_nums)
-// }
 
 pub struct MetamathData {
     in_progress_theorems: Vec<in_progress_theorem::InProgressTheorem>,
@@ -161,11 +113,41 @@ impl serde::Serialize for Error {
 }
 
 mod sql {
-    pub const IN_PROGRESS_THEOREM_TABLE_CREATE: &str = "CREATE TABLE inProgressTheorem (
-        name TEXT PRIMARY KEY,
-        text TEXT
-    );";
+    use sqlx::SqliteConnection;
+
+    pub const INIT_DB: &str = "\
+CREATE TABLE inProgressTheorem (
+    name TEXT PRIMARY KEY,
+    text TEXT
+);
+CREATE TABLE theorem (
+    name TEXT PRIMARY KEY,
+    description TEXT,
+    disjoints TEXT,
+    hypotheses TEXT,
+    assertion TEXT,
+    proof TEXT
+);
+";
 
     pub const IN_PROGRESS_THEOREM_TABLE_CHECK: &str =
         "SELECT name FROM sqlite_master WHERE type='table' AND name='inProgressTheorem';";
+    pub const THEOREM_TABLE_CHECK: &str =
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='theorem';";
+
+    // Checks whether the query returns rows and returns the correct error if not
+    pub async fn check_returns_rows_or_error(
+        query: &str,
+        conn: &mut SqliteConnection,
+    ) -> Result<(), super::Error> {
+        let rows = sqlx::query(query)
+            .fetch_all(conn)
+            .await
+            .or(Err(super::Error::SqlError))?;
+
+        if rows.len() == 0 {
+            return Err(super::Error::WrongDatabaseFormatError);
+        }
+        Ok(())
+    }
 }
