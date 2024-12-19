@@ -1,7 +1,17 @@
+use crate::AppState;
 use std::fmt;
+use tauri::async_runtime::Mutex;
+
+use crate::database::{
+    self,
+    theorem::{Hypothesis, Theorem},
+};
 
 #[tauri::command]
-pub fn text_to_axium(text: &str) -> Result<Theorem, Error> {
+pub async fn text_to_axium(
+    state: tauri::State<'_, Mutex<AppState>>,
+    text: &str,
+) -> Result<Theorem, Error> {
     if !text.is_ascii() {
         return Err(Error::InvalidCharactersError);
     }
@@ -40,6 +50,18 @@ pub fn text_to_axium(text: &str) -> Result<Theorem, Error> {
     let name = name.ok_or(Error::InvalidFormatError)?;
     let assertion = assertion.ok_or(Error::InvalidFormatError)?;
 
+    database::theorem::add_theorem(
+        &state,
+        &name,
+        &description,
+        &disjoints,
+        &hypotheses,
+        &assertion,
+        None,
+    )
+    .await
+    .or(Err(Error::SqlError))?;
+
     Ok(Theorem {
         name,
         description,
@@ -65,59 +87,10 @@ fn get_next_as_string_until(iter: &mut std::str::SplitWhitespace, until: &str) -
 }
 
 #[derive(Debug)]
-pub struct Theorem {
-    pub name: String,
-    pub description: String,
-    pub disjoints: Vec<String>,
-    pub hypotheses: Vec<Hypothesis>,
-    pub assertion: String,
-    pub proof: Option<String>,
-}
-
-impl serde::Serialize for Theorem {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        use serde::ser::SerializeStruct;
-
-        // 3 is the number of fields in the struct.
-        let mut state = serializer.serialize_struct("InProgressTheorem", 6)?;
-        state.serialize_field("name", &self.name)?;
-        state.serialize_field("description", &self.description)?;
-        state.serialize_field("disjoints", &self.disjoints)?;
-        state.serialize_field("hypotheses", &self.hypotheses)?;
-        state.serialize_field("assertion", &self.assertion)?;
-        state.serialize_field("proof", &self.proof)?;
-        state.end()
-    }
-}
-
-#[derive(Debug)]
-pub struct Hypothesis {
-    pub label: String,
-    pub hypothesis: String,
-}
-
-impl serde::Serialize for Hypothesis {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        use serde::ser::SerializeStruct;
-
-        // 3 is the number of fields in the struct.
-        let mut state = serializer.serialize_struct("InProgressTheorem", 2)?;
-        state.serialize_field("label", &self.label)?;
-        state.serialize_field("hypothesis", &self.hypothesis)?;
-        state.end()
-    }
-}
-
-#[derive(Debug)]
 pub enum Error {
     InvalidCharactersError,
     InvalidFormatError,
+    SqlError,
 }
 
 impl fmt::Display for Error {

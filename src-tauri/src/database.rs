@@ -1,10 +1,13 @@
+use in_progress_theorem::InProgressTheorem;
 use sqlx::{migrate::MigrateDatabase, Connection, Sqlite, SqliteConnection};
 use std::fmt;
 use tauri::async_runtime::Mutex;
+use theorem::Theorem;
 
 use crate::AppState;
 
 pub mod in_progress_theorem;
+pub mod theorem;
 
 // Tauri Command for creating a new database
 // If the database already exists, it will instead return an DatabaseExistsError
@@ -66,12 +69,14 @@ pub async fn open_database(
     drop(app_state); // Unlock Mutex
 
     Ok(MetamathData {
-        in_progress_theorems: in_progress_theorem::get_in_progress_theorems(state).await?,
+        in_progress_theorems: in_progress_theorem::get_in_progress_theorems(&state).await?,
+        theorems: theorem::get_theorems(&state).await?,
     })
 }
 
 pub struct MetamathData {
-    in_progress_theorems: Vec<in_progress_theorem::InProgressTheorem>,
+    in_progress_theorems: Vec<InProgressTheorem>,
+    theorems: Vec<Theorem>,
 }
 
 impl serde::Serialize for MetamathData {
@@ -113,7 +118,10 @@ impl serde::Serialize for Error {
 }
 
 mod sql {
-    use sqlx::SqliteConnection;
+    use super::Error;
+    use crate::AppState;
+    use sqlx::{Sqlite, SqliteConnection, Type};
+    use tauri::async_runtime::Mutex;
 
     pub const INIT_DB: &str = "\
 CREATE TABLE inProgressTheorem (
@@ -126,7 +134,7 @@ CREATE TABLE theorem (
     disjoints TEXT,
     hypotheses TEXT,
     assertion TEXT,
-    proof TEXT
+    proof TEXT NULL
 );
 ";
 
@@ -147,6 +155,49 @@ CREATE TABLE theorem (
 
         if rows.len() == 0 {
             return Err(super::Error::WrongDatabaseFormatError);
+        }
+        Ok(())
+    }
+
+    pub async fn execute_query_one_bind<'a, T>(
+        state: &tauri::State<'_, Mutex<AppState>>,
+        query: &'static str,
+        bind_one: T,
+    ) -> Result<(), Error>
+    where
+        T: sqlx::Encode<'a, Sqlite> + Type<Sqlite> + 'a,
+    {
+        let mut app_state = state.lock().await;
+
+        if let Some(ref mut conn) = app_state.db_conn {
+            sqlx::query(query)
+                .bind(bind_one)
+                .execute(conn)
+                .await
+                .or(Err(Error::SqlError))?;
+        }
+        Ok(())
+    }
+
+    pub async fn execute_query_two_bind<'a, T, S>(
+        state: &tauri::State<'_, Mutex<AppState>>,
+        query: &'static str,
+        bind_one: T,
+        bind_two: S,
+    ) -> Result<(), Error>
+    where
+        T: sqlx::Encode<'a, Sqlite> + Type<Sqlite> + 'a,
+        S: sqlx::Encode<'a, Sqlite> + Type<Sqlite> + 'a,
+    {
+        let mut app_state = state.lock().await;
+
+        if let Some(ref mut conn) = app_state.db_conn {
+            sqlx::query(query)
+                .bind(bind_one)
+                .bind(bind_two)
+                .execute(conn)
+                .await
+                .or(Err(Error::SqlError))?;
         }
         Ok(())
     }

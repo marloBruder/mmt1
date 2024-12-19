@@ -2,11 +2,14 @@ use futures::TryStreamExt;
 use sqlx::Row;
 use tauri::async_runtime::Mutex;
 
-use super::Error;
+use super::{
+    sql::{execute_query_one_bind, execute_query_two_bind},
+    Error,
+};
 use crate::AppState;
 
 pub async fn get_in_progress_theorems(
-    state: tauri::State<'_, Mutex<AppState>>,
+    state: &tauri::State<'_, Mutex<AppState>>,
 ) -> Result<Vec<InProgressTheorem>, Error> {
     let mut app_state = state.lock().await;
 
@@ -32,18 +35,7 @@ pub async fn add_in_progress_theorem(
     name: &str,
     text: &str,
 ) -> Result<(), Error> {
-    let mut app_state = state.lock().await;
-
-    if let Some(ref mut conn) = app_state.db_conn {
-        sqlx::query(sql::IN_PROGRESS_THEOREM_ADD)
-            .bind(name)
-            .bind(text)
-            .execute(conn)
-            .await
-            .or(Err(Error::SqlError))?;
-    }
-
-    Ok(())
+    execute_query_two_bind(&state, sql::IN_PROGRESS_THEOREM_ADD, name, text).await
 }
 
 #[tauri::command]
@@ -52,18 +44,13 @@ pub async fn set_in_progress_theorem_name(
     old_name: &str,
     new_name: &str,
 ) -> Result<(), Error> {
-    let mut app_state = state.lock().await;
-
-    if let Some(ref mut conn) = app_state.db_conn {
-        sqlx::query(sql::IN_PROGRESS_THEOREM_NAME_UPDATE)
-            .bind(new_name)
-            .bind(old_name)
-            .execute(conn)
-            .await
-            .or(Err(Error::SqlError))?;
-    }
-
-    Ok(())
+    execute_query_two_bind(
+        &state,
+        sql::IN_PROGRESS_THEOREM_NAME_UPDATE,
+        new_name,
+        old_name,
+    )
+    .await
 }
 
 #[tauri::command]
@@ -72,18 +59,7 @@ pub async fn set_in_progress_theorem(
     name: &str,
     text: &str,
 ) -> Result<(), Error> {
-    let mut app_state = state.lock().await;
-
-    if let Some(ref mut conn) = app_state.db_conn {
-        sqlx::query(sql::IN_PROGRESS_THEOREM_UPDATE)
-            .bind(text)
-            .bind(name)
-            .execute(conn)
-            .await
-            .or(Err(Error::SqlError))?;
-    }
-
-    Ok(())
+    execute_query_two_bind(&state, sql::IN_PROGRESS_THEOREM_UPDATE, text, name).await
 }
 
 #[tauri::command]
@@ -91,17 +67,7 @@ pub async fn delete_in_progress_theorem(
     state: tauri::State<'_, Mutex<AppState>>,
     name: &str,
 ) -> Result<(), Error> {
-    let mut app_state = state.lock().await;
-
-    if let Some(ref mut conn) = app_state.db_conn {
-        sqlx::query(sql::IN_PROGRESS_THEOREM_DELETE)
-            .bind(name)
-            .execute(conn)
-            .await
-            .or(Err(Error::SqlError))?;
-    }
-
-    Ok(())
+    execute_query_one_bind(&state, sql::IN_PROGRESS_THEOREM_DELETE, name).await
 }
 
 pub struct InProgressTheorem {
