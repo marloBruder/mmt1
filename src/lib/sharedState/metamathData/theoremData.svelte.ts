@@ -28,6 +28,10 @@ class TheoremData {
     return null;
   }
 
+  resetTheoremsLocal() {
+    this.#theorems = [];
+  }
+
   get theorems() {
     return this.#theorems;
   }

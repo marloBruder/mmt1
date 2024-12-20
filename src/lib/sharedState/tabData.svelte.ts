@@ -71,7 +71,7 @@ export abstract class Tab {
   abstract validTab(): boolean;
 }
 
-export class TheoremTabClass extends Tab {
+export class TheoremTab extends Tab {
   #theoremName: string;
 
   constructor(theoremName: string) {
@@ -84,7 +84,7 @@ export class TheoremTabClass extends Tab {
   }
 
   sameTab(tab: Tab): boolean {
-    return tab instanceof TheoremTabClass && this.#theoremName == tab.theoremName;
+    return tab instanceof TheoremTab && this.#theoremName == tab.theoremName;
   }
 
   validTab(): boolean {
@@ -96,7 +96,7 @@ export class TheoremTabClass extends Tab {
   }
 }
 
-export class EditorTabClass extends Tab {
+export class EditorTab extends Tab {
   #localID: number;
 
   constructor(localID: number) {
@@ -110,7 +110,7 @@ export class EditorTabClass extends Tab {
   }
 
   sameTab(tab: Tab): boolean {
-    return tab instanceof EditorTabClass && this.#localID == tab.localID;
+    return tab instanceof EditorTab && this.#localID == tab.localID;
   }
 
   validTab(): boolean {

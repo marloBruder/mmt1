@@ -1,10 +1,10 @@
 <script lang="ts">
   import { inProgressTheoremData } from "$lib/sharedState/metamathData/inProgressTheoremData.svelte";
-  import { tabManager, EditorTabClass } from "$lib/sharedState/tabData.svelte";
+  import { tabManager, EditorTab } from "$lib/sharedState/tabData.svelte";
 
   let theoremClick = (id: number) => {
     return () => {
-      tabManager.addTabAndOpen(new EditorTabClass(id));
+      tabManager.addTabAndOpen(new EditorTab(id));
     };
   };
 </script>

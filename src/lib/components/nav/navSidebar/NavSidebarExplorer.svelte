@@ -1,9 +1,9 @@
 <script lang="ts">
   import { theoremData } from "$lib/sharedState/metamathData/theoremData.svelte";
-  import { tabManager, TheoremTabClass } from "$lib/sharedState/tabData.svelte";
+  import { tabManager, TheoremTab } from "$lib/sharedState/tabData.svelte";
 
   let explorerClick = (name: string) => {
-    tabManager.addTabAndOpen(new TheoremTabClass(name));
+    tabManager.addTabAndOpen(new TheoremTab(name));
   };
 </script>
 

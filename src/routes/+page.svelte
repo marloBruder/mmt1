@@ -9,6 +9,7 @@
 
   let resetApp = () => {
     inProgressTheoremData.resetTheoremsLocal();
+    theoremData.resetTheoremsLocal();
     tabManager.resetTabs();
   };
 

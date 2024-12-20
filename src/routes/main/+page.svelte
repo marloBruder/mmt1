@@ -2,10 +2,10 @@
   import NavSidebar from "$lib/components/nav/navSidebar/NavSidebar.svelte";
 
   import { tabManager } from "$lib/sharedState/tabData.svelte";
-  import { EditorTabClass, TheoremTabClass } from "$lib/sharedState/tabData.svelte";
-  import EmptyTab from "$lib/components/tabs/EmptyTab.svelte";
-  import TheoremTab from "$lib/components/tabs/TheoremTab.svelte";
-  import EditorTab from "$lib/components/tabs/EditorTab.svelte";
+  import { EditorTab, TheoremTab } from "$lib/sharedState/tabData.svelte";
+  import EmptyTabComponent from "$lib/components/tabs/EmptyTabComponent.svelte";
+  import EditorTabComponent from "$lib/components/tabs/EditorTabComponent.svelte";
+  import TheoremTabComponent from "$lib/components/tabs/TheoremTabComponent.svelte";
   import TabBar from "$lib/components/nav/TabBar.svelte";
 
   let openedTab = $derived(tabManager.getOpenedTab());
@@ -17,12 +17,12 @@
   </div>
   <div class="h-full ml-80 border-l border-gray-400 overflow-y-scroll overflow-x-hidden">
     <TabBar></TabBar>
-    {#if openedTab instanceof TheoremTabClass}
-      <TheoremTab theoremName={openedTab.theoremName}></TheoremTab>
-    {:else if openedTab instanceof EditorTabClass}
-      <EditorTab localID={openedTab.localID}></EditorTab>
+    {#if openedTab instanceof TheoremTab}
+      <TheoremTabComponent theoremName={openedTab.theoremName}></TheoremTabComponent>
+    {:else if openedTab instanceof EditorTab}
+      <EditorTabComponent localID={openedTab.localID}></EditorTabComponent>
     {:else}
-      <EmptyTab></EmptyTab>
+      <EmptyTabComponent></EmptyTabComponent>
     {/if}
   </div>
 </div>
