@@ -19,6 +19,15 @@ class TheoremData {
     this.#theorems.push(theorem);
   }
 
+  getTheoremByName(name: string): Theorem | null {
+    for (let theorem of this.#theorems) {
+      if (theorem.name == name) {
+        return theorem;
+      }
+    }
+    return null;
+  }
+
   get theorems() {
     return this.#theorems;
   }
