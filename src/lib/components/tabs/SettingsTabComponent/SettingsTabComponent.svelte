@@ -18,7 +18,7 @@
 </script>
 
 <div class="w-full h-full">
-  <div class="w-36 h-full float-left border-r border-gray-300">
+  <div class="w-36 h-full fixed border-r border-gray-300">
     <ul class="pl-2 pt-2">
       {#each tabs as tab, index}
         <li>
@@ -27,7 +27,7 @@
       {/each}
     </ul>
   </div>
-  <div class="ml-36">
+  <div class="ml-36 h-full overflow-y-auto">
     <Component></Component>
   </div>
 </div>

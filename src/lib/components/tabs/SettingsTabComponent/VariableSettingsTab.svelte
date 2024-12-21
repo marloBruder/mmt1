@@ -1,1 +1,1 @@
-<div>This is the Varibles Settings Tab</div>
+<div>This is the Variables Settings Tab</div>
