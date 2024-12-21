@@ -21,3 +21,8 @@ export interface Hypothesis {
   label: string;
   hypothesis: string;
 }
+
+export interface Variable {
+  type: string;
+  name: string;
+}

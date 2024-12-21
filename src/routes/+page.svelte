@@ -6,10 +6,12 @@
   import { inProgressTheoremData } from "$lib/sharedState/metamathData/inProgressTheoremData.svelte";
   import { tabManager } from "$lib/sharedState/tabData.svelte";
   import { theoremData } from "$lib/sharedState/metamathData/theoremData.svelte";
+  import { variableData } from "$lib/sharedState/metamathData/variableData.svelte";
 
   let resetApp = () => {
     inProgressTheoremData.resetTheoremsLocal();
     theoremData.resetTheoremsLocal();
+    variableData.resetVariablesLocal();
     tabManager.resetTabs();
   };
 
