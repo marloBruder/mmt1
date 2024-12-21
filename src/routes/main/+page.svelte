@@ -1,12 +1,13 @@
 <script lang="ts">
   import NavSidebar from "$lib/components/nav/navSidebar/NavSidebar.svelte";
 
-  import { tabManager } from "$lib/sharedState/tabData.svelte";
+  import { SettingsTab, tabManager } from "$lib/sharedState/tabData.svelte";
   import { EditorTab, TheoremTab } from "$lib/sharedState/tabData.svelte";
   import EmptyTabComponent from "$lib/components/tabs/EmptyTabComponent.svelte";
   import EditorTabComponent from "$lib/components/tabs/EditorTabComponent.svelte";
   import TheoremTabComponent from "$lib/components/tabs/TheoremTabComponent.svelte";
   import TabBar from "$lib/components/nav/TabBar.svelte";
+  import SettingsTabComponent from "$lib/components/tabs/SettingsTabComponent/SettingsTabComponent.svelte";
 
   let openedTab = $derived(tabManager.getOpenedTab());
 </script>
@@ -21,6 +22,8 @@
       <TheoremTabComponent theoremName={openedTab.theoremName}></TheoremTabComponent>
     {:else if openedTab instanceof EditorTab}
       <EditorTabComponent localID={openedTab.localID}></EditorTabComponent>
+    {:else if openedTab instanceof SettingsTab}
+      <SettingsTabComponent></SettingsTabComponent>
     {:else}
       <EmptyTabComponent></EmptyTabComponent>
     {/if}

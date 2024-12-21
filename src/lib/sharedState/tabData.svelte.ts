@@ -122,6 +122,24 @@ export class EditorTab extends Tab {
   }
 }
 
+export class SettingsTab extends Tab {
+  constructor() {
+    super();
+  }
+
+  name(): string {
+    return "Settings";
+  }
+
+  sameTab(tab: Tab) {
+    return tab instanceof SettingsTab;
+  }
+
+  validTab(): boolean {
+    return true;
+  }
+}
+
 let tabManager = new TabManager();
 
 export { tabManager };
