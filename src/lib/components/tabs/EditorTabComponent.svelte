@@ -4,6 +4,7 @@
 
   import { tabManager } from "$lib/sharedState/tabData.svelte";
   import { theoremData } from "$lib/sharedState/metamathData/theoremData.svelte";
+  import RoundButton from "../util/RoundButton.svelte";
 
   let { localID } = $props();
 
@@ -25,6 +26,15 @@
     oldName = theorem.name;
     nameDisabled = false;
   };
+
+  $effect(() => {
+    if (!nameDisabled) {
+      let input = document.getElementById("tabName");
+      if (input) {
+        input.focus();
+      }
+    }
+  });
 
   let saveName = () => {
     if (theorem.name === "" || inProgressTheoremData.nameExists(theorem.id, theorem.name)) {
@@ -84,12 +94,12 @@
     <label for="tabName">Theorem name:</label>
     <input id="tabName" type="text" bind:value={theorem.name} onfocusout={unfocusName} onkeydown={keyDownName} disabled={nameDisabled} autocomplete="off" class="disabled:bg-gray-300" />
   </div>
-  <button onclick={editName} disabled={!nameDisabled} class="border border-black rounded px-1 disabled:bg-gray-300">Edit name</button>
+  <RoundButton onclick={editName} disabled={!nameDisabled}>Edit name</RoundButton>
 </div>
 <div class="p-2 border-t border-gray-400">
-  <button onclick={saveText} disabled={!textChanged} class="border border-black rounded px-1 disabled:bg-gray-300">Save</button>
-  <button onclick={deleteTheorem} class="border border-black rounded px-1 bg-red-500">Delete</button>
-  <button onclick={turnIntoAxiom} class="border border-black rounded px-1">Turn into axiom</button>
+  <RoundButton onclick={saveText} disabled={!textChanged}>Save</RoundButton>
+  <RoundButton onclick={deleteTheorem} warning>Delete</RoundButton>
+  <RoundButton onclick={turnIntoAxiom}>Turn into axiom</RoundButton>
 </div>
 <div>
   <textarea bind:value={theorem.text} oninput={textChange} class="w-full resize-none h-96"></textarea>
