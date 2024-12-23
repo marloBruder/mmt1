@@ -1,25 +1,9 @@
 <script lang="ts">
-  import { theoremData } from "$lib/sharedState/metamathData/theoremData.svelte";
-  import { tabManager } from "$lib/sharedState/tabData.svelte";
+  import { tabManager, TheoremTab } from "$lib/sharedState/tabData.svelte";
 
-  let { theoremName }: { theoremName: string } = $props();
+  let { tab }: { tab: TheoremTab } = $props();
 
-  let theorem = $derived.by(() => {
-    let theoremOrNull = theoremData.getTheoremByName(theoremName);
-    if (!theoremOrNull) {
-      // Should never happen
-      tabManager.openEmptyTab();
-      return {
-        name: "",
-        description: "",
-        disjoints: [],
-        hypotheses: [],
-        assertion: "",
-        proof: null,
-      };
-    }
-    return theoremOrNull;
-  });
+  let theorem = $derived(tab.theorem);
 </script>
 
 <div class="text-center py-4">

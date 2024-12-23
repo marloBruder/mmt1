@@ -22,11 +22,11 @@
     </div>
     <div class="overflow-auto">
       {#if openedTab instanceof TheoremTab}
-        <TheoremTabComponent theoremName={openedTab.theoremName}></TheoremTabComponent>
+        <TheoremTabComponent tab={openedTab}></TheoremTabComponent>
       {:else if openedTab instanceof EditorTab}
-        <EditorTabComponent localID={openedTab.localID}></EditorTabComponent>
+        <EditorTabComponent tab={openedTab}></EditorTabComponent>
       {:else if openedTab instanceof SettingsTab}
-        <SettingsTabComponent></SettingsTabComponent>
+        <SettingsTabComponent tab={openedTab}></SettingsTabComponent>
       {:else}
         <EmptyTabComponent></EmptyTabComponent>
       {/if}

@@ -1,16 +1,22 @@
+use model::MetamathData;
 use sqlx::SqliteConnection;
 use tauri::{async_runtime::Mutex, App, Manager};
 
 mod database;
-
+mod local_state;
 mod metamath;
+mod model;
 
 pub struct AppState {
     db_conn: Option<SqliteConnection>,
+    metamath_data: Option<MetamathData>,
 }
 
 fn app_setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
-    app.manage(Mutex::new(AppState { db_conn: None }));
+    app.manage(Mutex::new(AppState {
+        db_conn: None,
+        metamath_data: None,
+    }));
     Ok(())
 }
 
@@ -28,6 +34,10 @@ pub fn run() {
             database::in_progress_theorem::set_in_progress_theorem,
             database::in_progress_theorem::delete_in_progress_theorem,
             metamath::text_to_axium,
+            local_state::get_theorem_local,
+            local_state::get_theorem_names_local,
+            local_state::get_in_progress_theorem_local,
+            local_state::get_in_progress_theorem_names_local,
         ])
         .setup(|app| app_setup(app))
         .run(tauri::generate_context!())

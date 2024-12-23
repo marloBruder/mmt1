@@ -1,5 +1,8 @@
 <script lang="ts">
+  import type { SettingsTab } from "$lib/sharedState/tabData.svelte";
   import VariableSettingsTab from "./VariableSettingsTab.svelte";
+
+  let { tab }: { tab: SettingsTab } = $props();
 
   let tabs = [
     {

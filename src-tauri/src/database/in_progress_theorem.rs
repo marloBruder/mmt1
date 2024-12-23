@@ -6,7 +6,7 @@ use super::{
     sql::{execute_query_one_bind, execute_query_two_bind},
     Error,
 };
-use crate::AppState;
+use crate::{model::InProgressTheorem, AppState};
 
 pub async fn get_in_progress_theorems(
     state: &tauri::State<'_, Mutex<AppState>>,
@@ -35,7 +35,15 @@ pub async fn add_in_progress_theorem(
     name: &str,
     text: &str,
 ) -> Result<(), Error> {
-    execute_query_two_bind(&state, sql::IN_PROGRESS_THEOREM_ADD, name, text).await
+    execute_query_two_bind(&state, sql::IN_PROGRESS_THEOREM_ADD, name, text).await?;
+
+    let mut app_state = state.lock().await;
+
+    if let Some(ref mut mm_data) = app_state.metamath_data {
+        mm_data.add_in_progress_theorem(name, text);
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -50,7 +58,15 @@ pub async fn set_in_progress_theorem_name(
         new_name,
         old_name,
     )
-    .await
+    .await?;
+
+    let mut app_state = state.lock().await;
+
+    if let Some(ref mut mm_data) = app_state.metamath_data {
+        mm_data.set_in_progress_theorem_name(old_name, new_name);
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -59,7 +75,15 @@ pub async fn set_in_progress_theorem(
     name: &str,
     text: &str,
 ) -> Result<(), Error> {
-    execute_query_two_bind(&state, sql::IN_PROGRESS_THEOREM_UPDATE, text, name).await
+    execute_query_two_bind(&state, sql::IN_PROGRESS_THEOREM_UPDATE, text, name).await?;
+
+    let mut app_state = state.lock().await;
+
+    if let Some(ref mut mm_data) = app_state.metamath_data {
+        mm_data.set_in_progress_theorem_text(name, text);
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -67,27 +91,15 @@ pub async fn delete_in_progress_theorem(
     state: tauri::State<'_, Mutex<AppState>>,
     name: &str,
 ) -> Result<(), Error> {
-    execute_query_one_bind(&state, sql::IN_PROGRESS_THEOREM_DELETE, name).await
-}
+    execute_query_one_bind(&state, sql::IN_PROGRESS_THEOREM_DELETE, name).await?;
 
-pub struct InProgressTheorem {
-    pub name: String,
-    pub text: String,
-}
+    let mut app_state = state.lock().await;
 
-impl serde::Serialize for InProgressTheorem {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        use serde::ser::SerializeStruct;
-
-        // 3 is the number of fields in the struct.
-        let mut state = serializer.serialize_struct("InProgressTheorem", 6)?;
-        state.serialize_field("name", &self.name)?;
-        state.serialize_field("text", &self.text)?;
-        state.end()
+    if let Some(ref mut mm_data) = app_state.metamath_data {
+        mm_data.delete_in_progress_theorem(name);
     }
+
+    Ok(())
 }
 
 mod sql {

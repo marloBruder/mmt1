@@ -1,6 +1,5 @@
 <script lang="ts">
   import RoundButton from "$lib/components/util/RoundButton.svelte";
-  import { variableData } from "$lib/sharedState/metamathData/variableData.svelte";
 
   let editing = $state(false);
 
@@ -23,9 +22,9 @@
   {#if !editing}
     <div class="pl-4">
       <ol class="list-decimal">
-        {#each variableData.variables as variable}
+        <!-- {#each variableData.variables as variable}
           <li>{variable.type + " " + variable.name}</li>
-        {/each}
+        {/each} -->
       </ol>
     </div>
   {:else}

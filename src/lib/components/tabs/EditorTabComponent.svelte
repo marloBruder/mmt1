@@ -1,31 +1,16 @@
 <script lang="ts">
-  import { inProgressTheoremData } from "$lib/sharedState/metamathData/inProgressTheoremData.svelte";
   import { invoke } from "@tauri-apps/api/core";
-
-  import { tabManager } from "$lib/sharedState/tabData.svelte";
-  import { theoremData } from "$lib/sharedState/metamathData/theoremData.svelte";
+  import { EditorTab, tabManager } from "$lib/sharedState/tabData.svelte";
   import RoundButton from "../util/RoundButton.svelte";
+  import { nameListData } from "$lib/sharedState/nameListData.svelte";
 
-  let { localID } = $props();
+  let { tab }: { tab: EditorTab } = $props();
 
-  let theorem = $derived.by(() => {
-    let theoremOrNull = inProgressTheoremData.getTheoremByID(localID);
-    if (theoremOrNull === null) {
-      // This should never happen, if the tabManager editor-tabs always had a correct id
-      tabManager.openEmptyTab();
-      return { id: 0, name: "", text: "" };
-    }
-    return theoremOrNull;
-  });
+  let theorem = $derived(tab.inProgressTheorem);
 
   let oldName: string = "";
 
   let nameDisabled: boolean = $state(true);
-
-  let editName = () => {
-    oldName = theorem.name;
-    nameDisabled = false;
-  };
 
   $effect(() => {
     if (!nameDisabled) {
@@ -36,24 +21,47 @@
     }
   });
 
-  let saveName = () => {
-    if (theorem.name === "" || inProgressTheoremData.nameExists(theorem.id, theorem.name)) {
+  $effect(() => {
+    if (tab.inProgressTheoremName === "") {
+      oldName = "";
+      nameDisabled = false;
+    }
+  });
+
+  let editName = () => {
+    oldName = theorem.name;
+    nameDisabled = false;
+  };
+
+  let saveName = async () => {
+    if (theorem.name === "" || (oldName != theorem.name && nameListData.nameExists(theorem.name))) {
       throw Error("Invalid Name");
     }
     nameDisabled = true;
     if (oldName != theorem.name) {
-      invoke("set_in_progress_theorem_name", { oldName, newName: theorem.name });
+      if (oldName === "") {
+        invoke("add_in_progress_theorem", { name: theorem.name, text: "" });
+        nameListData.addInProgressTheoremName(theorem.name);
+      } else {
+        invoke("set_in_progress_theorem_name", { oldName, newName: theorem.name });
+        nameListData.changeInProgressTheoremName(oldName, theorem.name);
+      }
+      tab.changeID(theorem.name);
     }
   };
 
   let abortNameSave = () => {
-    nameDisabled = true;
-    theorem.name = oldName;
+    if (tab.inProgressTheoremName === "") {
+      tabManager.closeCurrentTab();
+    } else {
+      nameDisabled = true;
+      theorem.name = oldName;
+    }
   };
 
-  let unfocusName = () => {
+  let unfocusName = async () => {
     try {
-      saveName();
+      await saveName();
     } catch (error) {
       abortNameSave();
     }
@@ -72,12 +80,12 @@
   let textChanged: boolean = $state(false);
 
   let saveText = () => {
-    invoke("set_in_progress_theorem", { name: theorem.name, text: theorem.text });
+    invoke("set_in_progress_theorem", { name: tab.inProgressTheoremName, text: theorem.text });
     textChanged = false;
   };
 
   let deleteTheorem = () => {
-    inProgressTheoremData.deleteTheorem(theorem.id);
+    tab.deleteTheorem();
   };
 
   let textChange = () => {
@@ -85,7 +93,7 @@
   };
 
   let turnIntoAxiom = () => {
-    theoremData.convertToTheorem(theorem.id);
+    tab.convertToTheorem();
   };
 </script>
 

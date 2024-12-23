@@ -1,41 +1,36 @@
-import { inProgressTheoremData } from "./metamathData/inProgressTheoremData.svelte";
+import { invoke } from "@tauri-apps/api/core";
+import type { InProgressTheorem, Theorem } from "./model.svelte";
+import { nameListData } from "./nameListData.svelte";
 
 class TabManager {
   #tabs: Tab[] = $state([]);
 
-  #openedTabIndex: number = $state(-1);
+  #openedTabIndex: number = $state(0);
 
-  addTabAndOpen(newTab: Tab) {
-    if (!newTab.validTab()) {
-      return;
-    }
-
+  async addTabAndOpen(newTab: Tab) {
     for (let [index, tab] of this.#tabs.entries()) {
-      if (newTab.sameTab(tab)) {
+      if (newTab.sameID(tab)) {
         this.#openedTabIndex = index;
         return;
       }
     }
 
+    await newTab.loadData();
     this.#tabs.push(newTab);
     this.#openedTabIndex = this.#tabs.length - 1;
   }
 
-  getOpenedTab() {
-    return this.#openedTabIndex != -1 ? this.#tabs[this.#openedTabIndex] : null;
-  }
-
-  openTab(tabIndex: number) {
+  openTabWithIndex(tabIndex: number) {
     if (tabIndex >= 0 && tabIndex < this.#tabs.length) {
       this.#openedTabIndex = tabIndex;
     }
   }
 
-  openEmptyTab() {
-    this.#openedTabIndex = -1;
-  }
+  // openEmptyTab() {
+  //   this.#openedTabIndex = -1;
+  // }
 
-  closeTab(tabIndex: number) {
+  closeTabWithIndex(tabIndex: number) {
     if (tabIndex >= 0 && tabIndex < this.#tabs.length) {
       if (this.#openedTabIndex > tabIndex || (this.#openedTabIndex == tabIndex && tabIndex == this.#tabs.length - 1)) {
         this.#openedTabIndex--;
@@ -44,18 +39,25 @@ class TabManager {
     }
   }
 
-  closeSameTab(tab: Tab) {
-    for (let [index, otherTab] of this.#tabs.entries()) {
-      if (tab.sameTab(otherTab)) {
-        this.closeTab(index);
-        return;
-      }
-    }
+  closeCurrentTab() {
+    this.closeTabWithIndex(this.#openedTabIndex);
+  }
+
+  // closeTab(tab: Tab) {
+  //   for (let [index, otherTab] of this.#tabs.entries()) {
+  //     if (tab.sameID(otherTab)) {
+  //       this.closeTabWithIndex(index);
+  //       return;
+  //     }
+  //   }
+  // }
+
+  getOpenedTab() {
+    return this.#openedTabIndex >= 0 && this.#openedTabIndex < this.#tabs.length ? this.#tabs[this.#openedTabIndex] : null;
   }
 
   resetTabs() {
     this.#tabs = [];
-    this.#openedTabIndex = -1;
   }
 
   get tabs() {
@@ -63,32 +65,41 @@ class TabManager {
   }
 }
 
+let tabManager = new TabManager();
+
+export { tabManager };
+
 export abstract class Tab {
+  abstract loadData(): Promise<void>;
+
   abstract name(): string;
 
-  abstract sameTab(tab: Tab): boolean;
-
-  abstract validTab(): boolean;
+  abstract sameID(tab: Tab): boolean;
 }
 
 export class TheoremTab extends Tab {
   #theoremName: string;
+  #theorem: Theorem = $state({ name: "", description: "", disjoints: [], hypotheses: [], assertion: "", proof: null });
 
   constructor(theoremName: string) {
     super();
     this.#theoremName = theoremName;
   }
 
+  async loadData(): Promise<void> {
+    this.#theorem = await invoke("get_theorem_local", { name: this.#theoremName });
+  }
+
   name(): string {
     return this.#theoremName;
   }
 
-  sameTab(tab: Tab): boolean {
+  sameID(tab: Tab): boolean {
     return tab instanceof TheoremTab && this.#theoremName == tab.theoremName;
   }
 
-  validTab(): boolean {
-    return true;
+  get theorem() {
+    return this.#theorem;
   }
 
   get theoremName() {
@@ -97,28 +108,54 @@ export class TheoremTab extends Tab {
 }
 
 export class EditorTab extends Tab {
-  #localID: number;
+  #inProgressTheoremName: string = $state("");
+  #inProgressTheorem: InProgressTheorem = $state({ name: "", text: "" });
 
-  constructor(localID: number) {
+  constructor(inProgressTheoremName: string) {
     super();
-    this.#localID = localID;
+    this.#inProgressTheoremName = inProgressTheoremName;
+  }
+
+  async loadData(): Promise<void> {
+    if (this.#inProgressTheoremName != "") {
+      this.#inProgressTheorem = await invoke("get_in_progress_theorem_local", { name: this.#inProgressTheoremName });
+    }
   }
 
   name(): string {
-    let theorem = inProgressTheoremData.getTheoremByID(this.#localID);
-    return theorem ? theorem.name : "";
+    return this.#inProgressTheoremName !== "" ? this.#inProgressTheoremName : "New Tab";
   }
 
-  sameTab(tab: Tab): boolean {
-    return tab instanceof EditorTab && this.#localID == tab.localID;
+  sameID(tab: Tab): boolean {
+    return tab instanceof EditorTab && this.#inProgressTheoremName == tab.inProgressTheoremName;
   }
 
-  validTab(): boolean {
-    return inProgressTheoremData.validID(this.#localID);
+  changeID(newID: string) {
+    this.#inProgressTheoremName = newID;
   }
 
-  get localID() {
-    return this.#localID;
+  async deleteTheorem() {
+    await invoke("delete_in_progress_theorem", { name: this.#inProgressTheoremName });
+    tabManager.closeCurrentTab();
+    nameListData.removeInProgressTheoremName(this.#inProgressTheoremName);
+    return;
+  }
+
+  async convertToTheorem() {
+    let theorem: Theorem = await invoke("text_to_axium", { text: this.#inProgressTheorem.text });
+
+    nameListData.removeInProgressTheoremName(this.#inProgressTheoremName);
+    nameListData.addTheoremName(theorem.name);
+    tabManager.closeCurrentTab();
+    tabManager.addTabAndOpen(new TheoremTab(theorem.name));
+  }
+
+  get inProgressTheorem() {
+    return this.#inProgressTheorem;
+  }
+
+  get inProgressTheoremName() {
+    return this.#inProgressTheoremName;
   }
 }
 
@@ -127,11 +164,13 @@ export class SettingsTab extends Tab {
     super();
   }
 
+  async loadData(): Promise<void> {}
+
   name(): string {
     return "Settings";
   }
 
-  sameTab(tab: Tab) {
+  sameID(tab: Tab) {
     return tab instanceof SettingsTab;
   }
 
@@ -139,7 +178,3 @@ export class SettingsTab extends Tab {
     return true;
   }
 }
-
-let tabManager = new TabManager();
-
-export { tabManager };

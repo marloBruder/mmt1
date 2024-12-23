@@ -1,5 +1,8 @@
 use super::Error;
-use crate::AppState;
+use crate::{
+    model::{Hypothesis, Theorem},
+    AppState,
+};
 use futures::TryStreamExt;
 use sqlx::Row;
 use tauri::async_runtime::Mutex;
@@ -35,8 +38,6 @@ pub async fn get_theorems(
         }
     }
 
-    println!("{:?}", result);
-
     Ok(result)
 }
 
@@ -66,17 +67,12 @@ pub async fn add_theorem(
             .await
             .or(Err(Error::SqlError))?;
     }
-    Ok(())
-}
 
-#[derive(Debug)]
-pub struct Theorem {
-    pub name: String,
-    pub description: String,
-    pub disjoints: Vec<String>,
-    pub hypotheses: Vec<Hypothesis>,
-    pub assertion: String,
-    pub proof: Option<String>,
+    if let Some(ref mut mm_data) = app_state.metamath_data {
+        mm_data.add_theorem(name, description, disjoints, hypotheses, assertion, proof);
+    }
+
+    Ok(())
 }
 
 impl Theorem {
@@ -133,46 +129,6 @@ impl Theorem {
             }
         }
         hypotheses
-    }
-}
-
-impl serde::Serialize for Theorem {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        use serde::ser::SerializeStruct;
-
-        // 3 is the number of fields in the struct.
-        let mut state = serializer.serialize_struct("InProgressTheorem", 6)?;
-        state.serialize_field("name", &self.name)?;
-        state.serialize_field("description", &self.description)?;
-        state.serialize_field("disjoints", &self.disjoints)?;
-        state.serialize_field("hypotheses", &self.hypotheses)?;
-        state.serialize_field("assertion", &self.assertion)?;
-        state.serialize_field("proof", &self.proof)?;
-        state.end()
-    }
-}
-
-#[derive(Debug)]
-pub struct Hypothesis {
-    pub label: String,
-    pub hypothesis: String,
-}
-
-impl serde::Serialize for Hypothesis {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        use serde::ser::SerializeStruct;
-
-        // 3 is the number of fields in the struct.
-        let mut state = serializer.serialize_struct("InProgressTheorem", 2)?;
-        state.serialize_field("label", &self.label)?;
-        state.serialize_field("hypothesis", &self.hypothesis)?;
-        state.end()
     }
 }
 

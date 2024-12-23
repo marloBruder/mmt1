@@ -3,13 +3,13 @@
 
   let tabClick = (index: number) => {
     return () => {
-      tabManager.openTab(index);
+      tabManager.openTabWithIndex(index);
     };
   };
 
   let tabClose = (index: number) => {
     return () => {
-      tabManager.closeTab(index);
+      tabManager.closeTabWithIndex(index);
     };
   };
 </script>

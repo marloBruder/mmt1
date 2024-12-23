@@ -1,11 +1,11 @@
-use crate::AppState;
+use crate::{
+    model::{Hypothesis, Theorem},
+    AppState,
+};
 use std::fmt;
 use tauri::async_runtime::Mutex;
 
-use crate::database::{
-    self,
-    theorem::{Hypothesis, Theorem},
-};
+use crate::database::{self};
 
 #[tauri::command]
 pub async fn text_to_axium(
@@ -61,6 +61,10 @@ pub async fn text_to_axium(
     )
     .await
     .or(Err(Error::SqlError))?;
+
+    database::in_progress_theorem::delete_in_progress_theorem(state, &name)
+        .await
+        .or(Err(Error::SqlError))?;
 
     Ok(Theorem {
         name,

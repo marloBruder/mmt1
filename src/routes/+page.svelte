@@ -3,25 +3,12 @@
   import { invoke } from "@tauri-apps/api/core";
   import { save, confirm, open } from "@tauri-apps/plugin-dialog";
   import type { MetamathData } from "$lib/sharedState/model.svelte";
-  import { inProgressTheoremData } from "$lib/sharedState/metamathData/inProgressTheoremData.svelte";
   import { tabManager } from "$lib/sharedState/tabData.svelte";
-  import { theoremData } from "$lib/sharedState/metamathData/theoremData.svelte";
-  import { variableData } from "$lib/sharedState/metamathData/variableData.svelte";
+  import { nameListData } from "$lib/sharedState/nameListData.svelte";
 
   let resetApp = () => {
-    inProgressTheoremData.resetTheoremsLocal();
-    theoremData.resetTheoremsLocal();
-    variableData.resetVariablesLocal();
+    nameListData.resetLists();
     tabManager.resetTabs();
-  };
-
-  let populateApp = (metamathData: MetamathData) => {
-    for (let theorem of metamathData.in_progress_theorems) {
-      inProgressTheoremData.addInProgressTheoremLocal(theorem);
-    }
-    for (let theorem of metamathData.theorems) {
-      theoremData.addTheoremLocal(theorem);
-    }
   };
 
   let createNewDB = async () => {
@@ -51,11 +38,16 @@
     const filePath = await open({ multiple: false, directory: false, filters: [{ name: "Metamath SQLite Database", extensions: ["mm.sqlite", "mm.db"] }] });
 
     if (filePath) {
-      invoke("open_database", { filePath }).then((metamathDataUnknown) => {
-        let metamathData = metamathDataUnknown as MetamathData;
+      invoke("open_database", { filePath }).then(async (metamathDataUnknown) => {
         resetApp();
-        populateApp(metamathData);
-        goto("/main");
+        nameListData
+          .load()
+          .then(() => {
+            goto("/main");
+          })
+          .catch(() => {
+            console.log("Error while loading data");
+          });
       });
     }
   };

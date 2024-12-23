@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { theoremData } from "$lib/sharedState/metamathData/theoremData.svelte";
+  import { nameListData } from "$lib/sharedState/nameListData.svelte";
   import { tabManager, TheoremTab } from "$lib/sharedState/tabData.svelte";
 
   let explorerClick = (name: string) => {
@@ -9,9 +9,9 @@
 
 <div>
   <div class="py-2">Explorer:</div>
-  {#each theoremData.theorems as theorem}
+  {#each nameListData.theoremNames as name}
     <div>
-      <button onclick={() => explorerClick(theorem.name)}>{theorem.name}</button>
+      <button onclick={() => explorerClick(name)}>{name}</button>
     </div>
   {/each}
 </div>
