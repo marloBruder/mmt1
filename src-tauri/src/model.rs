@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct MetamathData {
     pub in_progress_theorems: Vec<InProgressTheorem>,
     pub theorems: Vec<Theorem>,

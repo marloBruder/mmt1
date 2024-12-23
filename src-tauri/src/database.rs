@@ -46,7 +46,7 @@ pub async fn create_or_override_database(
 
     let mut app_state = state.lock().await;
     app_state.db_conn = Some(conn);
-    app_state.metamath_data = Default::default();
+    app_state.metamath_data = Some(Default::default());
 
     Ok(())
 }
