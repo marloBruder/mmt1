@@ -1,12 +1,12 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
   import { nameListData } from "$lib/sharedState/nameListData.svelte";
-  import { tabManager, EditorTab } from "$lib/sharedState/tabData.svelte";
 
   let theoremClick = (inProgressTheoremName: string) => {
-    tabManager.addTabAndOpen(new EditorTab(inProgressTheoremName));
+    goto("/main/editor/" + inProgressTheoremName);
   };
   let addTheoremClick = () => {
-    tabManager.addTabAndOpen(new EditorTab(""));
+    // tabManager.addTabAndOpen(new EditorTab(""));
   };
 </script>
 

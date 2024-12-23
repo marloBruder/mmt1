@@ -1,9 +1,11 @@
 <script lang="ts">
   import { tabManager, TheoremTab } from "$lib/sharedState/tabData.svelte";
+  import { onMount } from "svelte";
+  import type { PageData } from "./$types";
 
-  let { tab }: { tab: TheoremTab } = $props();
+  let { data }: { data: PageData } = $props();
 
-  let theorem = $derived(tab.theorem);
+  let theorem = $derived(data.tab.theorem);
 </script>
 
 <div class="text-center py-4">

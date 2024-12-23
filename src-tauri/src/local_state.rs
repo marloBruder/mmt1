@@ -72,8 +72,6 @@ pub async fn get_in_progress_theorem_names_local(
         return Ok(names);
     }
 
-    println!("Hello");
-
     Err(())
 }
 

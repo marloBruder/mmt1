@@ -1,59 +1,59 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { InProgressTheorem, Theorem } from "./model.svelte";
 import { nameListData } from "./nameListData.svelte";
+import { goto } from "$app/navigation";
+import { page } from "$app/stores";
+import { get } from "svelte/store";
 
 class TabManager {
   #tabs: Tab[] = $state([]);
 
-  #openedTabIndex: number = $state(0);
-
-  async addTabAndOpen(newTab: Tab) {
-    for (let [index, tab] of this.#tabs.entries()) {
+  async notifyTabOpened(newTab: Tab): Promise<Tab> {
+    for (let tab of this.#tabs) {
       if (newTab.sameID(tab)) {
-        this.#openedTabIndex = index;
-        return;
+        return tab;
       }
     }
 
     await newTab.loadData();
     this.#tabs.push(newTab);
-    this.#openedTabIndex = this.#tabs.length - 1;
+    return newTab;
   }
 
   openTabWithIndex(tabIndex: number) {
     if (tabIndex >= 0 && tabIndex < this.#tabs.length) {
-      this.#openedTabIndex = tabIndex;
+      goto(this.#tabs[tabIndex].url());
+    } else {
+      goto("/main");
     }
   }
 
-  // openEmptyTab() {
-  //   this.#openedTabIndex = -1;
-  // }
-
-  closeTabWithIndex(tabIndex: number) {
+  closeTabWithIndex(tabIndex: number, navigate: boolean = true) {
     if (tabIndex >= 0 && tabIndex < this.#tabs.length) {
-      if (this.#openedTabIndex > tabIndex || (this.#openedTabIndex == tabIndex && tabIndex == this.#tabs.length - 1)) {
-        this.#openedTabIndex--;
+      let closedCurrentTab = false;
+      if (this.#tabs[tabIndex].url() === get(page).url.pathname) {
+        closedCurrentTab = true;
       }
+
       this.#tabs.splice(tabIndex, 1);
+
+      if (closedCurrentTab && navigate) {
+        let newTabIndex = tabIndex;
+        if (newTabIndex === this.#tabs.length) {
+          newTabIndex--;
+        }
+        this.openTabWithIndex(newTabIndex);
+      }
     }
   }
 
-  closeCurrentTab() {
-    this.closeTabWithIndex(this.#openedTabIndex);
-  }
-
-  // closeTab(tab: Tab) {
-  //   for (let [index, otherTab] of this.#tabs.entries()) {
-  //     if (tab.sameID(otherTab)) {
-  //       this.closeTabWithIndex(index);
-  //       return;
-  //     }
-  //   }
-  // }
-
-  getOpenedTab() {
-    return this.#openedTabIndex >= 0 && this.#openedTabIndex < this.#tabs.length ? this.#tabs[this.#openedTabIndex] : null;
+  closeTabSameID(tab: Tab, navigate: boolean = true) {
+    for (let [index, otherTab] of this.#tabs.entries()) {
+      if (tab.sameID(otherTab)) {
+        this.closeTabWithIndex(index, navigate);
+        return;
+      }
+    }
   }
 
   resetTabs() {
@@ -66,13 +66,14 @@ class TabManager {
 }
 
 let tabManager = new TabManager();
-
 export { tabManager };
 
 export abstract class Tab {
   abstract loadData(): Promise<void>;
 
   abstract name(): string;
+
+  abstract url(): string;
 
   abstract sameID(tab: Tab): boolean;
 }
@@ -92,6 +93,10 @@ export class TheoremTab extends Tab {
 
   name(): string {
     return this.#theoremName;
+  }
+
+  url(): string {
+    return "/main/theorem/" + this.#theoremName;
   }
 
   sameID(tab: Tab): boolean {
@@ -126,6 +131,10 @@ export class EditorTab extends Tab {
     return this.#inProgressTheoremName !== "" ? this.#inProgressTheoremName : "New Tab";
   }
 
+  url(): string {
+    return "/main/editor/" + this.#inProgressTheoremName;
+  }
+
   sameID(tab: Tab): boolean {
     return tab instanceof EditorTab && this.#inProgressTheoremName == tab.inProgressTheoremName;
   }
@@ -136,7 +145,7 @@ export class EditorTab extends Tab {
 
   async deleteTheorem() {
     await invoke("delete_in_progress_theorem", { name: this.#inProgressTheoremName });
-    tabManager.closeCurrentTab();
+    tabManager.closeTabSameID(this);
     nameListData.removeInProgressTheoremName(this.#inProgressTheoremName);
     return;
   }
@@ -146,8 +155,8 @@ export class EditorTab extends Tab {
 
     nameListData.removeInProgressTheoremName(this.#inProgressTheoremName);
     nameListData.addTheoremName(theorem.name);
-    tabManager.closeCurrentTab();
-    tabManager.addTabAndOpen(new TheoremTab(theorem.name));
+    tabManager.closeTabSameID(this, false);
+    goto("/main/theorem/" + theorem.name);
   }
 
   get inProgressTheorem() {
@@ -168,6 +177,10 @@ export class SettingsTab extends Tab {
 
   name(): string {
     return "Settings";
+  }
+
+  url(): string {
+    return "/main/settings";
   }
 
   sameID(tab: Tab) {

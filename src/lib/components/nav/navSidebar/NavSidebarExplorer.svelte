@@ -1,9 +1,9 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
   import { nameListData } from "$lib/sharedState/nameListData.svelte";
-  import { tabManager, TheoremTab } from "$lib/sharedState/tabData.svelte";
 
   let explorerClick = (name: string) => {
-    tabManager.addTabAndOpen(new TheoremTab(name));
+    goto("/main/theorem/" + name);
   };
 </script>
 

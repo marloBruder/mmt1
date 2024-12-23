@@ -2,7 +2,6 @@
   import { goto } from "$app/navigation";
   import { invoke } from "@tauri-apps/api/core";
   import { save, confirm, open } from "@tauri-apps/plugin-dialog";
-  import type { MetamathData } from "$lib/sharedState/model.svelte";
   import { tabManager } from "$lib/sharedState/tabData.svelte";
   import { nameListData } from "$lib/sharedState/nameListData.svelte";
 

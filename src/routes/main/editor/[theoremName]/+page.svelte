@@ -1,11 +1,12 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
-  import { EditorTab, tabManager } from "$lib/sharedState/tabData.svelte";
-  import RoundButton from "../util/RoundButton.svelte";
   import { nameListData } from "$lib/sharedState/nameListData.svelte";
+  import RoundButton from "$lib/components/util/RoundButton.svelte";
+  import type { PageData } from "./$types";
 
-  let { tab }: { tab: EditorTab } = $props();
+  let { data }: { data: PageData } = $props();
 
+  let tab = $derived(data.tab);
   let theorem = $derived(tab.inProgressTheorem);
 
   let oldName: string = "";
@@ -52,7 +53,7 @@
 
   let abortNameSave = () => {
     if (tab.inProgressTheoremName === "") {
-      tabManager.closeCurrentTab();
+      // tabManager.closeCurrentTab();
     } else {
       nameDisabled = true;
       theorem.name = oldName;

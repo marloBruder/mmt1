@@ -76,8 +76,6 @@ pub async fn open_database(
         theorems,
     });
 
-    println!("{:?}", app_state.metamath_data);
-
     Ok(())
 }
 
