@@ -49,6 +49,12 @@ class NameListData {
     }
   }
 
+  // Returns true if the name has not been used before and is a valid metamath label, as in:
+  // "any combination of letters, digits, and the characters hyphen, underscore, and period"
+  validNewName(name: string) {
+    return /^[a-zA-Z0-9\-_\.]+$/.test(name) && !this.nameExists(name);
+  }
+
   nameExists(name: string) {
     return this.#theoremNames.find((otherName) => name === otherName) != undefined || this.#inProgressTheoremNames.find((otherName) => name === otherName) != undefined;
   }

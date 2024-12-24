@@ -3,6 +3,7 @@
   import { nameListData } from "$lib/sharedState/nameListData.svelte";
   import RoundButton from "$lib/components/util/RoundButton.svelte";
   import type { PageData } from "./$types";
+  import { goto } from "$app/navigation";
 
   let { data }: { data: PageData } = $props();
 
@@ -22,45 +23,30 @@
     }
   });
 
-  $effect(() => {
-    if (tab.inProgressTheoremName === "") {
-      oldName = "";
-      nameDisabled = false;
-    }
-  });
-
   let editName = () => {
     oldName = theorem.name;
     nameDisabled = false;
   };
 
   let saveName = async () => {
-    if (theorem.name === "" || (oldName != theorem.name && nameListData.nameExists(theorem.name))) {
+    if (oldName != theorem.name && !nameListData.validNewName(theorem.name)) {
       throw Error("Invalid Name");
     }
     nameDisabled = true;
     if (oldName != theorem.name) {
-      if (oldName === "") {
-        invoke("add_in_progress_theorem", { name: theorem.name, text: "" });
-        nameListData.addInProgressTheoremName(theorem.name);
-      } else {
-        invoke("set_in_progress_theorem_name", { oldName, newName: theorem.name });
-        nameListData.changeInProgressTheoremName(oldName, theorem.name);
-      }
-      tab.changeID(theorem.name);
+      invoke("set_in_progress_theorem_name", { oldName, newName: theorem.name });
+      nameListData.changeInProgressTheoremName(oldName, theorem.name);
+      tab.changeEditorID(theorem.name);
+      goto("/main/editor/" + theorem.name);
     }
   };
 
   let abortNameSave = () => {
-    if (tab.inProgressTheoremName === "") {
-      // tabManager.closeCurrentTab();
-    } else {
-      nameDisabled = true;
-      theorem.name = oldName;
-    }
+    nameDisabled = true;
+    theorem.name = oldName;
   };
 
-  let unfocusName = async () => {
+  let onFocusOutName = async () => {
     try {
       await saveName();
     } catch (error) {
@@ -68,7 +54,7 @@
     }
   };
 
-  let keyDownName = (event: KeyboardEvent) => {
+  let onkeyDownName = (event: KeyboardEvent) => {
     if (event.key == "Enter") {
       try {
         saveName();
@@ -101,7 +87,7 @@
 <div class="m-2">
   <div class="mb-2">
     <label for="tabName">Theorem name:</label>
-    <input id="tabName" type="text" bind:value={theorem.name} onfocusout={unfocusName} onkeydown={keyDownName} disabled={nameDisabled} autocomplete="off" class="disabled:bg-gray-300" />
+    <input id="tabName" type="text" bind:value={theorem.name} onfocusout={onFocusOutName} onkeydown={onkeyDownName} disabled={nameDisabled} autocomplete="off" class="disabled:bg-gray-300" />
   </div>
   <RoundButton onclick={editName} disabled={!nameDisabled}>Edit name</RoundButton>
 </div>

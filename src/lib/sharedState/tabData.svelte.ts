@@ -128,7 +128,7 @@ export class EditorTab extends Tab {
   }
 
   name(): string {
-    return this.#inProgressTheoremName !== "" ? this.#inProgressTheoremName : "New Tab";
+    return this.#inProgressTheoremName;
   }
 
   url(): string {
@@ -139,7 +139,7 @@ export class EditorTab extends Tab {
     return tab instanceof EditorTab && this.#inProgressTheoremName == tab.inProgressTheoremName;
   }
 
-  changeID(newID: string) {
+  changeEditorID(newID: string) {
     this.#inProgressTheoremName = newID;
   }
 
