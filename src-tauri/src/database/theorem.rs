@@ -30,8 +30,8 @@ pub async fn get_theorems(
             result.push(Theorem {
                 name,
                 description,
-                disjoints: Theorem::string_rep_to_disjoints(&disjoints_rep),
-                hypotheses: Theorem::string_rep_to_hypotheses(&hypotheses_rep),
+                disjoints: string_rep_to_disjoints(&disjoints_rep),
+                hypotheses: string_rep_to_hypotheses(&hypotheses_rep),
                 assertion,
                 proof,
             });
@@ -50,8 +50,8 @@ pub async fn add_theorem(
     assertion: &str,
     proof: Option<&str>,
 ) -> Result<(), Error> {
-    let disjoints_rep = Theorem::disjoints_to_string_rep(disjoints);
-    let hypotheses_rep = Theorem::hypotheses_to_string_rep(hypotheses);
+    let disjoints_rep = disjoints_to_string_rep(disjoints);
+    let hypotheses_rep = hypotheses_to_string_rep(hypotheses);
 
     let mut app_state = state.lock().await;
 
@@ -75,61 +75,59 @@ pub async fn add_theorem(
     Ok(())
 }
 
-impl Theorem {
-    fn disjoints_to_string_rep(disjoints: &Vec<String>) -> String {
-        let mut disjoints_rep = String::new();
+fn disjoints_to_string_rep(disjoints: &Vec<String>) -> String {
+    let mut disjoints_rep = String::new();
 
-        for disj in disjoints {
-            disjoints_rep.push_str(&disj);
-            disjoints_rep.push('$');
-        }
-        disjoints_rep.pop();
-        disjoints_rep
+    for disj in disjoints {
+        disjoints_rep.push_str(&disj);
+        disjoints_rep.push('$');
     }
+    disjoints_rep.pop();
+    disjoints_rep
+}
 
-    fn string_rep_to_disjoints(string: &str) -> Vec<String> {
-        let mut disjoints = Vec::new();
+fn string_rep_to_disjoints(string: &str) -> Vec<String> {
+    let mut disjoints = Vec::new();
 
-        for s in string.split('$') {
-            if s != "" {
-                disjoints.push(s.to_string())
-            }
+    for s in string.split('$') {
+        if s != "" {
+            disjoints.push(s.to_string())
         }
-        disjoints
     }
+    disjoints
+}
 
-    fn hypotheses_to_string_rep(hypotheses: &Vec<Hypothesis>) -> String {
-        let mut hypotheses_rep = String::new();
+fn hypotheses_to_string_rep(hypotheses: &Vec<Hypothesis>) -> String {
+    let mut hypotheses_rep = String::new();
 
-        for hypo in hypotheses {
-            hypotheses_rep.push_str(&hypo.label);
-            hypotheses_rep.push('$');
-            hypotheses_rep.push_str(&hypo.hypothesis);
-            hypotheses_rep.push('$');
-        }
-        hypotheses_rep.pop();
-        hypotheses_rep
+    for hypo in hypotheses {
+        hypotheses_rep.push_str(&hypo.label);
+        hypotheses_rep.push('$');
+        hypotheses_rep.push_str(&hypo.hypothesis);
+        hypotheses_rep.push('$');
     }
+    hypotheses_rep.pop();
+    hypotheses_rep
+}
 
-    fn string_rep_to_hypotheses(string: &str) -> Vec<Hypothesis> {
-        let mut hypotheses = Vec::new();
-        let mut iter = string.split('$');
-        loop {
-            if let Some(s1) = iter.next() {
-                if let Some(s2) = iter.next() {
-                    hypotheses.push(Hypothesis {
-                        label: s1.to_string(),
-                        hypothesis: s2.to_string(),
-                    })
-                } else {
-                    break;
-                }
+fn string_rep_to_hypotheses(string: &str) -> Vec<Hypothesis> {
+    let mut hypotheses = Vec::new();
+    let mut iter = string.split('$');
+    loop {
+        if let Some(s1) = iter.next() {
+            if let Some(s2) = iter.next() {
+                hypotheses.push(Hypothesis {
+                    label: s1.to_string(),
+                    hypothesis: s2.to_string(),
+                })
             } else {
                 break;
             }
+        } else {
+            break;
         }
-        hypotheses
     }
+    hypotheses
 }
 
 mod sql {

@@ -1,4 +1,7 @@
-use super::Error;
+use super::{
+    sql::{execute_query_no_bind, execute_query_two_binds},
+    Error,
+};
 use crate::{model::Constant, AppState};
 use futures::TryStreamExt;
 use sqlx::Row;
@@ -13,17 +16,7 @@ pub async fn get_constants(state: &State<'_, Mutex<AppState>>) -> Result<Vec<Con
         let mut rows = sqlx::query(sql::CONSTANTS_GET).fetch(conn);
 
         while let Some(row) = rows.try_next().await.or(Err(Error::SqlError))? {
-            // while let Some(row) = rows.try_next().await.map_err(|err| {
-            //     println!("Hello1");
-            //     println!("{:?}", err);
-            //     Error::SqlError
-            // })? {
             let symbol = row.try_get("symbol").or(Err(Error::SqlError))?;
-            // let symbol = row.try_get("symbol").map_err(|err| {
-            //     println!("Hello2");
-            //     println!("{:?}", err);
-            //     Error::SqlError
-            // })?;
 
             constants.push(Constant { symbol })
         }
@@ -32,9 +25,33 @@ pub async fn get_constants(state: &State<'_, Mutex<AppState>>) -> Result<Vec<Con
     Ok(constants)
 }
 
+pub async fn set_constants(
+    state: &State<'_, Mutex<AppState>>,
+    symbols: &Vec<&str>,
+) -> Result<(), Error> {
+    execute_query_no_bind(state, sql::CONSTANTS_DELETE).await?;
+
+    for (index, &symbol) in symbols.iter().enumerate() {
+        execute_query_two_binds(state, sql::CONSANT_ADD, index.to_string(), symbol).await?;
+    }
+
+    let mut app_state = state.lock().await;
+
+    if let Some(ref mut mm_data) = app_state.metamath_data {
+        mm_data.set_constants(symbols);
+    }
+
+    Ok(())
+}
+
 mod sql {
     pub const CONSTANTS_GET: &str = "\
 SELECT * FROM constant
-ORDER BY [index];    
-";
+ORDER BY [index];";
+
+    pub const CONSTANTS_DELETE: &str = "DELETE FROM constant;";
+
+    pub const CONSANT_ADD: &str = "\
+INSERT INTO constant ([index], symbol)
+VALUES (?, ?);";
 }

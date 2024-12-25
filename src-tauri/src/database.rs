@@ -72,7 +72,7 @@ pub async fn open_database(
     drop(app_state);
 
     let constants = constant::get_constants(&state).await?;
-    let variables = variable::get_variable(&state).await?;
+    let variables = variable::get_variables(&state).await?;
     let theorems = theorem::get_theorems(&state).await?;
     let in_progress_theorems = in_progress_theorem::get_in_progress_theorems(&state).await?;
 
@@ -165,6 +165,21 @@ CREATE TABLE inProgressTheorem (
         Ok(())
     }
 
+    pub async fn execute_query_no_bind(
+        state: &tauri::State<'_, Mutex<AppState>>,
+        query: &'static str,
+    ) -> Result<(), Error> {
+        let mut app_state = state.lock().await;
+
+        if let Some(ref mut conn) = app_state.db_conn {
+            sqlx::query(query)
+                .execute(conn)
+                .await
+                .or(Err(Error::SqlError))?;
+        }
+        Ok(())
+    }
+
     pub async fn execute_query_one_bind<'a, T>(
         state: &tauri::State<'_, Mutex<AppState>>,
         query: &'static str,
@@ -185,7 +200,7 @@ CREATE TABLE inProgressTheorem (
         Ok(())
     }
 
-    pub async fn execute_query_two_bind<'a, T, S>(
+    pub async fn execute_query_two_binds<'a, T, S>(
         state: &tauri::State<'_, Mutex<AppState>>,
         query: &'static str,
         bind_one: T,

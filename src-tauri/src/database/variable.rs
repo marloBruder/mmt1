@@ -4,7 +4,7 @@ use futures::TryStreamExt;
 use sqlx::Row;
 use tauri::{async_runtime::Mutex, State};
 
-pub async fn get_variable(state: &State<'_, Mutex<AppState>>) -> Result<Vec<Variable>, Error> {
+pub async fn get_variables(state: &State<'_, Mutex<AppState>>) -> Result<Vec<Variable>, Error> {
     let mut variables = Vec::new();
 
     let mut app_state = state.lock().await;
@@ -21,6 +21,10 @@ pub async fn get_variable(state: &State<'_, Mutex<AppState>>) -> Result<Vec<Vari
 
     Ok(variables)
 }
+
+// pub async fn set_variables() -> {
+
+// }
 
 mod sql {
     pub const VARIABLES_GET: &str = "\

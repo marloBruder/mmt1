@@ -34,6 +34,8 @@ pub fn run() {
             database::in_progress_theorem::set_in_progress_theorem,
             database::in_progress_theorem::delete_in_progress_theorem,
             metamath::text_to_axium,
+            metamath::text_to_constants,
+            local_state::get_constants_local,
             local_state::get_theorem_local,
             local_state::get_theorem_names_local,
             local_state::get_in_progress_theorem_local,

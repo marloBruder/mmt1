@@ -6,12 +6,12 @@ pub struct MetamathData {
     pub in_progress_theorems: Vec<InProgressTheorem>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Constant {
     pub symbol: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Variable {
     pub symbol: String,
 }

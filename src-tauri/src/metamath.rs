@@ -1,5 +1,6 @@
 use crate::{
-    model::{Hypothesis, Theorem},
+    local_state,
+    model::{Constant, Hypothesis, Theorem},
     AppState,
 };
 use std::fmt;
@@ -90,11 +91,62 @@ fn get_next_as_string_until(iter: &mut std::str::SplitWhitespace, until: &str) -
     result
 }
 
+#[tauri::command]
+pub async fn text_to_constants(
+    state: tauri::State<'_, Mutex<AppState>>,
+    text: &str,
+) -> Result<Vec<Constant>, Error> {
+    if !text.is_ascii() {
+        return Err(Error::InvalidCharactersError);
+    }
+
+    let symbols = text_to_constant_or_variable_symbols(text, true)?;
+
+    database::constant::set_constants(&state, &symbols)
+        .await
+        .or(Err(Error::SqlError))?;
+
+    let constants_test = local_state::get_constants_local(state)
+        .await
+        .or(Err(Error::LocalStateError))?;
+
+    Ok(constants_test)
+}
+
+// Takes a text and returns references to the symbols between
+// "$c" and "$.", if constant is true,
+// "$v" and "$.", if constant is false
+// If there is a string not between these, the function returns an Error
+fn text_to_constant_or_variable_symbols(text: &str, constant: bool) -> Result<Vec<&str>, Error> {
+    let mut symbols = Vec::new();
+
+    // True if token is after "$c", but before the next "$."
+    let mut within_statement = false;
+
+    for token in text.split_whitespace() {
+        if !within_statement {
+            match token {
+                "$c" if constant => within_statement = true,
+                "$v" if !constant => within_statement = true,
+                _ => return Err(Error::InvalidCharactersError),
+            }
+        } else {
+            match token {
+                "$." => within_statement = false,
+                s => symbols.push(s),
+            }
+        }
+    }
+
+    Ok(symbols)
+}
+
 #[derive(Debug)]
 pub enum Error {
     InvalidCharactersError,
     InvalidFormatError,
     SqlError,
+    LocalStateError,
 }
 
 impl fmt::Display for Error {

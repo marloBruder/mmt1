@@ -1,9 +1,22 @@
 use tauri::async_runtime::Mutex;
 
 use crate::{
-    model::{Hypothesis, InProgressTheorem, MetamathData, Theorem},
+    model::{Constant, Hypothesis, InProgressTheorem, MetamathData, Theorem},
     AppState,
 };
+
+#[tauri::command]
+pub async fn get_constants_local(
+    state: tauri::State<'_, Mutex<AppState>>,
+) -> Result<Vec<Constant>, ()> {
+    let app_state = state.lock().await;
+
+    if let Some(ref mm_data) = app_state.metamath_data {
+        return Ok(mm_data.constants.clone());
+    }
+
+    Err(())
+}
 
 #[tauri::command]
 pub async fn get_theorem_local(
@@ -76,6 +89,34 @@ pub async fn get_in_progress_theorem_names_local(
 }
 
 impl MetamathData {
+    pub fn set_constants(&mut self, symbols: &Vec<&str>) {
+        self.constants = Vec::new();
+        for symbol in symbols {
+            self.constants.push(Constant {
+                symbol: symbol.to_string(),
+            })
+        }
+    }
+
+    pub fn add_theorem(
+        &mut self,
+        name: &str,
+        description: &str,
+        disjoints: &Vec<String>,
+        hypotheses: &Vec<Hypothesis>,
+        assertion: &str,
+        proof: Option<&str>,
+    ) {
+        self.theorems.push(Theorem {
+            name: name.to_string(),
+            description: description.to_string(),
+            disjoints: disjoints.clone(),
+            hypotheses: hypotheses.clone(),
+            assertion: assertion.to_string(),
+            proof: proof.map(|s| s.to_string()),
+        })
+    }
+
     pub fn add_in_progress_theorem(&mut self, name: &str, text: &str) {
         self.in_progress_theorems.push(InProgressTheorem {
             name: name.to_string(),
@@ -106,24 +147,5 @@ impl MetamathData {
                 return;
             }
         }
-    }
-
-    pub fn add_theorem(
-        &mut self,
-        name: &str,
-        description: &str,
-        disjoints: &Vec<String>,
-        hypotheses: &Vec<Hypothesis>,
-        assertion: &str,
-        proof: Option<&str>,
-    ) {
-        self.theorems.push(Theorem {
-            name: name.to_string(),
-            description: description.to_string(),
-            disjoints: disjoints.clone(),
-            hypotheses: hypotheses.clone(),
-            assertion: assertion.to_string(),
-            proof: proof.map(|s| s.to_string()),
-        })
     }
 }

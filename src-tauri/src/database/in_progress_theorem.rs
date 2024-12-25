@@ -3,7 +3,7 @@ use sqlx::Row;
 use tauri::async_runtime::Mutex;
 
 use super::{
-    sql::{execute_query_one_bind, execute_query_two_bind},
+    sql::{execute_query_one_bind, execute_query_two_binds},
     Error,
 };
 use crate::{model::InProgressTheorem, AppState};
@@ -35,7 +35,7 @@ pub async fn add_in_progress_theorem(
     name: &str,
     text: &str,
 ) -> Result<(), Error> {
-    execute_query_two_bind(&state, sql::IN_PROGRESS_THEOREM_ADD, name, text).await?;
+    execute_query_two_binds(&state, sql::IN_PROGRESS_THEOREM_ADD, name, text).await?;
 
     let mut app_state = state.lock().await;
 
@@ -52,7 +52,7 @@ pub async fn set_in_progress_theorem_name(
     old_name: &str,
     new_name: &str,
 ) -> Result<(), Error> {
-    execute_query_two_bind(
+    execute_query_two_binds(
         &state,
         sql::IN_PROGRESS_THEOREM_NAME_UPDATE,
         new_name,
@@ -75,7 +75,7 @@ pub async fn set_in_progress_theorem(
     name: &str,
     text: &str,
 ) -> Result<(), Error> {
-    execute_query_two_bind(&state, sql::IN_PROGRESS_THEOREM_UPDATE, text, name).await?;
+    execute_query_two_binds(&state, sql::IN_PROGRESS_THEOREM_UPDATE, text, name).await?;
 
     let mut app_state = state.lock().await;
 
