@@ -4,8 +4,10 @@ use tauri::async_runtime::Mutex;
 
 use crate::{model::MetamathData, AppState};
 
+pub mod constant;
 pub mod in_progress_theorem;
 pub mod theorem;
+pub mod variable;
 
 // Tauri Command for creating a new database
 // If the database already exists, it will instead return an DatabaseExistsError
@@ -60,20 +62,26 @@ pub async fn open_database(
         .await
         .or(Err(Error::ConnectDatabaseError))?;
 
-    sql::check_returns_rows_or_error(sql::IN_PROGRESS_THEOREM_TABLE_CHECK, &mut conn).await?;
+    sql::check_returns_rows_or_error(sql::CONSTANT_TABLE_CHECK, &mut conn).await?;
+    sql::check_returns_rows_or_error(sql::VARIABLE_TABLE_CHECK, &mut conn).await?;
     sql::check_returns_rows_or_error(sql::THEOREM_TABLE_CHECK, &mut conn).await?;
+    sql::check_returns_rows_or_error(sql::IN_PROGRESS_THEOREM_TABLE_CHECK, &mut conn).await?;
 
     let mut app_state = state.lock().await;
     app_state.db_conn = Some(conn);
     drop(app_state);
 
-    let in_progress_theorems = in_progress_theorem::get_in_progress_theorems(&state).await?;
+    let constants = constant::get_constants(&state).await?;
+    let variables = variable::get_variable(&state).await?;
     let theorems = theorem::get_theorems(&state).await?;
+    let in_progress_theorems = in_progress_theorem::get_in_progress_theorems(&state).await?;
 
     let mut app_state = state.lock().await;
     app_state.metamath_data = Some(MetamathData {
-        in_progress_theorems,
+        constants,
+        variables,
         theorems,
+        in_progress_theorems,
     });
 
     Ok(())
@@ -110,9 +118,13 @@ mod sql {
     use tauri::async_runtime::Mutex;
 
     pub const INIT_DB: &str = "\
-CREATE TABLE inProgressTheorem (
-    name TEXT PRIMARY KEY,
-    text TEXT
+CREATE TABLE constant (
+    [index] INTEGER PRIMARY KEY,
+    symbol TEXT
+);
+CREATE TABLE variable (
+    [index] INTEGER PRIMARY KEY,
+    symbol TEXT
 );
 CREATE TABLE theorem (
     name TEXT PRIMARY KEY,
@@ -122,12 +134,20 @@ CREATE TABLE theorem (
     assertion TEXT,
     proof TEXT NULL
 );
+CREATE TABLE inProgressTheorem (
+    name TEXT PRIMARY KEY,
+    text TEXT
+);
 ";
 
-    pub const IN_PROGRESS_THEOREM_TABLE_CHECK: &str =
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='inProgressTheorem';";
+    pub const CONSTANT_TABLE_CHECK: &str =
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='constant';";
+    pub const VARIABLE_TABLE_CHECK: &str =
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='variable';";
     pub const THEOREM_TABLE_CHECK: &str =
         "SELECT name FROM sqlite_master WHERE type='table' AND name='theorem';";
+    pub const IN_PROGRESS_THEOREM_TABLE_CHECK: &str =
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='inProgressTheorem';";
 
     // Checks whether the query returns rows and returns the correct error if not
     pub async fn check_returns_rows_or_error(
