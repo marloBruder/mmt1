@@ -19,8 +19,8 @@
   <div class="w-36 h-full fixed border-r border-gray-300">
     <ul class="pl-2 pt-2">
       {#each tabNames as name, index}
-        <li>
-          <button onclick={() => changeTab(index)}>{name}</button>
+        <li class:bg-gray-300={index == currentTab}>
+          <button class="pl-1" onclick={() => changeTab(index)}>{name}</button>
         </li>
       {/each}
     </ul>

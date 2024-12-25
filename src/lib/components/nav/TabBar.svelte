@@ -2,23 +2,19 @@
   import { tabManager } from "$lib/sharedState/tabData.svelte";
 
   let tabClick = (index: number) => {
-    return () => {
-      tabManager.openTabWithIndex(index);
-    };
+    tabManager.openTabWithIndex(index);
   };
 
   let tabClose = (index: number) => {
-    return () => {
-      tabManager.closeTabWithIndex(index);
-    };
+    tabManager.closeTabWithIndex(index);
   };
 </script>
 
 <div class="h-8 flex flex-nowrap border-b border-gray-400 overflow-hidden">
   {#each tabManager.tabs as tab, index}
-    <div class="whitespace-nowrap">
-      <button onclick={tabClick(index)} class="h-full px-2">{tab.name()}</button>
-      <button onclick={tabClose(index)} class="h-full px-2 border-r border-gray-400 -ml-1">X</button>
+    <div class={"whitespace-nowrap " + (index == tabManager.activeTabIndex ? "border-b-2 border-gray-400 " : "")}>
+      <button onclick={() => tabClick(index)} class="h-full px-2">{tab.name()}</button>
+      <button onclick={() => tabClose(index)} class="h-full px-2 border-r border-gray-400 -ml-1">X</button>
     </div>
   {/each}
 </div>

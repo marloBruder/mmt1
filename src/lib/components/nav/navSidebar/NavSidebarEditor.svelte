@@ -1,7 +1,16 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
   import { nameListData } from "$lib/sharedState/nameListData.svelte";
   import { invoke } from "@tauri-apps/api/core";
+
+  let theoremName: string | null = $derived.by(() => {
+    let segments = $page.url.pathname.split("/");
+    if (segments.length == 4 && segments[1] == "main" && segments[2] == "editor") {
+      return segments[3];
+    }
+    return null;
+  });
 
   let theoremClick = (inProgressTheoremName: string) => {
     goto("/main/editor/" + inProgressTheoremName);
@@ -34,10 +43,12 @@
     </div>
     <button class="border border-black" onclick={addTheoremClick}>Add new theorem</button>
   </div>
-  <div>In Progress theorems:</div>
-  {#each nameListData.inProgressTheoremNames as name}
-    <div>
-      <button onclick={() => theoremClick(name)}>{name}</button>
-    </div>
-  {/each}
+  <div class="pl-1">In Progress theorems:</div>
+  <ul class="pl-2 pt-1">
+    {#each nameListData.inProgressTheoremNames as name}
+      <li class:bg-gray-300={theoremName == name}>
+        <button class="pl-1" onclick={() => theoremClick(name)}>{name}</button>
+      </li>
+    {/each}
+  </ul>
 </div>

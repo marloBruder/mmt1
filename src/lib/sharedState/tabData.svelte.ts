@@ -7,29 +7,38 @@ import { get } from "svelte/store";
 
 class TabManager {
   #tabs: Tab[] = $state([]);
+  #activeTabIndex: number = $state(-1);
 
   async notifyTabOpened(newTab: Tab): Promise<Tab> {
-    for (let tab of this.#tabs) {
+    for (let [index, tab] of this.#tabs.entries()) {
       if (newTab.sameID(tab)) {
+        this.#activeTabIndex = index;
         return tab;
       }
     }
 
     await newTab.loadData();
     this.#tabs.push(newTab);
+    this.#activeTabIndex = this.#tabs.length - 1;
     return newTab;
   }
 
   openTabWithIndex(tabIndex: number) {
     if (tabIndex >= 0 && tabIndex < this.#tabs.length) {
+      this.#activeTabIndex = tabIndex;
       goto(this.#tabs[tabIndex].url());
     } else {
+      this.#activeTabIndex = -1;
       goto("/main");
     }
   }
 
   closeTabWithIndex(tabIndex: number, navigate: boolean = true) {
     if (tabIndex >= 0 && tabIndex < this.#tabs.length) {
+      if (tabIndex < this.#activeTabIndex) {
+        this.#activeTabIndex--;
+      }
+
       let closedCurrentTab = false;
       if (this.#tabs[tabIndex].url() === get(page).url.pathname) {
         closedCurrentTab = true;
@@ -58,10 +67,15 @@ class TabManager {
 
   resetTabs() {
     this.#tabs = [];
+    this.#activeTabIndex = -1;
   }
 
   get tabs() {
     return this.#tabs;
+  }
+
+  get activeTabIndex() {
+    return this.#activeTabIndex;
   }
 }
 
