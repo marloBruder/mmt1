@@ -1,11 +1,16 @@
 export interface MetamathData {
-  in_progress_theorems: InProgressTheorem[];
+  constants: Constant[];
+  variables: Variable[];
   theorems: Theorem[];
+  in_progress_theorems: InProgressTheorem[];
 }
 
-export interface InProgressTheorem {
-  name: string;
-  text: string;
+export interface Constant {
+  symbol: string;
+}
+
+export interface Variable {
+  symbol: string;
 }
 
 export interface Theorem {
@@ -22,7 +27,7 @@ export interface Hypothesis {
   hypothesis: string;
 }
 
-export interface Variable {
-  type: string;
+export interface InProgressTheorem {
   name: string;
+  text: string;
 }

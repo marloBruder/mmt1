@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { InProgressTheorem, Theorem } from "./model.svelte";
+import type { Constant, InProgressTheorem, Theorem, Variable } from "./model.svelte";
 import { nameListData } from "./nameListData.svelte";
 import { goto } from "$app/navigation";
 import { page } from "$app/stores";
@@ -122,9 +122,7 @@ export class EditorTab extends Tab {
   }
 
   async loadData(): Promise<void> {
-    if (this.#inProgressTheoremName != "") {
-      this.#inProgressTheorem = await invoke("get_in_progress_theorem_local", { name: this.#inProgressTheoremName });
-    }
+    this.#inProgressTheorem = await invoke("get_in_progress_theorem_local", { name: this.#inProgressTheoremName });
   }
 
   name(): string {
@@ -169,11 +167,17 @@ export class EditorTab extends Tab {
 }
 
 export class SettingsTab extends Tab {
+  constants: Constant[] = $state([]);
+  variables: Variable[] = $state([]);
+
   constructor() {
     super();
   }
 
-  async loadData(): Promise<void> {}
+  async loadData(): Promise<void> {
+    this.constants = await invoke("get_constants_local");
+    this.variables = await invoke("get_variables_local");
+  }
 
   name(): string {
     return "Settings";

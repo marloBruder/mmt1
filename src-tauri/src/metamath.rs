@@ -157,7 +157,7 @@ fn text_to_constant_or_variable_symbols(text: &str, constant: bool) -> Result<Ve
             match token {
                 "$c" if constant => within_statement = true,
                 "$v" if !constant => within_statement = true,
-                _ => return Err(Error::InvalidCharactersError),
+                _ => return Err(Error::InvalidFormatError),
             }
         } else {
             match token {
