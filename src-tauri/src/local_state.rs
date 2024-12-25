@@ -1,7 +1,7 @@
 use tauri::async_runtime::Mutex;
 
 use crate::{
-    model::{Constant, Hypothesis, InProgressTheorem, MetamathData, Theorem},
+    model::{Constant, Hypothesis, InProgressTheorem, MetamathData, Theorem, Variable},
     AppState,
 };
 
@@ -13,6 +13,19 @@ pub async fn get_constants_local(
 
     if let Some(ref mm_data) = app_state.metamath_data {
         return Ok(mm_data.constants.clone());
+    }
+
+    Err(())
+}
+
+#[tauri::command]
+pub async fn get_variables_local(
+    state: tauri::State<'_, Mutex<AppState>>,
+) -> Result<Vec<Variable>, ()> {
+    let app_state = state.lock().await;
+
+    if let Some(ref mm_data) = app_state.metamath_data {
+        return Ok(mm_data.variables.clone());
     }
 
     Err(())
@@ -93,6 +106,15 @@ impl MetamathData {
         self.constants = Vec::new();
         for symbol in symbols {
             self.constants.push(Constant {
+                symbol: symbol.to_string(),
+            })
+        }
+    }
+
+    pub fn set_variables(&mut self, symbols: &Vec<&str>) {
+        self.variables = Vec::new();
+        for symbol in symbols {
+            self.variables.push(Variable {
                 symbol: symbol.to_string(),
             })
         }

@@ -1,6 +1,5 @@
 use crate::{
-    local_state,
-    model::{Constant, Hypothesis, Theorem},
+    model::{Constant, Hypothesis, Theorem, Variable},
     AppState,
 };
 use std::fmt;
@@ -106,11 +105,41 @@ pub async fn text_to_constants(
         .await
         .or(Err(Error::SqlError))?;
 
-    let constants_test = local_state::get_constants_local(state)
-        .await
-        .or(Err(Error::LocalStateError))?;
+    let mut constants = Vec::new();
 
-    Ok(constants_test)
+    for symbol in symbols {
+        constants.push(Constant {
+            symbol: symbol.to_string(),
+        })
+    }
+
+    Ok(constants)
+}
+
+#[tauri::command]
+pub async fn text_to_variables(
+    state: tauri::State<'_, Mutex<AppState>>,
+    text: &str,
+) -> Result<Vec<Variable>, Error> {
+    if !text.is_ascii() {
+        return Err(Error::InvalidCharactersError);
+    }
+
+    let symbols = text_to_constant_or_variable_symbols(text, false)?;
+
+    database::variable::set_variables(&state, &symbols)
+        .await
+        .or(Err(Error::SqlError))?;
+
+    let mut variables = Vec::new();
+
+    for symbol in symbols {
+        variables.push(Variable {
+            symbol: symbol.to_string(),
+        })
+    }
+
+    Ok(variables)
 }
 
 // Takes a text and returns references to the symbols between
@@ -146,7 +175,6 @@ pub enum Error {
     InvalidCharactersError,
     InvalidFormatError,
     SqlError,
-    LocalStateError,
 }
 
 impl fmt::Display for Error {
