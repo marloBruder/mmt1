@@ -1,9 +1,10 @@
-use tauri::async_runtime::Mutex;
-
 use crate::{
-    model::{Constant, Hypothesis, InProgressTheorem, MetamathData, Theorem, Variable},
+    model::{
+        Constant, FloatingHypohesis, Hypothesis, InProgressTheorem, MetamathData, Theorem, Variable,
+    },
     AppState,
 };
+use tauri::async_runtime::Mutex;
 
 #[tauri::command]
 pub async fn get_constants_local(
@@ -119,6 +120,26 @@ impl MetamathData {
             })
         }
     }
+
+    pub fn set_floating_hypotheses(&mut self, floating_hypotheses: &Vec<FloatingHypohesis>) {
+        self.floating_hypotheses = floating_hypotheses.clone();
+    }
+
+    // pub fn set_floating_hypotheses(
+    //     &mut self,
+    //     labels: &Vec<&str>,
+    //     typecodes: &Vec<&str>,
+    //     variables: &Vec<&str>,
+    // ) {
+    //     self.floating_hypotheses = Vec::new();
+    //     for index in 0..labels.len() {
+    //         self.floating_hypotheses.push(FloatingHypohesis {
+    //             label: labels[index].to_string(),
+    //             typecode: typecodes[index].to_string(),
+    //             variable: variables[index].to_string(),
+    //         })
+    //     }
+    // }
 
     pub fn add_theorem(
         &mut self,

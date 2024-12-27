@@ -5,6 +5,7 @@ use tauri::async_runtime::Mutex;
 use crate::{model::MetamathData, AppState};
 
 pub mod constant;
+pub mod floating_hypothesis;
 pub mod in_progress_theorem;
 pub mod theorem;
 pub mod variable;
@@ -64,6 +65,7 @@ pub async fn open_database(
 
     sql::check_returns_rows_or_error(sql::CONSTANT_TABLE_CHECK, &mut conn).await?;
     sql::check_returns_rows_or_error(sql::VARIABLE_TABLE_CHECK, &mut conn).await?;
+    sql::check_returns_rows_or_error(sql::FLOATING_HYPOTHESIS_TABLE_CHECK, &mut conn).await?;
     sql::check_returns_rows_or_error(sql::THEOREM_TABLE_CHECK, &mut conn).await?;
     sql::check_returns_rows_or_error(sql::IN_PROGRESS_THEOREM_TABLE_CHECK, &mut conn).await?;
 
@@ -73,6 +75,7 @@ pub async fn open_database(
 
     let constants = constant::get_constants(&state).await?;
     let variables = variable::get_variables(&state).await?;
+    let floating_hypotheses = floating_hypothesis::get_floating_hypotheses(&state).await?;
     let theorems = theorem::get_theorems(&state).await?;
     let in_progress_theorems = in_progress_theorem::get_in_progress_theorems(&state).await?;
 
@@ -80,6 +83,7 @@ pub async fn open_database(
     app_state.metamath_data = Some(MetamathData {
         constants,
         variables,
+        floating_hypotheses,
         theorems,
         in_progress_theorems,
     });
@@ -126,6 +130,12 @@ CREATE TABLE variable (
     [index] INTEGER PRIMARY KEY,
     symbol TEXT
 );
+CREATE TABLE floating_hypothesis (
+    [index] INTEGER PRIMARY KEY,
+    label TEXT,
+    typecode TEXT,
+    variable TEXT
+);
 CREATE TABLE theorem (
     name TEXT PRIMARY KEY,
     description TEXT,
@@ -144,6 +154,8 @@ CREATE TABLE inProgressTheorem (
         "SELECT name FROM sqlite_master WHERE type='table' AND name='constant';";
     pub const VARIABLE_TABLE_CHECK: &str =
         "SELECT name FROM sqlite_master WHERE type='table' AND name='variable';";
+    pub const FLOATING_HYPOTHESIS_TABLE_CHECK: &str =
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='floating_hypothesis';";
     pub const THEOREM_TABLE_CHECK: &str =
         "SELECT name FROM sqlite_master WHERE type='table' AND name='theorem';";
     pub const IN_PROGRESS_THEOREM_TABLE_CHECK: &str =
@@ -216,6 +228,35 @@ CREATE TABLE inProgressTheorem (
             sqlx::query(query)
                 .bind(bind_one)
                 .bind(bind_two)
+                .execute(conn)
+                .await
+                .or(Err(Error::SqlError))?;
+        }
+        Ok(())
+    }
+
+    pub async fn execute_query_four_binds<'a, T, S, U, V>(
+        state: &tauri::State<'_, Mutex<AppState>>,
+        query: &'static str,
+        bind_one: T,
+        bind_two: S,
+        bind_three: U,
+        bind_four: V,
+    ) -> Result<(), Error>
+    where
+        T: sqlx::Encode<'a, Sqlite> + Type<Sqlite> + 'a,
+        S: sqlx::Encode<'a, Sqlite> + Type<Sqlite> + 'a,
+        U: sqlx::Encode<'a, Sqlite> + Type<Sqlite> + 'a,
+        V: sqlx::Encode<'a, Sqlite> + Type<Sqlite> + 'a,
+    {
+        let mut app_state = state.lock().await;
+
+        if let Some(ref mut conn) = app_state.db_conn {
+            sqlx::query(query)
+                .bind(bind_one)
+                .bind(bind_two)
+                .bind(bind_three)
+                .bind(bind_four)
                 .execute(conn)
                 .await
                 .or(Err(Error::SqlError))?;

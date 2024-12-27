@@ -36,6 +36,7 @@ pub fn run() {
             metamath::text_to_axium,
             metamath::text_to_constants,
             metamath::text_to_variables,
+            metamath::text_to_floating_hypotheses,
             local_state::get_constants_local,
             local_state::get_variables_local,
             local_state::get_theorem_local,

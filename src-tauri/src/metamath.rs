@@ -1,9 +1,9 @@
 use crate::{
-    model::{Constant, Hypothesis, Theorem, Variable},
+    model::{Constant, FloatingHypohesis, Hypothesis, Theorem, Variable},
     AppState,
 };
 use std::fmt;
-use tauri::async_runtime::Mutex;
+use tauri::{async_runtime::Mutex, State};
 
 use crate::database::{self};
 
@@ -168,6 +168,50 @@ fn text_to_constant_or_variable_symbols(text: &str, constant: bool) -> Result<Ve
     }
 
     Ok(symbols)
+}
+
+#[tauri::command]
+pub async fn text_to_floating_hypotheses(
+    state: State<'_, Mutex<AppState>>,
+    text: &str,
+) -> Result<Vec<FloatingHypohesis>, Error> {
+    if !text.is_ascii() {
+        return Err(Error::InvalidCharactersError);
+    }
+
+    let mut floating_hypotheses = Vec::new();
+
+    let mut token_iter = text.split_whitespace();
+
+    let mut next_label: Option<&str> = None;
+
+    while let Some(token) = token_iter.next() {
+        match (token, next_label) {
+            ("$f", Some(label)) => {
+                let typecode = token_iter.next();
+                let variable = token_iter.next();
+
+                if token_iter.next() == Some("$.") {
+                    floating_hypotheses.push(FloatingHypohesis {
+                        label: label.to_string(),
+                        // Safe unwraps, because the if branch requires a later call of next to have returned Some
+                        typecode: typecode.unwrap().to_string(),
+                        variable: variable.unwrap().to_string(),
+                    })
+                } else {
+                    return Err(Error::InvalidFormatError);
+                }
+            }
+            (label, None) => next_label = Some(label),
+            (_, _) => return Err(Error::InvalidFormatError),
+        }
+    }
+
+    database::floating_hypothesis::set_floating_hypotheses(&state, &floating_hypotheses)
+        .await
+        .or(Err(Error::SqlError))?;
+
+    Ok(floating_hypotheses)
 }
 
 #[derive(Debug)]
