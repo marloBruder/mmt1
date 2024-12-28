@@ -39,6 +39,7 @@ pub fn run() {
             metamath::text_to_floating_hypotheses,
             local_state::get_constants_local,
             local_state::get_variables_local,
+            local_state::get_floating_hypotheses_local,
             local_state::get_theorem_local,
             local_state::get_theorem_names_local,
             local_state::get_in_progress_theorem_local,

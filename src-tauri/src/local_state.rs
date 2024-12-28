@@ -33,6 +33,19 @@ pub async fn get_variables_local(
 }
 
 #[tauri::command]
+pub async fn get_floating_hypotheses_local(
+    state: tauri::State<'_, Mutex<AppState>>,
+) -> Result<Vec<FloatingHypohesis>, ()> {
+    let app_state = state.lock().await;
+
+    if let Some(ref mm_data) = app_state.metamath_data {
+        return Ok(mm_data.floating_hypotheses.clone());
+    }
+
+    Err(())
+}
+
+#[tauri::command]
 pub async fn get_theorem_local(
     state: tauri::State<'_, Mutex<AppState>>,
     name: &str,

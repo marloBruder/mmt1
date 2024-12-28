@@ -197,7 +197,8 @@ pub async fn text_to_floating_hypotheses(
                         // Safe unwraps, because the if branch requires a later call of next to have returned Some
                         typecode: typecode.unwrap().to_string(),
                         variable: variable.unwrap().to_string(),
-                    })
+                    });
+                    next_label = None;
                 } else {
                     return Err(Error::InvalidFormatError);
                 }

@@ -13,6 +13,12 @@ export interface Variable {
   symbol: string;
 }
 
+export interface FloatingHypotheses {
+  label: string;
+  typecode: string;
+  variable: string;
+}
+
 export interface Theorem {
   name: string;
   description: string;
