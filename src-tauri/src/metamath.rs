@@ -1,11 +1,11 @@
 use crate::{
     model::{
-        Constant, FloatingHypohesis, Hypothesis, InProgressTheorem, MetamathData, Theorem,
-        TheoremPageData, Variable,
+        Constant, FloatingHypohesis, Hypothesis, InProgressTheorem, MetamathData, ProofLine,
+        Theorem, TheoremPageData, Variable,
     },
     AppState,
 };
-use std::fmt;
+use std::{collections::HashMap, fmt};
 use tauri::{async_runtime::Mutex, State};
 
 use crate::database::{self};
@@ -221,6 +221,12 @@ pub async fn text_to_floating_hypotheses(
     Ok(floating_hypotheses)
 }
 
+#[derive(Debug)]
+struct ProofStep {
+    pub hypotheses: Vec<String>,
+    pub statement: String,
+}
+
 pub fn calc_theorem_page_data(
     theorem: &Theorem,
     metamath_data: &MetamathData,
@@ -231,14 +237,121 @@ pub fn calc_theorem_page_data(
             proof_lines: Vec::new(),
         });
     }
+    let mut proof_lines = Vec::new();
 
-    let _proof_steps = calc_proof_steps(theorem, metamath_data)?;
-    let _step_numbers = calc_proof_step_numbers(theorem)?;
+    let mut proof_steps = calc_proof_steps(theorem, metamath_data)?;
+    let step_numbers = calc_proof_step_numbers(theorem)?;
+
+    println!("Steps:\n{:?}\n", proof_steps);
+    println!("Numbers:\n{:?}\n", step_numbers);
+
+    let mut stack: Vec<String> = Vec::new();
+
+    for (step_num, save) in step_numbers {
+        let step = proof_steps
+            .get((step_num - 1) as usize)
+            .ok_or(Error::InvalidProofError)?;
+        if step.hypotheses.len() == 0 {
+            stack.push(step.statement.clone());
+        } else {
+            let next_step = calc_step_application(step, &stack, metamath_data)?;
+            for _ in 0..step.hypotheses.len() {
+                stack.pop();
+            }
+            stack.push(next_step);
+        }
+
+        if save {
+            proof_steps.push(ProofStep {
+                hypotheses: Vec::new(),
+                statement: stack[stack.len() - 1].clone(),
+            })
+        }
+
+        if stack[stack.len() - 1].split_whitespace().next() == Some("|-") {
+            proof_lines.push(ProofLine {
+                hypotheses: Vec::new(),
+                reference: String::new(),
+                indention: 0,
+                assertion: stack[stack.len() - 1].clone(),
+            })
+        }
+
+        println!("Stack:\n{:?}\n", stack);
+    }
 
     Ok(TheoremPageData {
         theorem: theorem.clone(),
-        proof_lines: Vec::new(),
+        proof_lines,
     })
+}
+
+fn calc_step_application<'a>(
+    step: &'a ProofStep,
+    stack: &Vec<String>,
+    metamath_data: &MetamathData,
+) -> Result<String, Error> {
+    if stack.len() < step.hypotheses.len() {
+        return Err(Error::InvalidProofError);
+    }
+    let mut var_map: HashMap<&str, String> = HashMap::new();
+    for (index, hypothesis) in (&step.hypotheses).iter().map(|s| s.as_str()).enumerate() {
+        let tokens: Vec<&str> = hypothesis.split_whitespace().collect();
+        let stack_str = stack[stack.len() - step.hypotheses.len() + index].as_str();
+        if tokens.len() == 2 && is_variable(&tokens[1], metamath_data) {
+            if tokens[0] != stack_str.split_whitespace().next().unwrap() {
+                return Err(Error::InvalidProofError);
+            }
+
+            let mapped = statement_as_string_without_typecode(stack_str);
+            var_map.insert(tokens[1], mapped);
+        } else {
+            if stack_str != calc_substitution(hypothesis, &var_map) {
+                return Err(Error::InvalidProofError);
+            }
+        }
+    }
+    Ok(calc_substitution(&step.statement, &var_map))
+}
+
+fn calc_substitution(statement: &str, var_mapping: &HashMap<&str, String>) -> String {
+    let mut substitution = String::new();
+    for token in statement.split_whitespace() {
+        if !var_mapping.contains_key(token) {
+            substitution.push_str(token);
+        } else {
+            substitution.push_str(var_mapping.get(token).unwrap().as_str());
+        }
+        substitution.push(' ');
+    }
+    substitution.pop();
+    substitution
+}
+
+fn statement_as_string_without_typecode(statement: &str) -> String {
+    let mut res = String::new();
+    let mut first = true;
+
+    for token in statement.split_whitespace() {
+        if !first {
+            res.push_str(token);
+            res.push(' ');
+        } else {
+            first = false;
+        }
+    }
+
+    res.pop();
+    res
+}
+
+fn is_variable(symbol: &str, metamath_data: &MetamathData) -> bool {
+    for variable in &metamath_data.variables {
+        if variable.symbol == symbol {
+            return true;
+        }
+    }
+    false
 }
 
 fn calc_proof_step_numbers(theorem: &Theorem) -> Result<Vec<(u32, bool)>, Error> {
@@ -282,8 +395,6 @@ fn calc_proof_step_numbers(theorem: &Theorem) -> Result<Vec<(u32, bool)>, Error>
         }
     }
 
-    println!("{:?}", step_numbers);
-
     Ok(step_numbers)
 }
 
@@ -308,12 +419,6 @@ fn compressed_num_to_num(compressed_num: &str) -> Result<u32, Error> {
         return Err(Error::InvalidFormatError);
     }
     Ok(num)
-}
-
-#[derive(Debug)]
-struct ProofStep {
-    pub hypotheses: Vec<String>,
-    pub statement: String,
 }
 
 fn calc_proof_steps(
@@ -419,6 +524,7 @@ pub enum Error {
     InvalidFormatError,
     SqlError,
     NotFoundError,
+    InvalidProofError,
 }
 
 impl fmt::Display for Error {
