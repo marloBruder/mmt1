@@ -1,5 +1,5 @@
 use crate::{
-    model::{Constant, FloatingHypohesis, Hypothesis, Theorem, Variable},
+    model::{Constant, FloatingHypohesis, Hypothesis, InProgressTheorem, Variable},
     AppState,
 };
 use std::fmt;
@@ -8,11 +8,11 @@ use tauri::{async_runtime::Mutex, State};
 use crate::database::{self};
 
 #[tauri::command]
-pub async fn text_to_axium(
+pub async fn turn_into_theorem(
     state: tauri::State<'_, Mutex<AppState>>,
-    text: &str,
-) -> Result<Theorem, Error> {
-    if !text.is_ascii() {
+    in_progress_theorem: InProgressTheorem,
+) -> Result<(), Error> {
+    if !in_progress_theorem.text.is_ascii() {
         return Err(Error::InvalidCharactersError);
     }
 
@@ -23,8 +23,9 @@ pub async fn text_to_axium(
     let mut disjoints: Vec<String> = Vec::new();
     let mut hypotheses: Vec<Hypothesis> = Vec::new();
     let mut assertion: Option<String> = None;
+    let mut proof: Option<String> = None;
 
-    let mut token_iter = text.split_whitespace();
+    let mut token_iter = in_progress_theorem.text.split_whitespace();
     while let Some(token) = token_iter.next() {
         match token {
             "$(" => description = get_next_as_string_until(&mut token_iter, "$)"),
@@ -41,6 +42,11 @@ pub async fn text_to_axium(
                 name = last_token.map(|s| s.to_string());
                 assertion = Some(get_next_as_string_until(&mut token_iter, "$."));
             }
+            "$p" => {
+                name = last_token.map(|s| s.to_string());
+                assertion = Some(get_next_as_string_until(&mut token_iter, "$="));
+                proof = Some(get_next_as_string_until(&mut token_iter, "$."));
+            }
             _ => {
                 last_token = Some(token);
             }
@@ -50,6 +56,10 @@ pub async fn text_to_axium(
     let name = name.ok_or(Error::InvalidFormatError)?;
     let assertion = assertion.ok_or(Error::InvalidFormatError)?;
 
+    if name != in_progress_theorem.name {
+        return Err(Error::InvalidFormatError);
+    }
+
     database::theorem::add_theorem(
         &state,
         &name,
@@ -57,7 +67,7 @@ pub async fn text_to_axium(
         &disjoints,
         &hypotheses,
         &assertion,
-        None,
+        proof.as_deref(),
     )
     .await
     .or(Err(Error::SqlError))?;
@@ -66,14 +76,7 @@ pub async fn text_to_axium(
         .await
         .or(Err(Error::SqlError))?;
 
-    Ok(Theorem {
-        name,
-        description,
-        disjoints,
-        hypotheses,
-        assertion,
-        proof: None,
-    })
+    Ok(())
 }
 
 fn get_next_as_string_until(iter: &mut std::str::SplitWhitespace, until: &str) -> String {

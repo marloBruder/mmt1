@@ -46,8 +46,14 @@
       {/each}
     </div>
   {/if}
-  <div>
+  <div class="pb-4">
     <h2>Description:</h2>
     <p>{theorem.description}</p>
   </div>
+  {#if theorem.proof != null}
+    <div>
+      <h2>Proof:</h2>
+      <p>{theorem.proof}</p>
+    </div>
+  {/if}
 </div>

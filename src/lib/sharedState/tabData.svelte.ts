@@ -163,12 +163,12 @@ export class EditorTab extends Tab {
   }
 
   async convertToTheorem() {
-    let theorem: Theorem = await invoke("text_to_axium", { text: this.#inProgressTheorem.text });
+    await invoke("turn_into_theorem", { inProgressTheorem: this.#inProgressTheorem });
 
-    nameListData.removeInProgressTheoremName(this.#inProgressTheoremName);
-    nameListData.addTheoremName(theorem.name);
+    nameListData.removeInProgressTheoremName(this.#inProgressTheorem.name);
+    nameListData.addTheoremName(this.#inProgressTheorem.name);
     tabManager.closeTabSameID(this, false);
-    goto("/main/theorem/" + theorem.name);
+    goto("/main/theorem/" + this.#inProgressTheorem.name);
   }
 
   get inProgressTheorem() {

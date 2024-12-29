@@ -33,7 +33,7 @@ pub fn run() {
             database::in_progress_theorem::set_in_progress_theorem_name,
             database::in_progress_theorem::set_in_progress_theorem,
             database::in_progress_theorem::delete_in_progress_theorem,
-            metamath::text_to_axium,
+            metamath::turn_into_theorem,
             metamath::text_to_constants,
             metamath::text_to_variables,
             metamath::text_to_floating_hypotheses,
