@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Constant, FloatingHypotheses, InProgressTheorem, Theorem, Variable } from "./model.svelte";
+import type { Constant, FloatingHypotheses, InProgressTheorem, Theorem, TheoremPageData, Variable } from "./model.svelte";
 import { nameListData } from "./nameListData.svelte";
 import { goto } from "$app/navigation";
 import { page } from "$app/stores";
@@ -94,7 +94,7 @@ export abstract class Tab {
 
 export class TheoremTab extends Tab {
   #theoremName: string;
-  #theorem: Theorem = $state({ name: "", description: "", disjoints: [], hypotheses: [], assertion: "", proof: null });
+  #pageData: TheoremPageData = $state({ theorem: { name: "", description: "", disjoints: [], hypotheses: [], assertion: "", proof: null }, proofLines: [] });
 
   constructor(theoremName: string) {
     super();
@@ -102,7 +102,8 @@ export class TheoremTab extends Tab {
   }
 
   async loadData(): Promise<void> {
-    this.#theorem = await invoke("get_theorem_local", { name: this.#theoremName });
+    this.#pageData = await invoke("get_theorem_page_data_local", { name: this.#theoremName });
+    console.log(this.#pageData);
   }
 
   name(): string {
@@ -118,7 +119,7 @@ export class TheoremTab extends Tab {
   }
 
   get theorem() {
-    return this.#theorem;
+    return this.#pageData.theorem;
   }
 
   get theoremName() {

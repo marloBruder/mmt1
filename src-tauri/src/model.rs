@@ -48,6 +48,33 @@ pub struct InProgressTheorem {
     pub text: String,
 }
 
+pub struct TheoremPageData {
+    pub theorem: Theorem,
+    pub proof_lines: Vec<ProofLine>,
+}
+
+#[derive(Serialize)]
+pub struct ProofLine {
+    pub hypotheses: Vec<i32>,
+    pub reference: String,
+    pub indention: i32,
+    pub assertion: String,
+}
+
+impl serde::Serialize for TheoremPageData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("TheoremPageData", 2)?;
+        state.serialize_field("theorem", &self.theorem)?;
+        state.serialize_field("proofLines", &self.proof_lines)?;
+        state.end()
+    }
+}
+
 // impl serde::Serialize for MetamathData {
 //     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 //     where

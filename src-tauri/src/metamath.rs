@@ -1,5 +1,8 @@
 use crate::{
-    model::{Constant, FloatingHypohesis, Hypothesis, InProgressTheorem, Variable},
+    model::{
+        Constant, FloatingHypohesis, Hypothesis, InProgressTheorem, MetamathData, Theorem,
+        TheoremPageData, Variable,
+    },
     AppState,
 };
 use std::fmt;
@@ -218,11 +221,126 @@ pub async fn text_to_floating_hypotheses(
     Ok(floating_hypotheses)
 }
 
+pub fn calc_theorem_page_data(
+    theorem: &Theorem,
+    metamath_data: &MetamathData,
+) -> Result<TheoremPageData, Error> {
+    let _proof_steps = calc_proof_steps(theorem, metamath_data);
+    Ok(TheoremPageData {
+        theorem: theorem.clone(),
+        proof_lines: Vec::new(),
+    })
+}
+
+#[derive(Debug)]
+struct ProofStep {
+    pub hypotheses: Vec<String>,
+    pub statement: String,
+}
+
+fn calc_proof_steps(
+    theorem: &Theorem,
+    metamath_data: &MetamathData,
+) -> Result<Vec<ProofStep>, Error> {
+    if theorem.proof == None {
+        return Ok(Vec::new());
+    }
+
+    let mut steps = Vec::new();
+
+    let hypotheses = calc_all_hypotheses_of_theorem(theorem, metamath_data);
+
+    for hypothesis in hypotheses {
+        steps.push(ProofStep {
+            hypotheses: Vec::new(),
+            statement: hypothesis,
+        })
+    }
+
+    // Safe unwrap due to if at start of function
+    for token in theorem.proof.as_ref().unwrap().split_whitespace() {
+        match token {
+            "(" => {}
+            ")" => break,
+            label => {
+                let label_theorem = metamath_data.get_theorem_by_name(label)?;
+                let label_theorem_hypotheses =
+                    calc_all_hypotheses_of_theorem(label_theorem, metamath_data);
+                steps.push(ProofStep {
+                    hypotheses: label_theorem_hypotheses,
+                    statement: label_theorem.assertion.clone(),
+                })
+            }
+        };
+    }
+
+    Ok(steps)
+}
+
+fn calc_all_hypotheses_of_theorem(theorem: &Theorem, metamath_data: &MetamathData) -> Vec<String> {
+    let mut hypotheses = Vec::new();
+
+    // Calculate variables occuring in assertion and hypotheses
+    let variables = calc_variables_of_theorem(theorem, metamath_data);
+
+    // Calculate proof steps of floating hypotheses
+    for floating_hypothesis in &metamath_data.floating_hypotheses {
+        for &variable in &variables {
+            if floating_hypothesis.variable == variable {
+                let mut statement = floating_hypothesis.typecode.clone();
+                statement.push(' ');
+                statement.push_str(&floating_hypothesis.variable);
+                hypotheses.push(statement)
+            }
+        }
+    }
+
+    // Calculate proof steps of essential hypotheses
+    for hypothesis in &theorem.hypotheses {
+        hypotheses.push(hypothesis.hypothesis.clone());
+    }
+
+    hypotheses
+}
+
+fn calc_variables_of_theorem<'a>(
+    theorem: &'a Theorem,
+    metamath_data: &MetamathData,
+) -> Vec<&'a str> {
+    let mut variables = get_variables_from_statement(&theorem.assertion, metamath_data);
+
+    for hypothesis in &theorem.hypotheses {
+        let hypothesis_vars = get_variables_from_statement(&hypothesis.hypothesis, metamath_data);
+        for var in hypothesis_vars {
+            if !variables.contains(&var) {
+                variables.push(var);
+            }
+        }
+    }
+    variables
+}
+
+fn get_variables_from_statement<'a>(
+    statement: &'a str,
+    metamath_data: &MetamathData,
+) -> Vec<&'a str> {
+    let mut vars = Vec::new();
+    for token in statement.split_whitespace() {
+        for variable in &metamath_data.variables {
+            if variable.symbol == token {
+                vars.push(token);
+            }
+        }
+    }
+    vars
+}
+
 #[derive(Debug)]
 pub enum Error {
     InvalidCharactersError,
     InvalidFormatError,
     SqlError,
+    NotFoundError,
 }
 
 impl fmt::Display for Error {

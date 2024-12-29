@@ -1,6 +1,8 @@
 use crate::{
+    metamath::{self, calc_theorem_page_data},
     model::{
-        Constant, FloatingHypohesis, Hypothesis, InProgressTheorem, MetamathData, Theorem, Variable,
+        Constant, FloatingHypohesis, Hypothesis, InProgressTheorem, MetamathData, Theorem,
+        TheoremPageData, Variable,
     },
     AppState,
 };
@@ -46,21 +48,21 @@ pub async fn get_floating_hypotheses_local(
 }
 
 #[tauri::command]
-pub async fn get_theorem_local(
+pub async fn get_theorem_page_data_local(
     state: tauri::State<'_, Mutex<AppState>>,
     name: &str,
-) -> Result<Theorem, ()> {
+) -> Result<TheoremPageData, metamath::Error> {
     let app_state = state.lock().await;
 
     if let Some(ref mm_data) = app_state.metamath_data {
         for theorem in &mm_data.theorems {
             if theorem.name == name {
-                return Ok(theorem.clone());
+                return calc_theorem_page_data(&theorem, mm_data);
             }
         }
     }
 
-    Err(())
+    Err(metamath::Error::NotFoundError)
 }
 
 #[tauri::command]
@@ -153,6 +155,16 @@ impl MetamathData {
     //         })
     //     }
     // }
+
+    pub fn get_theorem_by_name(&self, name: &str) -> Result<&Theorem, metamath::Error> {
+        for theorem in &self.theorems {
+            if theorem.name == name {
+                return Ok(&theorem);
+            }
+        }
+
+        Err(metamath::Error::NotFoundError)
+    }
 
     pub fn add_theorem(
         &mut self,

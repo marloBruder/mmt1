@@ -37,3 +37,15 @@ export interface InProgressTheorem {
   name: string;
   text: string;
 }
+
+export interface TheoremPageData {
+  theorem: Theorem;
+  proofLines: ProofLine[];
+}
+
+export interface ProofLine {
+  hypotheses: number[];
+  reference: string;
+  indention: number;
+  assertion: string;
+}
