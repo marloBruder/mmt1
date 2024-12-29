@@ -225,11 +225,89 @@ pub fn calc_theorem_page_data(
     theorem: &Theorem,
     metamath_data: &MetamathData,
 ) -> Result<TheoremPageData, Error> {
-    let _proof_steps = calc_proof_steps(theorem, metamath_data);
+    if theorem.proof == None {
+        return Ok(TheoremPageData {
+            theorem: theorem.clone(),
+            proof_lines: Vec::new(),
+        });
+    }
+
+    let _proof_steps = calc_proof_steps(theorem, metamath_data)?;
+    let _step_numbers = calc_proof_step_numbers(theorem)?;
+
     Ok(TheoremPageData {
         theorem: theorem.clone(),
         proof_lines: Vec::new(),
     })
+}
+
+fn calc_proof_step_numbers(theorem: &Theorem) -> Result<Vec<(u32, bool)>, Error> {
+    let proof = match theorem.proof.as_ref() {
+        Some(proof) => &**proof,
+        None => return Ok(Vec::new()),
+    };
+
+    let mut passed_labels = false;
+    let mut compressed_steps = String::new();
+
+    for token in proof.split_whitespace() {
+        match token {
+            ")" => passed_labels = true,
+            s if passed_labels => {
+                compressed_steps.push_str(s);
+            }
+            _ => {}
+        }
+    }
+
+    let mut step_numbers = Vec::new();
+
+    let mut char_iter = compressed_steps.chars();
+
+    let mut current_compressed_num = String::new();
+
+    while let Some(character) = char_iter.next() {
+        match character {
+            c @ 'A'..='T' => {
+                current_compressed_num.push(c);
+                step_numbers.push((compressed_num_to_num(&current_compressed_num)?, false));
+                current_compressed_num = String::new();
+            }
+            c @ 'U'..='Y' => current_compressed_num.push(c),
+            'Z' if step_numbers.len() != 0 => {
+                let len = step_numbers.len();
+                step_numbers[len - 1].1 = true;
+            }
+            _ => return Err(Error::InvalidFormatError),
+        }
+    }
+
+    println!("{:?}", step_numbers);
+
+    Ok(step_numbers)
+}
+
+fn compressed_num_to_num(compressed_num: &str) -> Result<u32, Error> {
+    let mut first = true;
+    let mut num = 0;
+    let mut multiplier = 20;
+    for ch in compressed_num.chars().rev() {
+        match ch {
+            ch @ 'A'..='T' if first => {
+                num = (ch as u32) - 64;
+                first = false;
+            }
+            ch @ 'U'..='Y' if !first => {
+                num += ((ch as u32) - 84) * multiplier;
+                multiplier *= 5;
+            }
+            _ => return Err(Error::InvalidFormatError),
+        }
+    }
+    if num == 0 {
+        return Err(Error::InvalidFormatError);
+    }
+    Ok(num)
 }
 
 #[derive(Debug)]
@@ -242,9 +320,10 @@ fn calc_proof_steps(
     theorem: &Theorem,
     metamath_data: &MetamathData,
 ) -> Result<Vec<ProofStep>, Error> {
-    if theorem.proof == None {
-        return Ok(Vec::new());
-    }
+    let proof = match theorem.proof.as_ref() {
+        Some(proof) => &**proof,
+        None => return Ok(Vec::new()),
+    };
 
     let mut steps = Vec::new();
 
@@ -257,8 +336,7 @@ fn calc_proof_steps(
         })
     }
 
-    // Safe unwrap due to if at start of function
-    for token in theorem.proof.as_ref().unwrap().split_whitespace() {
+    for token in proof.split_whitespace() {
         match token {
             "(" => {}
             ")" => break,
