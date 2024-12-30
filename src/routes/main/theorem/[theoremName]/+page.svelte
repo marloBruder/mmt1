@@ -7,6 +7,15 @@
 
   let pageData = $derived(data.tab.pageData);
   let theorem = $derived(pageData.theorem);
+
+  let isHypothesisName = (name: string): boolean => {
+    for (let hypothesis of theorem.hypotheses) {
+      if (hypothesis.label == name) {
+        return true;
+      }
+    }
+    return false;
+  };
 </script>
 
 <div class="text-center py-4">
@@ -76,7 +85,13 @@
                   {hypothesis + (index != proofLine.hypotheses.length - 1 ? ", " : "")}
                 {/each}
               </td>
-              <td class="border border-gray-600 py-1 px-2"> <a href={"/main/theorem/" + proofLine.reference}>{proofLine.reference}</a></td>
+              <td class="border border-gray-600 py-1 px-2">
+                {#if !isHypothesisName(proofLine.reference)}
+                  <a href={"/main/theorem/" + proofLine.reference}>{proofLine.reference}</a>
+                {:else}
+                  {proofLine.reference}
+                {/if}
+              </td>
               <td class="border border-gray-600 py-1 pr-2">
                 <span class="text-xs text-gray-600">
                   {#each { length: proofLine.indention - 1 } as _}
