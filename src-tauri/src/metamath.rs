@@ -227,6 +227,12 @@ struct ProofStep {
     pub statement: String,
 }
 
+#[derive(Debug)]
+struct StackLine {
+    pub statement: String,
+    pub display_step_number: i32,
+}
+
 pub fn calc_theorem_page_data(
     theorem: &Theorem,
     metamath_data: &MetamathData,
@@ -245,36 +251,63 @@ pub fn calc_theorem_page_data(
     println!("Steps:\n{:?}\n", proof_steps);
     println!("Numbers:\n{:?}\n", step_numbers);
 
-    let mut stack: Vec<String> = Vec::new();
+    let mut stack: Vec<StackLine> = Vec::new();
+
+    let mut next_hypotheses_num = 1;
 
     for (step_num, save) in step_numbers {
         let step = proof_steps
             .get((step_num - 1) as usize)
             .ok_or(Error::InvalidProofError)?;
+        let mut hypotheses_nums: Vec<i32> = Vec::new();
+
         if step.hypotheses.len() == 0 {
-            stack.push(step.statement.clone());
+            stack.push(StackLine {
+                statement: step.statement.clone(),
+                display_step_number: -1,
+            });
         } else {
-            let next_step = calc_step_application(step, &stack, metamath_data)?;
-            for _ in 0..step.hypotheses.len() {
+            let (next_step, display_hypotheses_num) =
+                calc_step_application(step, &stack, metamath_data)?;
+            for i in 0..step.hypotheses.len() {
+                if i < display_hypotheses_num {
+                    hypotheses_nums.push(
+                        stack
+                            .last()
+                            .ok_or(Error::InvalidProofError)?
+                            .display_step_number,
+                    );
+                }
                 stack.pop();
             }
-            stack.push(next_step);
+            stack.push(StackLine {
+                statement: next_step,
+                display_step_number: -1,
+            });
         }
 
         if save {
             proof_steps.push(ProofStep {
                 hypotheses: Vec::new(),
-                statement: stack[stack.len() - 1].clone(),
-            })
+                statement: stack[stack.len() - 1].statement.clone(),
+            });
         }
 
-        if stack[stack.len() - 1].split_whitespace().next() == Some("|-") {
+        if stack[stack.len() - 1].statement.split_whitespace().next() == Some("|-") {
+            println!("{:?}", hypotheses_nums);
+            hypotheses_nums.reverse();
             proof_lines.push(ProofLine {
-                hypotheses: Vec::new(),
+                hypotheses: hypotheses_nums,
                 reference: String::new(),
                 indention: 0,
-                assertion: stack[stack.len() - 1].clone(),
-            })
+                assertion: stack[stack.len() - 1].statement.clone(),
+            });
+            // println!("Next num: {}", next_hypotheses_num);
+            stack
+                .last_mut()
+                .ok_or(Error::InvalidProofError)?
+                .display_step_number = next_hypotheses_num;
+            next_hypotheses_num += 1;
         }
 
         println!("Stack:\n{:?}\n", stack);
@@ -288,17 +321,22 @@ pub fn calc_theorem_page_data(
 
 fn calc_step_application<'a>(
     step: &'a ProofStep,
-    stack: &Vec<String>,
+    stack: &Vec<StackLine>,
     metamath_data: &MetamathData,
-) -> Result<String, Error> {
+) -> Result<(String, usize), Error> {
     if stack.len() < step.hypotheses.len() {
         return Err(Error::InvalidProofError);
     }
     let mut var_map: HashMap<&str, String> = HashMap::new();
+    let mut display_hypotheses_num = 0;
+
     for (index, hypothesis) in (&step.hypotheses).iter().map(|s| s.as_str()).enumerate() {
         let tokens: Vec<&str> = hypothesis.split_whitespace().collect();
-        let stack_str = stack[stack.len() - step.hypotheses.len() + index].as_str();
-        if tokens.len() == 2 && is_variable(&tokens[1], metamath_data) {
+        let stack_str = stack[stack.len() - step.hypotheses.len() + index]
+            .statement
+            .as_str();
+
+        if tokens.len() == 2 && tokens[0] != "|-" && is_variable(&tokens[1], metamath_data) {
             if tokens[0] != stack_str.split_whitespace().next().unwrap() {
                 return Err(Error::InvalidProofError);
             }
@@ -306,12 +344,16 @@ fn calc_step_application<'a>(
             let mapped = statement_as_string_without_typecode(stack_str);
             var_map.insert(tokens[1], mapped);
         } else {
+            display_hypotheses_num += 1;
             if stack_str != calc_substitution(hypothesis, &var_map) {
                 return Err(Error::InvalidProofError);
             }
         }
     }
-    Ok(calc_substitution(&step.statement, &var_map))
+    Ok((
+        calc_substitution(&step.statement, &var_map),
+        display_hypotheses_num,
+    ))
 }
 
 fn calc_substitution(statement: &str, var_mapping: &HashMap<&str, String>) -> String {

@@ -72,8 +72,8 @@
             <tr>
               <td class="border border-gray-600 py-1 px-2">{index + 1}</td>
               <td class="border border-gray-600 py-1 px-2">
-                {#each proofLine.hypotheses as hypothesis}
-                  {hypothesis + ", "}
+                {#each proofLine.hypotheses as hypothesis, index}
+                  {hypothesis + (index != proofLine.hypotheses.length - 1 ? ", " : "")}
                 {/each}
               </td>
               <td class="border border-gray-600 py-1 px-2"> <a href={"/main/theorem/" + proofLine.reference}>{proofLine.reference}</a></td>
