@@ -293,9 +293,10 @@ pub fn calc_theorem_page_data(
             proof_lines.push(ProofLine {
                 hypotheses: hypotheses_nums,
                 reference: step.label.clone(),
-                indention: 0,
+                indention: 1,
                 assertion: stack[stack.len() - 1].statement.clone(),
             });
+            update_indention(&mut proof_lines);
             stack
                 .last_mut()
                 .ok_or(Error::InvalidProofError)?
@@ -318,6 +319,28 @@ pub fn calc_theorem_page_data(
         theorem: theorem.clone(),
         proof_lines,
     })
+}
+
+fn update_indention(proof_lines: &mut Vec<ProofLine>) {
+    let mut update: Vec<usize> = Vec::new();
+    let mut find_update = Vec::new();
+    find_update.push(proof_lines.len() - 1);
+
+    while let Some(&find_new) = find_update.first() {
+        println!("Find Update: {:?}", find_update);
+        for &hypothesis in &proof_lines[find_new].hypotheses {
+            let potential_update = (hypothesis as usize) - 1;
+            if !update.contains(&potential_update) {
+                find_update.push(potential_update);
+                update.push(potential_update);
+            }
+        }
+        find_update.swap_remove(0);
+    }
+
+    for i in update {
+        proof_lines[i].indention += 1;
+    }
 }
 
 fn calc_step_application<'a>(

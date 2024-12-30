@@ -77,7 +77,15 @@
                 {/each}
               </td>
               <td class="border border-gray-600 py-1 px-2"> <a href={"/main/theorem/" + proofLine.reference}>{proofLine.reference}</a></td>
-              <td class="border border-gray-600 py-1 px-2">{proofLine.assertion}</td>
+              <td class="border border-gray-600 py-1 pr-2">
+                <span class="text-xs text-gray-600">
+                  {#each { length: proofLine.indention - 1 } as _}
+                    {". "}
+                  {/each}
+                  {proofLine.indention}
+                </span>
+                {proofLine.assertion}
+              </td>
             </tr>
           {/each}
         </tbody>
