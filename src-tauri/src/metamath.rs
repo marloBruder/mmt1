@@ -223,6 +223,7 @@ pub async fn text_to_floating_hypotheses(
 
 #[derive(Debug)]
 struct ProofStep {
+    pub label: String,
     pub hypotheses: Vec<String>,
     pub statement: String,
 }
@@ -286,28 +287,28 @@ pub fn calc_theorem_page_data(
             });
         }
 
-        if save {
-            proof_steps.push(ProofStep {
-                hypotheses: Vec::new(),
-                statement: stack[stack.len() - 1].statement.clone(),
-            });
-        }
-
         if stack[stack.len() - 1].statement.split_whitespace().next() == Some("|-") {
             println!("{:?}", hypotheses_nums);
             hypotheses_nums.reverse();
             proof_lines.push(ProofLine {
                 hypotheses: hypotheses_nums,
-                reference: String::new(),
+                reference: step.label.clone(),
                 indention: 0,
                 assertion: stack[stack.len() - 1].statement.clone(),
             });
-            // println!("Next num: {}", next_hypotheses_num);
             stack
                 .last_mut()
                 .ok_or(Error::InvalidProofError)?
                 .display_step_number = next_hypotheses_num;
             next_hypotheses_num += 1;
+        }
+
+        if save {
+            proof_steps.push(ProofStep {
+                label: String::new(),
+                hypotheses: Vec::new(),
+                statement: stack[stack.len() - 1].statement.clone(),
+            });
         }
 
         println!("Stack:\n{:?}\n", stack);
@@ -476,8 +477,9 @@ fn calc_proof_steps(
 
     let hypotheses = calc_all_hypotheses_of_theorem(theorem, metamath_data);
 
-    for hypothesis in hypotheses {
+    for (hypothesis, label) in hypotheses {
         steps.push(ProofStep {
+            label,
             hypotheses: Vec::new(),
             statement: hypothesis,
         })
@@ -492,7 +494,11 @@ fn calc_proof_steps(
                 let label_theorem_hypotheses =
                     calc_all_hypotheses_of_theorem(label_theorem, metamath_data);
                 steps.push(ProofStep {
-                    hypotheses: label_theorem_hypotheses,
+                    label: label.to_string(),
+                    hypotheses: label_theorem_hypotheses
+                        .iter()
+                        .map(|(hyp, _label)| hyp.clone())
+                        .collect(),
                     statement: label_theorem.assertion.clone(),
                 })
             }
@@ -502,7 +508,10 @@ fn calc_proof_steps(
     Ok(steps)
 }
 
-fn calc_all_hypotheses_of_theorem(theorem: &Theorem, metamath_data: &MetamathData) -> Vec<String> {
+fn calc_all_hypotheses_of_theorem(
+    theorem: &Theorem,
+    metamath_data: &MetamathData,
+) -> Vec<(String, String)> {
     let mut hypotheses = Vec::new();
 
     // Calculate variables occuring in assertion and hypotheses
@@ -515,7 +524,7 @@ fn calc_all_hypotheses_of_theorem(theorem: &Theorem, metamath_data: &MetamathDat
                 let mut statement = floating_hypothesis.typecode.clone();
                 statement.push(' ');
                 statement.push_str(&floating_hypothesis.variable);
-                hypotheses.push(statement);
+                hypotheses.push((statement, floating_hypothesis.label.clone()));
                 break;
             }
         }
@@ -523,7 +532,7 @@ fn calc_all_hypotheses_of_theorem(theorem: &Theorem, metamath_data: &MetamathDat
 
     // Calculate proof steps of essential hypotheses
     for hypothesis in &theorem.hypotheses {
-        hypotheses.push(hypothesis.hypothesis.clone());
+        hypotheses.push((hypothesis.hypothesis.clone(), hypothesis.label.clone()));
     }
 
     hypotheses
