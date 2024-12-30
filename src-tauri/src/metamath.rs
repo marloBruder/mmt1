@@ -473,7 +473,8 @@ fn calc_all_hypotheses_of_theorem(theorem: &Theorem, metamath_data: &MetamathDat
                 let mut statement = floating_hypothesis.typecode.clone();
                 statement.push(' ');
                 statement.push_str(&floating_hypothesis.variable);
-                hypotheses.push(statement)
+                hypotheses.push(statement);
+                break;
             }
         }
     }
@@ -509,10 +510,8 @@ fn get_variables_from_statement<'a>(
 ) -> Vec<&'a str> {
     let mut vars = Vec::new();
     for token in statement.split_whitespace() {
-        for variable in &metamath_data.variables {
-            if variable.symbol == token {
-                vars.push(token);
-            }
+        if !vars.contains(&token) && is_variable(token, metamath_data) {
+            vars.push(token);
         }
     }
     vars

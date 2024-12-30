@@ -5,7 +5,8 @@
 
   let { data }: { data: PageData } = $props();
 
-  let theorem = $derived(data.tab.theorem);
+  let pageData = $derived(data.tab.pageData);
+  let theorem = $derived(pageData.theorem);
 </script>
 
 <div class="text-center py-4">
@@ -51,9 +52,36 @@
     <p>{theorem.description}</p>
   </div>
   {#if theorem.proof != null}
-    <div>
-      <h2>Proof:</h2>
+    <div class="pb-4">
+      <h2>Raw Proof:</h2>
       <p>{theorem.proof}</p>
+    </div>
+    <div>
+      <h2>Proof</h2>
+      <table class="mx-auto border text-left border-collapse">
+        <thead>
+          <tr>
+            <th class="border border-gray-600 py-1 px-2">Step</th>
+            <th class="border border-gray-600 py-1 px-2">Hyp</th>
+            <th class="border border-gray-600 py-1 px-2">Ref</th>
+            <th class="border border-gray-600 py-1 px-2">Statement</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each pageData.proofLines as proofLine, index}
+            <tr>
+              <td class="border border-gray-600 py-1 px-2">{index + 1}</td>
+              <td class="border border-gray-600 py-1 px-2">
+                {#each proofLine.hypotheses as hypothesis}
+                  {hypothesis + ", "}
+                {/each}
+              </td>
+              <td class="border border-gray-600 py-1 px-2"> <a href={"/main/theorem/" + proofLine.reference}>{proofLine.reference}</a></td>
+              <td class="border border-gray-600 py-1 px-2">{proofLine.assertion}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
     </div>
   {/if}
 </div>

@@ -118,8 +118,8 @@ export class TheoremTab extends Tab {
     return tab instanceof TheoremTab && this.#theoremName == tab.theoremName;
   }
 
-  get theorem() {
-    return this.#pageData.theorem;
+  get pageData() {
+    return this.#pageData;
   }
 
   get theoremName() {
