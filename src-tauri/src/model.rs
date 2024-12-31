@@ -7,7 +7,7 @@ pub struct MetamathData {
     pub floating_hypotheses: Vec<FloatingHypohesis>,
     pub theorems: Vec<Theorem>,
     pub in_progress_theorems: Vec<InProgressTheorem>,
-    pub theorem_list: Vec<Section>,
+    pub theorem_list: Vec<Header>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -50,14 +50,10 @@ pub struct InProgressTheorem {
 }
 
 #[derive(Debug)]
-pub enum Section {
-    Header {
-        title: String,
-        subsections: Vec<Section>,
-    },
-    TheoremEntry {
-        theorem: Theorem,
-    },
+pub struct Header {
+    title: String,
+    theorems: Vec<Theorem>,
+    sub_headers: Vec<Header>,
 }
 
 pub struct TheoremPageData {
