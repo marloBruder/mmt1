@@ -1,41 +1,125 @@
 use super::Error;
 use crate::{
-    model::{Hypothesis, Theorem},
+    model::{Header, Hypothesis, Theorem},
     AppState,
 };
 use futures::TryStreamExt;
-use sqlx::Row;
+use sqlx::{sqlite::SqliteRow, Row, SqliteConnection};
 use tauri::async_runtime::Mutex;
 
-pub async fn get_theorems(
+pub async fn get_theorem_list_header(
     state: &tauri::State<'_, Mutex<AppState>>,
-) -> Result<Vec<Theorem>, Error> {
+) -> Result<Header, Error> {
     let mut app_state = state.lock().await;
 
-    let mut result = Vec::new();
+    let mut main_header = Header {
+        title: "".to_string(),
+        theorems: Vec::new(),
+        sub_headers: Vec::new(),
+    };
 
     if let Some(ref mut conn) = app_state.db_conn {
+        // let mut current_section_path: Vec<usize> = Vec::new();
+
+        let mut last_added_header = &mut main_header;
+
+        let db_headers = get_db_headers(conn).await?;
+
         let mut rows = sqlx::query(sql::THEOREMS_GET).fetch(conn);
 
-        while let Some(row) = rows.try_next().await.or(Err(Error::SqlError))? {
-            let name: String = row.try_get("name").or(Err(Error::SqlError))?;
-            let description: String = row.try_get("description").or(Err(Error::SqlError))?;
-            let disjoints_rep: String = row.try_get("disjoints").or(Err(Error::SqlError))?;
-            let hypotheses_rep: String = row.try_get("hypotheses").or(Err(Error::SqlError))?;
-            let assertion: String = row.try_get("assertion").or(Err(Error::SqlError))?;
-            let proof: String = row.try_get("proof").or(Err(Error::SqlError))?;
+        let mut next_theorem_and_index =
+            get_next_theorem(rows.try_next().await.or(Err(Error::SqlError))?).await?;
 
-            let proof = if &proof == "" { None } else { Some(proof) };
+        for db_header in db_headers {
+            while let Some((next_theorem_db_index, ref next_theorem)) = next_theorem_and_index {
+                if next_theorem_db_index < db_header.db_index {
+                    // Performace optimization might be possible here
+                    // *next_theorem should work, but the compiler won't allow it
+                    last_added_header.theorems.push(next_theorem.clone());
+                    next_theorem_and_index =
+                        get_next_theorem(rows.try_next().await.or(Err(Error::SqlError))?).await?;
+                } else {
+                    break;
+                }
+            }
 
-            result.push(Theorem {
+            if db_header.depth < 0 {
+                return Err(Error::InvalidDataError);
+            } else {
+                let mut header_placement = &mut main_header;
+                for _ in 0..db_header.depth {
+                    header_placement = header_placement
+                        .sub_headers
+                        .last_mut()
+                        .ok_or(Error::InvalidDataError)?;
+                }
+                header_placement.sub_headers.push(Header {
+                    title: db_header.title,
+                    theorems: Vec::new(),
+                    sub_headers: Vec::new(),
+                });
+                last_added_header = header_placement.sub_headers.last_mut().unwrap();
+            }
+        }
+
+        while let Some((_, ref next_theorem)) = next_theorem_and_index {
+            // Performace optimization might be possible here
+            // *next_theorem should work, but the compiler won't allow it
+            last_added_header.theorems.push(next_theorem.clone());
+            next_theorem_and_index =
+                get_next_theorem(rows.try_next().await.or(Err(Error::SqlError))?).await?;
+        }
+    }
+
+    Ok(main_header)
+}
+
+async fn get_next_theorem(next_row: Option<SqliteRow>) -> Result<Option<(i32, Theorem)>, Error> {
+    if let Some(row) = next_row {
+        let db_index: i32 = row.try_get("db_index").or(Err(Error::SqlError))?;
+        let name: String = row.try_get("name").or(Err(Error::SqlError))?;
+        let description: String = row.try_get("description").or(Err(Error::SqlError))?;
+        let disjoints_rep: String = row.try_get("disjoints").or(Err(Error::SqlError))?;
+        let hypotheses_rep: String = row.try_get("hypotheses").or(Err(Error::SqlError))?;
+        let assertion: String = row.try_get("assertion").or(Err(Error::SqlError))?;
+        let proof: Option<String> = row.try_get("proof").or(Err(Error::SqlError))?;
+
+        return Ok(Some((
+            db_index,
+            Theorem {
                 name,
                 description,
                 disjoints: string_rep_to_disjoints(&disjoints_rep),
                 hypotheses: string_rep_to_hypotheses(&hypotheses_rep),
                 assertion,
                 proof,
-            });
-        }
+            },
+        )));
+    }
+    Ok(None)
+}
+
+struct DbHeader {
+    db_index: i32,
+    depth: i32,
+    title: String,
+}
+
+async fn get_db_headers(conn: &mut SqliteConnection) -> Result<Vec<DbHeader>, Error> {
+    let mut result = Vec::new();
+
+    let mut rows = sqlx::query(sql::DB_HEADERS_GET).fetch(conn);
+
+    while let Some(row) = rows.try_next().await.or(Err(Error::SqlError))? {
+        let db_index: i32 = row.try_get("db_index").or(Err(Error::SqlError))?;
+        let depth: i32 = row.try_get("depth").or(Err(Error::SqlError))?;
+        let title: String = row.try_get("title").or(Err(Error::SqlError))?;
+
+        result.push(DbHeader {
+            db_index,
+            depth,
+            title,
+        });
     }
 
     Ok(result)
@@ -131,7 +215,9 @@ fn string_rep_to_hypotheses(string: &str) -> Vec<Hypothesis> {
 }
 
 mod sql {
-    pub const THEOREMS_GET: &str = "SELECT * FROM theorem;";
+    pub const THEOREMS_GET: &str = "SELECT * FROM theorem ORDER BY db_index;";
+
+    pub const DB_HEADERS_GET: &str = "SELECT * FROM header ORDER BY db_index;";
 
     pub const THEOREM_ADD: &str = "\
 INSERT INTO theorem (name, description, disjoints, hypotheses, assertion, proof)

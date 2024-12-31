@@ -77,7 +77,7 @@ pub async fn open_database(
     let constants = constant::get_constants(&state).await?;
     let variables = variable::get_variables(&state).await?;
     let floating_hypotheses = floating_hypothesis::get_floating_hypotheses(&state).await?;
-    let theorems = theorem::get_theorems(&state).await?;
+    let theorem_list_header = theorem::get_theorem_list_header(&state).await?;
     let in_progress_theorems = in_progress_theorem::get_in_progress_theorems(&state).await?;
 
     let mut app_state = state.lock().await;
@@ -85,9 +85,9 @@ pub async fn open_database(
         constants,
         variables,
         floating_hypotheses,
-        theorems,
+        theorems: Vec::new(),
         in_progress_theorems,
-        theorem_list: Vec::new(),
+        theorem_list_header,
     });
 
     Ok(())
@@ -100,6 +100,7 @@ pub enum Error {
     ConnectDatabaseError,
     WrongDatabaseFormatError,
     SqlError,
+    InvalidDataError,
 }
 
 impl fmt::Display for Error {

@@ -249,8 +249,8 @@ pub fn calc_theorem_page_data(
     let mut proof_steps = calc_proof_steps(theorem, metamath_data)?;
     let step_numbers = calc_proof_step_numbers(theorem)?;
 
-    println!("Steps:\n{:?}\n", proof_steps);
-    println!("Numbers:\n{:?}\n", step_numbers);
+    // println!("Steps:\n{:?}\n", proof_steps);
+    // println!("Numbers:\n{:?}\n", step_numbers);
 
     let mut stack: Vec<StackLine> = Vec::new();
 
@@ -288,7 +288,6 @@ pub fn calc_theorem_page_data(
         }
 
         if stack[stack.len() - 1].statement.split_whitespace().next() == Some("|-") {
-            println!("{:?}", hypotheses_nums);
             hypotheses_nums.reverse();
             proof_lines.push(ProofLine {
                 hypotheses: hypotheses_nums,
@@ -312,7 +311,7 @@ pub fn calc_theorem_page_data(
             });
         }
 
-        println!("Stack:\n{:?}\n", stack);
+        // println!("Stack:\n{:?}\n", stack);
     }
 
     Ok(TheoremPageData {
@@ -327,7 +326,6 @@ fn update_indention(proof_lines: &mut Vec<ProofLine>) {
     find_update.push(proof_lines.len() - 1);
 
     while let Some(&find_new) = find_update.first() {
-        println!("Find Update: {:?}", find_update);
         for &hypothesis in &proof_lines[find_new].hypotheses {
             let potential_update = (hypothesis as usize) - 1;
             if !update.contains(&potential_update) {
