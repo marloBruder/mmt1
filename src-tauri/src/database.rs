@@ -68,6 +68,7 @@ pub async fn open_database(
     sql::check_returns_rows_or_error(sql::FLOATING_HYPOTHESIS_TABLE_CHECK, &mut conn).await?;
     sql::check_returns_rows_or_error(sql::THEOREM_TABLE_CHECK, &mut conn).await?;
     sql::check_returns_rows_or_error(sql::IN_PROGRESS_THEOREM_TABLE_CHECK, &mut conn).await?;
+    sql::check_returns_rows_or_error(sql::HEADER_TABLE_CHECK, &mut conn).await?;
 
     let mut app_state = state.lock().await;
     app_state.db_conn = Some(conn);
@@ -86,6 +87,7 @@ pub async fn open_database(
         floating_hypotheses,
         theorems,
         in_progress_theorems,
+        theorem_list: Vec::new(),
     });
 
     Ok(())
@@ -137,16 +139,22 @@ CREATE TABLE floating_hypothesis (
     variable TEXT
 );
 CREATE TABLE theorem (
-    name TEXT PRIMARY KEY,
+    db_index INTEGER PRIMARY KEY,
+    name TEXT,
     description TEXT,
     disjoints TEXT,
     hypotheses TEXT,
     assertion TEXT,
     proof TEXT NULL
 );
-CREATE TABLE inProgressTheorem (
+CREATE TABLE in_progress_theorem (
     name TEXT PRIMARY KEY,
     text TEXT
+);
+CREATE TABLE header (
+    db_index INTEGER
+    depth INTEGER
+    title TEXT
 );
 ";
 
@@ -159,7 +167,9 @@ CREATE TABLE inProgressTheorem (
     pub const THEOREM_TABLE_CHECK: &str =
         "SELECT name FROM sqlite_master WHERE type='table' AND name='theorem';";
     pub const IN_PROGRESS_THEOREM_TABLE_CHECK: &str =
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='inProgressTheorem';";
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='in_progress_theorem';";
+    pub const HEADER_TABLE_CHECK: &str =
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='header';";
 
     // Checks whether the query returns rows and returns the correct error if not
     pub async fn check_returns_rows_or_error(

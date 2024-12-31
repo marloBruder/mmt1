@@ -38,6 +38,17 @@ export interface InProgressTheorem {
   text: string;
 }
 
+export type Section = Header | TheoremEntry;
+
+export interface Header {
+  title: string;
+  subsection: Section[];
+}
+
+export interface TheoremEntry {
+  theorem: Theorem;
+}
+
 export interface TheoremPageData {
   theorem: Theorem;
   proofLines: ProofLine[];

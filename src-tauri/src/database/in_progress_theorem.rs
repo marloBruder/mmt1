@@ -104,18 +104,18 @@ pub async fn delete_in_progress_theorem(
 
 mod sql {
 
-    pub const IN_PROGRESS_THEOREMS_GET: &str = "SELECT * FROM inProgressTheorem;";
+    pub const IN_PROGRESS_THEOREMS_GET: &str = "SELECT * FROM in_progress_theorem;";
 
     pub const IN_PROGRESS_THEOREM_ADD: &str =
-        "INSERT INTO inProgressTheorem (name, text) VALUES (?, ?)";
+        "INSERT INTO in_progress_theorem (name, text) VALUES (?, ?)";
 
-    pub const IN_PROGRESS_THEOREM_NAME_UPDATE: &str = "UPDATE inProgressTheorem
+    pub const IN_PROGRESS_THEOREM_NAME_UPDATE: &str = "UPDATE in_progress_theorem
       SET name = ?
       WHERE name = ?;";
 
-    pub const IN_PROGRESS_THEOREM_UPDATE: &str = "UPDATE inProgressTheorem
+    pub const IN_PROGRESS_THEOREM_UPDATE: &str = "UPDATE in_progress_theorem
         SET text = ?
         WHERE name = ?;";
 
-    pub const IN_PROGRESS_THEOREM_DELETE: &str = "DELETE FROM inProgressTheorem WHERE name = ?";
+    pub const IN_PROGRESS_THEOREM_DELETE: &str = "DELETE FROM in_progress_theorem WHERE name = ?";
 }
