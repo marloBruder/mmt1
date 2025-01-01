@@ -3,6 +3,7 @@ use sqlx::SqliteConnection;
 use tauri::{async_runtime::Mutex, App, Manager};
 
 mod database;
+mod editor;
 mod local_state;
 mod metamath;
 mod model;
@@ -17,6 +18,7 @@ fn app_setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         db_conn: None,
         metamath_data: None,
     }));
+    // app.manage::<Mutex<Option<AppState>>>(Mutex::new(None));
     Ok(())
 }
 
@@ -29,23 +31,23 @@ pub fn run() {
             database::create_database,
             database::create_or_override_database,
             database::open_database,
-            database::in_progress_theorem::add_in_progress_theorem,
-            database::in_progress_theorem::set_in_progress_theorem_name,
-            database::in_progress_theorem::set_in_progress_theorem,
-            database::in_progress_theorem::delete_in_progress_theorem,
+            editor::add_in_progress_theorem,
+            editor::set_in_progress_theorem_name,
+            editor::set_in_progress_theorem,
+            editor::delete_in_progress_theorem,
             metamath::turn_into_theorem,
             metamath::text_to_constants,
             metamath::text_to_variables,
             metamath::text_to_floating_hypotheses,
-            local_state::get_constants_local,
-            local_state::get_variables_local,
-            local_state::get_floating_hypotheses_local,
-            local_state::get_theorem_page_data_local,
-            local_state::get_theorem_list_header_local,
-            local_state::get_header_local,
-            local_state::get_theorem_names_local,
-            local_state::get_in_progress_theorem_local,
-            local_state::get_in_progress_theorem_names_local,
+            local_state::constant::get_constants_local,
+            local_state::variable::get_variables_local,
+            local_state::floating_hypothesis::get_floating_hypotheses_local,
+            local_state::theorem::get_theorem_page_data_local,
+            local_state::theorem::get_theorem_list_header_local,
+            local_state::theorem::get_header_local,
+            local_state::theorem::get_theorem_names_local,
+            local_state::in_progress_theorem::get_in_progress_theorem_local,
+            local_state::in_progress_theorem::get_in_progress_theorem_names_local,
         ])
         .setup(|app| app_setup(app))
         .run(tauri::generate_context!())

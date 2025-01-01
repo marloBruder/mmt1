@@ -1,44 +1,38 @@
-use super::{
-    sql::{execute_query_no_bind, execute_query_two_binds},
-    Error,
-};
-use crate::{model::Constant, AppState};
+use super::Error;
+use crate::model::Constant;
 use futures::TryStreamExt;
-use sqlx::Row;
-use tauri::{async_runtime::Mutex, State};
+use sqlx::{Row, SqliteConnection};
 
-pub async fn get_constants(state: &State<'_, Mutex<AppState>>) -> Result<Vec<Constant>, Error> {
+pub async fn get_constants_database(conn: &mut SqliteConnection) -> Result<Vec<Constant>, Error> {
     let mut constants = Vec::new();
 
-    let mut app_state = state.lock().await;
+    let mut rows = sqlx::query(sql::CONSTANTS_GET).fetch(conn);
 
-    if let Some(ref mut conn) = app_state.db_conn {
-        let mut rows = sqlx::query(sql::CONSTANTS_GET).fetch(conn);
+    while let Some(row) = rows.try_next().await.or(Err(Error::SqlError))? {
+        let symbol = row.try_get("symbol").or(Err(Error::SqlError))?;
 
-        while let Some(row) = rows.try_next().await.or(Err(Error::SqlError))? {
-            let symbol = row.try_get("symbol").or(Err(Error::SqlError))?;
-
-            constants.push(Constant { symbol })
-        }
+        constants.push(Constant { symbol })
     }
 
     Ok(constants)
 }
 
-pub async fn set_constants(
-    state: &State<'_, Mutex<AppState>>,
+pub async fn set_constants_database(
+    conn: &mut SqliteConnection,
     symbols: &Vec<&str>,
 ) -> Result<(), Error> {
-    execute_query_no_bind(state, sql::CONSTANTS_DELETE).await?;
+    sqlx::query(sql::CONSTANTS_DELETE)
+        .execute(&mut *conn)
+        .await
+        .or(Err(Error::SqlError))?;
 
     for (index, &symbol) in symbols.iter().enumerate() {
-        execute_query_two_binds(state, sql::CONSANT_ADD, index.to_string(), symbol).await?;
-    }
-
-    let mut app_state = state.lock().await;
-
-    if let Some(ref mut mm_data) = app_state.metamath_data {
-        mm_data.set_constants(symbols);
+        sqlx::query(sql::CONSANT_ADD)
+            .bind(index.to_string())
+            .bind(symbol)
+            .execute(&mut *conn)
+            .await
+            .or(Err(Error::SqlError))?;
     }
 
     Ok(())

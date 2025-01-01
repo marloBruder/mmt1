@@ -1,4 +1,16 @@
 use crate::{
+    database::{
+        self, constant::set_constants_database,
+        floating_hypothesis::set_floating_hypotheses_database,
+        in_progress_theorem::delete_in_progress_theorem_database, variable::set_variables_database,
+    },
+    local_state::{
+        constant::set_constants_local,
+        floating_hypothesis::set_floating_hypotheses_local,
+        in_progress_theorem::delete_in_progress_theorem_local,
+        theorem::{add_theorem_local, get_theorem_by_name_local},
+        variable::set_variables_local,
+    },
     model::{
         Constant, FloatingHypohesis, Hypothesis, InProgressTheorem, MetamathData, ProofLine,
         Theorem, TheoremPageData, Variable,
@@ -7,8 +19,6 @@ use crate::{
 };
 use std::{collections::HashMap, fmt};
 use tauri::{async_runtime::Mutex, State};
-
-use crate::database::{self};
 
 #[tauri::command]
 pub async fn turn_into_theorem(
@@ -63,22 +73,43 @@ pub async fn turn_into_theorem(
         return Err(Error::InvalidFormatError);
     }
 
-    database::theorem::add_theorem(
-        &state,
-        &name,
-        &description,
-        &disjoints,
-        &hypotheses,
-        &assertion,
-        proof.as_deref(),
-    )
-    .await
-    .or(Err(Error::SqlError))?;
+    let mut app_state = state.lock().await;
 
-    database::in_progress_theorem::delete_in_progress_theorem(state, &name)
+    if let Some(ref mut conn) = app_state.db_conn {
+        database::theorem::add_theorem_database(
+            conn,
+            &name,
+            &description,
+            &disjoints,
+            &hypotheses,
+            &assertion,
+            proof.as_deref(),
+        )
         .await
         .or(Err(Error::SqlError))?;
+    }
 
+    if let Some(ref mut mm_data) = app_state.metamath_data {
+        add_theorem_local(
+            mm_data,
+            &name,
+            &description,
+            &disjoints,
+            &hypotheses,
+            &assertion,
+            proof.as_deref(),
+        );
+    }
+
+    if let Some(ref mut conn) = app_state.db_conn {
+        delete_in_progress_theorem_database(conn, &name)
+            .await
+            .or(Err(Error::SqlError))?;
+    }
+
+    if let Some(ref mut mm_data) = app_state.metamath_data {
+        delete_in_progress_theorem_local(mm_data, &name);
+    }
     Ok(())
 }
 
@@ -107,9 +138,17 @@ pub async fn text_to_constants(
 
     let symbols = text_to_constant_or_variable_symbols(text, true)?;
 
-    database::constant::set_constants(&state, &symbols)
-        .await
-        .or(Err(Error::SqlError))?;
+    let mut app_state = state.lock().await;
+
+    if let Some(ref mut conn) = app_state.db_conn {
+        set_constants_database(conn, &symbols)
+            .await
+            .or(Err(Error::SqlError))?;
+    }
+
+    if let Some(ref mut mm_data) = app_state.metamath_data {
+        set_constants_local(mm_data, &symbols);
+    }
 
     let mut constants = Vec::new();
 
@@ -133,9 +172,17 @@ pub async fn text_to_variables(
 
     let symbols = text_to_constant_or_variable_symbols(text, false)?;
 
-    database::variable::set_variables(&state, &symbols)
-        .await
-        .or(Err(Error::SqlError))?;
+    let mut app_state = state.lock().await;
+
+    if let Some(ref mut conn) = app_state.db_conn {
+        set_variables_database(conn, &symbols)
+            .await
+            .or(Err(Error::SqlError))?;
+    }
+
+    if let Some(ref mut mm_data) = app_state.metamath_data {
+        set_variables_local(mm_data, &symbols);
+    }
 
     let mut variables = Vec::new();
 
@@ -213,10 +260,17 @@ pub async fn text_to_floating_hypotheses(
             (_, _) => return Err(Error::InvalidFormatError),
         }
     }
+    let mut app_state = state.lock().await;
 
-    database::floating_hypothesis::set_floating_hypotheses(&state, &floating_hypotheses)
-        .await
-        .or(Err(Error::SqlError))?;
+    if let Some(ref mut conn) = app_state.db_conn {
+        set_floating_hypotheses_database(conn, &floating_hypotheses)
+            .await
+            .or(Err(Error::SqlError))?;
+    }
+
+    if let Some(ref mut mm_data) = app_state.metamath_data {
+        set_floating_hypotheses_local(mm_data, &floating_hypotheses);
+    }
 
     Ok(floating_hypotheses)
 }
@@ -511,7 +565,7 @@ fn calc_proof_steps(
             "(" => {}
             ")" => break,
             label => {
-                let label_theorem = metamath_data.get_theorem_by_name(label)?;
+                let label_theorem = get_theorem_by_name_local(metamath_data, label)?;
                 let label_theorem_hypotheses =
                     calc_all_hypotheses_of_theorem(label_theorem, metamath_data);
                 steps.push(ProofStep {

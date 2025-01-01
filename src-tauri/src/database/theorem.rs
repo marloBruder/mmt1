@@ -1,74 +1,64 @@
 use super::Error;
-use crate::{
-    model::{Header, Hypothesis, Theorem},
-    AppState,
-};
+use crate::model::{Header, Hypothesis, Theorem};
 use futures::TryStreamExt;
 use sqlx::{sqlite::SqliteRow, Row, SqliteConnection};
-use tauri::async_runtime::Mutex;
 
-pub async fn get_theorem_list_header(
-    state: &tauri::State<'_, Mutex<AppState>>,
+pub async fn get_theorem_list_header_database(
+    conn: &mut SqliteConnection,
 ) -> Result<Header, Error> {
-    let mut app_state = state.lock().await;
-
     let mut main_header = Header {
         title: "".to_string(),
         theorems: Vec::new(),
         sub_headers: Vec::new(),
     };
 
-    if let Some(ref mut conn) = app_state.db_conn {
-        // let mut current_section_path: Vec<usize> = Vec::new();
+    let mut last_added_header = &mut main_header;
 
-        let mut last_added_header = &mut main_header;
+    let db_headers = get_db_headers(conn).await?;
 
-        let db_headers = get_db_headers(conn).await?;
+    let mut rows = sqlx::query(sql::THEOREMS_GET).fetch(conn);
 
-        let mut rows = sqlx::query(sql::THEOREMS_GET).fetch(conn);
+    let mut next_theorem_and_index =
+        get_next_theorem(rows.try_next().await.or(Err(Error::SqlError))?).await?;
 
-        let mut next_theorem_and_index =
-            get_next_theorem(rows.try_next().await.or(Err(Error::SqlError))?).await?;
-
-        for db_header in db_headers {
-            while let Some((next_theorem_db_index, ref next_theorem)) = next_theorem_and_index {
-                if next_theorem_db_index < db_header.db_index {
-                    // Performace optimization might be possible here
-                    // *next_theorem should work, but the compiler won't allow it
-                    last_added_header.theorems.push(next_theorem.clone());
-                    next_theorem_and_index =
-                        get_next_theorem(rows.try_next().await.or(Err(Error::SqlError))?).await?;
-                } else {
-                    break;
-                }
-            }
-
-            if db_header.depth < 0 {
-                return Err(Error::InvalidDataError);
+    for db_header in db_headers {
+        while let Some((next_theorem_db_index, ref next_theorem)) = next_theorem_and_index {
+            if next_theorem_db_index < db_header.db_index {
+                // Performace optimization might be possible here
+                // *next_theorem should work, but the compiler won't allow it
+                last_added_header.theorems.push(next_theorem.clone());
+                next_theorem_and_index =
+                    get_next_theorem(rows.try_next().await.or(Err(Error::SqlError))?).await?;
             } else {
-                let mut header_placement = &mut main_header;
-                for _ in 0..db_header.depth {
-                    header_placement = header_placement
-                        .sub_headers
-                        .last_mut()
-                        .ok_or(Error::InvalidDataError)?;
-                }
-                header_placement.sub_headers.push(Header {
-                    title: db_header.title,
-                    theorems: Vec::new(),
-                    sub_headers: Vec::new(),
-                });
-                last_added_header = header_placement.sub_headers.last_mut().unwrap();
+                break;
             }
         }
 
-        while let Some((_, ref next_theorem)) = next_theorem_and_index {
-            // Performace optimization might be possible here
-            // *next_theorem should work, but the compiler won't allow it
-            last_added_header.theorems.push(next_theorem.clone());
-            next_theorem_and_index =
-                get_next_theorem(rows.try_next().await.or(Err(Error::SqlError))?).await?;
+        if db_header.depth < 0 {
+            return Err(Error::InvalidDataError);
+        } else {
+            let mut header_placement = &mut main_header;
+            for _ in 0..db_header.depth {
+                header_placement = header_placement
+                    .sub_headers
+                    .last_mut()
+                    .ok_or(Error::InvalidDataError)?;
+            }
+            header_placement.sub_headers.push(Header {
+                title: db_header.title,
+                theorems: Vec::new(),
+                sub_headers: Vec::new(),
+            });
+            last_added_header = header_placement.sub_headers.last_mut().unwrap();
         }
+    }
+
+    while let Some((_, ref next_theorem)) = next_theorem_and_index {
+        // Performace optimization might be possible here
+        // *next_theorem should work, but the compiler won't allow it
+        last_added_header.theorems.push(next_theorem.clone());
+        next_theorem_and_index =
+            get_next_theorem(rows.try_next().await.or(Err(Error::SqlError))?).await?;
     }
 
     Ok(main_header)
@@ -125,8 +115,8 @@ async fn get_db_headers(conn: &mut SqliteConnection) -> Result<Vec<DbHeader>, Er
     Ok(result)
 }
 
-pub async fn add_theorem(
-    state: &tauri::State<'_, Mutex<AppState>>,
+pub async fn add_theorem_database(
+    conn: &mut SqliteConnection,
     name: &str,
     description: &str,
     disjoints: &Vec<String>,
@@ -137,24 +127,16 @@ pub async fn add_theorem(
     let disjoints_rep = disjoints_to_string_rep(disjoints);
     let hypotheses_rep = hypotheses_to_string_rep(hypotheses);
 
-    let mut app_state = state.lock().await;
-
-    if let Some(ref mut conn) = app_state.db_conn {
-        sqlx::query(sql::THEOREM_ADD)
-            .bind(name)
-            .bind(description)
-            .bind(disjoints_rep)
-            .bind(hypotheses_rep)
-            .bind(assertion)
-            .bind(proof)
-            .execute(conn)
-            .await
-            .or(Err(Error::SqlError))?;
-    }
-
-    if let Some(ref mut mm_data) = app_state.metamath_data {
-        mm_data.add_theorem(name, description, disjoints, hypotheses, assertion, proof);
-    }
+    sqlx::query(sql::THEOREM_ADD)
+        .bind(name)
+        .bind(description)
+        .bind(disjoints_rep)
+        .bind(hypotheses_rep)
+        .bind(assertion)
+        .bind(proof)
+        .execute(conn)
+        .await
+        .or(Err(Error::SqlError))?;
 
     Ok(())
 }

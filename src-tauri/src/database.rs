@@ -71,16 +71,16 @@ pub async fn open_database(
     sql::check_returns_rows_or_error(sql::HEADER_TABLE_CHECK, &mut conn).await?;
 
     let mut app_state = state.lock().await;
+
+    let constants = constant::get_constants_database(&mut conn).await?;
+    let variables = variable::get_variables_database(&mut conn).await?;
+    let floating_hypotheses =
+        floating_hypothesis::get_floating_hypotheses_database(&mut conn).await?;
+    let theorem_list_header = theorem::get_theorem_list_header_database(&mut conn).await?;
+    let in_progress_theorems =
+        in_progress_theorem::get_in_progress_theorems_database(&mut conn).await?;
+
     app_state.db_conn = Some(conn);
-    drop(app_state);
-
-    let constants = constant::get_constants(&state).await?;
-    let variables = variable::get_variables(&state).await?;
-    let floating_hypotheses = floating_hypothesis::get_floating_hypotheses(&state).await?;
-    let theorem_list_header = theorem::get_theorem_list_header(&state).await?;
-    let in_progress_theorems = in_progress_theorem::get_in_progress_theorems(&state).await?;
-
-    let mut app_state = state.lock().await;
     app_state.metamath_data = Some(MetamathData {
         constants,
         variables,
@@ -119,10 +119,7 @@ impl serde::Serialize for Error {
 }
 
 mod sql {
-    use super::Error;
-    use crate::AppState;
-    use sqlx::{Sqlite, SqliteConnection, Type};
-    use tauri::async_runtime::Mutex;
+    use sqlx::SqliteConnection;
 
     pub const INIT_DB: &str = "\
 CREATE TABLE constant (
@@ -184,93 +181,6 @@ CREATE TABLE header (
 
         if rows.len() == 0 {
             return Err(super::Error::WrongDatabaseFormatError);
-        }
-        Ok(())
-    }
-
-    pub async fn execute_query_no_bind(
-        state: &tauri::State<'_, Mutex<AppState>>,
-        query: &'static str,
-    ) -> Result<(), Error> {
-        let mut app_state = state.lock().await;
-
-        if let Some(ref mut conn) = app_state.db_conn {
-            sqlx::query(query)
-                .execute(conn)
-                .await
-                .or(Err(Error::SqlError))?;
-        }
-        Ok(())
-    }
-
-    pub async fn execute_query_one_bind<'a, T>(
-        state: &tauri::State<'_, Mutex<AppState>>,
-        query: &'static str,
-        bind_one: T,
-    ) -> Result<(), Error>
-    where
-        T: sqlx::Encode<'a, Sqlite> + Type<Sqlite> + 'a,
-    {
-        let mut app_state = state.lock().await;
-
-        if let Some(ref mut conn) = app_state.db_conn {
-            sqlx::query(query)
-                .bind(bind_one)
-                .execute(conn)
-                .await
-                .or(Err(Error::SqlError))?;
-        }
-        Ok(())
-    }
-
-    pub async fn execute_query_two_binds<'a, T, S>(
-        state: &tauri::State<'_, Mutex<AppState>>,
-        query: &'static str,
-        bind_one: T,
-        bind_two: S,
-    ) -> Result<(), Error>
-    where
-        T: sqlx::Encode<'a, Sqlite> + Type<Sqlite> + 'a,
-        S: sqlx::Encode<'a, Sqlite> + Type<Sqlite> + 'a,
-    {
-        let mut app_state = state.lock().await;
-
-        if let Some(ref mut conn) = app_state.db_conn {
-            sqlx::query(query)
-                .bind(bind_one)
-                .bind(bind_two)
-                .execute(conn)
-                .await
-                .or(Err(Error::SqlError))?;
-        }
-        Ok(())
-    }
-
-    pub async fn execute_query_four_binds<'a, T, S, U, V>(
-        state: &tauri::State<'_, Mutex<AppState>>,
-        query: &'static str,
-        bind_one: T,
-        bind_two: S,
-        bind_three: U,
-        bind_four: V,
-    ) -> Result<(), Error>
-    where
-        T: sqlx::Encode<'a, Sqlite> + Type<Sqlite> + 'a,
-        S: sqlx::Encode<'a, Sqlite> + Type<Sqlite> + 'a,
-        U: sqlx::Encode<'a, Sqlite> + Type<Sqlite> + 'a,
-        V: sqlx::Encode<'a, Sqlite> + Type<Sqlite> + 'a,
-    {
-        let mut app_state = state.lock().await;
-
-        if let Some(ref mut conn) = app_state.db_conn {
-            sqlx::query(query)
-                .bind(bind_one)
-                .bind(bind_two)
-                .bind(bind_three)
-                .bind(bind_four)
-                .execute(conn)
-                .await
-                .or(Err(Error::SqlError))?;
         }
         Ok(())
     }
