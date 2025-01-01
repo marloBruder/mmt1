@@ -1,8 +1,8 @@
 use crate::{
     metamath::{self, calc_theorem_page_data},
     model::{
-        Constant, FloatingHypohesis, Hypothesis, InProgressTheorem, MetamathData, Theorem,
-        TheoremPageData, Variable,
+        Constant, FloatingHypohesis, HeaderRepresentation, Hypothesis, InProgressTheorem,
+        MetamathData, Theorem, TheoremPageData, Variable,
     },
     AppState,
 };
@@ -63,6 +63,36 @@ pub async fn get_theorem_page_data_local(
     }
 
     Err(metamath::Error::NotFoundError)
+}
+
+#[tauri::command]
+pub async fn get_theorem_list_header_local(
+    state: tauri::State<'_, Mutex<AppState>>,
+) -> Result<HeaderRepresentation, metamath::Error> {
+    get_header_local(state, Vec::new()).await
+}
+
+#[tauri::command]
+pub async fn get_header_local(
+    state: tauri::State<'_, Mutex<AppState>>,
+    location: Vec<i32>,
+) -> Result<HeaderRepresentation, metamath::Error> {
+    let app_state = state.lock().await;
+
+    if let Some(ref mm_data) = app_state.metamath_data {
+        let mut header = &mm_data.theorem_list_header;
+
+        for i in location {
+            header = header
+                .sub_headers
+                .get(i as usize)
+                .ok_or(metamath::Error::NotFoundError)?;
+        }
+
+        return Ok(header.representation());
+    }
+
+    Err(metamath::Error::NoDatabaseOpenError)
 }
 
 #[tauri::command]

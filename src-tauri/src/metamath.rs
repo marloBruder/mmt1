@@ -596,6 +596,7 @@ pub enum Error {
     SqlError,
     NotFoundError,
     InvalidProofError,
+    NoDatabaseOpenError,
 }
 
 impl fmt::Display for Error {

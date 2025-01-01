@@ -56,6 +56,12 @@ pub struct Header {
     pub sub_headers: Vec<Header>,
 }
 
+pub struct HeaderRepresentation {
+    pub title: String,
+    pub theorem_names: Vec<String>,
+    pub sub_header_names: Vec<String>,
+}
+
 pub struct TheoremPageData {
     pub theorem: Theorem,
     pub proof_lines: Vec<ProofLine>,
@@ -67,6 +73,31 @@ pub struct ProofLine {
     pub reference: String,
     pub indention: i32,
     pub assertion: String,
+}
+
+impl Header {
+    pub fn representation(&self) -> HeaderRepresentation {
+        HeaderRepresentation {
+            title: self.title.clone(),
+            theorem_names: self.theorems.iter().map(|t| t.name.clone()).collect(),
+            sub_header_names: self.sub_headers.iter().map(|sh| sh.title.clone()).collect(),
+        }
+    }
+}
+
+impl serde::Serialize for HeaderRepresentation {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("HeaderRepresentation", 2)?;
+        state.serialize_field("title", &self.title)?;
+        state.serialize_field("theoremNames", &self.theorem_names)?;
+        state.serialize_field("subHeaderNames", &self.sub_header_names)?;
+        state.end()
+    }
 }
 
 impl serde::Serialize for TheoremPageData {
