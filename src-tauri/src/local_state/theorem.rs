@@ -2,7 +2,7 @@ use tauri::async_runtime::Mutex;
 
 use crate::{
     metamath::{self, calc_theorem_page_data},
-    model::{HeaderRepresentation, Hypothesis, MetamathData, Theorem, TheoremPageData},
+    model::{Header, HeaderRepresentation, Hypothesis, MetamathData, Theorem, TheoremPageData},
     AppState,
 };
 
@@ -75,13 +75,52 @@ pub fn get_theorem_by_name_local<'a>(
     metamath_data: &'a MetamathData,
     name: &str,
 ) -> Result<&'a Theorem, metamath::Error> {
-    for theorem in &metamath_data.theorems {
+    get_theorem_by_name_relative(&metamath_data.theorem_list_header, name)
+        .ok_or(metamath::Error::NotFoundError)
+}
+
+fn get_theorem_by_name_relative<'a>(header: &'a Header, name: &str) -> Option<&'a Theorem> {
+    for theorem in &header.theorems {
         if theorem.name == name {
-            return Ok(&theorem);
+            return Some(theorem);
         }
     }
 
-    Err(metamath::Error::NotFoundError)
+    for sub_header in &header.sub_headers {
+        let sub_header_res = get_theorem_by_name_relative(sub_header, name);
+        if sub_header_res.is_some() {
+            return sub_header_res;
+        }
+    }
+
+    None
+}
+
+pub fn get_theorem_position_by_name_local(
+    metamath_data: &mut MetamathData,
+    name: &str,
+) -> Option<Vec<i32>> {
+    get_theorem_position_by_name_relative(&metamath_data.theorem_list_header, name)
+}
+
+fn get_theorem_position_by_name_relative(header: &Header, name: &str) -> Option<Vec<i32>> {
+    for (index, theorem) in header.theorems.iter().enumerate() {
+        if theorem.name == name {
+            let mut res = Vec::new();
+            res.push(index as i32);
+            return Some(res);
+        }
+    }
+
+    for (index, sub_header) in header.sub_headers.iter().enumerate() {
+        let sub_header_res = get_theorem_position_by_name_relative(sub_header, name);
+        if let Some(mut res) = sub_header_res {
+            res.insert(0, index as i32);
+            return Some(res);
+        }
+    }
+
+    None
 }
 
 pub fn add_theorem_local(
