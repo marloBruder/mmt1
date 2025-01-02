@@ -3,7 +3,7 @@ use crate::{
         constant::set_constants_database,
         floating_hypothesis::set_floating_hypotheses_database,
         in_progress_theorem::delete_in_progress_theorem_database,
-        theorem::{add_theorem_database, calc_db_index},
+        theorem::{add_theorem_database, calc_db_index_for_theorem},
         variable::set_variables_database,
     },
     local_state::{
@@ -92,7 +92,7 @@ pub async fn turn_into_theorem(
             &insert_position,
         )?;
 
-        let db_index = calc_db_index(mm_data, &insert_position)?;
+        let db_index = calc_db_index_for_theorem(mm_data, &insert_position)?;
 
         if let Some(ref mut conn) = app_state.db_conn {
             add_theorem_database(

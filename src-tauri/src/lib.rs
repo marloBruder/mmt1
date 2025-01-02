@@ -4,6 +4,7 @@ use tauri::{async_runtime::Mutex, App, Manager};
 
 mod database;
 mod editor;
+mod explorer;
 mod local_state;
 mod metamath;
 mod model;
@@ -35,6 +36,7 @@ pub fn run() {
             editor::set_in_progress_theorem_name,
             editor::set_in_progress_theorem,
             editor::delete_in_progress_theorem,
+            explorer::add_header,
             metamath::turn_into_theorem,
             metamath::text_to_constants,
             metamath::text_to_variables,

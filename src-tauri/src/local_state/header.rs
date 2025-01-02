@@ -60,3 +60,31 @@ fn get_header_position_by_title_relative(header: &Header, title: &str) -> Option
 
     None
 }
+
+pub fn add_header_local(
+    metamath_data: &mut MetamathData,
+    title: &str,
+    insert_position: &Vec<usize>,
+) -> Result<(), metamath::Error> {
+    let mut header = &mut metamath_data.theorem_list_header;
+
+    for (loop_index, &pos_index) in insert_position.iter().enumerate() {
+        if loop_index != insert_position.len() - 1 {
+            header = header
+                .sub_headers
+                .get_mut(pos_index)
+                .ok_or(metamath::Error::InternalLogicError)?;
+        } else {
+            header.sub_headers.insert(
+                pos_index,
+                Header {
+                    title: title.to_string(),
+                    theorems: Vec::new(),
+                    sub_headers: Vec::new(),
+                },
+            );
+        }
+    }
+
+    Ok(())
+}

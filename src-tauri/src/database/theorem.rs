@@ -5,16 +5,18 @@ use crate::{
 };
 use sqlx::SqliteConnection;
 
-pub fn calc_db_index(
+pub fn calc_db_index_for_theorem(
     metamath_data: &MetamathData,
     insert_position: &Vec<usize>,
 ) -> Result<i32, metamath::Error> {
-    let mut sum = 0;
+    let mut sum = -1;
 
     let mut header = &metamath_data.theorem_list_header;
 
     for (loop_index, &pos_index) in insert_position.iter().enumerate() {
         if loop_index != insert_position.len() - 1 {
+            sum += 1;
+            sum += header.theorems.len() as i32;
             for index in 0..pos_index {
                 sum += count_db_indexes_in_header(
                     header
@@ -29,6 +31,7 @@ pub fn calc_db_index(
                 .ok_or(metamath::Error::InternalLogicError)?;
         } else {
             if header.theorems.len() >= pos_index {
+                sum += 1;
                 sum += pos_index as i32;
             } else {
                 return Err(metamath::Error::InternalLogicError);
@@ -39,7 +42,7 @@ pub fn calc_db_index(
     Ok(sum)
 }
 
-fn count_db_indexes_in_header(header: &Header) -> i32 {
+pub fn count_db_indexes_in_header(header: &Header) -> i32 {
     let mut sum = 1 + header.theorems.len() as i32;
     for sub_header in &header.sub_headers {
         sum += count_db_indexes_in_header(sub_header);

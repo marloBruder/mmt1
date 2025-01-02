@@ -1,5 +1,8 @@
-use super::Error;
-use crate::model::{Header, Hypothesis, Theorem};
+use super::{theorem, Error};
+use crate::{
+    metamath,
+    model::{Header, Hypothesis, MetamathData, Theorem},
+};
 use futures::TryStreamExt;
 use sqlx::{sqlite::SqliteRow, Row, SqliteConnection};
 
@@ -146,8 +149,65 @@ async fn get_db_headers(conn: &mut SqliteConnection) -> Result<Vec<DbHeader>, Er
     Ok(result)
 }
 
+pub fn calc_db_index_for_header(
+    metamath_data: &MetamathData,
+    insert_position: &Vec<usize>,
+) -> Result<i32, metamath::Error> {
+    let mut sum = -1;
+
+    let mut header = &metamath_data.theorem_list_header;
+
+    for &pos_index in insert_position {
+        sum += 1;
+        sum += header.theorems.len() as i32;
+        for index in 0..pos_index {
+            sum += theorem::count_db_indexes_in_header(
+                header
+                    .sub_headers
+                    .get(index)
+                    .ok_or(metamath::Error::InternalLogicError)?,
+            );
+        }
+        header = header
+            .sub_headers
+            .get(pos_index)
+            .ok_or(metamath::Error::InternalLogicError)?;
+    }
+
+    Ok(sum)
+}
+
+pub async fn add_header_database(
+    conn: &mut SqliteConnection,
+    db_index: i32,
+    depth: i32,
+    title: &str,
+) -> Result<(), metamath::Error> {
+    sqlx::query(sql::HEADER_ADD)
+        .bind(db_index)
+        .bind(depth)
+        .bind(title)
+        .execute(conn)
+        .await
+        .or(Err(metamath::Error::SqlError))?;
+
+    Ok(())
+}
+
 mod sql {
     pub const THEOREMS_GET: &str = "SELECT * FROM theorem ORDER BY db_index;";
 
     pub const DB_HEADERS_GET: &str = "SELECT * FROM header ORDER BY db_index;";
+
+    pub const HEADER_ADD: &str = "\
+UPDATE theorem
+SET db_index = db_index + 1
+WHERE db_index >= $1;
+
+UPDATE header
+SET db_index = db_index + 1
+WHERE db_index >= $1;
+
+INSERT INTO header (db_index, depth, title)
+VALUES ($1, $2, $3);";
 }
