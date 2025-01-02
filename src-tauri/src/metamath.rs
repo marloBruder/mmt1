@@ -1,14 +1,16 @@
 use crate::{
     database::{
-        self, constant::set_constants_database,
+        constant::set_constants_database,
         floating_hypothesis::set_floating_hypotheses_database,
-        in_progress_theorem::delete_in_progress_theorem_database, variable::set_variables_database,
+        in_progress_theorem::delete_in_progress_theorem_database,
+        theorem::{add_theorem_database, calc_db_index},
+        variable::set_variables_database,
     },
     local_state::{
         constant::set_constants_local,
         floating_hypothesis::set_floating_hypotheses_local,
         in_progress_theorem::delete_in_progress_theorem_local,
-        theorem::{add_theorem_local, get_theorem_by_name_local},
+        theorem::{add_theorem_local, get_theorem_by_name_local, get_theorem_insert_position},
         variable::set_variables_local,
     },
     model::{
@@ -24,6 +26,7 @@ use tauri::{async_runtime::Mutex, State};
 pub async fn turn_into_theorem(
     state: tauri::State<'_, Mutex<AppState>>,
     in_progress_theorem: InProgressTheorem,
+    position_name: &str,
 ) -> Result<(), Error> {
     if !in_progress_theorem.text.is_ascii() {
         return Err(Error::InvalidCharactersError);
@@ -75,21 +78,9 @@ pub async fn turn_into_theorem(
 
     let mut app_state = state.lock().await;
 
-    if let Some(ref mut conn) = app_state.db_conn {
-        database::theorem::add_theorem_database(
-            conn,
-            &name,
-            &description,
-            &disjoints,
-            &hypotheses,
-            &assertion,
-            proof.as_deref(),
-        )
-        .await
-        .or(Err(Error::SqlError))?;
-    }
-
     if let Some(ref mut mm_data) = app_state.metamath_data {
+        let insert_position = get_theorem_insert_position(mm_data, position_name)?;
+
         add_theorem_local(
             mm_data,
             &name,
@@ -98,7 +89,25 @@ pub async fn turn_into_theorem(
             &hypotheses,
             &assertion,
             proof.as_deref(),
-        );
+            &insert_position,
+        )?;
+
+        let db_index = calc_db_index(mm_data, &insert_position)?;
+
+        if let Some(ref mut conn) = app_state.db_conn {
+            add_theorem_database(
+                conn,
+                db_index,
+                &name,
+                &description,
+                &disjoints,
+                &hypotheses,
+                &assertion,
+                proof.as_deref(),
+            )
+            .await
+            .or(Err(Error::SqlError))?;
+        }
     }
 
     if let Some(ref mut conn) = app_state.db_conn {
@@ -651,6 +660,7 @@ pub enum Error {
     NotFoundError,
     InvalidProofError,
     NoDatabaseOpenError,
+    InternalLogicError,
 }
 
 impl fmt::Display for Error {

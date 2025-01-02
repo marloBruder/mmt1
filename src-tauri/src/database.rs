@@ -6,6 +6,7 @@ use crate::{model::MetamathData, AppState};
 
 pub mod constant;
 pub mod floating_hypothesis;
+pub mod header;
 pub mod in_progress_theorem;
 pub mod theorem;
 pub mod variable;
@@ -76,7 +77,7 @@ pub async fn open_database(
     let variables = variable::get_variables_database(&mut conn).await?;
     let floating_hypotheses =
         floating_hypothesis::get_floating_hypotheses_database(&mut conn).await?;
-    let theorem_list_header = theorem::get_theorem_list_header_database(&mut conn).await?;
+    let theorem_list_header = header::get_theorem_list_header_database(&mut conn).await?;
     let in_progress_theorems =
         in_progress_theorem::get_in_progress_theorems_database(&mut conn).await?;
 
