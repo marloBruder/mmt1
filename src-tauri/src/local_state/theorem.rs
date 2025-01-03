@@ -16,11 +16,8 @@ pub async fn get_theorem_page_data_local(
     let app_state = state.lock().await;
 
     if let Some(ref mm_data) = app_state.metamath_data {
-        for theorem in &mm_data.theorems {
-            if theorem.name == name {
-                return calc_theorem_page_data(&theorem, mm_data);
-            }
-        }
+        let theorem = get_theorem_by_name_local(mm_data, name)?;
+        return calc_theorem_page_data(theorem, mm_data);
     }
 
     Err(metamath::Error::NotFoundError)

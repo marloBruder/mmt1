@@ -163,8 +163,8 @@ export class EditorTab extends Tab {
     return;
   }
 
-  async convertToTheorem() {
-    await invoke("turn_into_theorem", { inProgressTheorem: this.#inProgressTheorem });
+  async convertToTheorem(placeAfter: string) {
+    await invoke("turn_into_theorem", { inProgressTheorem: this.#inProgressTheorem, positionName: placeAfter });
 
     nameListData.removeInProgressTheoremName(this.#inProgressTheorem.name);
     nameListData.addTheoremName(this.#inProgressTheorem.name);

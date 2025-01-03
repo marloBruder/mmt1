@@ -80,8 +80,10 @@
   };
 
   let turnIntoAxiom = () => {
-    tab.convertToTheorem();
+    tab.convertToTheorem(placeAfter);
   };
+
+  let placeAfter = $state("");
 </script>
 
 <div class="m-2">
@@ -94,6 +96,10 @@
 <div class="p-2 border-t border-gray-400">
   <RoundButton onclick={saveText} disabled={!textChanged}>Save</RoundButton>
   <RoundButton onclick={deleteTheorem} warning>Delete</RoundButton>
+</div>
+<div class="p-2 border-t border-gray-400">
+  <label for="placeAfter">Place after:</label>
+  <input id="placeAfter" bind:value={placeAfter} autocomplete="off" />
   <RoundButton onclick={turnIntoAxiom}>Turn into axiom</RoundButton>
 </div>
 <div>

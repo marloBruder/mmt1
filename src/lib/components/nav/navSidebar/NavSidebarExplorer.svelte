@@ -1,21 +1,8 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
-  import { page } from "$app/stores";
   import { nameListData } from "$lib/sharedState/nameListData.svelte";
+  import ExplorerHeader from "./explorer/ExplorerHeader.svelte";
 
   let filter = $state("");
-
-  let theoremName: string | null = $derived.by(() => {
-    let segments = $page.url.pathname.split("/");
-    if (segments.length == 4 && segments[1] == "main" && segments[2] == "theorem") {
-      return segments[3];
-    }
-    return null;
-  });
-
-  let explorerClick = (name: string) => {
-    goto("/main/theorem/" + name);
-  };
 </script>
 
 <div>
@@ -23,7 +10,11 @@
     Quick Search:
     <input bind:value={filter} class="border border-black rounded" />
   </div>
-  <div class="pl-1 py-2">Explorer:</div>
+  <!-- <div class="pl-1 py-2">Explorer:</div> -->
+  <div>
+    <ExplorerHeader header={nameListData.topHeader} location={[]}></ExplorerHeader>
+  </div>
+  <!-- <div class="pl-1 py-2">Explorer:</div>
   <ul class="pl-2">
     {#each nameListData.theoremNames as name}
       {#if name.startsWith(filter)}
@@ -32,5 +23,5 @@
         </li>
       {/if}
     {/each}
-  </ul>
+  </ul> -->
 </div>

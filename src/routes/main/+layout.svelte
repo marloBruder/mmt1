@@ -7,7 +7,7 @@
 </script>
 
 <div class="h-screen w-screen custom-grid-layout fixed">
-  <div class="sideBar border-r border-gray-400">
+  <div class="sideBar border-r border-gray-400 overflow-hidden">
     <NavSidebar></NavSidebar>
   </div>
   <div class="tabBar overflow-hidden">

@@ -40,6 +40,10 @@ pub fn get_header_position_by_title_local(
     metamath_data: &MetamathData,
     title: &str,
 ) -> Option<Vec<usize>> {
+    if metamath_data.theorem_list_header.title == title {
+        return Some(Vec::new());
+    }
+
     get_header_position_by_title_relative(&metamath_data.theorem_list_header, title)
 }
 

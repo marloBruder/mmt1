@@ -151,8 +151,8 @@ CREATE TABLE in_progress_theorem (
     text TEXT
 );
 CREATE TABLE header (
-    db_index INTEGER
-    depth INTEGER
+    db_index INTEGER,
+    depth INTEGER,
     title TEXT
 );
 ";

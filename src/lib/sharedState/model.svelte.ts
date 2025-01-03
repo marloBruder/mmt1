@@ -38,10 +38,20 @@ export interface InProgressTheorem {
   text: string;
 }
 
-export interface Header {
+// Header, but instead of having a theorem list, it has a theorem name list
+// Used to store the explorer state
+export interface NameListHeader {
   title: string;
-  theorems: Theorem[];
-  subHeaders: Header[];
+  theoremNames: string[];
+  subHeaders: NameListHeader[];
+}
+
+// Header, but both theorem and subheader lists have been replaced by names
+// Used to recieve data about a singular header from backend
+export interface HeaderRepresentation {
+  title: string;
+  theoremNames: string[];
+  subHeaderNames: string[];
 }
 
 export interface TheoremPageData {
