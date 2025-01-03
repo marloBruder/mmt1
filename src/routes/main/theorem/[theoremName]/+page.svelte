@@ -87,7 +87,7 @@
               </td>
               <td class="border border-gray-600 py-1 px-2">
                 {#if !isHypothesisName(proofLine.reference)}
-                  <a href={"/main/theorem/" + proofLine.reference}>{proofLine.reference}</a>
+                  <a href={"/main/theorem/" + proofLine.reference} data-sveltekit-preload-data="tap">{proofLine.reference}</a>
                 {:else}
                   {proofLine.reference}
                 {/if}

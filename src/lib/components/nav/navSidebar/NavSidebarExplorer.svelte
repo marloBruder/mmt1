@@ -5,13 +5,13 @@
   let filter = $state("");
 </script>
 
-<div>
-  <div class="p-2">
+<div class="h-full overflow-y-auto overflow-x-hidden">
+  <!-- <div class="p-2">
     Quick Search:
     <input bind:value={filter} class="border border-black rounded" />
-  </div>
+  </div> -->
   <!-- <div class="pl-1 py-2">Explorer:</div> -->
-  <div>
+  <div class="pt-2">
     <ExplorerHeader header={nameListData.topHeader} location={[]}></ExplorerHeader>
   </div>
   <!-- <div class="pl-1 py-2">Explorer:</div>
