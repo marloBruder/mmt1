@@ -46,7 +46,6 @@ pub fn run() {
             local_state::floating_hypothesis::get_floating_hypotheses_local,
             local_state::theorem::get_theorem_page_data_local,
             local_state::theorem::get_theorem_names_local,
-            local_state::header::get_theorem_list_header_local,
             local_state::header::get_header_local,
             local_state::in_progress_theorem::get_in_progress_theorem_local,
             local_state::in_progress_theorem::get_in_progress_theorem_names_local,

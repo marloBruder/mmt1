@@ -100,7 +100,7 @@
 <div class="p-2 border-t border-gray-400">
   <label for="placeAfter">Place after:</label>
   <input id="placeAfter" bind:value={placeAfter} autocomplete="off" />
-  <RoundButton onclick={turnIntoAxiom}>Turn into axiom</RoundButton>
+  <RoundButton onclick={turnIntoAxiom}>Turn into theorem</RoundButton>
 </div>
 <div>
   <textarea bind:value={theorem.text} oninput={textChange} class="w-full resize-none h-96"></textarea>

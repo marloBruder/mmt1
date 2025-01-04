@@ -10,7 +10,7 @@ use crate::{
         constant::set_constants_local,
         floating_hypothesis::set_floating_hypotheses_local,
         in_progress_theorem::delete_in_progress_theorem_local,
-        theorem::{add_theorem_local, get_theorem_by_name_local, get_theorem_insert_position},
+        theorem::{add_theorem_local, get_theorem_insert_position},
         variable::set_variables_local,
     },
     model::{
@@ -574,7 +574,10 @@ fn calc_proof_steps(
             "(" => {}
             ")" => break,
             label => {
-                let label_theorem = get_theorem_by_name_local(metamath_data, label)?;
+                let label_theorem = metamath_data
+                    .theorem_list_header
+                    .find_theorem_by_name(label)
+                    .ok_or(Error::NotFoundError)?;
                 let label_theorem_hypotheses =
                     calc_all_hypotheses_of_theorem(label_theorem, metamath_data);
                 steps.push(ProofStep {
@@ -661,6 +664,7 @@ pub enum Error {
     InvalidProofError,
     NoDatabaseOpenError,
     InternalLogicError,
+    InvaildArgumentError,
 }
 
 impl fmt::Display for Error {

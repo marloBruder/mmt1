@@ -30,7 +30,7 @@
 
   let toggleOpen = async () => {
     if (!opened) {
-      let dataUnknown = await invoke("get_header_local", { location });
+      let dataUnknown = await invoke("get_header_local", { headerPath: { path: location } });
       let data = dataUnknown as HeaderRepresentation;
       header.theoremNames = data.theoremNames;
       header.subHeaders = data.subHeaderNames.map((title) => {
@@ -80,7 +80,7 @@
       throw Error("Invalid Name");
     }
     addingSubheader = false;
-    await invoke("add_header", { title: newSubheaderTitle, insertPosition: calcNewLocation(header.subHeaders.length) });
+    await invoke("add_header", { title: newSubheaderTitle, insertPath: { path: calcNewLocation(header.subHeaders.length) } });
     header.subHeaders.push({ title: newSubheaderTitle, theoremNames: [], subHeaders: [] });
   };
 
@@ -126,7 +126,7 @@
         <ChevronRightIcon></ChevronRightIcon>
       {/if}
     </div>
-    <div class="ml-6 whitespace-nowrap">
+    <div class="ml-6 whitespace-nowrap mr-6 overflow-hidden">
       {locationString}
       {header.title}
     </div>

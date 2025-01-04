@@ -1,7 +1,7 @@
-use super::{theorem, Error};
+use super::Error;
 use crate::{
     metamath,
-    model::{Header, Hypothesis, MetamathData, Theorem},
+    model::{Header, HeaderPath, Hypothesis, MetamathData, Theorem},
 };
 use futures::TryStreamExt;
 use sqlx::{sqlite::SqliteRow, Row, SqliteConnection};
@@ -151,22 +151,21 @@ async fn get_db_headers(conn: &mut SqliteConnection) -> Result<Vec<DbHeader>, Er
 
 pub fn calc_db_index_for_header(
     metamath_data: &MetamathData,
-    insert_position: &Vec<usize>,
+    insert_path: &HeaderPath,
 ) -> Result<i32, metamath::Error> {
     let mut sum = -1;
 
     let mut header = &metamath_data.theorem_list_header;
 
-    for &pos_index in insert_position {
+    for &pos_index in &insert_path.path {
         sum += 1;
         sum += header.theorems.len() as i32;
         for index in 0..pos_index {
-            sum += theorem::count_db_indexes_in_header(
-                header
-                    .sub_headers
-                    .get(index)
-                    .ok_or(metamath::Error::InternalLogicError)?,
-            );
+            sum += header
+                .sub_headers
+                .get(index)
+                .ok_or(metamath::Error::InternalLogicError)?
+                .count_theorems_and_headers();
         }
         header = header
             .sub_headers

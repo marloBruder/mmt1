@@ -1,53 +1,42 @@
 use super::Error;
 use crate::{
     metamath,
-    model::{Header, Hypothesis, MetamathData},
+    model::{Hypothesis, MetamathData, TheoremPath},
 };
 use sqlx::SqliteConnection;
 
 pub fn calc_db_index_for_theorem(
     metamath_data: &MetamathData,
-    insert_position: &Vec<usize>,
+    insert_path: &TheoremPath,
 ) -> Result<i32, metamath::Error> {
-    let mut sum = -1;
+    let mut sum = -1; // Start at -1 to not count the top-most header, which is not stored in the db
 
     let mut header = &metamath_data.theorem_list_header;
 
-    for (loop_index, &pos_index) in insert_position.iter().enumerate() {
-        if loop_index != insert_position.len() - 1 {
-            sum += 1;
-            sum += header.theorems.len() as i32;
-            for index in 0..pos_index {
-                sum += count_db_indexes_in_header(
-                    header
-                        .sub_headers
-                        .get(index)
-                        .ok_or(metamath::Error::InternalLogicError)?,
-                );
-            }
-            header = header
+    for &pos_index in &insert_path.header_path.path {
+        sum += 1;
+        sum += header.theorems.len() as i32;
+        for index in 0..pos_index {
+            sum += header
                 .sub_headers
-                .get(pos_index)
-                .ok_or(metamath::Error::InternalLogicError)?;
-        } else {
-            if header.theorems.len() >= pos_index {
-                sum += 1;
-                sum += pos_index as i32;
-            } else {
-                return Err(metamath::Error::InternalLogicError);
-            }
+                .get(index)
+                .ok_or(metamath::Error::InternalLogicError)?
+                .count_theorems_and_headers();
         }
+        header = header
+            .sub_headers
+            .get(pos_index)
+            .ok_or(metamath::Error::InternalLogicError)?;
     }
 
-    Ok(sum)
-}
+    if header.theorems.len() >= insert_path.theorem_index {
+        sum += 1;
+        sum += insert_path.theorem_index as i32;
 
-pub fn count_db_indexes_in_header(header: &Header) -> i32 {
-    let mut sum = 1 + header.theorems.len() as i32;
-    for sub_header in &header.sub_headers {
-        sum += count_db_indexes_in_header(sub_header);
+        Ok(sum)
+    } else {
+        Err(metamath::Error::InternalLogicError)
     }
-    sum
 }
 
 pub async fn add_theorem_database(
