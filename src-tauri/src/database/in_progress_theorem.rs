@@ -84,15 +84,15 @@ mod sql {
     pub const IN_PROGRESS_THEOREMS_GET: &str = "SELECT * FROM in_progress_theorem;";
 
     pub const IN_PROGRESS_THEOREM_ADD: &str =
-        "INSERT INTO in_progress_theorem (name, text) VALUES (?, ?)";
+        "INSERT INTO in_progress_theorem (name, text) VALUES ($1, $2)";
 
     pub const IN_PROGRESS_THEOREM_NAME_UPDATE: &str = "UPDATE in_progress_theorem
-      SET name = ?
-      WHERE name = ?;";
+      SET name = $1
+      WHERE name = $2;";
 
     pub const IN_PROGRESS_THEOREM_TEXT_UPDATE: &str = "UPDATE in_progress_theorem
-        SET text = ?
-        WHERE name = ?;";
+        SET text = $1
+        WHERE name = $2;";
 
-    pub const IN_PROGRESS_THEOREM_DELETE: &str = "DELETE FROM in_progress_theorem WHERE name = ?";
+    pub const IN_PROGRESS_THEOREM_DELETE: &str = "DELETE FROM in_progress_theorem WHERE name = $1";
 }

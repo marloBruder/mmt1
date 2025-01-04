@@ -56,5 +56,5 @@ ORDER BY [index];";
 
     pub const FLOATING_HYPOTHESIS_ADD: &str = "\
 INSERT INTO floating_hypothesis ([index], label, typecode, variable)
-VALUES (?, ?, ?, ?);";
+VALUES ($1, $2, $3, $4);";
 }

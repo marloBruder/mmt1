@@ -47,5 +47,5 @@ ORDER BY [index];";
 
     pub const CONSANT_ADD: &str = "\
 INSERT INTO constant ([index], symbol)
-VALUES (?, ?);";
+VALUES ($1, $2);";
 }

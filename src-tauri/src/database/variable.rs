@@ -47,5 +47,5 @@ ORDER BY [index];";
 
     pub const VARIABLE_ADD: &str = "\
 INSERT INTO variable ([index], symbol)
-VALUES (?, ?);";
+VALUES ($1, $2);";
 }
