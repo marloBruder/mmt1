@@ -1,9 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Constant, FloatingHypotheses, InProgressTheorem, Theorem, TheoremPageData, Variable } from "./model.svelte";
+import type { Constant, FloatingHypotheses, HeaderPath, InProgressTheorem, Theorem, TheoremPageData, TheoremPath, Variable } from "./model.svelte";
 import { nameListData } from "./nameListData.svelte";
 import { goto } from "$app/navigation";
 import { page } from "$app/stores";
 import { get } from "svelte/store";
+import { explorerData } from "./explorerData.svelte";
 
 class TabManager {
   #tabs: Tab[] = $state([]);
@@ -103,7 +104,6 @@ export class TheoremTab extends Tab {
 
   async loadData(): Promise<void> {
     this.#pageData = await invoke("get_theorem_page_data_local", { name: this.#theoremName });
-    console.log(this.#pageData);
   }
 
   name(): string {
@@ -164,10 +164,12 @@ export class EditorTab extends Tab {
   }
 
   async convertToTheorem(placeAfter: string) {
-    await invoke("turn_into_theorem", { inProgressTheorem: this.#inProgressTheorem, positionName: placeAfter });
+    let dataUnknown = await invoke("turn_into_theorem", { inProgressTheorem: this.#inProgressTheorem, positionName: placeAfter });
+    let theoremPath = dataUnknown as TheoremPath;
 
     nameListData.removeInProgressTheoremName(this.#inProgressTheorem.name);
     nameListData.addTheoremName(this.#inProgressTheorem.name);
+    await explorerData.addTheoremName(theoremPath, this.#inProgressTheorem.name);
     tabManager.closeTabSameID(this, false);
     goto("/main/theorem/" + this.#inProgressTheorem.name);
   }

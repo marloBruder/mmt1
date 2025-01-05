@@ -3,51 +3,38 @@
   import { invoke } from "@tauri-apps/api/core";
   import ExplorerHeader from "./ExplorerHeader.svelte";
   import { goto } from "$app/navigation";
-  import type { HeaderRepresentation, NameListHeader } from "$lib/sharedState/model.svelte";
+  import type { HeaderPath, HeaderRepresentation, NameListHeader } from "$lib/sharedState/model.svelte";
   import ChevronDownIcon from "$lib/icons/ChevronDownIcon.svelte";
   import ChevronRightIcon from "$lib/icons/ChevronRightIcon.svelte";
   import PlusIcon from "$lib/icons/PlusIcon.svelte";
   import { page } from "$app/stores";
+  import { explorerData } from "$lib/sharedState/explorerData.svelte";
 
-  let { header, location }: { header: NameListHeader; location: number[] } = $props();
+  let { header, headerPath }: { header: NameListHeader; headerPath: HeaderPath } = $props();
 
-  let locationString = $derived.by(() => {
+  let pathString = $derived.by(() => {
     let stringRep = "";
-    for (let pos of location) {
+    for (let pos of headerPath.path) {
       stringRep = stringRep + (pos + 1) + ".";
     }
     stringRep = stringRep.slice(0, stringRep.length - 1);
     return stringRep;
   });
 
-  let calcNewLocation = (index: number) => {
-    let newLocation = location.slice();
-    newLocation.push(index);
-    return newLocation;
+  let calcNewPath = (index: number): HeaderPath => {
+    let newPath = { path: headerPath.path.slice() };
+    newPath.path.push(index);
+    return newPath;
   };
-
-  let opened = $state(false);
 
   let toggleOpen = async () => {
-    if (!opened) {
-      let dataUnknown = await invoke("get_header_local", { headerPath: { path: location } });
-      let data = dataUnknown as HeaderRepresentation;
-      header.theoremNames = data.theoremNames;
-      header.subHeaders = data.subHeaderNames.map((title) => {
-        return { title, theoremNames: [], subHeaders: [] };
-      });
+    if (!header.opened) {
+      explorerData.loadHeader(headerPath, header);
     } else {
-      header.theoremNames = [];
-      header.subHeaders = [];
+      explorerData.unloadHeader(header);
     }
-    opened = !opened;
+    header.opened = !header.opened;
   };
-
-  onMount(() => {
-    if (header.subHeaders.length != 0 || header.theoremNames.length != 0) {
-      opened = true;
-    }
-  });
 
   let explorerClick = (name: string) => {
     goto("/main/theorem/" + name);
@@ -67,7 +54,7 @@
   });
 
   let openAddSubheaderInput = async () => {
-    if (!opened) {
+    if (!header.opened) {
       await toggleOpen();
     }
     addingSubheader = true;
@@ -80,8 +67,8 @@
       throw Error("Invalid Name");
     }
     addingSubheader = false;
-    await invoke("add_header", { title: newSubheaderTitle, insertPath: { path: calcNewLocation(header.subHeaders.length) } });
-    header.subHeaders.push({ title: newSubheaderTitle, theoremNames: [], subHeaders: [] });
+    await invoke("add_header", { title: newSubheaderTitle, insertPath: calcNewPath(header.subHeaders.length) });
+    header.subHeaders.push({ title: newSubheaderTitle, opened: true, theoremNames: [], subHeaders: [] });
   };
 
   let abortAddingSubheader = () => {
@@ -120,14 +107,14 @@
 <div class="relative h-6 hover:bg-gray-200">
   <button class="h-full w-full text-left absolute" onclick={toggleOpen}>
     <div class="h-6 w-6 div float-left">
-      {#if opened}
+      {#if header.opened}
         <ChevronDownIcon></ChevronDownIcon>
       {:else}
         <ChevronRightIcon></ChevronRightIcon>
       {/if}
     </div>
     <div class="ml-6 whitespace-nowrap mr-6 overflow-hidden">
-      {locationString}
+      {pathString}
       {header.title}
     </div>
   </button>
@@ -142,7 +129,7 @@
     </div>
   {/each}
   {#each header.subHeaders as subHeader, index}
-    <ExplorerHeader header={subHeader} location={calcNewLocation(index)}></ExplorerHeader>
+    <ExplorerHeader header={subHeader} headerPath={calcNewPath(index)}></ExplorerHeader>
   {/each}
   {#if addingSubheader}
     <input id="subheaderName" type="text" bind:value={newSubheaderTitle} onfocusout={onFocusOutSubheaderTitle} onkeydown={onkeyDownSubheaderTitle} disabled={!addingSubheader} autocomplete="off" class="disabled:bg-gray-300" />

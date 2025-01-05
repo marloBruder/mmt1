@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { nameListData } from "$lib/sharedState/nameListData.svelte";
+  import { explorerData } from "$lib/sharedState/explorerData.svelte";
   import ExplorerHeader from "./explorer/ExplorerHeader.svelte";
 
   let filter = $state("");
@@ -12,7 +12,7 @@
   </div> -->
   <!-- <div class="pl-1 py-2">Explorer:</div> -->
   <div class="pt-2">
-    <ExplorerHeader header={nameListData.topHeader} location={[]}></ExplorerHeader>
+    <ExplorerHeader header={explorerData.theoremListHeader} headerPath={{ path: [] }}></ExplorerHeader>
   </div>
   <!-- <div class="pl-1 py-2">Explorer:</div>
   <ul class="pl-2">

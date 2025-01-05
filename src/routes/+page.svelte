@@ -4,9 +4,11 @@
   import { save, confirm, open } from "@tauri-apps/plugin-dialog";
   import { tabManager } from "$lib/sharedState/tabData.svelte";
   import { nameListData } from "$lib/sharedState/nameListData.svelte";
+  import { explorerData } from "$lib/sharedState/explorerData.svelte";
 
   let resetApp = () => {
     nameListData.resetLists();
+    explorerData.resetExplorer();
     tabManager.resetTabs();
   };
 

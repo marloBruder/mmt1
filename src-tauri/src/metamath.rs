@@ -15,7 +15,7 @@ use crate::{
     },
     model::{
         Constant, FloatingHypohesis, Hypothesis, InProgressTheorem, MetamathData, ProofLine,
-        Theorem, TheoremPageData, Variable,
+        Theorem, TheoremPageData, TheoremPath, Variable,
     },
     AppState, Error,
 };
@@ -27,7 +27,7 @@ pub async fn turn_into_theorem(
     state: tauri::State<'_, Mutex<AppState>>,
     in_progress_theorem: InProgressTheorem,
     position_name: &str,
-) -> Result<(), Error> {
+) -> Result<TheoremPath, Error> {
     if !in_progress_theorem.text.is_ascii() {
         return Err(Error::InvalidCharactersError);
     }
@@ -79,7 +79,7 @@ pub async fn turn_into_theorem(
     let mut app_state = state.lock().await;
     let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
 
-    let insert_position = get_theorem_insert_position(&db_state.metamath_data, position_name)?;
+    let insert_path = get_theorem_insert_position(&db_state.metamath_data, position_name)?;
 
     add_theorem_local(
         &mut db_state.metamath_data,
@@ -89,10 +89,10 @@ pub async fn turn_into_theorem(
         &hypotheses,
         &assertion,
         proof.as_deref(),
-        &insert_position,
+        &insert_path,
     )?;
 
-    let db_index = calc_db_index_for_theorem(&db_state.metamath_data, &insert_position)?;
+    let db_index = calc_db_index_for_theorem(&db_state.metamath_data, &insert_path)?;
 
     add_theorem_database(
         &mut db_state.db_conn,
@@ -113,7 +113,7 @@ pub async fn turn_into_theorem(
 
     delete_in_progress_theorem_local(&mut db_state.metamath_data, &name);
 
-    Ok(())
+    Ok(insert_path)
 }
 
 fn get_next_as_string_until(iter: &mut std::str::SplitWhitespace, until: &str) -> String {

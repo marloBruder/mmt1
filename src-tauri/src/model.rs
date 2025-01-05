@@ -62,7 +62,7 @@ pub struct HeaderRepresentation {
     pub sub_header_names: Vec<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct HeaderPath {
     pub path: Vec<usize>,
 }
@@ -190,6 +190,20 @@ impl serde::Serialize for HeaderRepresentation {
         state.serialize_field("title", &self.title)?;
         state.serialize_field("theoremNames", &self.theorem_names)?;
         state.serialize_field("subHeaderNames", &self.sub_header_names)?;
+        state.end()
+    }
+}
+
+impl serde::Serialize for TheoremPath {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("TheoremPath", 2)?;
+        state.serialize_field("headerPath", &self.header_path)?;
+        state.serialize_field("theoremIndex", &self.theorem_index)?;
         state.end()
     }
 }

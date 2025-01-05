@@ -5,8 +5,6 @@ class NameListData {
   #theoremNames: string[] = $state([]);
   #inProgressTheoremNames: string[] = $state([]);
 
-  #topHeader: NameListHeader = $state({ title: "Explorer:", theoremNames: [], subHeaders: [] });
-
   async load() {
     await this.loadInProgressTheoremNames();
     await this.loadTheoremNames();
@@ -65,7 +63,6 @@ class NameListData {
   resetLists() {
     this.#inProgressTheoremNames = [];
     this.#theoremNames = [];
-    this.#topHeader = { title: "Explorer:", theoremNames: [], subHeaders: [] };
   }
 
   get theoremNames() {
@@ -74,10 +71,6 @@ class NameListData {
 
   get inProgressTheoremNames() {
     return this.#inProgressTheoremNames;
-  }
-
-  get topHeader() {
-    return this.#topHeader;
   }
 }
 

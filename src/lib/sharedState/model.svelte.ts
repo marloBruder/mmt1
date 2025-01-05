@@ -39,9 +39,11 @@ export interface InProgressTheorem {
 }
 
 // Header, but instead of having a theorem list, it has a theorem name list
+// Aditionally has a opened to store whether the headers ui is opened
 // Used to store the explorer state
 export interface NameListHeader {
   title: string;
+  opened: boolean;
   theoremNames: string[];
   subHeaders: NameListHeader[];
 }
@@ -52,6 +54,15 @@ export interface HeaderRepresentation {
   title: string;
   theoremNames: string[];
   subHeaderNames: string[];
+}
+
+export interface HeaderPath {
+  path: number[];
+}
+
+export interface TheoremPath {
+  headerPath: HeaderPath;
+  theoremIndex: number;
 }
 
 export interface TheoremPageData {
