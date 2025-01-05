@@ -17,9 +17,9 @@ use crate::{
         Constant, FloatingHypohesis, Hypothesis, InProgressTheorem, MetamathData, ProofLine,
         Theorem, TheoremPageData, Variable,
     },
-    AppState,
+    AppState, Error,
 };
-use std::{collections::HashMap, fmt};
+use std::collections::HashMap;
 use tauri::{async_runtime::Mutex, State};
 
 #[tauri::command]
@@ -639,31 +639,4 @@ fn get_variables_from_statement<'a>(
         }
     }
     vars
-}
-
-#[derive(Debug)]
-pub enum Error {
-    InvalidCharactersError,
-    InvalidFormatError,
-    SqlError,
-    NotFoundError,
-    InvalidProofError,
-    NoDatabaseError,
-    InternalLogicError,
-    InvaildArgumentError,
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl serde::Serialize for Error {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        serializer.serialize_str(self.to_string().as_ref())
-    }
 }

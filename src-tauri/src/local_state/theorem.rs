@@ -1,9 +1,9 @@
 use tauri::async_runtime::Mutex;
 
 use crate::{
-    metamath::{calc_theorem_page_data, Error},
+    metamath::calc_theorem_page_data,
     model::{Hypothesis, MetamathData, Theorem, TheoremPageData, TheoremPath},
-    AppState,
+    AppState, Error,
 };
 
 #[tauri::command]

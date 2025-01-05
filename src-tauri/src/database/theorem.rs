@@ -1,14 +1,13 @@
-use super::Error;
 use crate::{
-    metamath,
     model::{Hypothesis, MetamathData, TheoremPath},
+    Error,
 };
 use sqlx::SqliteConnection;
 
 pub fn calc_db_index_for_theorem(
     metamath_data: &MetamathData,
     insert_path: &TheoremPath,
-) -> Result<i32, metamath::Error> {
+) -> Result<i32, Error> {
     let mut sum = -1; // Start at -1 to not count the top-most header, which is not stored in the db
 
     let mut header = &metamath_data.theorem_list_header;
@@ -20,13 +19,13 @@ pub fn calc_db_index_for_theorem(
             sum += header
                 .sub_headers
                 .get(index)
-                .ok_or(metamath::Error::InternalLogicError)?
+                .ok_or(Error::InternalLogicError)?
                 .count_theorems_and_headers();
         }
         header = header
             .sub_headers
             .get(pos_index)
-            .ok_or(metamath::Error::InternalLogicError)?;
+            .ok_or(Error::InternalLogicError)?;
     }
 
     if header.theorems.len() >= insert_path.theorem_index {
@@ -35,7 +34,7 @@ pub fn calc_db_index_for_theorem(
 
         Ok(sum)
     } else {
-        Err(metamath::Error::InternalLogicError)
+        Err(Error::InternalLogicError)
     }
 }
 

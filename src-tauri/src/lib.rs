@@ -1,3 +1,5 @@
+use std::fmt;
+
 use model::MetamathData;
 use sqlx::SqliteConnection;
 use tauri::{async_runtime::Mutex, App, Manager};
@@ -54,4 +56,40 @@ pub fn run() {
         .setup(|app| app_setup(app))
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[derive(Debug)]
+pub enum Error {
+    DatabaseExistsError,
+    CreateDatabaseError,
+    ConnectDatabaseError,
+    WrongDatabaseFormatError,
+    NoDatabaseError,
+
+    SqlError,
+
+    NotFoundError,
+
+    InvalidCharactersError,
+    InvalidFormatError,
+    InvalidProofError,
+
+    InternalLogicError,
+    InvaildArgumentError,
+    InvalidDatabaseDataError,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl serde::Serialize for Error {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        serializer.serialize_str(self.to_string().as_ref())
+    }
 }

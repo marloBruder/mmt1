@@ -1,9 +1,8 @@
 use tauri::async_runtime::Mutex;
 
 use crate::{
-    metamath::Error,
     model::{FloatingHypohesis, MetamathData},
-    AppState,
+    AppState, Error,
 };
 
 #[tauri::command]

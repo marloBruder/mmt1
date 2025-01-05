@@ -1,5 +1,4 @@
-use super::Error;
-use crate::model::Constant;
+use crate::{model::Constant, Error};
 use futures::TryStreamExt;
 use sqlx::{Row, SqliteConnection};
 

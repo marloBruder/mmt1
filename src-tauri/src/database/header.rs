@@ -1,7 +1,6 @@
-use super::Error;
 use crate::{
-    metamath,
     model::{Header, HeaderPath, Hypothesis, MetamathData, Theorem},
+    Error,
 };
 use futures::TryStreamExt;
 use sqlx::{sqlite::SqliteRow, Row, SqliteConnection};
@@ -38,14 +37,14 @@ pub async fn get_theorem_list_header_database(
         }
 
         if db_header.depth < 0 {
-            return Err(Error::InvalidDataError);
+            return Err(Error::InvalidDatabaseDataError);
         } else {
             let mut header_placement = &mut main_header;
             for _ in 0..db_header.depth {
                 header_placement = header_placement
                     .sub_headers
                     .last_mut()
-                    .ok_or(Error::InvalidDataError)?;
+                    .ok_or(Error::InvalidDatabaseDataError)?;
             }
             header_placement.sub_headers.push(Header {
                 title: db_header.title,
@@ -152,7 +151,7 @@ async fn get_db_headers(conn: &mut SqliteConnection) -> Result<Vec<DbHeader>, Er
 pub fn calc_db_index_for_header(
     metamath_data: &MetamathData,
     insert_path: &HeaderPath,
-) -> Result<i32, metamath::Error> {
+) -> Result<i32, Error> {
     let mut sum = -1;
 
     let mut header = &metamath_data.theorem_list_header;
@@ -164,13 +163,13 @@ pub fn calc_db_index_for_header(
             sum += header
                 .sub_headers
                 .get(index)
-                .ok_or(metamath::Error::InternalLogicError)?
+                .ok_or(Error::InternalLogicError)?
                 .count_theorems_and_headers();
         }
         header = header
             .sub_headers
             .get(pos_index)
-            .ok_or(metamath::Error::InternalLogicError)?;
+            .ok_or(Error::InternalLogicError)?;
     }
 
     Ok(sum)
@@ -181,14 +180,14 @@ pub async fn add_header_database(
     db_index: i32,
     depth: i32,
     title: &str,
-) -> Result<(), metamath::Error> {
+) -> Result<(), Error> {
     sqlx::query(sql::HEADER_ADD)
         .bind(db_index)
         .bind(depth)
         .bind(title)
         .execute(conn)
         .await
-        .or(Err(metamath::Error::SqlError))?;
+        .or(Err(Error::SqlError))?;
 
     Ok(())
 }

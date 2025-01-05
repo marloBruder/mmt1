@@ -3,9 +3,8 @@ use tauri::async_runtime::Mutex;
 use crate::{
     database::header::{add_header_database, calc_db_index_for_header},
     local_state::header::add_header_local,
-    metamath,
     model::HeaderPath,
-    AppState,
+    AppState, Error,
 };
 
 #[tauri::command]
@@ -13,16 +12,13 @@ pub async fn add_header(
     state: tauri::State<'_, Mutex<AppState>>,
     title: &str,
     insert_path: HeaderPath,
-) -> Result<(), metamath::Error> {
+) -> Result<(), Error> {
     if insert_path.path.len() == 0 {
-        return Err(metamath::Error::InvaildArgumentError);
+        return Err(Error::InvaildArgumentError);
     }
 
     let mut app_state = state.lock().await;
-    let db_state = app_state
-        .db_state
-        .as_mut()
-        .ok_or(metamath::Error::NoDatabaseError)?;
+    let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
 
     add_header_local(&mut db_state.metamath_data, title, &insert_path)?;
 

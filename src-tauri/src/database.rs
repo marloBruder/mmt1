@@ -1,5 +1,5 @@
+use crate::Error;
 use sqlx::{migrate::MigrateDatabase, Connection, Sqlite, SqliteConnection};
-use std::fmt;
 use tauri::async_runtime::Mutex;
 
 use crate::{model::MetamathData, AppState, DatabaseState};
@@ -97,32 +97,6 @@ pub async fn open_database(
     });
 
     Ok(())
-}
-
-#[derive(Debug)]
-pub enum Error {
-    DatabaseExistsError,
-    CreateDatabaseError,
-    ConnectDatabaseError,
-    WrongDatabaseFormatError,
-    SqlError,
-    InvalidDataError,
-    NoDatabaseError,
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl serde::Serialize for Error {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        serializer.serialize_str(self.to_string().as_ref())
-    }
 }
 
 mod sql {
