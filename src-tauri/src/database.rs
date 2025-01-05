@@ -1,3 +1,8 @@
+use std::{
+    fs::File,
+    io::{BufRead, BufReader, Read},
+};
+
 use crate::Error;
 use sqlx::{migrate::MigrateDatabase, Connection, Sqlite, SqliteConnection};
 use tauri::async_runtime::Mutex;
@@ -15,21 +20,20 @@ pub mod variable;
 // If the database already exists, it will instead return an DatabaseExistsError
 #[tauri::command]
 pub async fn create_database(
-    file_path: &str,
     state: tauri::State<'_, Mutex<AppState>>,
+    file_path: &str,
 ) -> Result<(), Error> {
-    //println!("Trying to create db with path {}!", file_path);
     if Sqlite::database_exists(file_path).await.unwrap_or(false) {
         return Err(Error::DatabaseExistsError);
     }
-    create_or_override_database(file_path, state).await
+    create_or_override_database(state, file_path).await
 }
 
 // Tauri Command for creating a new database or overriding it if it already exists
 #[tauri::command]
 pub async fn create_or_override_database(
-    file_path: &str,
     state: tauri::State<'_, Mutex<AppState>>,
+    file_path: &str,
 ) -> Result<(), Error> {
     Sqlite::create_database(file_path)
         .await
@@ -60,8 +64,8 @@ pub async fn create_or_override_database(
 
 #[tauri::command]
 pub async fn open_database(
-    file_path: &str,
     state: tauri::State<'_, Mutex<AppState>>,
+    file_path: &str,
 ) -> Result<(), Error> {
     let mut conn = SqliteConnection::connect(file_path)
         .await
@@ -95,6 +99,44 @@ pub async fn open_database(
             theorem_list_header,
         },
     });
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn import_database(
+    state: tauri::State<'_, Mutex<AppState>>,
+    mm_file_path: &str,
+    db_file_path: &str,
+) -> Result<(), Error> {
+    if Sqlite::database_exists(db_file_path).await.unwrap_or(false) {
+        return Err(Error::DatabaseExistsError);
+    }
+    import_and_override_database(state, mm_file_path, db_file_path).await
+}
+
+#[tauri::command]
+pub async fn import_and_override_database(
+    state: tauri::State<'_, Mutex<AppState>>,
+    mm_file_path: &str,
+    db_file_path: &str,
+) -> Result<(), Error> {
+    Sqlite::create_database(db_file_path)
+        .await
+        .or(Err(Error::CreateDatabaseError))?;
+
+    let mut conn = SqliteConnection::connect(db_file_path)
+        .await
+        .or(Err(Error::ConnectDatabaseError))?;
+
+    sqlx::query(sql::INIT_DB)
+        .execute(&mut conn)
+        .await
+        .or(Err(Error::SqlError))?;
+
+    // let file = File::open(mm_file_path).or(Err(Error::FileNotFoundError))?;
+
+    // let reader = BufReader::new(file);
 
     Ok(())
 }

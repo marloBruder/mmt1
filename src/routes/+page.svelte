@@ -1,3 +1,12 @@
+<script module>
+  let resetApp = () => {
+    nameListData.resetLists();
+    explorerData.resetExplorer();
+    tabManager.resetTabs();
+  };
+  export { resetApp };
+</script>
+
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { invoke } from "@tauri-apps/api/core";
@@ -5,12 +14,6 @@
   import { tabManager } from "$lib/sharedState/tabData.svelte";
   import { nameListData } from "$lib/sharedState/nameListData.svelte";
   import { explorerData } from "$lib/sharedState/explorerData.svelte";
-
-  let resetApp = () => {
-    nameListData.resetLists();
-    explorerData.resetExplorer();
-    tabManager.resetTabs();
-  };
 
   let createNewDB = async () => {
     // Allow user to select file location
@@ -62,6 +65,9 @@
     </div>
     <div>
       <button onclick={openDB} class="inline-block mt-4">Open Metamath database</button>
+    </div>
+    <div>
+      <a href="/import" class="inline-block mt-4">Import Metamath (.mm) file</a>
     </div>
   </div>
 </main>

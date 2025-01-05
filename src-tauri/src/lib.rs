@@ -35,6 +35,8 @@ pub fn run() {
             database::create_database,
             database::create_or_override_database,
             database::open_database,
+            database::import_database,
+            database::import_and_override_database,
             editor::add_in_progress_theorem,
             editor::set_in_progress_theorem_name,
             editor::set_in_progress_theorem,
@@ -65,6 +67,8 @@ pub enum Error {
     ConnectDatabaseError,
     WrongDatabaseFormatError,
     NoDatabaseError,
+
+    FileNotFoundError,
 
     SqlError,
 
