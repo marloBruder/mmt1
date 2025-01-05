@@ -19,17 +19,17 @@ pub async fn add_header(
     }
 
     let mut app_state = state.lock().await;
+    let db_state = app_state
+        .db_state
+        .as_mut()
+        .ok_or(metamath::Error::NoDatabaseError)?;
 
-    if let Some(ref mut mm_data) = app_state.metamath_data {
-        add_header_local(mm_data, title, &insert_path)?;
+    add_header_local(&mut db_state.metamath_data, title, &insert_path)?;
 
-        let db_index = calc_db_index_for_header(mm_data, &insert_path)?;
-        let depth = (insert_path.path.len() as i32) - 1;
+    let db_index = calc_db_index_for_header(&db_state.metamath_data, &insert_path)?;
+    let depth = (insert_path.path.len() as i32) - 1;
 
-        if let Some(ref mut conn) = app_state.db_conn {
-            add_header_database(conn, db_index, depth, title).await?;
-        }
-    }
+    add_header_database(&mut db_state.db_conn, db_index, depth, title).await?;
 
     Ok(())
 }

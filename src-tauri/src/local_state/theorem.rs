@@ -1,7 +1,7 @@
 use tauri::async_runtime::Mutex;
 
 use crate::{
-    metamath::{self, calc_theorem_page_data},
+    metamath::{calc_theorem_page_data, Error},
     model::{Hypothesis, MetamathData, Theorem, TheoremPageData, TheoremPath},
     AppState,
 };
@@ -10,42 +10,37 @@ use crate::{
 pub async fn get_theorem_page_data_local(
     state: tauri::State<'_, Mutex<AppState>>,
     name: &str,
-) -> Result<TheoremPageData, metamath::Error> {
+) -> Result<TheoremPageData, Error> {
     let app_state = state.lock().await;
+    let db_state = app_state.db_state.as_ref().ok_or(Error::NoDatabaseError)?;
 
-    if let Some(ref mm_data) = app_state.metamath_data {
-        let theorem = mm_data
-            .theorem_list_header
-            .find_theorem_by_name(name)
-            .ok_or(metamath::Error::NotFoundError)?;
+    let theorem = db_state
+        .metamath_data
+        .theorem_list_header
+        .find_theorem_by_name(name)
+        .ok_or(Error::NotFoundError)?;
 
-        return calc_theorem_page_data(theorem, mm_data);
-    }
-
-    Err(metamath::Error::NotFoundError)
+    return calc_theorem_page_data(theorem, &db_state.metamath_data);
 }
 
 #[tauri::command]
 pub async fn get_theorem_names_local(
     state: tauri::State<'_, Mutex<AppState>>,
-) -> Result<Vec<String>, ()> {
+) -> Result<Vec<String>, Error> {
     let app_state = state.lock().await;
+    let db_state = app_state.db_state.as_ref().ok_or(Error::NoDatabaseError)?;
 
-    if let Some(ref mm_data) = app_state.metamath_data {
-        let mut names: Vec<String> = Vec::new();
-        for theorem in &mm_data.theorems {
-            names.push(theorem.name.clone());
-        }
-        return Ok(names);
+    let mut names: Vec<String> = Vec::new();
+    for theorem in &db_state.metamath_data.theorems {
+        names.push(theorem.name.clone());
     }
-
-    Err(())
+    return Ok(names);
 }
 
 pub fn get_theorem_insert_position(
     metamath_data: &MetamathData,
     position_name: &str,
-) -> Result<TheoremPath, metamath::Error> {
+) -> Result<TheoremPath, Error> {
     if position_name.contains(' ') {
         // Safe unwrap because of the prior condition
         let (_, header_title) = position_name.split_once(' ').unwrap();
@@ -59,7 +54,7 @@ pub fn get_theorem_insert_position(
                 theorem_index: 0,
             });
         } else {
-            return Err(metamath::Error::NotFoundError);
+            return Err(Error::NotFoundError);
         }
     } else {
         let theorem_path_res = metamath_data
@@ -70,7 +65,7 @@ pub fn get_theorem_insert_position(
             theorem_path.theorem_index += 1;
             return Ok(theorem_path);
         } else {
-            return Err(metamath::Error::NotFoundError);
+            return Err(Error::NotFoundError);
         }
     }
 }
@@ -84,14 +79,14 @@ pub fn add_theorem_local(
     assertion: &str,
     proof: Option<&str>,
     insert_path: &TheoremPath,
-) -> Result<(), metamath::Error> {
+) -> Result<(), Error> {
     let header = insert_path
         .header_path
         .resolve_mut(&mut metamath_data.theorem_list_header)
-        .ok_or(metamath::Error::NotFoundError)?;
+        .ok_or(Error::NotFoundError)?;
 
     if header.theorems.len() < insert_path.theorem_index {
-        return Err(metamath::Error::NotFoundError);
+        return Err(Error::NotFoundError);
     }
 
     header.theorems.insert(

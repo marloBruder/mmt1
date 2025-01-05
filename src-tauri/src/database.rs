@@ -2,7 +2,7 @@ use sqlx::{migrate::MigrateDatabase, Connection, Sqlite, SqliteConnection};
 use std::fmt;
 use tauri::async_runtime::Mutex;
 
-use crate::{model::MetamathData, AppState};
+use crate::{model::MetamathData, AppState, DatabaseState};
 
 pub mod constant;
 pub mod floating_hypothesis;
@@ -49,8 +49,11 @@ pub async fn create_or_override_database(
     // })?;
 
     let mut app_state = state.lock().await;
-    app_state.db_conn = Some(conn);
-    app_state.metamath_data = Some(Default::default());
+
+    app_state.db_state = Some(DatabaseState {
+        db_conn: conn,
+        metamath_data: Default::default(),
+    });
 
     Ok(())
 }
@@ -71,8 +74,6 @@ pub async fn open_database(
     sql::check_returns_rows_or_error(sql::IN_PROGRESS_THEOREM_TABLE_CHECK, &mut conn).await?;
     sql::check_returns_rows_or_error(sql::HEADER_TABLE_CHECK, &mut conn).await?;
 
-    let mut app_state = state.lock().await;
-
     let constants = constant::get_constants_database(&mut conn).await?;
     let variables = variable::get_variables_database(&mut conn).await?;
     let floating_hypotheses =
@@ -81,14 +82,18 @@ pub async fn open_database(
     let in_progress_theorems =
         in_progress_theorem::get_in_progress_theorems_database(&mut conn).await?;
 
-    app_state.db_conn = Some(conn);
-    app_state.metamath_data = Some(MetamathData {
-        constants,
-        variables,
-        floating_hypotheses,
-        theorems: Vec::new(),
-        in_progress_theorems,
-        theorem_list_header,
+    let mut app_state = state.lock().await;
+
+    app_state.db_state = Some(DatabaseState {
+        db_conn: conn,
+        metamath_data: MetamathData {
+            constants,
+            variables,
+            floating_hypotheses,
+            theorems: Vec::new(),
+            in_progress_theorems,
+            theorem_list_header,
+        },
     });
 
     Ok(())
@@ -102,6 +107,7 @@ pub enum Error {
     WrongDatabaseFormatError,
     SqlError,
     InvalidDataError,
+    NoDatabaseError,
 }
 
 impl fmt::Display for Error {

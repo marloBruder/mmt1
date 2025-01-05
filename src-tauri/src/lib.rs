@@ -10,15 +10,16 @@ mod metamath;
 mod model;
 
 pub struct AppState {
-    db_conn: Option<SqliteConnection>,
-    metamath_data: Option<MetamathData>,
+    db_state: Option<DatabaseState>,
+}
+
+pub struct DatabaseState {
+    db_conn: SqliteConnection,
+    metamath_data: MetamathData,
 }
 
 fn app_setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
-    app.manage(Mutex::new(AppState {
-        db_conn: None,
-        metamath_data: None,
-    }));
+    app.manage(Mutex::new(AppState { db_state: None }));
     // app.manage::<Mutex<Option<AppState>>>(Mutex::new(None));
     Ok(())
 }

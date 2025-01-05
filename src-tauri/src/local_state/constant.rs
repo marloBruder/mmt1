@@ -1,6 +1,7 @@
 use tauri::async_runtime::Mutex;
 
 use crate::{
+    metamath::Error,
     model::{Constant, MetamathData},
     AppState,
 };
@@ -8,14 +9,11 @@ use crate::{
 #[tauri::command]
 pub async fn get_constants_local(
     state: tauri::State<'_, Mutex<AppState>>,
-) -> Result<Vec<Constant>, ()> {
+) -> Result<Vec<Constant>, Error> {
     let app_state = state.lock().await;
+    let db_state = app_state.db_state.as_ref().ok_or(Error::NoDatabaseError)?;
 
-    if let Some(ref mm_data) = app_state.metamath_data {
-        return Ok(mm_data.constants.clone());
-    }
-
-    Err(())
+    Ok(db_state.metamath_data.constants.clone())
 }
 
 pub fn set_constants_local(metamath_data: &mut MetamathData, symbols: &Vec<&str>) {

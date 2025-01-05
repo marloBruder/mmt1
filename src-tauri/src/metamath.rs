@@ -77,48 +77,42 @@ pub async fn turn_into_theorem(
     }
 
     let mut app_state = state.lock().await;
+    let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
 
-    if let Some(ref mut mm_data) = app_state.metamath_data {
-        let insert_position = get_theorem_insert_position(mm_data, position_name)?;
+    let insert_position = get_theorem_insert_position(&db_state.metamath_data, position_name)?;
 
-        add_theorem_local(
-            mm_data,
-            &name,
-            &description,
-            &disjoints,
-            &hypotheses,
-            &assertion,
-            proof.as_deref(),
-            &insert_position,
-        )?;
+    add_theorem_local(
+        &mut db_state.metamath_data,
+        &name,
+        &description,
+        &disjoints,
+        &hypotheses,
+        &assertion,
+        proof.as_deref(),
+        &insert_position,
+    )?;
 
-        let db_index = calc_db_index_for_theorem(mm_data, &insert_position)?;
+    let db_index = calc_db_index_for_theorem(&db_state.metamath_data, &insert_position)?;
 
-        if let Some(ref mut conn) = app_state.db_conn {
-            add_theorem_database(
-                conn,
-                db_index,
-                &name,
-                &description,
-                &disjoints,
-                &hypotheses,
-                &assertion,
-                proof.as_deref(),
-            )
-            .await
-            .or(Err(Error::SqlError))?;
-        }
-    }
+    add_theorem_database(
+        &mut db_state.db_conn,
+        db_index,
+        &name,
+        &description,
+        &disjoints,
+        &hypotheses,
+        &assertion,
+        proof.as_deref(),
+    )
+    .await
+    .or(Err(Error::SqlError))?;
 
-    if let Some(ref mut conn) = app_state.db_conn {
-        delete_in_progress_theorem_database(conn, &name)
-            .await
-            .or(Err(Error::SqlError))?;
-    }
+    delete_in_progress_theorem_database(&mut db_state.db_conn, &name)
+        .await
+        .or(Err(Error::SqlError))?;
 
-    if let Some(ref mut mm_data) = app_state.metamath_data {
-        delete_in_progress_theorem_local(mm_data, &name);
-    }
+    delete_in_progress_theorem_local(&mut db_state.metamath_data, &name);
+
     Ok(())
 }
 
@@ -148,16 +142,13 @@ pub async fn text_to_constants(
     let symbols = text_to_constant_or_variable_symbols(text, true)?;
 
     let mut app_state = state.lock().await;
+    let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
 
-    if let Some(ref mut conn) = app_state.db_conn {
-        set_constants_database(conn, &symbols)
-            .await
-            .or(Err(Error::SqlError))?;
-    }
+    set_constants_database(&mut db_state.db_conn, &symbols)
+        .await
+        .or(Err(Error::SqlError))?;
 
-    if let Some(ref mut mm_data) = app_state.metamath_data {
-        set_constants_local(mm_data, &symbols);
-    }
+    set_constants_local(&mut db_state.metamath_data, &symbols);
 
     let mut constants = Vec::new();
 
@@ -182,16 +173,13 @@ pub async fn text_to_variables(
     let symbols = text_to_constant_or_variable_symbols(text, false)?;
 
     let mut app_state = state.lock().await;
+    let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
 
-    if let Some(ref mut conn) = app_state.db_conn {
-        set_variables_database(conn, &symbols)
-            .await
-            .or(Err(Error::SqlError))?;
-    }
+    set_variables_database(&mut db_state.db_conn, &symbols)
+        .await
+        .or(Err(Error::SqlError))?;
 
-    if let Some(ref mut mm_data) = app_state.metamath_data {
-        set_variables_local(mm_data, &symbols);
-    }
+    set_variables_local(&mut db_state.metamath_data, &symbols);
 
     let mut variables = Vec::new();
 
@@ -269,17 +257,15 @@ pub async fn text_to_floating_hypotheses(
             (_, _) => return Err(Error::InvalidFormatError),
         }
     }
+
     let mut app_state = state.lock().await;
+    let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
 
-    if let Some(ref mut conn) = app_state.db_conn {
-        set_floating_hypotheses_database(conn, &floating_hypotheses)
-            .await
-            .or(Err(Error::SqlError))?;
-    }
+    set_floating_hypotheses_database(&mut db_state.db_conn, &floating_hypotheses)
+        .await
+        .or(Err(Error::SqlError))?;
 
-    if let Some(ref mut mm_data) = app_state.metamath_data {
-        set_floating_hypotheses_local(mm_data, &floating_hypotheses);
-    }
+    set_floating_hypotheses_local(&mut db_state.metamath_data, &floating_hypotheses);
 
     Ok(floating_hypotheses)
 }
@@ -662,7 +648,7 @@ pub enum Error {
     SqlError,
     NotFoundError,
     InvalidProofError,
-    NoDatabaseOpenError,
+    NoDatabaseError,
     InternalLogicError,
     InvaildArgumentError,
 }

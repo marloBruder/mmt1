@@ -1,6 +1,7 @@
 use tauri::async_runtime::Mutex;
 
 use crate::{
+    metamath::Error,
     model::{InProgressTheorem, MetamathData},
     AppState,
 };
@@ -9,35 +10,31 @@ use crate::{
 pub async fn get_in_progress_theorem_local(
     state: tauri::State<'_, Mutex<AppState>>,
     name: &str,
-) -> Result<InProgressTheorem, ()> {
+) -> Result<InProgressTheorem, Error> {
     let app_state = state.lock().await;
+    let db_state = app_state.db_state.as_ref().ok_or(Error::NoDatabaseError)?;
 
-    if let Some(ref mm_data) = app_state.metamath_data {
-        for in_progress_theorem in &mm_data.in_progress_theorems {
-            if in_progress_theorem.name == name {
-                return Ok(in_progress_theorem.clone());
-            }
+    for in_progress_theorem in &db_state.metamath_data.in_progress_theorems {
+        if in_progress_theorem.name == name {
+            return Ok(in_progress_theorem.clone());
         }
     }
 
-    Err(())
+    Err(Error::NotFoundError)
 }
 
 #[tauri::command]
 pub async fn get_in_progress_theorem_names_local(
     state: tauri::State<'_, Mutex<AppState>>,
-) -> Result<Vec<String>, ()> {
+) -> Result<Vec<String>, Error> {
     let app_state = state.lock().await;
+    let db_state = app_state.db_state.as_ref().ok_or(Error::NoDatabaseError)?;
 
-    if let Some(ref mm_data) = app_state.metamath_data {
-        let mut names: Vec<String> = Vec::new();
-        for in_progress_theorem in &mm_data.in_progress_theorems {
-            names.push(in_progress_theorem.name.clone());
-        }
-        return Ok(names);
+    let mut names: Vec<String> = Vec::new();
+    for in_progress_theorem in &db_state.metamath_data.in_progress_theorems {
+        names.push(in_progress_theorem.name.clone());
     }
-
-    Err(())
+    return Ok(names);
 }
 
 pub fn add_in_progress_theorem_local(metamath_data: &mut MetamathData, name: &str, text: &str) {

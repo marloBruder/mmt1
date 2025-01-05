@@ -1,6 +1,7 @@
 use tauri::async_runtime::Mutex;
 
 use crate::{
+    metamath::Error,
     model::{FloatingHypohesis, MetamathData},
     AppState,
 };
@@ -8,14 +9,11 @@ use crate::{
 #[tauri::command]
 pub async fn get_floating_hypotheses_local(
     state: tauri::State<'_, Mutex<AppState>>,
-) -> Result<Vec<FloatingHypohesis>, ()> {
+) -> Result<Vec<FloatingHypohesis>, Error> {
     let app_state = state.lock().await;
+    let db_state = app_state.db_state.as_ref().ok_or(Error::NoDatabaseError)?;
 
-    if let Some(ref mm_data) = app_state.metamath_data {
-        return Ok(mm_data.floating_hypotheses.clone());
-    }
-
-    Err(())
+    Ok(db_state.metamath_data.floating_hypotheses.clone())
 }
 
 pub fn set_floating_hypotheses_local(

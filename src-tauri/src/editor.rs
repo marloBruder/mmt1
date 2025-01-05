@@ -22,14 +22,11 @@ pub async fn add_in_progress_theorem(
     text: &str,
 ) -> Result<(), Error> {
     let mut app_state = state.lock().await;
+    let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
 
-    if let Some(ref mut conn) = app_state.db_conn {
-        add_in_progress_theorem_database(conn, name, text).await?;
-    }
+    add_in_progress_theorem_database(&mut db_state.db_conn, name, text).await?;
 
-    if let Some(ref mut mm_data) = app_state.metamath_data {
-        add_in_progress_theorem_local(mm_data, name, text);
-    }
+    add_in_progress_theorem_local(&mut db_state.metamath_data, name, text);
 
     Ok(())
 }
@@ -41,14 +38,11 @@ pub async fn set_in_progress_theorem_name(
     new_name: &str,
 ) -> Result<(), Error> {
     let mut app_state = state.lock().await;
+    let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
 
-    if let Some(ref mut conn) = app_state.db_conn {
-        set_in_progress_theorem_name_database(conn, old_name, new_name).await?;
-    }
+    set_in_progress_theorem_name_database(&mut db_state.db_conn, old_name, new_name).await?;
 
-    if let Some(ref mut mm_data) = app_state.metamath_data {
-        set_in_progress_theorem_name_local(mm_data, old_name, new_name);
-    }
+    set_in_progress_theorem_name_local(&mut db_state.metamath_data, old_name, new_name);
 
     Ok(())
 }
@@ -60,14 +54,11 @@ pub async fn set_in_progress_theorem(
     text: &str,
 ) -> Result<(), Error> {
     let mut app_state = state.lock().await;
+    let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
 
-    if let Some(ref mut conn) = app_state.db_conn {
-        set_in_progress_theorem_text_database(conn, name, text).await?;
-    }
+    set_in_progress_theorem_text_database(&mut db_state.db_conn, name, text).await?;
 
-    if let Some(ref mut mm_data) = app_state.metamath_data {
-        set_in_progress_theorem_text_local(mm_data, name, text);
-    }
+    set_in_progress_theorem_text_local(&mut db_state.metamath_data, name, text);
 
     Ok(())
 }
@@ -78,14 +69,11 @@ pub async fn delete_in_progress_theorem(
     name: &str,
 ) -> Result<(), Error> {
     let mut app_state = state.lock().await;
+    let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
 
-    if let Some(ref mut conn) = app_state.db_conn {
-        delete_in_progress_theorem_database(conn, name).await?;
-    }
+    delete_in_progress_theorem_database(&mut db_state.db_conn, name).await?;
 
-    if let Some(ref mut mm_data) = app_state.metamath_data {
-        delete_in_progress_theorem_local(mm_data, name);
-    }
+    delete_in_progress_theorem_local(&mut db_state.metamath_data, name);
 
     Ok(())
 }
