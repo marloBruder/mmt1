@@ -65,7 +65,7 @@
     <RoundButton onclick={saveData} disabled={!editing}>Save</RoundButton>
   </div>
   {#if !editing}
-    <div class="pl-4">
+    <div class="pl-12">
       <ol class="list-decimal">
         {#if constantsTab}
           {#each tab.constants as constant}

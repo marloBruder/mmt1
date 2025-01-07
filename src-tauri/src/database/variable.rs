@@ -17,6 +17,21 @@ pub async fn get_variables_database(conn: &mut SqliteConnection) -> Result<Vec<V
     Ok(variables)
 }
 
+pub async fn add_variable_database(
+    conn: &mut SqliteConnection,
+    var_index: i32,
+    symbol: &str,
+) -> Result<(), Error> {
+    sqlx::query(sql::VARIABLE_ADD)
+        .bind(var_index)
+        .bind(symbol)
+        .execute(conn)
+        .await
+        .or(Err(Error::SqlError))?;
+
+    Ok(())
+}
+
 pub async fn set_variables_database(
     conn: &mut SqliteConnection,
     symbols: &Vec<&str>,

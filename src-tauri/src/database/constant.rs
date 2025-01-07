@@ -16,6 +16,21 @@ pub async fn get_constants_database(conn: &mut SqliteConnection) -> Result<Vec<C
     Ok(constants)
 }
 
+pub async fn add_constant_database(
+    conn: &mut SqliteConnection,
+    const_index: i32,
+    symbol: &str,
+) -> Result<(), Error> {
+    sqlx::query(sql::CONSTANT_ADD)
+        .bind(const_index)
+        .bind(symbol)
+        .execute(conn)
+        .await
+        .or(Err(Error::SqlError))?;
+
+    Ok(())
+}
+
 pub async fn set_constants_database(
     conn: &mut SqliteConnection,
     symbols: &Vec<&str>,
@@ -26,7 +41,7 @@ pub async fn set_constants_database(
         .or(Err(Error::SqlError))?;
 
     for (index, &symbol) in symbols.iter().enumerate() {
-        sqlx::query(sql::CONSANT_ADD)
+        sqlx::query(sql::CONSTANT_ADD)
             .bind(index.to_string())
             .bind(symbol)
             .execute(&mut *conn)
@@ -44,7 +59,7 @@ ORDER BY [index];";
 
     pub const CONSTANTS_DELETE: &str = "DELETE FROM constant;";
 
-    pub const CONSANT_ADD: &str = "\
+    pub const CONSTANT_ADD: &str = "\
 INSERT INTO constant ([index], symbol)
 VALUES ($1, $2);";
 }

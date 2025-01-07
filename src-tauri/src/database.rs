@@ -1,9 +1,4 @@
-use std::{
-    fs::File,
-    io::{BufRead, BufReader, Read},
-};
-
-use crate::Error;
+use crate::{metamath::parse, Error};
 use sqlx::{migrate::MigrateDatabase, Connection, Sqlite, SqliteConnection};
 use tauri::async_runtime::Mutex;
 
@@ -134,9 +129,16 @@ pub async fn import_and_override_database(
         .await
         .or(Err(Error::SqlError))?;
 
-    // let file = File::open(mm_file_path).or(Err(Error::FileNotFoundError))?;
+    let mut metamath_data: MetamathData = Default::default();
 
-    // let reader = BufReader::new(file);
+    parse::parse_mm_file(mm_file_path, &mut conn, &mut metamath_data).await?;
+
+    let mut app_state = state.lock().await;
+
+    app_state.db_state = Some(DatabaseState {
+        db_conn: conn,
+        metamath_data,
+    });
 
     Ok(())
 }

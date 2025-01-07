@@ -22,6 +22,8 @@ use crate::{
 use std::collections::HashMap;
 use tauri::{async_runtime::Mutex, State};
 
+pub mod parse;
+
 #[tauri::command]
 pub async fn turn_into_theorem(
     state: tauri::State<'_, Mutex<AppState>>,
