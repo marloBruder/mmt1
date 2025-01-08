@@ -78,6 +78,15 @@ pub enum Error {
     InvalidFormatError,
     InvalidProofError,
 
+    // Importing Database Errors
+    ClosedUnopenedScopeError, // Returned when there is a "$}" statement in the outermost scope
+    ConstStatementScopeError, // Returned when constant statement is found outside outermost scope
+    EmptyConstStatementError, // Returned when constant statement has no symbols
+    TwiceDeclaredConstError,  // Returned when a constant has been declared twice
+    EmptyVarStatementError,   // Returned when variable statement has no symbols
+    TwiceDeclaredVarError,    // Returned when a variable has been declared twice
+    InvalidSymbolError,       // Returned when a symbol contains invalid characters
+
     InternalLogicError,
     InvaildArgumentError,
     InvalidDatabaseDataError,

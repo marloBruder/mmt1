@@ -36,6 +36,8 @@
               goto("/main");
             });
           }
+        } else {
+          throw error;
         }
       });
   };
