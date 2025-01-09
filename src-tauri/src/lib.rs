@@ -79,13 +79,20 @@ pub enum Error {
     InvalidProofError,
 
     // Importing Database Errors
-    ClosedUnopenedScopeError, // Returned when there is a "$}" statement in the outermost scope
-    ConstStatementScopeError, // Returned when constant statement is found outside outermost scope
-    EmptyConstStatementError, // Returned when constant statement has no symbols
-    TwiceDeclaredConstError,  // Returned when a constant has been declared twice
-    EmptyVarStatementError,   // Returned when variable statement has no symbols
-    TwiceDeclaredVarError,    // Returned when a variable has been declared twice
-    InvalidSymbolError,       // Returned when a symbol contains invalid characters
+    ClosedUnopenedScopeError, // Returned if there is a "$}" statement in the outermost scope
+    ConstStatementScopeError, // Returned if a constant statement is found outside outermost scope
+    EmptyConstStatementError, // Returned if a constant statement has no symbols
+    TwiceDeclaredConstError,  // Returned if a constant has been declared twice
+    EmptyVarStatementError,   // Returned if a variable statement has no symbols
+    TwiceDeclaredVarError,    // Returned if a variable has been declared twice
+    InvalidSymbolError,       // Returned if a symbol contains invalid characters
+    FloatHypStatementFormatError, // Returned if a floating hypothesis statement does not have 2 tokens
+    FloatHypTypecodeError, // Returned if a floating hypothesis statements typecode is not an active constant
+    FloatHypVariableError, // Returned if a floating hypothesis statements variable is not an active variable
+    VarTypeDeclaredTwiceError, // Returned if a variable appears in two active $f statements
+    VarDeclaredMultipleTypesError, // Returned if a variable has been declared with two different types
+    TokenOutsideStatementError,    // Returned if a token does not belong to any statement
+    MissingLabelError,             // Returned if a statement is missing its label
 
     InternalLogicError,
     InvaildArgumentError,

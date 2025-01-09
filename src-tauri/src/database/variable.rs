@@ -17,7 +17,7 @@ pub async fn get_variables_database(conn: &mut SqliteConnection) -> Result<Vec<V
     Ok(variables)
 }
 
-pub async fn add_variable_database(
+pub async fn add_variable_database_raw(
     conn: &mut SqliteConnection,
     var_index: i32,
     symbol: &str,

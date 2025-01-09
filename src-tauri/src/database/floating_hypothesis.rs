@@ -24,6 +24,25 @@ pub async fn get_floating_hypotheses_database(
     Ok(floating_hypotheses)
 }
 
+pub async fn add_floating_hypothesis_database_raw(
+    conn: &mut SqliteConnection,
+    index: i32,
+    label: &str,
+    typecode: &str,
+    variable: &str,
+) -> Result<(), Error> {
+    sqlx::query(sql::FLOATING_HYPOTHESIS_ADD)
+        .bind(index)
+        .bind(label)
+        .bind(typecode)
+        .bind(variable)
+        .execute(conn)
+        .await
+        .or(Err(Error::SqlError))?;
+
+    Ok(())
+}
+
 pub async fn set_floating_hypotheses_database(
     conn: &mut SqliteConnection,
     floating_hypotheses: &Vec<FloatingHypohesis>,

@@ -3,8 +3,12 @@ use std::fs::read_to_string;
 use sqlx::SqliteConnection;
 
 use crate::{
-    database::{constant::add_constant_database, variable::add_variable_database},
-    model::{Constant, MetamathData, Variable},
+    database::{
+        constant::add_constant_database_raw,
+        floating_hypothesis::add_floating_hypothesis_database_raw,
+        variable::add_variable_database_raw,
+    },
+    model::{Constant, FloatingHypohesis, MetamathData, Variable},
     Error,
 };
 
@@ -24,10 +28,18 @@ pub async fn parse_mm_file(
 
     let mut last_comment_str_vec: Vec<&str> = Vec::new();
 
+    let mut next_label: Option<&str> = None;
+
     let mut next_const_index = 0;
+    let mut active_consts: Vec<&str> = Vec::new();
+
     let mut next_var_index = 0;
-    let mut symbols_declared: Vec<Vec<&str>> = vec![Vec::new()];
+    let mut active_vars: Vec<Vec<&str>> = vec![Vec::new()];
     let mut prev_variables: Vec<&str> = Vec::new();
+
+    let mut next_float_hyp_index = 0;
+    let mut active_float_hyps: Vec<Vec<RefFloatingHypothesis>> = vec![Vec::new()];
+    let mut prev_float_hyps: Vec<RefFloatingHypothesis> = Vec::new();
 
     let mut token_iter = file_content.split_whitespace();
 
@@ -46,7 +58,8 @@ pub async fn parse_mm_file(
             "$(" => last_comment_str_vec = get_next_as_str_vec_until(&mut token_iter, "$)"),
             "${" => {
                 scope += 1;
-                symbols_declared.push(Vec::new());
+                active_vars.push(Vec::new());
+                active_float_hyps.push(Vec::new());
             }
             "$}" => {
                 if scope == 0 {
@@ -54,8 +67,11 @@ pub async fn parse_mm_file(
                 }
 
                 scope -= 1;
-                let mut scoped_vars = symbols_declared.pop().unwrap();
+
+                let mut scoped_vars = active_vars.pop().unwrap();
                 prev_variables.append(&mut scoped_vars);
+                let mut scoped_float_hyps = active_float_hyps.pop().unwrap();
+                prev_float_hyps.append(&mut scoped_float_hyps);
             }
             "$c" => {
                 if scope != 0 {
@@ -66,22 +82,16 @@ pub async fn parse_mm_file(
 
                 while let Some(const_token) = token_iter.next() {
                     match const_token {
-                        "$." => {
-                            if at_least_one_symbol {
-                                break;
-                            } else {
-                                return Err(Error::EmptyConstStatementError);
-                            }
-                        }
-                        "$(" => {
-                            get_next_until(&mut token_iter, "$)");
-                        }
+                        "$(" => get_next_until(&mut token_iter, "$)"),
+                        "$." if at_least_one_symbol => break,
+                        "$." => return Err(Error::EmptyConstStatementError),
                         const_symbol => {
                             if !is_valid_math_symbol(const_symbol) {
                                 return Err(Error::InvalidSymbolError);
                             }
 
-                            if symbols_declared[0].contains(&const_symbol)
+                            if active_consts.contains(&const_symbol)
+                                || active_vars[0].contains(&const_symbol)
                                 || prev_variables.contains(&const_symbol)
                             {
                                 return Err(Error::TwiceDeclaredConstError);
@@ -90,10 +100,10 @@ pub async fn parse_mm_file(
                             metamath_data.constants.push(Constant {
                                 symbol: const_symbol.to_string(),
                             });
-                            add_constant_database(conn, next_const_index, const_symbol).await?;
+                            add_constant_database_raw(conn, next_const_index, const_symbol).await?;
 
                             next_const_index += 1;
-                            symbols_declared[0].push(const_symbol);
+                            active_consts.push(const_symbol);
                             at_least_one_symbol = true;
                         }
                     }
@@ -104,51 +114,98 @@ pub async fn parse_mm_file(
 
                 while let Some(var_token) = token_iter.next() {
                     match var_token {
-                        "$." => {
-                            if at_least_one_symbol {
-                                break;
-                            } else {
-                                return Err(Error::EmptyVarStatementError);
-                            }
-                        }
-                        "$(" => {
-                            get_next_until(&mut token_iter, "$)");
-                        }
+                        "$(" => get_next_until(&mut token_iter, "$)"),
+                        "$." if at_least_one_symbol => break,
+                        "$." => return Err(Error::EmptyVarStatementError),
                         var_symbol => {
                             if !is_valid_math_symbol(var_symbol) {
                                 return Err(Error::InvalidSymbolError);
                             }
 
-                            for scope_symbols_declared in &symbols_declared {
-                                if scope_symbols_declared.contains(&var_symbol) {
-                                    return Err(Error::TwiceDeclaredVarError);
-                                }
+                            if active_consts.contains(&var_symbol) {
+                                return Err(Error::TwiceDeclaredVarError);
+                            }
+
+                            if is_active_variable(var_symbol, &active_vars) {
+                                return Err(Error::TwiceDeclaredVarError);
                             }
 
                             if !prev_variables.contains(&var_symbol) {
                                 metamath_data.variables.push(Variable {
                                     symbol: var_symbol.to_string(),
                                 });
-                                add_variable_database(conn, next_var_index, var_symbol).await?;
+                                add_variable_database_raw(conn, next_var_index, var_symbol).await?;
 
                                 next_var_index += 1;
                             }
 
-                            symbols_declared[scope].push(var_symbol);
+                            active_vars[scope].push(var_symbol);
                             at_least_one_symbol = true;
                         }
                     }
                 }
             }
-            _ => {}
+            "$f" => {
+                let mut non_comment_tokens: Vec<&str> = Vec::new();
+
+                while let Some(float_hyp_token) = token_iter.next() {
+                    match float_hyp_token {
+                        "$(" => get_next_until(&mut token_iter, "$)"),
+                        "$." => break,
+                        non_comment_token => non_comment_tokens.push(non_comment_token),
+                    }
+                }
+
+                if non_comment_tokens.len() != 2 {
+                    return Err(Error::FloatHypStatementFormatError);
+                }
+
+                let label = next_label.ok_or(Error::MissingLabelError)?;
+                let typecode = non_comment_tokens[0];
+                let variable = non_comment_tokens[1];
+
+                if !active_consts.contains(&typecode) {
+                    return Err(Error::FloatHypTypecodeError);
+                }
+
+                if !is_active_variable(variable, &active_vars) {
+                    return Err(Error::FloatHypVariableError);
+                }
+
+                if var_type_already_declared(variable, &active_float_hyps) {
+                    return Err(Error::VarTypeDeclaredTwiceError);
+                }
+
+                if !var_type_already_declared_previously(typecode, variable, &prev_float_hyps)? {
+                    metamath_data.floating_hypotheses.push(FloatingHypohesis {
+                        label: label.to_string(),
+                        typecode: typecode.to_string(),
+                        variable: variable.to_string(),
+                    });
+                    add_floating_hypothesis_database_raw(
+                        conn,
+                        next_float_hyp_index,
+                        label,
+                        typecode,
+                        variable,
+                    )
+                    .await?;
+
+                    next_float_hyp_index += 1;
+                }
+
+                active_float_hyps[scope].push(RefFloatingHypothesis { typecode, variable });
+            }
+            label if next_label.is_none() => next_label = Some(label),
+            _unknown_token => {} //return Err(Error::TokenOutsideStatementError),
         }
         tokens_processed += 1;
         if tokens_processed % 100_000 == 0 {
             println!(
-                "Tokens processed: {}, Symbols: {}, Previous Variables: {}",
+                "Tokens processed: {}, Consts: {}, Outermost Vars: {}",
                 tokens_processed,
-                symbols_declared[0].len(),
-                prev_variables.len(),
+                active_consts.len(),
+                active_vars[0].len(),
             );
         }
     }
@@ -187,4 +244,49 @@ fn is_valid_math_symbol(symbol: &str) -> bool {
         }
     }
     true
+}
+
+fn is_active_variable(symbol: &str, active_vars: &Vec<Vec<&str>>) -> bool {
+    for scope_active_vars in active_vars {
+        if scope_active_vars.contains(&symbol) {
+            return true;
+        }
+    }
+    false
+}
+
+fn var_type_already_declared(
+    variable: &str,
+    active_float_hyps: &Vec<Vec<RefFloatingHypothesis>>,
+) -> bool {
+    for scope_active_float_hyps in active_float_hyps {
+        for float_hyp in scope_active_float_hyps {
+            if float_hyp.variable == variable {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+// Checks if variable is declared by hypothesis in prev_float_hyps and returns an Error if it has, but with a different typecode
+fn var_type_already_declared_previously(
+    typecode: &str,
+    variable: &str,
+    prev_float_hyps: &Vec<RefFloatingHypothesis>,
+) -> Result<bool, Error> {
+    for float_hyp in prev_float_hyps {
+        if float_hyp.variable == variable {
+            if float_hyp.typecode != typecode {
+                return Err(Error::VarDeclaredMultipleTypesError);
+            }
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+struct RefFloatingHypothesis<'a> {
+    pub typecode: &'a str,
+    pub variable: &'a str,
 }

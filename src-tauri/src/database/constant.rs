@@ -16,7 +16,7 @@ pub async fn get_constants_database(conn: &mut SqliteConnection) -> Result<Vec<C
     Ok(constants)
 }
 
-pub async fn add_constant_database(
+pub async fn add_constant_database_raw(
     conn: &mut SqliteConnection,
     const_index: i32,
     symbol: &str,
