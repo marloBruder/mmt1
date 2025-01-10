@@ -41,6 +41,8 @@ pub async fn parse_mm_file(
     let mut active_float_hyps: Vec<Vec<RefFloatingHypothesis>> = vec![Vec::new()];
     let mut prev_float_hyps: Vec<RefFloatingHypothesis> = Vec::new();
 
+    let mut active_disjs: Vec<Vec<String>> = vec![Vec::new()];
+
     let mut token_iter = file_content.split_whitespace();
 
     // let mut token_iter = file_content
@@ -60,6 +62,7 @@ pub async fn parse_mm_file(
                 scope += 1;
                 active_vars.push(Vec::new());
                 active_float_hyps.push(Vec::new());
+                active_disjs.push(Vec::new());
             }
             "$}" => {
                 if scope == 0 {
@@ -72,6 +75,7 @@ pub async fn parse_mm_file(
                 prev_variables.append(&mut scoped_vars);
                 let mut scoped_float_hyps = active_float_hyps.pop().unwrap();
                 prev_float_hyps.append(&mut scoped_float_hyps);
+                active_disjs.pop();
             }
             "$c" => {
                 if scope != 0 {
@@ -196,7 +200,16 @@ pub async fn parse_mm_file(
 
                 active_float_hyps[scope].push(RefFloatingHypothesis { typecode, variable });
             }
-            label if next_label.is_none() => next_label = Some(label),
+            "$d" => {
+                let disj = get_next_as_string_until_check_vars(&mut token_iter, "$.", &active_vars)?;
+
+                if !disj.contains(' ') {
+                    return Err(Error::ZeroOrOneSymbolDisjError)
+                }
+
+                active_disjs[scope].push(disj);
+            }
+            label /*if next_label.is_none()*/ => next_label = Some(label),
             _unknown_token => {} //return Err(Error::TokenOutsideStatementError),
         }
         tokens_processed += 1;
@@ -284,6 +297,29 @@ fn var_type_already_declared_previously(
         }
     }
     Ok(false)
+}
+
+fn get_next_as_string_until_check_vars(
+    token_iter: &mut std::str::SplitWhitespace,
+    until: &str,
+    active_vars: &Vec<Vec<&str>>,
+) -> Result<String, Error> {
+    let mut res = String::new();
+
+    while let Some(token) = token_iter.next() {
+        if token == until {
+            break;
+        }
+
+        if !is_active_variable(token, active_vars) {
+            return Err(Error::NonVarInDisjError);
+        }
+        res.push_str(token);
+        res.push(' ');
+    }
+
+    res.pop();
+    Ok(res)
 }
 
 struct RefFloatingHypothesis<'a> {

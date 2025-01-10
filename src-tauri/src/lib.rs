@@ -91,8 +91,10 @@ pub enum Error {
     FloatHypVariableError, // Returned if a floating hypothesis statements variable is not an active variable
     VarTypeDeclaredTwiceError, // Returned if a variable appears in two active $f statements
     VarDeclaredMultipleTypesError, // Returned if a variable has been declared with two different types
-    TokenOutsideStatementError,    // Returned if a token does not belong to any statement
-    MissingLabelError,             // Returned if a statement is missing its label
+    NonVarInDisjError, // Returned if a symbol in a disjoint statement is not an active variable
+    ZeroOrOneSymbolDisjError, // Returned if a disjoint statement is empty
+    TokenOutsideStatementError, // Returned if a token does not belong to any statement
+    MissingLabelError, // Returned if a statement is missing its label
 
     InternalLogicError,
     InvaildArgumentError,
