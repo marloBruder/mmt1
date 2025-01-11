@@ -43,6 +43,8 @@ pub async fn parse_mm_file(
 
     let mut active_disjs: Vec<Vec<String>> = vec![Vec::new()];
 
+    let mut active_hyps: Vec<Vec<String>> = vec![Vec::new()];
+
     let mut token_iter = file_content.split_whitespace();
 
     // let mut token_iter = file_content
@@ -63,6 +65,7 @@ pub async fn parse_mm_file(
                 active_vars.push(Vec::new());
                 active_float_hyps.push(Vec::new());
                 active_disjs.push(Vec::new());
+                active_hyps.push(Vec::new());
             }
             "$}" => {
                 if scope == 0 {
@@ -76,6 +79,7 @@ pub async fn parse_mm_file(
                 let mut scoped_float_hyps = active_float_hyps.pop().unwrap();
                 prev_float_hyps.append(&mut scoped_float_hyps);
                 active_disjs.pop();
+                active_hyps.pop();
             }
             "$c" => {
                 if scope != 0 {
@@ -200,6 +204,11 @@ pub async fn parse_mm_file(
 
                 active_float_hyps[scope].push(RefFloatingHypothesis { typecode, variable });
             }
+            "$e" => {
+                let hyp = get_next_as_string_check_expression(&mut token_iter, "$.", &active_consts, &active_vars)?;
+
+                active_hyps[scope].push(hyp);
+            }
             "$d" => {
                 let disj = get_next_as_string_until_check_vars(&mut token_iter, "$.", &active_vars)?;
 
@@ -307,6 +316,11 @@ fn get_next_as_string_until_check_vars(
     let mut res = String::new();
 
     while let Some(token) = token_iter.next() {
+        if token == "$(" {
+            get_next_until(token_iter, "$)");
+            continue;
+        }
+
         if token == until {
             break;
         }
@@ -314,8 +328,43 @@ fn get_next_as_string_until_check_vars(
         if !is_active_variable(token, active_vars) {
             return Err(Error::NonVarInDisjError);
         }
+
         res.push_str(token);
         res.push(' ');
+    }
+
+    res.pop();
+    Ok(res)
+}
+
+fn get_next_as_string_check_expression(
+    token_iter: &mut std::str::SplitWhitespace,
+    until: &str,
+    active_consts: &Vec<&str>,
+    active_vars: &Vec<Vec<&str>>,
+) -> Result<String, Error> {
+    let mut res = String::new();
+
+    let mut first = true;
+
+    while let Some(token) = token_iter.next() {
+        if token == "$(" {
+            get_next_until(token_iter, "$)");
+            continue;
+        }
+
+        if token == until {
+            break;
+        }
+
+        // If first is true, fail if token is not a const, else fail if it is neither a const nor a var
+        if (!is_active_variable(token, active_vars) || first) && !active_consts.contains(&token) {
+            return Err(Error::NonSymbolInExpressionError);
+        }
+
+        res.push_str(token);
+        res.push(' ');
+        first = false;
     }
 
     res.pop();

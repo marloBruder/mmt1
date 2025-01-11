@@ -93,8 +93,9 @@ pub enum Error {
     VarDeclaredMultipleTypesError, // Returned if a variable has been declared with two different types
     NonVarInDisjError, // Returned if a symbol in a disjoint statement is not an active variable
     ZeroOrOneSymbolDisjError, // Returned if a disjoint statement is empty
+    NonSymbolInExpressionError, // Returned if an expression contains a symbol that is neither a const or a var
     TokenOutsideStatementError, // Returned if a token does not belong to any statement
-    MissingLabelError, // Returned if a statement is missing its label
+    MissingLabelError,          // Returned if a statement is missing its label
 
     InternalLogicError,
     InvaildArgumentError,
