@@ -8,7 +8,7 @@ use crate::{
         floating_hypothesis::add_floating_hypothesis_database_raw,
         variable::add_variable_database_raw,
     },
-    model::{Constant, FloatingHypohesis, MetamathData, Variable},
+    model::{Constant, FloatingHypohesis, Header, Hypothesis, MetamathData, Theorem, Variable},
     Error,
 };
 
@@ -26,7 +26,7 @@ pub async fn parse_mm_file(
     // Scope starting at 0, +1 for every "${", -1 for every "$}""
     let mut scope = 0;
 
-    let mut last_comment_str_vec: Vec<&str> = Vec::new();
+    let mut last_comment: String = String::new();
 
     let mut next_label: Option<&str> = None;
 
@@ -43,7 +43,9 @@ pub async fn parse_mm_file(
 
     let mut active_disjs: Vec<Vec<String>> = vec![Vec::new()];
 
-    let mut active_hyps: Vec<Vec<String>> = vec![Vec::new()];
+    let mut active_hyps: Vec<Vec<Hypothesis>> = vec![Vec::new()];
+
+    let mut curr_header: &mut Header = &mut metamath_data.theorem_list_header;
 
     let mut token_iter = file_content.split_whitespace();
 
@@ -59,7 +61,7 @@ pub async fn parse_mm_file(
 
     while let Some(token) = token_iter.next() {
         match token {
-            "$(" => last_comment_str_vec = get_next_as_str_vec_until(&mut token_iter, "$)"),
+            "$(" => last_comment = super::get_next_as_string_until(&mut token_iter, "$)"),
             "${" => {
                 scope += 1;
                 active_vars.push(Vec::new());
@@ -169,6 +171,7 @@ pub async fn parse_mm_file(
                 }
 
                 let label = next_label.ok_or(Error::MissingLabelError)?;
+                next_label = None;
                 let typecode = non_comment_tokens[0];
                 let variable = non_comment_tokens[1];
 
@@ -205,9 +208,15 @@ pub async fn parse_mm_file(
                 active_float_hyps[scope].push(RefFloatingHypothesis { typecode, variable });
             }
             "$e" => {
-                let hyp = get_next_as_string_check_expression(&mut token_iter, "$.", &active_consts, &active_vars)?;
+                let label = next_label.ok_or(Error::MissingLabelError)?.to_string();
+                next_label = None;
 
-                active_hyps[scope].push(hyp);
+                let hypothesis = get_next_as_string_check_expression(&mut token_iter, "$.", &active_consts, &active_vars)?;
+
+                active_hyps[scope].push(Hypothesis {
+                    label,
+                    hypothesis,
+                });
             }
             "$d" => {
                 let disj = get_next_as_string_until_check_vars(&mut token_iter, "$.", &active_vars)?;
@@ -217,6 +226,21 @@ pub async fn parse_mm_file(
                 }
 
                 active_disjs[scope].push(disj);
+            }
+            "$a" => {
+                let label = next_label.ok_or(Error::MissingLabelError)?.to_string();
+                next_label = None;
+
+                let assertion = get_next_as_string_check_expression(&mut token_iter, "$.", &active_consts, &active_vars)?;
+
+                curr_header.theorems.push(Theorem {
+                    name: label,
+                    description: last_comment.clone(),
+                    disjoints: active_disjs.clone().into_iter().flatten().collect(),
+                    hypotheses: active_hyps.clone().into_iter().flatten().collect(),
+                    assertion,
+                    proof: None
+                });
             }
             label /*if next_label.is_none()*/ => next_label = Some(label),
             _unknown_token => {} //return Err(Error::TokenOutsideStatementError),
