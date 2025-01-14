@@ -5,8 +5,8 @@ use sqlx::SqliteConnection;
 use crate::{
     database::{
         constant::add_constant_database_raw,
-        floating_hypothesis::add_floating_hypothesis_database_raw,
-        variable::add_variable_database_raw,
+        floating_hypothesis::add_floating_hypothesis_database_raw, header::add_header_database,
+        theorem::add_theorem_database, variable::add_variable_database_raw,
     },
     model::{Constant, FloatingHypohesis, Header, Hypothesis, MetamathData, Theorem, Variable},
     Error,
@@ -46,6 +46,7 @@ pub async fn parse_mm_file(
     let mut active_hyps: Vec<Vec<Hypothesis>> = vec![Vec::new()];
 
     let mut curr_header: &mut Header = &mut metamath_data.theorem_list_header;
+    let mut next_db_index = 0;
 
     let mut token_iter = file_content.split_whitespace();
 
@@ -61,7 +62,57 @@ pub async fn parse_mm_file(
 
     while let Some(token) = token_iter.next() {
         match token {
-            "$(" => last_comment = super::get_next_as_string_until(&mut token_iter, "$)"),
+            "$(" => {
+                last_comment = super::get_next_as_string_until(&mut token_iter, "$)");
+                let mut comment_iter = last_comment.split_whitespace();
+
+                if let Some(first_token) = comment_iter.next() {
+                    let mut depth = -1;
+                    let mut curr_heading = "";
+                    let headings = ["####", "#*#*", "=-=-", "-.-."];
+
+                    for (index, heading) in headings.iter().enumerate() {
+                        if first_token.starts_with(heading) {
+                            curr_heading = heading;
+                            depth = index as i32;
+                        }
+                    }
+
+                    if depth != -1 {
+                        let mut header_title = String::new();
+                        let mut header_closed = false;
+                        while let Some(token) = comment_iter.next() {
+                            if token.starts_with(curr_heading) {
+                                header_closed = true;
+                                break;
+                            }
+                            header_title.push_str(token);
+                            header_title.push(' ');
+                        }
+                        header_title.pop();
+
+                        if header_closed {
+                            let mut parent_header = &mut metamath_data.theorem_list_header;
+                            for _ in 0..depth {
+                                parent_header = if parent_header.sub_headers.len() != 0 {
+                                    parent_header.sub_headers.last_mut().unwrap()
+                                } else {
+                                    parent_header
+                                }
+                            }
+                            parent_header.sub_headers.push(Header {
+                                title: header_title,
+                                theorems: Vec::new(),
+                                sub_headers: Vec::new(),
+                            });
+                            curr_header = parent_header.sub_headers.last_mut().unwrap();
+
+                            add_header_database(conn, next_db_index, depth, &curr_header.title).await?;
+                            next_db_index += 1;
+                        }
+                    }
+                }
+            },
             "${" => {
                 scope += 1;
                 active_vars.push(Vec::new());
@@ -233,14 +284,29 @@ pub async fn parse_mm_file(
 
                 let assertion = get_next_as_string_check_expression(&mut token_iter, "$.", &active_consts, &active_vars)?;
 
-                curr_header.theorems.push(Theorem {
+                let theorem = Theorem {
                     name: label,
                     description: last_comment.clone(),
                     disjoints: active_disjs.clone().into_iter().flatten().collect(),
                     hypotheses: active_hyps.clone().into_iter().flatten().collect(),
                     assertion,
                     proof: None
-                });
+                };
+
+                add_theorem_database(
+                    conn, 
+                    next_db_index, 
+                    &theorem.name, 
+                    &theorem.description, 
+                    &theorem.disjoints, 
+                    &theorem.hypotheses, 
+                    &theorem.assertion, 
+                    None
+                )
+                .await?;
+                next_db_index += 1;
+
+                curr_header.theorems.push(theorem);
             }
             label /*if next_label.is_none()*/ => next_label = Some(label),
             _unknown_token => {} //return Err(Error::TokenOutsideStatementError),
@@ -315,7 +381,8 @@ fn var_type_already_declared(
     false
 }
 
-// Checks if variable is declared by hypothesis in prev_float_hyps and returns an Error if it has, but with a different typecode
+// Checks if variable is declared by hypothesis in prev_float_hyps
+// and returns an Error if it has been declared with a different typecode
 fn var_type_already_declared_previously(
     typecode: &str,
     variable: &str,
