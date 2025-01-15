@@ -278,41 +278,50 @@ pub async fn parse_mm_file(
 
                 active_disjs[scope].push(disj);
             }
-            "$a" => {
+            keyword @ ("$a" | "$p") => {
                 let label = next_label.ok_or(Error::MissingLabelError)?.to_string();
                 next_label = None;
 
-                let assertion = get_next_as_string_check_expression(&mut token_iter, "$.", &active_consts, &active_vars)?;
+                let description = last_comment.clone();
+                let disjoints = active_disjs.clone().into_iter().flatten().collect();
+                let hypotheses = active_hyps.clone().into_iter().flatten().collect();
 
-                let theorem = Theorem {
-                    name: label,
-                    description: last_comment.clone(),
-                    disjoints: active_disjs.clone().into_iter().flatten().collect(),
-                    hypotheses: active_hyps.clone().into_iter().flatten().collect(),
-                    assertion,
-                    proof: None
-                };
+                let assertion_end_keyword = if keyword == "$a" { "$." } else { "$=" };
+
+                let assertion = get_next_as_string_check_expression(&mut token_iter, assertion_end_keyword, &active_consts, &active_vars)?;
+                let mut proof = None;
+
+                if keyword == "$p" {
+                    proof = Some(get_next_as_string_until_ignore_comments(&mut token_iter, "$."));
+                }
 
                 add_theorem_database(
                     conn, 
                     next_db_index, 
-                    &theorem.name, 
-                    &theorem.description, 
-                    &theorem.disjoints, 
-                    &theorem.hypotheses, 
-                    &theorem.assertion, 
+                    &label, 
+                    &description, 
+                    &disjoints, 
+                    &hypotheses, 
+                    &assertion, 
                     None
                 )
                 .await?;
                 next_db_index += 1;
 
-                curr_header.theorems.push(theorem);
+                curr_header.theorems.push(Theorem {
+                    name: label,
+                    description,
+                    disjoints,
+                    hypotheses,
+                    assertion,
+                    proof,
+                });
             }
             label /*if next_label.is_none()*/ => next_label = Some(label),
             _unknown_token => {} //return Err(Error::TokenOutsideStatementError),
         }
         tokens_processed += 1;
-        if tokens_processed % 100_000 == 0 {
+        if tokens_processed % 10_000 == 0 {
             println!(
                 "Tokens processed: {}, Consts: {}, Outermost Vars: {}",
                 tokens_processed,
@@ -460,6 +469,30 @@ fn get_next_as_string_check_expression(
 
     res.pop();
     Ok(res)
+}
+
+fn get_next_as_string_until_ignore_comments(
+    token_iter: &mut std::str::SplitWhitespace, 
+    until: &str
+) -> String {
+    let mut res = String::new();
+
+    while let Some(token) = token_iter.next() {
+        if token == "$(" {
+            get_next_until(token_iter, "$)");
+            continue;
+        }
+
+        if token == until {
+            break;
+        }
+
+        res.push_str(token);
+        res.push(' ');
+    }
+
+    res.pop();
+    res
 }
 
 struct RefFloatingHypothesis<'a> {
