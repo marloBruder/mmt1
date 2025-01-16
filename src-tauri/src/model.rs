@@ -85,6 +85,12 @@ pub struct ProofLine {
     pub assertion: String,
 }
 
+impl FloatingHypohesis {
+    pub fn to_assertions_string(&self) -> String {
+        format!("{} {}", self.typecode, self.variable)
+    }
+}
+
 impl Header {
     pub fn representation(&self) -> HeaderRepresentation {
         HeaderRepresentation {

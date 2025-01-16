@@ -15,25 +15,21 @@ pub async fn get_floating_hypotheses_local(
     Ok(db_state.metamath_data.floating_hypotheses.clone())
 }
 
+pub fn get_floating_hypothesis_by_label<'a>(
+    metamath_data: &'a MetamathData,
+    label: &str,
+) -> Option<&'a FloatingHypohesis> {
+    for floating_hypothesis in &metamath_data.floating_hypotheses {
+        if floating_hypothesis.label == label {
+            return Some(floating_hypothesis);
+        }
+    }
+    return None;
+}
+
 pub fn set_floating_hypotheses_local(
     metamath_data: &mut MetamathData,
     floating_hypotheses: &Vec<FloatingHypohesis>,
 ) {
     metamath_data.floating_hypotheses = floating_hypotheses.clone();
 }
-
-// pub fn set_floating_hypotheses(
-//     &mut self,
-//     labels: &Vec<&str>,
-//     typecodes: &Vec<&str>,
-//     variables: &Vec<&str>,
-// ) {
-//     self.floating_hypotheses = Vec::new();
-//     for index in 0..labels.len() {
-//         self.floating_hypotheses.push(FloatingHypohesis {
-//             label: labels[index].to_string(),
-//             typecode: typecodes[index].to_string(),
-//             variable: variables[index].to_string(),
-//         })
-//     }
-// }

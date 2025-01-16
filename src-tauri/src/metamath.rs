@@ -8,7 +8,7 @@ use crate::{
     },
     local_state::{
         constant::set_constants_local,
-        floating_hypothesis::set_floating_hypotheses_local,
+        floating_hypothesis::{get_floating_hypothesis_by_label, set_floating_hypotheses_local},
         in_progress_theorem::delete_in_progress_theorem_local,
         theorem::{add_theorem_local, get_theorem_insert_position},
         variable::set_variables_local,
@@ -300,8 +300,10 @@ pub fn calc_theorem_page_data(
     let mut proof_steps = calc_proof_steps(theorem, metamath_data)?;
     let step_numbers = calc_proof_step_numbers(theorem)?;
 
-    // println!("Steps:\n{:?}\n", proof_steps);
-    // println!("Numbers:\n{:?}\n", step_numbers);
+    for (i, step) in proof_steps.iter().enumerate() {
+        println!("Step {}:\n{:?}", i + 1, step);
+    }
+    println!("\nNumbers:\n{:?}\n", step_numbers);
 
     let mut stack: Vec<StackLine> = Vec::new();
 
@@ -362,7 +364,7 @@ pub fn calc_theorem_page_data(
             });
         }
 
-        // println!("Stack:\n{:?}\n", stack);
+        println!("Stack:\n{:?}\n", stack);
     }
 
     Ok(TheoremPageData {
@@ -562,20 +564,32 @@ fn calc_proof_steps(
             "(" => {}
             ")" => break,
             label => {
-                let label_theorem = metamath_data
+                let theorem_option = metamath_data
                     .theorem_list_header
-                    .find_theorem_by_name(label)
-                    .ok_or(Error::NotFoundError)?;
-                let label_theorem_hypotheses =
-                    calc_all_hypotheses_of_theorem(label_theorem, metamath_data);
-                steps.push(ProofStep {
-                    label: label.to_string(),
-                    hypotheses: label_theorem_hypotheses
-                        .iter()
-                        .map(|(hyp, _label)| hyp.clone())
-                        .collect(),
-                    statement: label_theorem.assertion.clone(),
-                })
+                    .find_theorem_by_name(label);
+                //.ok_or(Error::NotFoundError)?;
+                if let Some(theorem) = theorem_option {
+                    let label_theorem_hypotheses =
+                        calc_all_hypotheses_of_theorem(theorem, metamath_data);
+                    steps.push(ProofStep {
+                        label: label.to_string(),
+                        hypotheses: label_theorem_hypotheses
+                            .iter()
+                            .map(|(hyp, _label)| hyp.clone())
+                            .collect(),
+                        statement: theorem.assertion.clone(),
+                    });
+                } else {
+                    let floating_hypothesis =
+                        get_floating_hypothesis_by_label(metamath_data, label)
+                            .ok_or(Error::NotFoundError)?;
+
+                    steps.push(ProofStep {
+                        label: label.to_string(),
+                        hypotheses: Vec::new(),
+                        statement: floating_hypothesis.to_assertions_string(),
+                    });
+                }
             }
         };
     }
