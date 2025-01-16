@@ -300,10 +300,10 @@ pub fn calc_theorem_page_data(
     let mut proof_steps = calc_proof_steps(theorem, metamath_data)?;
     let step_numbers = calc_proof_step_numbers(theorem)?;
 
-    for (i, step) in proof_steps.iter().enumerate() {
-        println!("Step {}:\n{:?}", i + 1, step);
-    }
-    println!("\nNumbers:\n{:?}\n", step_numbers);
+    // for (i, step) in proof_steps.iter().enumerate() {
+    //     println!("Step {}:\n{:?}", i + 1, step);
+    // }
+    // println!("\nNumbers:\n{:?}\n", step_numbers);
 
     let mut stack: Vec<StackLine> = Vec::new();
 
@@ -364,7 +364,10 @@ pub fn calc_theorem_page_data(
             });
         }
 
-        println!("Stack:\n{:?}\n", stack);
+        // println!("\nStack:");
+        // for stack_line in &stack {
+        //     println!("{}", stack_line.statement)
+        // }
     }
 
     Ok(TheoremPageData {

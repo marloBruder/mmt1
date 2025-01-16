@@ -93,8 +93,10 @@ pub async fn parse_mm_file(
 
                         if header_closed {
                             let mut parent_header = &mut metamath_data.theorem_list_header;
+                            let mut actual_depth = 0;
                             for _ in 0..depth {
                                 parent_header = if parent_header.sub_headers.len() != 0 {
+                                    actual_depth += 1;
                                     parent_header.sub_headers.last_mut().unwrap()
                                 } else {
                                     parent_header
@@ -107,12 +109,18 @@ pub async fn parse_mm_file(
                             });
                             curr_header = parent_header.sub_headers.last_mut().unwrap();
 
-                            add_header_database(conn, next_db_index, depth, &curr_header.title).await?;
+                            add_header_database(
+                                conn,
+                                next_db_index,
+                                actual_depth,
+                                &curr_header.title,
+                            )
+                            .await?;
                             next_db_index += 1;
                         }
                     }
                 }
-            },
+            }
             "${" => {
                 scope += 1;
                 active_vars.push(Vec::new());
@@ -238,7 +246,15 @@ pub async fn parse_mm_file(
                     return Err(Error::VarTypeDeclaredTwiceError);
                 }
 
-                if !var_type_already_declared_previously(typecode, variable, &prev_float_hyps)? {
+                if var_type_declared_previously_different_typecode(
+                    typecode,
+                    variable,
+                    &prev_float_hyps,
+                ) {
+                    return Err(Error::VarDeclaredMultipleTypesError);
+                }
+
+                if scope == 0 {
                     metamath_data.floating_hypotheses.push(FloatingHypohesis {
                         label: label.to_string(),
                         typecode: typecode.to_string(),
@@ -262,18 +278,21 @@ pub async fn parse_mm_file(
                 let label = next_label.ok_or(Error::MissingLabelError)?.to_string();
                 next_label = None;
 
-                let hypothesis = get_next_as_string_check_expression(&mut token_iter, "$.", &active_consts, &active_vars)?;
+                let hypothesis = get_next_as_string_check_expression(
+                    &mut token_iter,
+                    "$.",
+                    &active_consts,
+                    &active_vars,
+                )?;
 
-                active_hyps[scope].push(Hypothesis {
-                    label,
-                    hypothesis,
-                });
+                active_hyps[scope].push(Hypothesis { label, hypothesis });
             }
             "$d" => {
-                let disj = get_next_as_string_until_check_vars(&mut token_iter, "$.", &active_vars)?;
+                let disj =
+                    get_next_as_string_until_check_vars(&mut token_iter, "$.", &active_vars)?;
 
                 if !disj.contains(' ') {
-                    return Err(Error::ZeroOrOneSymbolDisjError)
+                    return Err(Error::ZeroOrOneSymbolDisjError);
                 }
 
                 active_disjs[scope].push(disj);
@@ -288,22 +307,30 @@ pub async fn parse_mm_file(
 
                 let assertion_end_keyword = if keyword == "$a" { "$." } else { "$=" };
 
-                let assertion = get_next_as_string_check_expression(&mut token_iter, assertion_end_keyword, &active_consts, &active_vars)?;
+                let assertion = get_next_as_string_check_expression(
+                    &mut token_iter,
+                    assertion_end_keyword,
+                    &active_consts,
+                    &active_vars,
+                )?;
                 let mut proof = None;
 
                 if keyword == "$p" {
-                    proof = Some(get_next_as_string_until_ignore_comments(&mut token_iter, "$."));
+                    proof = Some(get_next_as_string_until_ignore_comments(
+                        &mut token_iter,
+                        "$.",
+                    ));
                 }
 
                 add_theorem_database(
-                    conn, 
-                    next_db_index, 
-                    &label, 
-                    &description, 
-                    &disjoints, 
-                    &hypotheses, 
-                    &assertion, 
-                    None
+                    conn,
+                    next_db_index,
+                    &label,
+                    &description,
+                    &disjoints,
+                    &hypotheses,
+                    &assertion,
+                    None,
                 )
                 .await?;
                 next_db_index += 1;
@@ -317,8 +344,13 @@ pub async fn parse_mm_file(
                     proof,
                 });
             }
-            label /*if next_label.is_none()*/ => next_label = Some(label),
-            _unknown_token => {} //return Err(Error::TokenOutsideStatementError),
+            label => {
+                if next_label.is_none() {
+                    next_label = Some(label);
+                } else {
+                    return Err(Error::TokenOutsideStatementError);
+                }
+            }
         }
         tokens_processed += 1;
         if tokens_processed % 10_000 == 0 {
@@ -340,21 +372,6 @@ fn get_next_until(token_iter: &mut std::str::SplitWhitespace, until: &str) {
             break;
         }
     }
-}
-
-fn get_next_as_str_vec_until<'a>(
-    token_iter: &'a mut std::str::SplitWhitespace,
-    until: &str,
-) -> Vec<&'a str> {
-    let mut result: Vec<&str> = Vec::new();
-    while let Some(token) = token_iter.next() {
-        if token == until {
-            break;
-        } else {
-            result.push(token);
-        }
-    }
-    result
 }
 
 fn is_valid_math_symbol(symbol: &str) -> bool {
@@ -392,20 +409,33 @@ fn var_type_already_declared(
 
 // Checks if variable is declared by hypothesis in prev_float_hyps
 // and returns an Error if it has been declared with a different typecode
-fn var_type_already_declared_previously(
+// fn var_type_already_declared_previously(
+//     typecode: &str,
+//     variable: &str,
+//     prev_float_hyps: &Vec<RefFloatingHypothesis>,
+// ) -> Result<bool, Error> {
+//     for float_hyp in prev_float_hyps {
+//         if float_hyp.variable == variable {
+//             if float_hyp.typecode != typecode {
+//                 return Err(Error::VarDeclaredMultipleTypesError);
+//             }
+//             return Ok(true);
+//         }
+//     }
+//     Ok(false)
+// }
+
+fn var_type_declared_previously_different_typecode(
     typecode: &str,
     variable: &str,
     prev_float_hyps: &Vec<RefFloatingHypothesis>,
-) -> Result<bool, Error> {
+) -> bool {
     for float_hyp in prev_float_hyps {
-        if float_hyp.variable == variable {
-            if float_hyp.typecode != typecode {
-                return Err(Error::VarDeclaredMultipleTypesError);
-            }
-            return Ok(true);
+        if float_hyp.variable == variable && float_hyp.typecode != typecode {
+            return true;
         }
     }
-    Ok(false)
+    false
 }
 
 fn get_next_as_string_until_check_vars(
@@ -472,8 +502,8 @@ fn get_next_as_string_check_expression(
 }
 
 fn get_next_as_string_until_ignore_comments(
-    token_iter: &mut std::str::SplitWhitespace, 
-    until: &str
+    token_iter: &mut std::str::SplitWhitespace,
+    until: &str,
 ) -> String {
     let mut res = String::new();
 
