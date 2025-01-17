@@ -352,7 +352,6 @@ pub fn calc_theorem_page_data(
                     indention: 1,
                     assertion: stack[stack.len() - 1].statement.clone(),
                 });
-                // update_indention(&mut proof_lines);
                 stack.last_mut().unwrap().display_step_number = next_hypotheses_num;
                 next_hypotheses_num += 1;
             } else {
@@ -378,32 +377,64 @@ pub fn calc_theorem_page_data(
         // }
     }
 
+    calc_indention(&mut proof_lines)?;
+
     Ok(TheoremPageData {
         theorem: theorem.clone(),
         proof_lines,
     })
 }
 
-// fn update_indention(proof_lines: &mut Vec<ProofLine>) {
-//     let mut update: Vec<usize> = Vec::new();
-//     let mut find_update = Vec::new();
-//     find_update.push(proof_lines.len() - 1);
+#[derive(Debug)]
+struct Tree {
+    pub label: i32,
+    pub nodes: Vec<Tree>,
+}
 
-//     while let Some(&find_new) = find_update.first() {
-//         for &hypothesis in &proof_lines[find_new].hypotheses {
-//             let potential_update = (hypothesis as usize) - 1;
-//             if !update.contains(&potential_update) {
-//                 find_update.push(potential_update);
-//                 update.push(potential_update);
-//             }
-//         }
-//         find_update.swap_remove(0);
-//     }
+fn calc_indention(proof_lines: &mut Vec<ProofLine>) -> Result<(), Error> {
+    // calc tree rep
+    let mut trees: Vec<Tree> = Vec::new();
+    for (i, proof_line) in proof_lines.iter().enumerate() {
+        let mut nodes: Vec<Tree> = Vec::new();
+        for &hypothesis in &proof_line.hypotheses {
+            for tree_i in 0..trees.len() {
+                if trees[tree_i].label == hypothesis {
+                    nodes.push(trees.remove(tree_i));
+                    break;
+                }
+            }
+        }
 
-//     for i in update {
-//         proof_lines[i].indention += 1;
-//     }
-// }
+        trees.push(Tree {
+            label: (i + 1) as i32,
+            nodes,
+        })
+    }
+
+    // apply indention based on tree
+    if trees.len() != 1 {
+        println!("{:?}", trees);
+        return Err(Error::InternalLogicError);
+    }
+
+    let mut indention = 1;
+    let mut next_level: Vec<&Tree> = vec![trees.first().unwrap()];
+    let mut current_level: Vec<&Tree>;
+
+    while next_level.len() != 0 {
+        current_level = next_level;
+        next_level = Vec::new();
+
+        for tree in current_level {
+            proof_lines[(tree.label - 1) as usize].indention = indention;
+            next_level.extend(tree.nodes.iter());
+        }
+
+        indention += 1;
+    }
+
+    Ok(())
+}
 
 fn calc_step_application<'a>(
     step: &'a ProofStep,
