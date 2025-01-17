@@ -277,6 +277,9 @@ struct ProofStep {
     pub label: String,
     pub hypotheses: Vec<String>,
     pub statement: String,
+    // dispaly_step_number is -1, if the proof step was not saved,
+    // else the display_step_num of the last stack_line when step was saved
+    pub display_step_number: i32,
 }
 
 #[derive(Debug)]
@@ -340,20 +343,21 @@ pub fn calc_theorem_page_data(
             });
         }
 
-        if stack[stack.len() - 1].statement.split_whitespace().next() == Some("|-") {
-            hypotheses_nums.reverse();
-            proof_lines.push(ProofLine {
-                hypotheses: hypotheses_nums,
-                reference: step.label.clone(),
-                indention: 1,
-                assertion: stack[stack.len() - 1].statement.clone(),
-            });
-            update_indention(&mut proof_lines);
-            stack
-                .last_mut()
-                .ok_or(Error::InvalidProofError)?
-                .display_step_number = next_hypotheses_num;
-            next_hypotheses_num += 1;
+        if stack.last().unwrap().statement.split_whitespace().next() == Some("|-") {
+            if step.display_step_number == -1 {
+                hypotheses_nums.reverse();
+                proof_lines.push(ProofLine {
+                    hypotheses: hypotheses_nums,
+                    reference: step.label.clone(),
+                    indention: 1,
+                    assertion: stack[stack.len() - 1].statement.clone(),
+                });
+                // update_indention(&mut proof_lines);
+                stack.last_mut().unwrap().display_step_number = next_hypotheses_num;
+                next_hypotheses_num += 1;
+            } else {
+                stack.last_mut().unwrap().display_step_number = step.display_step_number;
+            }
         }
 
         if save {
@@ -361,12 +365,16 @@ pub fn calc_theorem_page_data(
                 label: String::new(),
                 hypotheses: Vec::new(),
                 statement: stack[stack.len() - 1].statement.clone(),
+                display_step_number: stack.last().unwrap().display_step_number,
             });
         }
 
         // println!("\nStack:");
         // for stack_line in &stack {
-        //     println!("{}", stack_line.statement)
+        //     println!(
+        //         "{}: {}",
+        //         stack_line.display_step_number, stack_line.statement
+        //     )
         // }
     }
 
@@ -376,26 +384,26 @@ pub fn calc_theorem_page_data(
     })
 }
 
-fn update_indention(proof_lines: &mut Vec<ProofLine>) {
-    let mut update: Vec<usize> = Vec::new();
-    let mut find_update = Vec::new();
-    find_update.push(proof_lines.len() - 1);
+// fn update_indention(proof_lines: &mut Vec<ProofLine>) {
+//     let mut update: Vec<usize> = Vec::new();
+//     let mut find_update = Vec::new();
+//     find_update.push(proof_lines.len() - 1);
 
-    while let Some(&find_new) = find_update.first() {
-        for &hypothesis in &proof_lines[find_new].hypotheses {
-            let potential_update = (hypothesis as usize) - 1;
-            if !update.contains(&potential_update) {
-                find_update.push(potential_update);
-                update.push(potential_update);
-            }
-        }
-        find_update.swap_remove(0);
-    }
+//     while let Some(&find_new) = find_update.first() {
+//         for &hypothesis in &proof_lines[find_new].hypotheses {
+//             let potential_update = (hypothesis as usize) - 1;
+//             if !update.contains(&potential_update) {
+//                 find_update.push(potential_update);
+//                 update.push(potential_update);
+//             }
+//         }
+//         find_update.swap_remove(0);
+//     }
 
-    for i in update {
-        proof_lines[i].indention += 1;
-    }
-}
+//     for i in update {
+//         proof_lines[i].indention += 1;
+//     }
+// }
 
 fn calc_step_application<'a>(
     step: &'a ProofStep,
@@ -559,6 +567,7 @@ fn calc_proof_steps(
             label,
             hypotheses: Vec::new(),
             statement: hypothesis,
+            display_step_number: -1,
         })
     }
 
@@ -581,6 +590,7 @@ fn calc_proof_steps(
                             .map(|(hyp, _label)| hyp.clone())
                             .collect(),
                         statement: theorem.assertion.clone(),
+                        display_step_number: -1,
                     });
                 } else {
                     let floating_hypothesis =
@@ -591,6 +601,7 @@ fn calc_proof_steps(
                         label: label.to_string(),
                         hypotheses: Vec::new(),
                         statement: floating_hypothesis.to_assertions_string(),
+                        display_step_number: -1,
                     });
                 }
             }
