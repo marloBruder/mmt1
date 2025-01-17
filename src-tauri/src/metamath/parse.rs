@@ -254,6 +254,7 @@ pub async fn parse_mm_file(
                     return Err(Error::VarDeclaredMultipleTypesError);
                 }
 
+                // TODO: check if order is same as locally declared
                 if scope == 0 {
                     metamath_data.floating_hypotheses.push(FloatingHypohesis {
                         label: label.to_string(),
@@ -330,7 +331,7 @@ pub async fn parse_mm_file(
                     &disjoints,
                     &hypotheses,
                     &assertion,
-                    None,
+                    proof.as_deref(),
                 )
                 .await?;
                 next_db_index += 1;
