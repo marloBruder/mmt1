@@ -1,19 +1,50 @@
 <script lang="ts">
   import { explorerData } from "$lib/sharedState/explorerData.svelte";
+  import { invoke } from "@tauri-apps/api/core";
   import ExplorerHeader from "./explorer/ExplorerHeader.svelte";
+  import ExplorerButton from "./explorer/ExplorerButton.svelte";
+  import { page } from "$app/stores";
 
   let filter = $state("");
+  let quickSearchResults: string[] = $state([]);
+  let more = $state(false);
+
+  let quickSearchInput = async () => {
+    [quickSearchResults, more] = await invoke("quick_search", { query: filter, onlyTen: true });
+  };
+
+  let loadAllQuickSearch = async () => {
+    [quickSearchResults, more] = await invoke("quick_search", { query: filter, onlyTen: false });
+    console.log(quickSearchResults);
+  };
+
+  let openTheoremName: string | null = $derived.by(() => {
+    let segments = $page.url.pathname.split("/");
+    if (segments.length == 4 && segments[1] == "main" && segments[2] == "theorem") {
+      return segments[3];
+    }
+    return null;
+  });
 </script>
 
 <div class="h-full overflow-y-auto overflow-x-hidden">
-  <!-- <div class="p-2">
+  <div class="p-2">
     Quick Search:
-    <input bind:value={filter} class="border border-black rounded" />
-  </div> -->
-  <!-- <div class="pl-1 py-2">Explorer:</div> -->
-  <div class="pt-2">
-    <ExplorerHeader header={explorerData.theoremListHeader} headerPath={{ path: [] }}></ExplorerHeader>
+    <input bind:value={filter} oninput={quickSearchInput} class="border border-black rounded" />
   </div>
+  <!-- <div class="pl-1 py-2">Explorer:</div> -->
+  {#if filter === ""}
+    <div class="pt-2">
+      <ExplorerHeader header={explorerData.theoremListHeader} headerPath={{ path: [] }}></ExplorerHeader>
+    </div>
+  {:else}
+    {#each quickSearchResults as theoremName}
+      <ExplorerButton {theoremName} {openTheoremName}></ExplorerButton>
+    {/each}
+    {#if more}
+      <button onclick={loadAllQuickSearch}>Load all</button>
+    {/if}
+  {/if}
   <!-- <div class="pl-1 py-2">Explorer:</div>
   <ul class="pl-2">
     {#each nameListData.theoremNames as name}

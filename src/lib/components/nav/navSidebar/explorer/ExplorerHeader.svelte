@@ -1,14 +1,13 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import ExplorerHeader from "./ExplorerHeader.svelte";
-  import { goto } from "$app/navigation";
-  import type { HeaderPath, HeaderRepresentation, NameListHeader } from "$lib/sharedState/model.svelte";
+  import type { HeaderPath, NameListHeader } from "$lib/sharedState/model.svelte";
   import ChevronDownIcon from "$lib/icons/ChevronDownIcon.svelte";
   import ChevronRightIcon from "$lib/icons/ChevronRightIcon.svelte";
   import PlusIcon from "$lib/icons/PlusIcon.svelte";
   import { page } from "$app/stores";
   import { explorerData } from "$lib/sharedState/explorerData.svelte";
+  import ExplorerButton from "./ExplorerButton.svelte";
 
   let { header, headerPath }: { header: NameListHeader; headerPath: HeaderPath } = $props();
 
@@ -34,10 +33,6 @@
       explorerData.unloadHeader(header);
     }
     header.opened = !header.opened;
-  };
-
-  let explorerClick = (name: string) => {
-    goto("/main/theorem/" + name);
   };
 
   let addingSubheader = $state(false);
@@ -124,9 +119,7 @@
 </div>
 <div class="pl-3">
   {#each header.theoremNames as theoremName}
-    <div>
-      <button class={"w-full text-left pl-2 " + (theoremName === openTheoremName ? " bg-gray-300 " : " hover:bg-gray-200 ")} onclick={() => explorerClick(theoremName)}>{theoremName}</button>
-    </div>
+    <ExplorerButton {theoremName} {openTheoremName}></ExplorerButton>
   {/each}
   {#each header.subHeaders as subHeader, index}
     <ExplorerHeader header={subHeader} headerPath={calcNewPath(index)}></ExplorerHeader>

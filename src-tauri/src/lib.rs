@@ -42,6 +42,7 @@ pub fn run() {
             editor::set_in_progress_theorem,
             editor::delete_in_progress_theorem,
             explorer::add_header,
+            explorer::quick_search,
             metamath::turn_into_theorem,
             metamath::text_to_constants,
             metamath::text_to_variables,
