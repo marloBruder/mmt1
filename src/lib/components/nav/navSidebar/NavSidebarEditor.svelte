@@ -19,13 +19,12 @@
   let newTabName = $state("");
 
   let addTheoremClick = async () => {
-    if (nameListData.validNewName(newTabName)) {
+    invoke("add_in_progress_theorem", { name: newTabName, text: "" }).then(() => {
       let name = newTabName;
-      await invoke("add_in_progress_theorem", { name, text: "" });
       nameListData.addInProgressTheoremName(name);
       newTabName = "";
       goto("/main/editor/" + name);
-    }
+    });
   };
 
   let onKeyDownName = (event: KeyboardEvent) => {

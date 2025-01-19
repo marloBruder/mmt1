@@ -5,7 +5,6 @@ pub struct MetamathData {
     pub constants: Vec<Constant>,
     pub variables: Vec<Variable>,
     pub floating_hypotheses: Vec<FloatingHypohesis>,
-    pub theorems: Vec<Theorem>,
     pub in_progress_theorems: Vec<InProgressTheorem>,
     pub theorem_list_header: Header,
 }
@@ -83,6 +82,42 @@ pub struct ProofLine {
     pub reference: String,
     pub indention: i32,
     pub assertion: String,
+}
+
+impl MetamathData {
+    pub fn label_exists(&self, label: &str) -> bool {
+        if self
+            .theorem_list_header
+            .find_theorem_by_name(label)
+            .is_some()
+        {
+            return true;
+        }
+
+        for in_progress_theorem in &self.in_progress_theorems {
+            if in_progress_theorem.name == label {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    pub fn valid_label(label: &str) -> bool {
+        if label == "" {
+            return false;
+        }
+
+        for ch in label.chars() {
+            match ch {
+                'a'..='z' | 'A'..='Z' | '_' | '.' | '-' => {}
+                _ => {
+                    return false;
+                }
+            }
+        }
+        true
+    }
 }
 
 impl FloatingHypohesis {

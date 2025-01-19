@@ -9,6 +9,7 @@ use crate::{
         add_in_progress_theorem_local, delete_in_progress_theorem_local,
         set_in_progress_theorem_name_local, set_in_progress_theorem_text_local,
     },
+    model::MetamathData,
     AppState, Error,
 };
 
@@ -20,6 +21,14 @@ pub async fn add_in_progress_theorem(
 ) -> Result<(), Error> {
     let mut app_state = state.lock().await;
     let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
+
+    if !MetamathData::valid_label(name) {
+        return Err(Error::InvalidLabelError);
+    }
+
+    if db_state.metamath_data.label_exists(name) {
+        return Err(Error::LabelAlreadyExistsError);
+    }
 
     add_in_progress_theorem_database(&mut db_state.db_conn, name, text).await?;
 
@@ -37,9 +46,19 @@ pub async fn set_in_progress_theorem_name(
     let mut app_state = state.lock().await;
     let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
 
-    set_in_progress_theorem_name_database(&mut db_state.db_conn, old_name, new_name).await?;
+    if old_name != new_name {
+        if !MetamathData::valid_label(new_name) {
+            return Err(Error::InvalidLabelError);
+        }
 
-    set_in_progress_theorem_name_local(&mut db_state.metamath_data, old_name, new_name);
+        if db_state.metamath_data.label_exists(new_name) {
+            return Err(Error::LabelAlreadyExistsError);
+        }
+
+        set_in_progress_theorem_name_database(&mut db_state.db_conn, old_name, new_name).await?;
+
+        set_in_progress_theorem_name_local(&mut db_state.metamath_data, old_name, new_name);
+    }
 
     Ok(())
 }

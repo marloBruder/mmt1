@@ -168,7 +168,6 @@ export class EditorTab extends Tab {
     let theoremPath = dataUnknown as TheoremPath;
 
     nameListData.removeInProgressTheoremName(this.#inProgressTheorem.name);
-    nameListData.addTheoremName(this.#inProgressTheorem.name);
     await explorerData.addTheoremName(theoremPath, this.#inProgressTheorem.name);
     tabManager.closeTabSameID(this, false);
     goto("/main/theorem/" + this.#inProgressTheorem.name);

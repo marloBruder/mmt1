@@ -89,7 +89,6 @@ pub async fn open_database(
             constants,
             variables,
             floating_hypotheses,
-            theorems: Vec::new(),
             in_progress_theorems,
             theorem_list_header,
         },

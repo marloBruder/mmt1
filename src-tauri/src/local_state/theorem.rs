@@ -23,20 +23,6 @@ pub async fn get_theorem_page_data_local(
     return calc_theorem_page_data(theorem, &db_state.metamath_data);
 }
 
-#[tauri::command]
-pub async fn get_theorem_names_local(
-    state: tauri::State<'_, Mutex<AppState>>,
-) -> Result<Vec<String>, Error> {
-    let app_state = state.lock().await;
-    let db_state = app_state.db_state.as_ref().ok_or(Error::NoDatabaseError)?;
-
-    let mut names: Vec<String> = Vec::new();
-    for theorem in &db_state.metamath_data.theorems {
-        names.push(theorem.name.clone());
-    }
-    return Ok(names);
-}
-
 pub fn get_theorem_insert_position(
     metamath_data: &MetamathData,
     position_name: &str,

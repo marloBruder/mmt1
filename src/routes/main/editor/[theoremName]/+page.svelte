@@ -29,16 +29,25 @@
   };
 
   let saveName = async () => {
-    if (oldName != theorem.name && !nameListData.validNewName(theorem.name)) {
-      throw Error("Invalid Name");
-    }
-    nameDisabled = true;
-    if (oldName != theorem.name) {
-      invoke("set_in_progress_theorem_name", { oldName, newName: theorem.name });
-      nameListData.changeInProgressTheoremName(oldName, theorem.name);
-      tab.changeEditorID(theorem.name);
-      goto("/main/editor/" + theorem.name);
-    }
+    invoke("set_in_progress_theorem_name", { oldName, newName: theorem.name }).then(() => {
+      nameDisabled = true;
+      if (oldName != theorem.name) {
+        nameListData.changeInProgressTheoremName(oldName, theorem.name);
+        tab.changeEditorID(theorem.name);
+        goto("/main/editor/" + theorem.name);
+      }
+    });
+
+    // if (oldName != theorem.name && !nameListData.validNewName(theorem.name)) {
+    //   throw Error("Invalid Name");
+    // }
+    // nameDisabled = true;
+    // if (oldName != theorem.name) {
+    //   invoke("set_in_progress_theorem_name", { oldName, newName: theorem.name });
+    //   nameListData.changeInProgressTheoremName(oldName, theorem.name);
+    //   tab.changeEditorID(theorem.name);
+    //   goto("/main/editor/" + theorem.name);
+    // }
   };
 
   let abortNameSave = () => {
