@@ -72,7 +72,7 @@ pub struct TheoremPath {
     pub theorem_index: usize,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct HtmlRepresentation {
     pub symbol: String,
     pub html: String,

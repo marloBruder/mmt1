@@ -2,6 +2,7 @@ use crate::{
     database::{
         constant::set_constants_database,
         floating_hypothesis::set_floating_hypotheses_database,
+        html_representation::set_html_representations_database,
         in_progress_theorem::delete_in_progress_theorem_database,
         theorem::{add_theorem_database, calc_db_index_for_theorem},
         variable::set_variables_database,
@@ -9,13 +10,14 @@ use crate::{
     local_state::{
         constant::set_constants_local,
         floating_hypothesis::{get_floating_hypothesis_by_label, set_floating_hypotheses_local},
+        html_representation::set_html_representations_local,
         in_progress_theorem::delete_in_progress_theorem_local,
         theorem::{add_theorem_local, get_theorem_insert_position},
         variable::set_variables_local,
     },
     model::{
-        Constant, FloatingHypohesis, Hypothesis, InProgressTheorem, MetamathData, ProofLine,
-        Theorem, TheoremPageData, TheoremPath, Variable,
+        Constant, FloatingHypohesis, HtmlRepresentation, Hypothesis, InProgressTheorem,
+        MetamathData, ProofLine, Theorem, TheoremPageData, TheoremPath, Variable,
     },
     AppState, Error,
 };
@@ -109,9 +111,7 @@ pub async fn turn_into_theorem(
     .await
     .or(Err(Error::SqlError))?;
 
-    delete_in_progress_theorem_database(&mut db_state.db_conn, &name)
-        .await
-        .or(Err(Error::SqlError))?;
+    delete_in_progress_theorem_database(&mut db_state.db_conn, &name).await?;
 
     delete_in_progress_theorem_local(&mut db_state.metamath_data, &name);
 
@@ -146,9 +146,7 @@ pub async fn text_to_constants(
     let mut app_state = state.lock().await;
     let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
 
-    set_constants_database(&mut db_state.db_conn, &symbols)
-        .await
-        .or(Err(Error::SqlError))?;
+    set_constants_database(&mut db_state.db_conn, &symbols).await?;
 
     set_constants_local(&mut db_state.metamath_data, &symbols);
 
@@ -177,9 +175,7 @@ pub async fn text_to_variables(
     let mut app_state = state.lock().await;
     let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
 
-    set_variables_database(&mut db_state.db_conn, &symbols)
-        .await
-        .or(Err(Error::SqlError))?;
+    set_variables_database(&mut db_state.db_conn, &symbols).await?;
 
     set_variables_local(&mut db_state.metamath_data, &symbols);
 
@@ -263,13 +259,56 @@ pub async fn text_to_floating_hypotheses(
     let mut app_state = state.lock().await;
     let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
 
-    set_floating_hypotheses_database(&mut db_state.db_conn, &floating_hypotheses)
-        .await
-        .or(Err(Error::SqlError))?;
+    set_floating_hypotheses_database(&mut db_state.db_conn, &floating_hypotheses).await?;
 
     set_floating_hypotheses_local(&mut db_state.metamath_data, &floating_hypotheses);
 
     Ok(floating_hypotheses)
+}
+
+#[tauri::command]
+pub async fn text_to_html_representations(
+    state: State<'_, Mutex<AppState>>,
+    text: &str,
+) -> Result<Vec<HtmlRepresentation>, Error> {
+    if !text.is_ascii() {
+        return Err(Error::InvalidCharactersError);
+    }
+
+    let mut html_representations = Vec::new();
+
+    for statement in text.split(';') {
+        let tokens: Vec<&str> = statement.split_whitespace().collect();
+        if tokens.len() != 4 || tokens[0] != "htmldef" || tokens[2] != "as" {
+            return Err(Error::InvalidFormatError);
+        }
+        html_representations.push(HtmlRepresentation {
+            symbol: get_str_in_quotes(tokens[1])
+                .ok_or(Error::InvalidFormatError)?
+                .to_string(),
+            html: get_str_in_quotes(tokens[3])
+                .ok_or(Error::InvalidFormatError)?
+                .to_string(),
+        })
+    }
+
+    let mut app_state = state.lock().await;
+    let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
+
+    set_html_representations_database(&mut db_state.db_conn, &html_representations).await?;
+
+    set_html_representations_local(&mut db_state.metamath_data, &html_representations);
+
+    Ok(html_representations)
+}
+
+fn get_str_in_quotes(str: &str) -> Option<&str> {
+    let chars: Vec<char> = str.chars().collect();
+
+    if chars.len() < 3 || *chars.first().unwrap() != '\"' || *chars.last().unwrap() != '\"' {
+        return None;
+    }
+    Some(&str[1..(str.len() - 1)])
 }
 
 #[derive(Debug)]

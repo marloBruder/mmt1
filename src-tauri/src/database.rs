@@ -180,7 +180,8 @@ CREATE TABLE header (
     title TEXT
 );
 CREATE TABLE html_representation (
-    symbol TEXT PRIMARY KEY,
+    [index] INTEGER PRIMARY KEY,
+    symbol TEXT,
     html TEXT
 );
 ";

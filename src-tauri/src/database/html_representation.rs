@@ -18,6 +18,34 @@ pub async fn get_html_representations_database(
     Ok(html_representations)
 }
 
+pub async fn set_html_representations_database(
+    conn: &mut SqliteConnection,
+    html_representations: &Vec<HtmlRepresentation>,
+) -> Result<(), Error> {
+    sqlx::query(sql::HTML_REPRESENTATIONS_DELETE)
+        .execute(&mut *conn)
+        .await
+        .or(Err(Error::SqlError))?;
+
+    for (index, html_representation) in html_representations.iter().enumerate() {
+        sqlx::query(sql::HTML_REPRESENTATION_ADD)
+            .bind(index as i32)
+            .bind(&html_representation.symbol)
+            .bind(&html_representation.html)
+            .execute(&mut *conn)
+            .await
+            .or(Err(Error::SqlError))?;
+    }
+
+    Ok(())
+}
+
 mod sql {
     pub const HTML_REPRESENTATIONS_GET: &str = "SELECT * FROM html_representation;";
+
+    pub const HTML_REPRESENTATIONS_DELETE: &str = "DELETE FROM html_representation;";
+
+    pub const HTML_REPRESENTATION_ADD: &str = "\
+INSERT INTO html_representation ([index], symbol, html)
+VALUES ($1, $2, $3);";
 }

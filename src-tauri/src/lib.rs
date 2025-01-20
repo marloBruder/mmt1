@@ -47,6 +47,7 @@ pub fn run() {
             metamath::text_to_constants,
             metamath::text_to_variables,
             metamath::text_to_floating_hypotheses,
+            metamath::text_to_html_representations,
             local_state::constant::get_constants_local,
             local_state::variable::get_variables_local,
             local_state::floating_hypothesis::get_floating_hypotheses_local,
@@ -54,6 +55,7 @@ pub fn run() {
             local_state::header::get_header_local,
             local_state::in_progress_theorem::get_in_progress_theorem_local,
             local_state::in_progress_theorem::get_in_progress_theorem_names_local,
+            local_state::html_representation::get_html_representations_local,
         ])
         .setup(|app| app_setup(app))
         .run(tauri::generate_context!())
