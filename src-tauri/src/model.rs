@@ -7,6 +7,7 @@ pub struct MetamathData {
     pub floating_hypotheses: Vec<FloatingHypohesis>,
     pub in_progress_theorems: Vec<InProgressTheorem>,
     pub theorem_list_header: Header,
+    pub html_representations: Vec<HtmlRepresentation>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -69,6 +70,12 @@ pub struct HeaderPath {
 pub struct TheoremPath {
     pub header_path: HeaderPath,
     pub theorem_index: usize,
+}
+
+#[derive(Debug, Serialize)]
+pub struct HtmlRepresentation {
+    pub symbol: String,
+    pub html: String,
 }
 
 pub struct TheoremPageData {

@@ -7,6 +7,7 @@ use crate::{model::MetamathData, AppState, DatabaseState};
 pub mod constant;
 pub mod floating_hypothesis;
 pub mod header;
+pub mod html_representation;
 pub mod in_progress_theorem;
 pub mod theorem;
 pub mod variable;
@@ -42,10 +43,6 @@ pub async fn create_or_override_database(
         .execute(&mut conn)
         .await
         .or(Err(Error::SqlError))?;
-    // .map_err(|e| {
-    //     print!("{:?}", e);
-    //     Error::SqlError
-    // })?;
 
     let mut app_state = state.lock().await;
 
@@ -72,6 +69,7 @@ pub async fn open_database(
     sql::check_returns_rows_or_error(sql::THEOREM_TABLE_CHECK, &mut conn).await?;
     sql::check_returns_rows_or_error(sql::IN_PROGRESS_THEOREM_TABLE_CHECK, &mut conn).await?;
     sql::check_returns_rows_or_error(sql::HEADER_TABLE_CHECK, &mut conn).await?;
+    sql::check_returns_rows_or_error(sql::HTML_REPRESENTATION_TABLE_CHECK, &mut conn).await?;
 
     let constants = constant::get_constants_database(&mut conn).await?;
     let variables = variable::get_variables_database(&mut conn).await?;
@@ -80,6 +78,8 @@ pub async fn open_database(
     let theorem_list_header = header::get_theorem_list_header_database(&mut conn).await?;
     let in_progress_theorems =
         in_progress_theorem::get_in_progress_theorems_database(&mut conn).await?;
+    let html_representations =
+        html_representation::get_html_representations_database(&mut conn).await?;
 
     let mut app_state = state.lock().await;
 
@@ -91,6 +91,7 @@ pub async fn open_database(
             floating_hypotheses,
             in_progress_theorems,
             theorem_list_header,
+            html_representations,
         },
     });
 
@@ -174,9 +175,13 @@ CREATE TABLE in_progress_theorem (
     text TEXT
 );
 CREATE TABLE header (
-    db_index INTEGER,
+    db_index INTEGER PRIMARY KEY,
     depth INTEGER,
     title TEXT
+);
+CREATE TABLE html_representation (
+    symbol TEXT PRIMARY KEY,
+    html TEXT
 );
 ";
 
@@ -192,6 +197,8 @@ CREATE TABLE header (
         "SELECT name FROM sqlite_master WHERE type='table' AND name='in_progress_theorem';";
     pub const HEADER_TABLE_CHECK: &str =
         "SELECT name FROM sqlite_master WHERE type='table' AND name='header';";
+    pub const HTML_REPRESENTATION_TABLE_CHECK: &str =
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='html_representation';";
 
     // Checks whether the query returns rows and returns the correct error if not
     pub async fn check_returns_rows_or_error(
