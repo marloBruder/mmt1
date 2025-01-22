@@ -1,13 +1,16 @@
 <script lang="ts">
   import RoundButton from "$lib/components/util/RoundButton.svelte";
-  import type { Constant, FloatingHypotheses, Variable } from "$lib/sharedState/model.svelte";
+  import type { Constant, FloatingHypotheses, HtmlRepresentation, Variable } from "$lib/sharedState/model.svelte";
   import type { SettingsTab } from "$lib/sharedState/tabData.svelte";
   import { invoke } from "@tauri-apps/api/core";
 
-  let { constantsTab, variablesTab, floatingHypothesesTab, tab }: { constantsTab?: boolean; variablesTab?: boolean; floatingHypothesesTab?: boolean; tab: SettingsTab } = $props();
+  let { constantsTab, variablesTab, floatingHypothesesTab, htmlRepresentationsTab, tab }: { constantsTab?: boolean; variablesTab?: boolean; floatingHypothesesTab?: boolean; htmlRepresentationsTab?: boolean; tab: SettingsTab } = $props();
 
   $effect(() => {
-    if (!((constantsTab && !variablesTab && !floatingHypothesesTab) || (!constantsTab && variablesTab && !floatingHypothesesTab) || (!constantsTab && !variablesTab && floatingHypothesesTab))) {
+    // Add 1 if an argument is true, add 0 otherwise
+    // The unary + converts booleans to numbers
+    let componentTypesGiven = +(constantsTab === true) + +(variablesTab === true) + +(floatingHypothesesTab === true) + +(htmlRepresentationsTab === true);
+    if (componentTypesGiven != 1) {
       throw Error("Only one of constantsTab, variablesTab and floatingHypothesesTab should be selected at a time");
     }
   });
@@ -28,13 +31,17 @@
       for (let fh of tab.floatingHypotheses) {
         newText = newText + fh.label + " $f " + fh.typecode + " " + fh.variable + " $.\n";
       }
+    } else if (htmlRepresentationsTab) {
+      for (let hr of tab.htmlRepresentations) {
+        newText = newText + 'htmldef "' + hr.symbol + '" as "' + hr.html + '";\n';
+      }
     }
     text = newText;
     editing = true;
   };
 
   let saveData = async () => {
-    let command = constantsTab ? "text_to_constants" : variablesTab ? "text_to_variables" : "text_to_floating_hypotheses";
+    let command = constantsTab ? "text_to_constants" : variablesTab ? "text_to_variables" : floatingHypothesesTab ? "text_to_floating_hypotheses" : "text_to_html_representations";
     invoke(command, { text }).then((newDataUnknown) => {
       if (constantsTab) {
         tab.constants = newDataUnknown as Constant[];
@@ -42,6 +49,8 @@
         tab.variables = newDataUnknown as Variable[];
       } else if (floatingHypothesesTab) {
         tab.floatingHypotheses = newDataUnknown as FloatingHypotheses[];
+      } else if (htmlRepresentationsTab) {
+        tab.htmlRepresentations = newDataUnknown as HtmlRepresentation[];
       }
       editing = false;
     });
@@ -57,6 +66,8 @@
         Variables:
       {:else if floatingHypothesesTab}
         Floating Hypotheses:
+      {:else if htmlRepresentationsTab}
+        Html Representations:
       {/if}
     </h1>
   </div>
@@ -78,6 +89,10 @@
         {:else if floatingHypothesesTab}
           {#each tab.floatingHypotheses as floatingHypothesis}
             <li>{floatingHypothesis.label + ": " + floatingHypothesis.typecode + " " + floatingHypothesis.variable}</li>
+          {/each}
+        {:else if htmlRepresentationsTab}
+          {#each tab.htmlRepresentations as htmlRepresentation}
+            <li>{htmlRepresentation.symbol + ": " + htmlRepresentation.html}</li>
           {/each}
         {/if}
       </ol>

@@ -6,7 +6,7 @@
 
   let tab = $derived(data.tab);
 
-  let tabNames = ["Constants", "Variables", "Floating Hypotheses"];
+  let tabNames = ["Constants", "Variables", "Floating Hypotheses", "Html Representations"];
 
   let currentTab = $state(0);
 
@@ -16,7 +16,7 @@
 </script>
 
 <div class="w-full h-full">
-  <div class="w-40 h-full fixed border-r border-gray-300 overflow-hidden">
+  <div class="w-44 h-full fixed border-r border-gray-300 overflow-hidden">
     <ul class="pl-2 pt-2">
       {#each tabNames as name, index}
         <li class:bg-gray-300={index == currentTab}>
@@ -25,13 +25,15 @@
       {/each}
     </ul>
   </div>
-  <div class="ml-40 h-full overflow-y-auto">
+  <div class="ml-44 h-full overflow-y-auto">
     {#if currentTab === 0}
       <SymbolConfigSettingsTab constantsTab {tab}></SymbolConfigSettingsTab>
     {:else if currentTab === 1}
       <SymbolConfigSettingsTab variablesTab {tab}></SymbolConfigSettingsTab>
     {:else if currentTab === 2}
       <SymbolConfigSettingsTab floatingHypothesesTab {tab}></SymbolConfigSettingsTab>
+    {:else if currentTab === 3}
+      <SymbolConfigSettingsTab htmlRepresentationsTab {tab}></SymbolConfigSettingsTab>
     {/if}
   </div>
 </div>

@@ -277,19 +277,24 @@ pub async fn text_to_html_representations(
 
     let mut html_representations = Vec::new();
 
-    for statement in text.split(';') {
+    let statements: Vec<&str> = text.split(';').collect();
+
+    for (i, statement) in statements.iter().enumerate() {
         let tokens: Vec<&str> = statement.split_whitespace().collect();
         if tokens.len() != 4 || tokens[0] != "htmldef" || tokens[2] != "as" {
-            return Err(Error::InvalidFormatError);
+            if !(tokens.len() == 0 && i == statements.len() - 1) {
+                return Err(Error::InvalidFormatError);
+            }
+        } else {
+            html_representations.push(HtmlRepresentation {
+                symbol: get_str_in_quotes(tokens[1])
+                    .ok_or(Error::InvalidFormatError)?
+                    .to_string(),
+                html: get_str_in_quotes(tokens[3])
+                    .ok_or(Error::InvalidFormatError)?
+                    .to_string(),
+            });
         }
-        html_representations.push(HtmlRepresentation {
-            symbol: get_str_in_quotes(tokens[1])
-                .ok_or(Error::InvalidFormatError)?
-                .to_string(),
-            html: get_str_in_quotes(tokens[3])
-                .ok_or(Error::InvalidFormatError)?
-                .to_string(),
-        })
     }
 
     let mut app_state = state.lock().await;

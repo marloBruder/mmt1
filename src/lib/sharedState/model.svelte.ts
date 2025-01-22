@@ -65,6 +65,11 @@ export interface TheoremPath {
   theoremIndex: number;
 }
 
+export interface HtmlRepresentation {
+  symbol: string;
+  html: string;
+}
+
 export interface TheoremPageData {
   theorem: Theorem;
   proofLines: ProofLine[];

@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Constant, FloatingHypotheses, HeaderPath, InProgressTheorem, Theorem, TheoremPageData, TheoremPath, Variable } from "./model.svelte";
+import type { Constant, FloatingHypotheses, HeaderPath, HtmlRepresentation, InProgressTheorem, Theorem, TheoremPageData, TheoremPath, Variable } from "./model.svelte";
 import { nameListData } from "./nameListData.svelte";
 import { goto } from "$app/navigation";
 import { page } from "$app/stores";
@@ -186,6 +186,7 @@ export class SettingsTab extends Tab {
   constants: Constant[] = $state([]);
   variables: Variable[] = $state([]);
   floatingHypotheses: FloatingHypotheses[] = $state([]);
+  htmlRepresentations: HtmlRepresentation[] = $state([]);
 
   constructor() {
     super();
@@ -195,6 +196,7 @@ export class SettingsTab extends Tab {
     this.constants = await invoke("get_constants_local");
     this.variables = await invoke("get_variables_local");
     this.floatingHypotheses = await invoke("get_floating_hypotheses_local");
+    this.htmlRepresentations = await invoke("get_html_representations_local");
   }
 
   name(): string {
