@@ -2,7 +2,7 @@
   import { goto } from "$app/navigation";
   import { invoke } from "@tauri-apps/api/core";
   import { save, confirm, open } from "@tauri-apps/plugin-dialog";
-  import { resetApp } from "../+page.svelte";
+  import { loadApp, resetApp } from "../+page.svelte";
 
   let mmFilePath = $state("");
   let dbFilePath = $state("");
@@ -25,6 +25,7 @@
     invoke("import_database", { mmFilePath, dbFilePath })
       .then(() => {
         resetApp();
+        loadApp();
         goto("/main");
       })
       .catch(async (error) => {
@@ -33,6 +34,7 @@
           if (confirmed) {
             invoke("import_and_override_database", { mmFilePath, dbFilePath }).then(() => {
               resetApp();
+              loadApp();
               goto("/main");
             });
           }

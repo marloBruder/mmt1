@@ -1,5 +1,6 @@
 <script lang="ts">
   import RoundButton from "$lib/components/util/RoundButton.svelte";
+  import { htmlData } from "$lib/sharedState/htmlData.svelte";
   import type { Constant, FloatingHypotheses, HtmlRepresentation, Variable } from "$lib/sharedState/model.svelte";
   import type { SettingsTab } from "$lib/sharedState/tabData.svelte";
   import { invoke } from "@tauri-apps/api/core";
@@ -51,6 +52,7 @@
         tab.floatingHypotheses = newDataUnknown as FloatingHypotheses[];
       } else if (htmlRepresentationsTab) {
         tab.htmlRepresentations = newDataUnknown as HtmlRepresentation[];
+        htmlData.loadLocal(tab.htmlRepresentations);
       }
       editing = false;
     });

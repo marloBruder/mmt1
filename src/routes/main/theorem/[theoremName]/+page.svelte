@@ -2,6 +2,7 @@
   import { tabManager, TheoremTab } from "$lib/sharedState/tabData.svelte";
   import { onMount } from "svelte";
   import type { PageData } from "./$types";
+  import MetamathExpression from "$lib/components/util/MetamathExpression.svelte";
 
   let { data }: { data: PageData } = $props();
 
@@ -36,7 +37,7 @@
             {#each theorem.hypotheses as hypothesis}
               <tr>
                 <td>{hypothesis.label}: </td>
-                <td>{hypothesis.hypothesis}</td>
+                <td><MetamathExpression expression={hypothesis.hypothesis}></MetamathExpression></td>
               </tr>
             {/each}
           </tbody>
@@ -46,13 +47,13 @@
   {/if}
   <div class="pb-4">
     <h2>Assertion:</h2>
-    <p>{theorem.assertion}</p>
+    <p><MetamathExpression expression={theorem.assertion}></MetamathExpression></p>
   </div>
   {#if theorem.disjoints.length != 0}
     <div class="pb-4">
       <h2>Disjoints:</h2>
       {#each theorem.disjoints as disjoint}
-        <p>{disjoint}</p>
+        <p><MetamathExpression expression={disjoint}></MetamathExpression></p>
       {/each}
     </div>
   {/if}
@@ -99,7 +100,7 @@
                   {/each}
                   {proofLine.indention}
                 </span>
-                {proofLine.assertion}
+                <MetamathExpression expression={proofLine.assertion}></MetamathExpression>
               </td>
             </tr>
           {/each}

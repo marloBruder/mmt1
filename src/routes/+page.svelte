@@ -3,8 +3,13 @@
     nameListData.resetLists();
     explorerData.resetExplorer();
     tabManager.resetTabs();
+    htmlData.resetHtmlData();
   };
-  export { resetApp };
+  let loadApp = async () => {
+    await nameListData.load();
+    await htmlData.load();
+  };
+  export { resetApp, loadApp };
 </script>
 
 <script lang="ts">
@@ -14,6 +19,7 @@
   import { tabManager } from "$lib/sharedState/tabData.svelte";
   import { nameListData } from "$lib/sharedState/nameListData.svelte";
   import { explorerData } from "$lib/sharedState/explorerData.svelte";
+  import { htmlData } from "$lib/sharedState/htmlData.svelte";
 
   let createNewDB = async () => {
     // Allow user to select file location
@@ -33,6 +39,8 @@
                 goto("/main");
               });
             }
+          } else {
+            throw error;
           }
         });
     }
@@ -44,14 +52,8 @@
     if (filePath) {
       invoke("open_database", { filePath }).then(async (metamathDataUnknown) => {
         resetApp();
-        nameListData
-          .load()
-          .then(() => {
-            goto("/main");
-          })
-          .catch(() => {
-            console.log("Error while loading data");
-          });
+        await loadApp();
+        goto("/main");
       });
     }
   };
