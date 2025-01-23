@@ -277,25 +277,93 @@ pub async fn text_to_html_representations(
 
     let mut html_representations = Vec::new();
 
-    let statements: Vec<&str> = text.split(';').collect();
+    let mut index: usize = advance_until_non_whitespace(text, 0);
 
-    for (i, statement) in statements.iter().enumerate() {
-        let tokens: Vec<&str> = statement.split_whitespace().collect();
-        if tokens.len() != 4 || tokens[0] != "htmldef" || tokens[2] != "as" {
-            if !(tokens.len() == 0 && i == statements.len() - 1) {
-                return Err(Error::InvalidFormatError);
-            }
-        } else {
-            html_representations.push(HtmlRepresentation {
-                symbol: get_str_in_quotes(tokens[1])
-                    .ok_or(Error::InvalidFormatError)?
-                    .to_string(),
-                html: get_str_in_quotes(tokens[3])
-                    .ok_or(Error::InvalidFormatError)?
-                    .to_string(),
-            });
+    while index < text.len() {
+        let token_end = advance_until_whitespace(text, index);
+
+        if &text[index..token_end] != "htmldef" {
+            println!("htmldef error");
+            println!("index: {}", index);
+            println!("Token_end: {}", token_end);
+            return Err(Error::InvalidFormatError);
         }
+
+        index = advance_until_non_whitespace(text, token_end);
+
+        if text.as_bytes()[index] != b'\"' {
+            println!("symbol start quotes error");
+            return Err(Error::InvalidFormatError);
+        }
+
+        let token_end = advance_until_quotes(text, index + 1);
+
+        let symbol = text[(index + 1)..token_end].to_string();
+
+        if advance_until_whitespace(text, token_end) != token_end + 1 {
+            println!("symbol end quotes error");
+            println!("Symbol: {}", symbol);
+            println!("Token_end: {}", token_end);
+            println!("Function: {}", advance_until_whitespace(text, token_end));
+            return Err(Error::InvalidFormatError);
+        }
+
+        index = advance_until_non_whitespace(text, token_end + 1);
+
+        let token_end = advance_until_whitespace(text, index);
+
+        if &text[index..token_end] != "as" {
+            println!("as error");
+            return Err(Error::InvalidFormatError);
+        }
+
+        index = advance_until_non_whitespace(text, token_end);
+
+        if text.as_bytes()[index] != b'\"' {
+            println!("html start quotes error");
+            return Err(Error::InvalidFormatError);
+        }
+
+        let token_end = advance_until_quotes(text, index + 1);
+
+        let html = text[(index + 1)..token_end].to_string();
+
+        if token_end + 1 >= text.len() || text.as_bytes()[token_end + 1] != b';' {
+            println!("html end quotes error");
+            println!("html: {}", html);
+            return Err(Error::InvalidFormatError);
+        }
+
+        index = advance_until_non_whitespace(text, token_end + 2);
+
+        html_representations.push(HtmlRepresentation { symbol, html })
     }
+
+    // let statements: Vec<&str> = text.split(';').collect();
+
+    // for (i, statement) in statements.iter().enumerate() {
+    //     let tokens: Vec<&str> = statement.split_whitespace().collect();
+    //     if tokens.len() < 4 || tokens[0] != "htmldef" || tokens[2] != "as" {
+    //         if !(tokens.len() == 0 && i == statements.len() - 1) {
+    //             return Err(Error::InvalidFormatError);
+    //         }
+    //     } else {
+    //         let mut html_in_quotes = tokens[3].to_string();
+    //         for i in 4..tokens.len() {
+    //             html_in_quotes.push(' ');
+    //             html_in_quotes.push_str(tokens[i]);
+    //         }
+
+    //         html_representations.push(HtmlRepresentation {
+    //             symbol: get_str_in_quotes(tokens[1])
+    //                 .ok_or(Error::InvalidFormatError)?
+    //                 .to_string(),
+    //             html: get_str_in_quotes(&html_in_quotes)
+    //                 .ok_or(Error::InvalidFormatError)?
+    //                 .to_string(),
+    //         });
+    //     }
+    // }
 
     let mut app_state = state.lock().await;
     let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
@@ -307,14 +375,44 @@ pub async fn text_to_html_representations(
     Ok(html_representations)
 }
 
-fn get_str_in_quotes(str: &str) -> Option<&str> {
-    let chars: Vec<char> = str.chars().collect();
-
-    if chars.len() < 3 || *chars.first().unwrap() != '\"' || *chars.last().unwrap() != '\"' {
-        return None;
+fn advance_until_whitespace(str: &str, mut index: usize) -> usize {
+    while index < str.len() {
+        if str.as_bytes()[index].is_ascii_whitespace() {
+            break;
+        }
+        index += 1;
     }
-    Some(&str[1..(str.len() - 1)])
+    index
 }
+
+fn advance_until_non_whitespace(str: &str, mut index: usize) -> usize {
+    while index < str.len() {
+        if !str.as_bytes()[index].is_ascii_whitespace() {
+            break;
+        }
+        index += 1;
+    }
+    index
+}
+
+fn advance_until_quotes(str: &str, mut index: usize) -> usize {
+    while index < str.len() {
+        if str.as_bytes()[index] == b'\"' {
+            break;
+        }
+        index += 1;
+    }
+    index
+}
+
+// fn get_str_in_quotes(str: &str) -> Option<&str> {
+//     let chars: Vec<char> = str.chars().collect();
+
+//     if chars.len() < 3 || *chars.first().unwrap() != '\"' || *chars.last().unwrap() != '\"' {
+//         return None;
+//     }
+//     Some(&str[1..(str.len() - 1)])
+// }
 
 #[derive(Debug)]
 struct ProofStep {
