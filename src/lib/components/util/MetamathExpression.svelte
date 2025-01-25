@@ -4,7 +4,9 @@
   let { expression }: { expression: string } = $props();
 </script>
 
-{#each expression.split(" ") as symbol}
-  {@html htmlData.getHtml(symbol) || symbol}{" "}
-{/each}
+<span class="math">
+  {#each expression.split(" ") as symbol}
+    {@html htmlData.getHtml(symbol) || symbol}{" "}
+  {/each}
+</span>
 <!-- {expression} -->
