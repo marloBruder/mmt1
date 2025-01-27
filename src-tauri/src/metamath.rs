@@ -21,7 +21,6 @@ use crate::{
     },
     AppState, Error,
 };
-use sqlx::query;
 use std::collections::HashMap;
 use tauri::{async_runtime::Mutex, State};
 
@@ -305,9 +304,8 @@ pub async fn text_to_html_representations(
             return Err(Error::InvalidFormatError);
         }
 
-        let mut html: String = get_str_in_quotes(statement_tokens[3])
-            .ok_or(Error::InvalidFormatError)?
-            .to_string();
+        let mut html: String =
+            get_str_in_quotes(statement_tokens[3]).ok_or(Error::InvalidFormatError)?;
 
         let mut next_html_index = 5;
 
@@ -316,7 +314,7 @@ pub async fn text_to_html_representations(
                 return Err(Error::InvalidFormatError);
             }
             html.push_str(
-                get_str_in_quotes(statement_tokens[next_html_index])
+                &get_str_in_quotes(statement_tokens[next_html_index])
                     .ok_or(Error::InvalidFormatError)?,
             );
 
@@ -447,7 +445,11 @@ fn tokenize_typesetting_text(text: &str) -> Result<Vec<&str>, Error> {
                         return Err(Error::InvalidFormatError);
                     }
                     if text_bytes[end_index] == quote_type {
-                        break;
+                        if end_index + 1 < text.len() && text_bytes[end_index + 1] == quote_type {
+                            end_index += 1;
+                        } else {
+                            break;
+                        }
                     }
                 }
                 tokens.push(&text[index..(end_index + 1)]);
@@ -508,7 +510,7 @@ fn tokenize_typesetting_text(text: &str) -> Result<Vec<&str>, Error> {
 //     index
 // }
 
-fn get_str_in_quotes(str: &str) -> Option<&str> {
+fn get_str_in_quotes(str: &str) -> Option<String> {
     let chars: Vec<char> = str.chars().collect();
 
     if chars.len() < 3
@@ -517,7 +519,14 @@ fn get_str_in_quotes(str: &str) -> Option<&str> {
     {
         return None;
     }
-    Some(&str[1..(str.len() - 1)])
+
+    let (replace, replace_with) = if *chars.first().unwrap() == '\"' {
+        ("\"\"", "\"")
+    } else {
+        ("\'\'", "\'")
+    };
+
+    Some(str[1..(str.len() - 1)].replace(replace, replace_with))
 }
 
 #[derive(Debug)]

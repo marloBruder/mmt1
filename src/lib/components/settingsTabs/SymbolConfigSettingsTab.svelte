@@ -34,7 +34,7 @@
       }
     } else if (htmlRepresentationsTab) {
       for (let hr of tab.htmlRepresentations) {
-        newText = newText + 'htmldef "' + hr.symbol + '" as "' + hr.html + '";\n';
+        newText = newText + 'htmldef "' + hr.symbol + '" as "' + hr.html.replaceAll('"', '""') + '";\n';
       }
     }
     text = newText;
