@@ -427,7 +427,7 @@ fn tokenize_typesetting_text(text: &str) -> Result<Vec<&str>, Error> {
                 loop {
                     end_index += 1;
                     if end_index >= text.len() {
-                        return Err(Error::InvalidFormatError);
+                        return Err(Error::TypesettingFormatError);
                     }
                     if text_bytes[end_index - 1] == b'*' && text_bytes[end_index] == b'/' {
                         break;
@@ -442,7 +442,7 @@ fn tokenize_typesetting_text(text: &str) -> Result<Vec<&str>, Error> {
                 loop {
                     end_index += 1;
                     if end_index >= text.len() {
-                        return Err(Error::InvalidFormatError);
+                        return Err(Error::TypesettingFormatError);
                     }
                     if text_bytes[end_index] == quote_type {
                         if end_index + 1 < text.len() && text_bytes[end_index + 1] == quote_type {
@@ -459,7 +459,7 @@ fn tokenize_typesetting_text(text: &str) -> Result<Vec<&str>, Error> {
                     && !text_bytes[index].is_ascii_whitespace()
                     && text_bytes[index] != b';'
                 {
-                    return Err(Error::InvalidFormatError);
+                    return Err(Error::TypesettingFormatError);
                 }
             }
             (c, _) if c.is_ascii_whitespace() => index += 1,

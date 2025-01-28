@@ -6,9 +6,13 @@ use crate::{
     database::{
         constant::add_constant_database_raw,
         floating_hypothesis::add_floating_hypothesis_database_raw, header::add_header_database,
-        theorem::add_theorem_database, variable::add_variable_database_raw,
+        html_representation::set_html_representations_database, theorem::add_theorem_database,
+        variable::add_variable_database_raw,
     },
-    model::{Constant, FloatingHypohesis, Header, Hypothesis, MetamathData, Theorem, Variable},
+    model::{
+        Constant, FloatingHypohesis, Header, HtmlRepresentation, Hypothesis, MetamathData, Theorem,
+        Variable,
+    },
     Error,
 };
 
@@ -67,56 +71,119 @@ pub async fn parse_mm_file(
                 let mut comment_iter = last_comment.split_whitespace();
 
                 if let Some(first_token) = comment_iter.next() {
-                    let mut depth = -1;
-                    let mut curr_heading = "";
-                    let headings = ["####", "#*#*", "=-=-", "-.-."];
+                    if first_token == "$t" {
+                        let typesetting_tokens = super::tokenize_typesetting_text(&last_comment)?;
+                        let mut typesetting_token_iter = typesetting_tokens.iter();
 
-                    for (index, heading) in headings.iter().enumerate() {
-                        if first_token.starts_with(heading) {
-                            curr_heading = heading;
-                            depth = index as i32;
-                        }
-                    }
+                        let mut html_representations = Vec::new();
 
-                    if depth != -1 {
-                        let mut header_title = String::new();
-                        let mut header_closed = false;
-                        while let Some(token) = comment_iter.next() {
-                            if token.starts_with(curr_heading) {
-                                header_closed = true;
-                                break;
-                            }
-                            header_title.push_str(token);
-                            header_title.push(' ');
-                        }
-                        header_title.pop();
-
-                        if header_closed {
-                            let mut parent_header = &mut metamath_data.theorem_list_header;
-                            let mut actual_depth = 0;
-                            for _ in 0..depth {
-                                parent_header = if parent_header.sub_headers.len() != 0 {
-                                    actual_depth += 1;
-                                    parent_header.sub_headers.last_mut().unwrap()
-                                } else {
-                                    parent_header
+                        loop {
+                            let mut statement_tokens: Vec<&str> = Vec::new();
+                            while let Some(&typesetting_token) = typesetting_token_iter.next() {
+                                if !typesetting_token.starts_with("/*") {
+                                    if typesetting_token != ";" {
+                                        statement_tokens.push(typesetting_token);
+                                    } else {
+                                        break;
+                                    }
                                 }
                             }
-                            parent_header.sub_headers.push(Header {
-                                title: header_title,
-                                theorems: Vec::new(),
-                                sub_headers: Vec::new(),
-                            });
-                            curr_header = parent_header.sub_headers.last_mut().unwrap();
 
-                            add_header_database(
-                                conn,
-                                next_db_index,
-                                actual_depth,
-                                &curr_header.title,
-                            )
-                            .await?;
-                            next_db_index += 1;
+                            if statement_tokens.len() == 0 {
+                                break;
+                            }
+
+                            if statement_tokens[0] != "althtmldef" {
+                                continue;
+                            }
+
+                            if statement_tokens.len() < 4
+                                || statement_tokens.len() % 2 != 0
+                                || statement_tokens[2] != "as"
+                            {
+                                return Err(Error::TypesettingFormatError);
+                            }
+
+                            let mut html: String = super::get_str_in_quotes(statement_tokens[3])
+                                .ok_or(Error::TypesettingFormatError)?;
+
+                            let mut next_html_index = 5;
+
+                            while next_html_index < statement_tokens.len() {
+                                if statement_tokens[next_html_index - 1] != "+" {
+                                    return Err(Error::TypesettingFormatError);
+                                }
+                                html.push_str(
+                                    &super::get_str_in_quotes(statement_tokens[next_html_index])
+                                        .ok_or(Error::TypesettingFormatError)?,
+                                );
+
+                                next_html_index += 2;
+                            }
+
+                            html_representations.push(HtmlRepresentation {
+                                symbol: super::get_str_in_quotes(statement_tokens[1])
+                                    .ok_or(Error::TypesettingFormatError)?
+                                    .to_string(),
+                                html,
+                            })
+                        }
+
+                        set_html_representations_database(conn, &html_representations).await?;
+
+                        metamath_data.html_representations = html_representations.clone();
+                    } else {
+                        let mut depth = -1;
+                        let mut curr_heading = "";
+                        let headings = ["####", "#*#*", "=-=-", "-.-."];
+
+                        for (index, heading) in headings.iter().enumerate() {
+                            if first_token.starts_with(heading) {
+                                curr_heading = heading;
+                                depth = index as i32;
+                            }
+                        }
+
+                        if depth != -1 {
+                            let mut header_title = String::new();
+                            let mut header_closed = false;
+                            while let Some(token) = comment_iter.next() {
+                                if token.starts_with(curr_heading) {
+                                    header_closed = true;
+                                    break;
+                                }
+                                header_title.push_str(token);
+                                header_title.push(' ');
+                            }
+                            header_title.pop();
+
+                            if header_closed {
+                                let mut parent_header = &mut metamath_data.theorem_list_header;
+                                let mut actual_depth = 0;
+                                for _ in 0..depth {
+                                    parent_header = if parent_header.sub_headers.len() != 0 {
+                                        actual_depth += 1;
+                                        parent_header.sub_headers.last_mut().unwrap()
+                                    } else {
+                                        parent_header
+                                    }
+                                }
+                                parent_header.sub_headers.push(Header {
+                                    title: header_title,
+                                    theorems: Vec::new(),
+                                    sub_headers: Vec::new(),
+                                });
+                                curr_header = parent_header.sub_headers.last_mut().unwrap();
+
+                                add_header_database(
+                                    conn,
+                                    next_db_index,
+                                    actual_depth,
+                                    &curr_header.title,
+                                )
+                                .await?;
+                                next_db_index += 1;
+                            }
                         }
                     }
                 }

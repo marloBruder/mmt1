@@ -100,6 +100,7 @@ pub enum Error {
     TokenOutsideStatementError, // Returned if a token does not belong to any statement
     MissingLabelError,          // Returned if a statement is missing its label
     InvalidLabelError,          // Returned if a label is not valid
+    TypesettingFormatError,     // Returned if there is an format error in a typesetting comment
 
     LabelAlreadyExistsError,
 
