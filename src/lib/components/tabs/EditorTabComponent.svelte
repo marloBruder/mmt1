@@ -2,7 +2,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { nameListData } from "$lib/sharedState/nameListData.svelte";
   import RoundButton from "$lib/components/util/RoundButton.svelte";
-  import type { PageData } from "./$types";
+  import type { PageData } from "../../../routes/main/editor/[theoremName]/$types";
   import { goto } from "$app/navigation";
 
   let { data }: { data: PageData } = $props();

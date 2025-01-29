@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { PageData } from "./$types";
+  import type { PageData } from "../../../routes/main/settings/$types";
   import SymbolConfigSettingsTab from "$lib/components/settingsTabs/SymbolConfigSettingsTab.svelte";
 
   let { data }: { data: PageData } = $props();

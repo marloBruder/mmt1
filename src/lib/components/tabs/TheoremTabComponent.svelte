@@ -1,7 +1,7 @@
 <script lang="ts">
   import { tabManager, TheoremTab } from "$lib/sharedState/tabData.svelte";
   import { onMount } from "svelte";
-  import type { PageData } from "./$types";
+  import type { PageData } from "../../../routes/main/theorem/[theoremName]/$types";
   import MetamathExpression from "$lib/components/util/MetamathExpression.svelte";
 
   let { data }: { data: PageData } = $props();
