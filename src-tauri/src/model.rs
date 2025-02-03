@@ -117,7 +117,7 @@ impl MetamathData {
 
         for ch in label.chars() {
             match ch {
-                'a'..='z' | 'A'..='Z' | '_' | '.' | '-' => {}
+                'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '.' | '-' => {}
                 _ => {
                     return false;
                 }
