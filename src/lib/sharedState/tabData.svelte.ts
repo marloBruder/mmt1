@@ -1,82 +1,106 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Constant, FloatingHypotheses, HeaderPath, HtmlRepresentation, InProgressTheorem, Theorem, TheoremPageData, TheoremPath, Variable } from "./model.svelte";
+import type { Constant, FloatingHypotheses, HtmlRepresentation, InProgressTheorem, TheoremPageData, TheoremPath, Variable } from "./model.svelte";
 import { nameListData } from "./nameListData.svelte";
-import { goto } from "$app/navigation";
-import { page } from "$app/stores";
-import { get } from "svelte/store";
 import { explorerData } from "./explorerData.svelte";
+import type { Component } from "svelte";
+import TheoremTabComponent from "$lib/components/tabs/TheoremTabComponent.svelte";
+import SettingsTabComponent from "$lib/components/tabs/SettingsTabComponent.svelte";
+import EditorTabComponent from "$lib/components/tabs/EditorTabComponent.svelte";
 
 class TabManager {
   #tabs: Tab[] = $state([]);
-  #activeTabIndex: number = $state(-1);
+  #openTabIndex: number = $state(-1);
 
-  async notifyTabOpened(newTab: Tab): Promise<Tab> {
-    for (let [index, tab] of this.#tabs.entries()) {
-      if (newTab.sameID(tab)) {
-        this.#activeTabIndex = index;
-        return tab;
-      }
+  getOpenTab(): Tab | null {
+    return 0 >= this.#openTabIndex && this.#openTabIndex < this.#tabs.length ? this.#tabs[this.#openTabIndex] : null;
+  }
+
+  async changeTab(newTab: Tab) {
+    if (this.#tabs.length == 0) {
+      this.openTab(newTab);
+    } else {
+      await newTab.loadData();
+      this.#tabs[this.#openTabIndex] = newTab;
     }
+  }
 
+  async openTab(newTab: Tab) {
     await newTab.loadData();
     this.#tabs.push(newTab);
-    this.#activeTabIndex = this.#tabs.length - 1;
-    return newTab;
+    this.#openTabIndex = this.#tabs.length - 1;
   }
+
+  // async notifyTabOpened(newTab: Tab): Promise<Tab> {
+  //   for (let [index, tab] of this.#tabs.entries()) {
+  //     if (newTab.sameID(tab)) {
+  //       this.#openTabIndex = index;
+  //       return tab;
+  //     }
+  //   }
+
+  //   await newTab.loadData();
+  //   this.#tabs.push(newTab);
+  //   this.#openTabIndex = this.#tabs.length - 1;
+  //   return newTab;
+  // }
 
   openTabWithIndex(tabIndex: number) {
     if (tabIndex >= 0 && tabIndex < this.#tabs.length) {
-      this.#activeTabIndex = tabIndex;
-      goto(this.#tabs[tabIndex].url());
+      this.#openTabIndex = tabIndex;
+      // goto(this.#tabs[tabIndex].url());
     } else {
-      this.#activeTabIndex = -1;
-      goto("/main");
+      this.#openTabIndex = -1;
+      // goto("/main");
     }
   }
 
-  closeTabWithIndex(tabIndex: number, navigate: boolean = true) {
+  closeTabWithIndex(tabIndex: number) {
     if (tabIndex >= 0 && tabIndex < this.#tabs.length) {
-      if (tabIndex < this.#activeTabIndex) {
-        this.#activeTabIndex--;
+      if (tabIndex < this.#openTabIndex || (tabIndex == this.#openTabIndex && tabIndex == this.#tabs.length - 1)) {
+        this.#openTabIndex--;
       }
 
-      let closedCurrentTab = false;
-      if (this.#tabs[tabIndex].url() === get(page).url.pathname) {
-        closedCurrentTab = true;
-      }
+      // let closedCurrentTab = false;
+      // if (this.#tabs[tabIndex].url() === get(page).url.pathname) {
+      //   closedCurrentTab = true;
+      // }
 
       this.#tabs.splice(tabIndex, 1);
 
-      if (closedCurrentTab && navigate) {
-        let newTabIndex = tabIndex;
-        if (newTabIndex === this.#tabs.length) {
-          newTabIndex--;
-        }
-        this.openTabWithIndex(newTabIndex);
-      }
+      // if (closedCurrentTab && navigate) {
+      //   let newTabIndex = tabIndex;
+      //   if (newTabIndex === this.#tabs.length) {
+      //     newTabIndex--;
+      //   }
+      //   this.openTabWithIndex(newTabIndex);
+      // }
     }
   }
 
-  closeTabSameID(tab: Tab, navigate: boolean = true) {
-    for (let [index, otherTab] of this.#tabs.entries()) {
-      if (tab.sameID(otherTab)) {
-        this.closeTabWithIndex(index, navigate);
-        return;
-      }
-    }
+  // closeTabSameID(tab: Tab, navigate: boolean = true) {
+  //   for (let [index, otherTab] of this.#tabs.entries()) {
+  //     if (tab.sameID(otherTab)) {
+  //       this.closeTabWithIndex(index, navigate);
+  //       return;
+  //     }
+  //   }
+  // }
+
+  closeOpenTab() {
+    this.closeTabWithIndex(this.#openTabIndex);
   }
 
   resetTabs() {
     this.#tabs = [];
-    this.#activeTabIndex = -1;
+    this.#openTabIndex = -1;
   }
 
   get tabs() {
     return this.#tabs;
   }
 
-  get activeTabIndex() {
-    return this.#activeTabIndex;
+  get openTabIndex() {
+    return this.#openTabIndex;
   }
 }
 
@@ -84,16 +108,18 @@ let tabManager = new TabManager();
 export { tabManager };
 
 export abstract class Tab {
+  abstract readonly component: Component<{ tab: Tab }>;
+
   abstract loadData(): Promise<void>;
 
   abstract name(): string;
-
-  abstract url(): string;
 
   abstract sameID(tab: Tab): boolean;
 }
 
 export class TheoremTab extends Tab {
+  component = TheoremTabComponent;
+
   #theoremName: string;
   #pageData: TheoremPageData = $state({ theorem: { name: "", description: "", disjoints: [], hypotheses: [], assertion: "", proof: null }, proofLines: [] });
 
@@ -110,10 +136,6 @@ export class TheoremTab extends Tab {
     return this.#theoremName;
   }
 
-  url(): string {
-    return "/main/theorem/" + this.#theoremName;
-  }
-
   sameID(tab: Tab): boolean {
     return tab instanceof TheoremTab && this.#theoremName == tab.theoremName;
   }
@@ -128,6 +150,8 @@ export class TheoremTab extends Tab {
 }
 
 export class EditorTab extends Tab {
+  component = EditorTabComponent;
+
   #inProgressTheoremName: string = $state("");
   #inProgressTheorem: InProgressTheorem = $state({ name: "", text: "" });
 
@@ -144,10 +168,6 @@ export class EditorTab extends Tab {
     return this.#inProgressTheoremName;
   }
 
-  url(): string {
-    return "/main/editor/" + this.#inProgressTheoremName;
-  }
-
   sameID(tab: Tab): boolean {
     return tab instanceof EditorTab && this.#inProgressTheoremName == tab.inProgressTheoremName;
   }
@@ -158,7 +178,7 @@ export class EditorTab extends Tab {
 
   async deleteTheorem() {
     await invoke("delete_in_progress_theorem", { name: this.#inProgressTheoremName });
-    tabManager.closeTabSameID(this);
+    tabManager.closeOpenTab();
     nameListData.removeInProgressTheoremName(this.#inProgressTheoremName);
     return;
   }
@@ -169,8 +189,7 @@ export class EditorTab extends Tab {
 
     nameListData.removeInProgressTheoremName(this.#inProgressTheorem.name);
     await explorerData.addTheoremName(theoremPath, this.#inProgressTheorem.name);
-    tabManager.closeTabSameID(this, false);
-    goto("/main/theorem/" + this.#inProgressTheorem.name);
+    tabManager.changeTab(new TheoremTab(this.#inProgressTheorem.name));
   }
 
   get inProgressTheorem() {
@@ -183,6 +202,8 @@ export class EditorTab extends Tab {
 }
 
 export class SettingsTab extends Tab {
+  component = SettingsTabComponent;
+
   constants: Constant[] = $state([]);
   variables: Variable[] = $state([]);
   floatingHypotheses: FloatingHypotheses[] = $state([]);
@@ -201,10 +222,6 @@ export class SettingsTab extends Tab {
 
   name(): string {
     return "Settings";
-  }
-
-  url(): string {
-    return "/main/settings";
   }
 
   sameID(tab: Tab) {

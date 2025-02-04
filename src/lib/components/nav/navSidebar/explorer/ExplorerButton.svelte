@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
+  import { tabManager, TheoremTab } from "$lib/sharedState/tabData.svelte";
 
   let { theoremName, openTheoremName }: { theoremName: string; openTheoremName: string | null } = $props();
 
   let explorerClick = (name: string) => {
-    goto("/main/theorem/" + name);
+    tabManager.changeTab(new TheoremTab(name));
   };
 </script>
 

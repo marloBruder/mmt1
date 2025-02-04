@@ -1,12 +1,17 @@
 <script lang="ts">
-  import { tabManager, TheoremTab } from "$lib/sharedState/tabData.svelte";
-  import { onMount } from "svelte";
-  import type { PageData } from "../../../routes/main/theorem/[theoremName]/$types";
+  import { Tab, tabManager, TheoremTab } from "$lib/sharedState/tabData.svelte";
   import MetamathExpression from "$lib/components/util/MetamathExpression.svelte";
 
-  let { data }: { data: PageData } = $props();
+  let { tab }: { tab: Tab } = $props();
 
-  let pageData = $derived(data.tab.pageData);
+  let theoremTab = $derived.by(() => {
+    if (tab instanceof TheoremTab) {
+      return tab;
+    }
+    throw Error("Wrong Tab Type");
+  });
+
+  let pageData = $derived(theoremTab.pageData);
   let theorem = $derived(pageData.theorem);
 
   let isHypothesisName = (name: string): boolean => {
@@ -16,6 +21,10 @@
       }
     }
     return false;
+  };
+
+  let refClick = (name: string) => {
+    tabManager.changeTab(new TheoremTab(name));
   };
 </script>
 
@@ -88,7 +97,7 @@
               </td>
               <td class="border border-gray-600 py-1 px-2">
                 {#if !isHypothesisName(proofLine.reference)}
-                  <a href={"/main/theorem/" + proofLine.reference} data-sveltekit-preload-data="tap">{proofLine.reference}</a>
+                  <button onclick={() => refClick(proofLine.reference)}>{proofLine.reference}</button>
                 {:else}
                   {proofLine.reference}
                 {/if}

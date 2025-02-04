@@ -2,13 +2,18 @@
   import { invoke } from "@tauri-apps/api/core";
   import { nameListData } from "$lib/sharedState/nameListData.svelte";
   import RoundButton from "$lib/components/util/RoundButton.svelte";
-  import type { PageData } from "../../../routes/main/editor/[theoremName]/$types";
-  import { goto } from "$app/navigation";
+  import { EditorTab, tabManager, type Tab } from "$lib/sharedState/tabData.svelte";
 
-  let { data }: { data: PageData } = $props();
+  let { tab }: { tab: Tab } = $props();
 
-  let tab = $derived(data.tab);
-  let theorem = $derived(tab.inProgressTheorem);
+  let editorTab = $derived.by(() => {
+    if (tab instanceof EditorTab) {
+      return tab;
+    }
+    throw Error("Wrong Tab Type");
+  });
+
+  let theorem = $derived(editorTab.inProgressTheorem);
 
   let oldName: string = "";
 
@@ -33,8 +38,7 @@
       nameDisabled = true;
       if (oldName != theorem.name) {
         nameListData.changeInProgressTheoremName(oldName, theorem.name);
-        tab.changeEditorID(theorem.name);
-        goto("/main/editor/" + theorem.name);
+        editorTab.changeEditorID(theorem.name);
       }
     });
 
@@ -76,12 +80,12 @@
   let textChanged: boolean = $state(false);
 
   let saveText = () => {
-    invoke("set_in_progress_theorem", { name: tab.inProgressTheoremName, text: theorem.text });
+    invoke("set_in_progress_theorem", { name: editorTab.inProgressTheoremName, text: theorem.text });
     textChanged = false;
   };
 
   let deleteTheorem = () => {
-    tab.deleteTheorem();
+    editorTab.deleteTheorem();
   };
 
   let textChange = () => {
@@ -89,7 +93,7 @@
   };
 
   let turnIntoAxiom = () => {
-    tab.convertToTheorem(placeAfter);
+    editorTab.convertToTheorem(placeAfter);
   };
 
   let placeAfter = $state("");

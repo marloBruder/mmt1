@@ -1,9 +1,10 @@
 <script lang="ts">
   import NavSidebar from "$lib/components/nav/navSidebar/NavSidebar.svelte";
   import TabBar from "$lib/components/nav/TabBar.svelte";
-  import type { Snippet } from "svelte";
+  import EmptyTabComponent from "$lib/components/tabs/EmptyTabComponent.svelte";
+  import { tabManager } from "$lib/sharedState/tabData.svelte";
 
-  let { children }: { children: Snippet } = $props();
+  let openTab = $derived(tabManager.getOpenTab());
 </script>
 
 <div class="h-screen w-screen custom-grid-layout fixed">
@@ -14,7 +15,11 @@
     <TabBar></TabBar>
   </div>
   <div class="tab overflow-auto">
-    {@render children()}
+    {#if openTab != null}
+      <openTab.component tab={openTab}></openTab.component>
+    {:else}
+      <EmptyTabComponent></EmptyTabComponent>
+    {/if}
   </div>
   <!-- <div class="h-full ml-80 border-l border-gray-400">
   </div> -->

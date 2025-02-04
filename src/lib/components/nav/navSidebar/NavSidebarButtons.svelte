@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
+  import { SettingsTab, tabManager } from "$lib/sharedState/tabData.svelte";
 
   let { activeTab, tabInfo, onClick = (i) => {} }: { activeTab: number; tabInfo: { title: string }[]; onClick: (tabIndex: number) => void } = $props();
 
@@ -8,7 +8,7 @@
   });
 
   let openSettings = () => {
-    goto("/main/settings");
+    tabManager.changeTab(new SettingsTab());
   };
 </script>
 

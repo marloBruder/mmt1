@@ -1,10 +1,15 @@
 <script lang="ts">
-  import type { PageData } from "../../../routes/main/settings/$types";
-  import SymbolConfigSettingsTab from "$lib/components/settingsTabs/SymbolConfigSettingsTab.svelte";
+  import SymbolConfigSettingsTab from "$lib/components/tabs/settingsTabs/SymbolConfigSettingsTab.svelte";
+  import { SettingsTab, type Tab } from "$lib/sharedState/tabData.svelte";
 
-  let { data }: { data: PageData } = $props();
+  let { tab }: { tab: Tab } = $props();
 
-  let tab = $derived(data.tab);
+  let settingsTab = $derived.by(() => {
+    if (tab instanceof SettingsTab) {
+      return tab;
+    }
+    throw Error("Wrong Tab Type");
+  });
 
   let tabNames = ["Constants", "Variables", "Floating Hypotheses", "Html Representations"];
 
@@ -27,13 +32,13 @@
   </div>
   <div class="ml-44 h-full overflow-y-auto">
     {#if currentTab === 0}
-      <SymbolConfigSettingsTab constantsTab {tab}></SymbolConfigSettingsTab>
+      <SymbolConfigSettingsTab constantsTab tab={settingsTab}></SymbolConfigSettingsTab>
     {:else if currentTab === 1}
-      <SymbolConfigSettingsTab variablesTab {tab}></SymbolConfigSettingsTab>
+      <SymbolConfigSettingsTab variablesTab tab={settingsTab}></SymbolConfigSettingsTab>
     {:else if currentTab === 2}
-      <SymbolConfigSettingsTab floatingHypothesesTab {tab}></SymbolConfigSettingsTab>
+      <SymbolConfigSettingsTab floatingHypothesesTab tab={settingsTab}></SymbolConfigSettingsTab>
     {:else if currentTab === 3}
-      <SymbolConfigSettingsTab htmlRepresentationsTab {tab}></SymbolConfigSettingsTab>
+      <SymbolConfigSettingsTab htmlRepresentationsTab tab={settingsTab}></SymbolConfigSettingsTab>
     {/if}
   </div>
 </div>

@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { nameListData } from "$lib/sharedState/nameListData.svelte";
+  import { EditorTab, tabManager } from "$lib/sharedState/tabData.svelte";
   import { invoke } from "@tauri-apps/api/core";
 
   let theoremName: string | null = $derived.by(() => {
@@ -13,7 +13,7 @@
   });
 
   let theoremClick = (inProgressTheoremName: string) => {
-    goto("/main/editor/" + inProgressTheoremName);
+    tabManager.changeTab(new EditorTab(inProgressTheoremName));
   };
 
   let newTabName = $state("");
@@ -23,7 +23,7 @@
       let name = newTabName;
       nameListData.addInProgressTheoremName(name);
       newTabName = "";
-      goto("/main/editor/" + name);
+      tabManager.changeTab(new EditorTab(name));
     });
   };
 
