@@ -427,6 +427,7 @@ fn tokenize_typesetting_text(text: &str) -> Result<Vec<&str>, Error> {
                 loop {
                     end_index += 1;
                     if end_index >= text.len() {
+                        // println!("Unclosed comment");
                         return Err(Error::TypesettingFormatError);
                     }
                     if text_bytes[end_index - 1] == b'*' && text_bytes[end_index] == b'/' {
@@ -442,6 +443,7 @@ fn tokenize_typesetting_text(text: &str) -> Result<Vec<&str>, Error> {
                 loop {
                     end_index += 1;
                     if end_index >= text.len() {
+                        // println!("Unclosed Quote");
                         return Err(Error::TypesettingFormatError);
                     }
                     if text_bytes[end_index] == quote_type {
@@ -459,6 +461,7 @@ fn tokenize_typesetting_text(text: &str) -> Result<Vec<&str>, Error> {
                     && !text_bytes[index].is_ascii_whitespace()
                     && text_bytes[index] != b';'
                 {
+                    // println!("Something after quote");
                     return Err(Error::TypesettingFormatError);
                 }
             }
