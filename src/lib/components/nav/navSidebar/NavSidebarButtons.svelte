@@ -7,8 +7,12 @@
     onClick(tabIndex);
   });
 
-  let openSettings = () => {
-    tabManager.changeTab(new SettingsTab());
+  let settingsClick = () => {
+    tabManager.openTab(new SettingsTab());
+  };
+
+  let settingsDblClick = () => {
+    tabManager.makeSameTempTabPermanent(new SettingsTab());
   };
 </script>
 
@@ -16,5 +20,5 @@
   {#each tabInfo as tab, index}
     <button class="w-12 h-12 overflow-hidden {activeTab == index ? 'font-bold' : ''}" onclick={() => handleClick(index)} title={tab.title}>Tab {index + 1}</button>
   {/each}
-  <button class="w-12 h-12 overflow-hidden" onclick={openSettings} title="Settings">Tab 4</button>
+  <button class="w-12 h-12 overflow-hidden" onclick={settingsClick} ondblclick={settingsDblClick} title="Settings">Tab 4</button>
 </div>

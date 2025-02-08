@@ -10,9 +10,29 @@ import EditorTabComponent from "$lib/components/tabs/EditorTabComponent.svelte";
 class TabManager {
   #tabs: Tab[] = $state([]);
   #openTabIndex: number = $state(-1);
+  #tempTabIndex: number = $state(-1);
 
   getOpenTab(): Tab | null {
-    return 0 >= this.#openTabIndex && this.#openTabIndex < this.#tabs.length ? this.#tabs[this.#openTabIndex] : null;
+    return 0 <= this.#openTabIndex && this.#openTabIndex < this.#tabs.length ? this.#tabs[this.#openTabIndex] : null;
+  }
+
+  async openTab(newTab: Tab) {
+    for (let [index, tab] of this.#tabs.entries()) {
+      if (tab.sameTab(newTab)) {
+        this.#openTabIndex = index;
+        return;
+      }
+    }
+
+    await newTab.loadData();
+    if (this.#tempTabIndex != -1) {
+      this.#tabs[this.#tempTabIndex] = newTab;
+      this.#openTabIndex = this.#tempTabIndex;
+    } else {
+      this.#tabs.push(newTab);
+      this.#openTabIndex = this.#tabs.length - 1;
+      this.#tempTabIndex = this.#tabs.length - 1;
+    }
   }
 
   async changeTab(newTab: Tab) {
@@ -24,11 +44,34 @@ class TabManager {
     }
   }
 
-  async openTab(newTab: Tab) {
-    await newTab.loadData();
-    this.#tabs.push(newTab);
-    this.#openTabIndex = this.#tabs.length - 1;
+  makeOpenTempTabPermanent() {
+    this.#tempTabIndex = -1;
   }
+
+  makeTempTabWithIndexPermanent(index: number) {
+    if (this.#tempTabIndex == index) {
+      this.#tempTabIndex = -1;
+    }
+  }
+
+  makeSameTempTabPermanent(tab: Tab) {
+    if (0 <= this.#tempTabIndex && this.#tempTabIndex < this.#tabs.length && this.#tabs[this.#tempTabIndex].sameTab(tab)) {
+      this.#tempTabIndex = -1;
+    }
+  }
+
+  // async openTab(newTab: Tab) {
+  //   for (let [index, tab] of this.#tabs.entries()) {
+  //     if (tab.sameTab(newTab)) {
+  //       this.#openTabIndex = index;
+  //       return;
+  //     }
+  //   }
+
+  //   await newTab.loadData();
+  //   this.#tabs.push(newTab);
+  //   this.#openTabIndex = this.#tabs.length - 1;
+  // }
 
   // async notifyTabOpened(newTab: Tab): Promise<Tab> {
   //   for (let [index, tab] of this.#tabs.entries()) {
@@ -93,6 +136,7 @@ class TabManager {
   resetTabs() {
     this.#tabs = [];
     this.#openTabIndex = -1;
+    this.#tempTabIndex = -1;
   }
 
   get tabs() {
@@ -101,6 +145,10 @@ class TabManager {
 
   get openTabIndex() {
     return this.#openTabIndex;
+  }
+
+  get tempTabIndex() {
+    return this.#tempTabIndex;
   }
 }
 
@@ -114,7 +162,7 @@ export abstract class Tab {
 
   abstract name(): string;
 
-  abstract sameID(tab: Tab): boolean;
+  abstract sameTab(tab: Tab): boolean;
 }
 
 export class TheoremTab extends Tab {
@@ -136,7 +184,7 @@ export class TheoremTab extends Tab {
     return this.#theoremName;
   }
 
-  sameID(tab: Tab): boolean {
+  sameTab(tab: Tab): boolean {
     return tab instanceof TheoremTab && this.#theoremName == tab.theoremName;
   }
 
@@ -168,7 +216,7 @@ export class EditorTab extends Tab {
     return this.#inProgressTheoremName;
   }
 
-  sameID(tab: Tab): boolean {
+  sameTab(tab: Tab): boolean {
     return tab instanceof EditorTab && this.#inProgressTheoremName == tab.inProgressTheoremName;
   }
 
@@ -224,7 +272,7 @@ export class SettingsTab extends Tab {
     return "Settings";
   }
 
-  sameID(tab: Tab) {
+  sameTab(tab: Tab) {
     return tab instanceof SettingsTab;
   }
 

@@ -13,17 +13,22 @@
   });
 
   let theoremClick = (inProgressTheoremName: string) => {
-    tabManager.changeTab(new EditorTab(inProgressTheoremName));
+    tabManager.openTab(new EditorTab(inProgressTheoremName));
+  };
+
+  let theoremDblClick = (inProgressTheoremName: string) => {
+    tabManager.makeSameTempTabPermanent(new EditorTab(inProgressTheoremName));
   };
 
   let newTabName = $state("");
 
   let addTheoremClick = async () => {
-    invoke("add_in_progress_theorem", { name: newTabName, text: "" }).then(() => {
+    invoke("add_in_progress_theorem", { name: newTabName, text: "" }).then(async () => {
       let name = newTabName;
       nameListData.addInProgressTheoremName(name);
       newTabName = "";
-      tabManager.changeTab(new EditorTab(name));
+      await tabManager.openTab(new EditorTab(name));
+      tabManager.makeOpenTempTabPermanent();
     });
   };
 
@@ -46,7 +51,7 @@
   <ul class="pl-2 pt-1">
     {#each nameListData.inProgressTheoremNames as name}
       <li class:bg-gray-300={theoremName == name}>
-        <button class="pl-1" onclick={() => theoremClick(name)}>{name}</button>
+        <button class="pl-1" onclick={() => theoremClick(name)} ondblclick={() => theoremDblClick(name)}>{name}</button>
       </li>
     {/each}
   </ul>

@@ -89,6 +89,7 @@
   };
 
   let textChange = () => {
+    tabManager.makeOpenTempTabPermanent();
     textChanged = true;
   };
 
