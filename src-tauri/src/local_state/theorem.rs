@@ -14,13 +14,13 @@ pub async fn get_theorem_page_data_local(
     let app_state = state.lock().await;
     let db_state = app_state.db_state.as_ref().ok_or(Error::NoDatabaseError)?;
 
-    let theorem = db_state
+    let (theorem, theorem_number) = db_state
         .metamath_data
         .theorem_list_header
-        .find_theorem_by_name(name)
+        .find_theorem_by_name_calc_number(name)
         .ok_or(Error::NotFoundError)?;
 
-    return calc_theorem_page_data(theorem, &db_state.metamath_data);
+    return calc_theorem_page_data(theorem, theorem_number, &db_state.metamath_data);
 }
 
 pub fn get_theorem_insert_position(

@@ -72,6 +72,7 @@ export interface HtmlRepresentation {
 
 export interface TheoremPageData {
   theorem: Theorem;
+  theoremNumber: number;
   proofLines: ProofLine[];
 }
 

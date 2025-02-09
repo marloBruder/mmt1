@@ -550,11 +550,13 @@ struct StackLine {
 
 pub fn calc_theorem_page_data(
     theorem: &Theorem,
+    theorem_number: u32,
     metamath_data: &MetamathData,
 ) -> Result<TheoremPageData, Error> {
     if theorem.proof == None {
         return Ok(TheoremPageData {
             theorem: theorem.clone(),
+            theorem_number,
             proof_lines: Vec::new(),
         });
     }
@@ -641,6 +643,7 @@ pub fn calc_theorem_page_data(
 
     Ok(TheoremPageData {
         theorem: theorem.clone(),
+        theorem_number,
         proof_lines,
     })
 }

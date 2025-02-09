@@ -8,7 +8,7 @@
     if (tab instanceof TheoremTab) {
       return tab;
     }
-    throw Error("Wrong Tab Type");
+    throw Error("Wrong Tab Type:" + typeof tab + ", " + JSON.stringify(tab));
   });
 
   let pageData = $derived(theoremTab.pageData);
@@ -34,6 +34,9 @@
     {:else}Axiom
     {/if}
     {theorem.name}
+    <small class="text-sm">
+      {pageData.theoremNumber}
+    </small>
   </h1>
 </div>
 <div class="text-center">

@@ -80,6 +80,7 @@ pub struct HtmlRepresentation {
 
 pub struct TheoremPageData {
     pub theorem: Theorem,
+    pub theorem_number: u32,
     pub proof_lines: Vec<ProofLine>,
 }
 
@@ -151,6 +152,32 @@ impl Header {
 
         for sub_header in &self.sub_headers {
             let sub_header_res = sub_header.find_theorem_by_name(name);
+            if sub_header_res.is_some() {
+                return sub_header_res;
+            }
+        }
+
+        None
+    }
+
+    pub fn find_theorem_by_name_calc_number(&self, name: &str) -> Option<(&Theorem, u32)> {
+        self.find_theorem_by_name_calc_number_rec(name, &mut 0)
+    }
+
+    fn find_theorem_by_name_calc_number_rec(
+        &self,
+        name: &str,
+        prev_count: &mut u32,
+    ) -> Option<(&Theorem, u32)> {
+        for theorem in &self.theorems {
+            *prev_count += 1;
+            if theorem.name == name {
+                return Some((theorem, *prev_count));
+            }
+        }
+
+        for sub_header in &self.sub_headers {
+            let sub_header_res = sub_header.find_theorem_by_name_calc_number_rec(name, prev_count);
             if sub_header_res.is_some() {
                 return sub_header_res;
             }
@@ -265,6 +292,7 @@ impl serde::Serialize for TheoremPageData {
 
         let mut state = serializer.serialize_struct("TheoremPageData", 2)?;
         state.serialize_field("theorem", &self.theorem)?;
+        state.serialize_field("theoremNumber", &self.theorem_number)?;
         state.serialize_field("proofLines", &self.proof_lines)?;
         state.end()
     }

@@ -25,7 +25,7 @@ class TabManager {
     }
 
     await newTab.loadData();
-    if (this.#tempTabIndex != -1) {
+    if (0 <= this.#tempTabIndex && this.#tempTabIndex < this.#tabs.length) {
       this.#tabs[this.#tempTabIndex] = newTab;
       this.#openTabIndex = this.#tempTabIndex;
     } else {
@@ -103,6 +103,11 @@ class TabManager {
         this.#openTabIndex--;
       }
 
+      if (tabIndex < this.#tempTabIndex) {
+        this.#tempTabIndex--;
+      } else if (tabIndex == this.#tempTabIndex) {
+        this.#tempTabIndex = -1;
+      }
       // let closedCurrentTab = false;
       // if (this.#tabs[tabIndex].url() === get(page).url.pathname) {
       //   closedCurrentTab = true;
@@ -169,7 +174,7 @@ export class TheoremTab extends Tab {
   component = TheoremTabComponent;
 
   #theoremName: string;
-  #pageData: TheoremPageData = $state({ theorem: { name: "", description: "", disjoints: [], hypotheses: [], assertion: "", proof: null }, proofLines: [] });
+  #pageData: TheoremPageData = $state({ theorem: { name: "", description: "", disjoints: [], hypotheses: [], assertion: "", proof: null }, theoremNumber: 0, proofLines: [] });
 
   constructor(theoremName: string) {
     super();
