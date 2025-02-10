@@ -254,6 +254,21 @@ impl HeaderPath {
     }
 }
 
+impl Default for HeaderPath {
+    fn default() -> Self {
+        HeaderPath { path: Vec::new() }
+    }
+}
+
+impl Default for TheoremPath {
+    fn default() -> Self {
+        TheoremPath {
+            theorem_index: 0,
+            header_path: HeaderPath::default(),
+        }
+    }
+}
+
 impl serde::Serialize for HeaderRepresentation {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

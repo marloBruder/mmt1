@@ -10,6 +10,7 @@ mod explorer;
 mod local_state;
 mod metamath;
 mod model;
+mod util;
 
 pub struct AppState {
     db_state: Option<DatabaseState>,
