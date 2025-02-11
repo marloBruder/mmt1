@@ -1,11 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Constant, FloatingHypotheses, HtmlRepresentation, InProgressTheorem, TheoremPageData, TheoremPath, Variable } from "./model.svelte";
+import type { Constant, FloatingHypotheses, HtmlRepresentation, InProgressTheorem, TheoremListEntry, TheoremPageData, TheoremPath, Variable } from "./model.svelte";
 import { nameListData } from "./nameListData.svelte";
 import { explorerData } from "./explorerData.svelte";
 import type { Component } from "svelte";
 import TheoremTabComponent from "$lib/components/tabs/TheoremTabComponent.svelte";
 import SettingsTabComponent from "$lib/components/tabs/SettingsTabComponent.svelte";
 import EditorTabComponent from "$lib/components/tabs/EditorTabComponent.svelte";
+import TheoremExplorerTabComponent from "$lib/components/tabs/TheoremExplorerTabComponent.svelte";
 
 class TabManager {
   #tabs: Tab[] = $state([]);
@@ -199,6 +200,38 @@ export class TheoremTab extends Tab {
 
   get theoremName() {
     return this.#theoremName;
+  }
+}
+
+export class TheoremExplorerTab extends Tab {
+  component = TheoremExplorerTabComponent;
+
+  #start: number = $state(1);
+  #theoremList: TheoremListEntry[] = $state([]);
+
+  async loadData(): Promise<void> {
+    this.#theoremList = await invoke("get_theorem_list_local", { from: this.#start, to: this.#start + 100 });
+  }
+
+  async changePage(newStart: number) {
+    this.#start = newStart;
+    await this.loadData();
+  }
+
+  name(): string {
+    return "Theorem Explorer";
+  }
+
+  sameTab(tab: Tab): boolean {
+    return tab instanceof TheoremExplorerTab;
+  }
+
+  get start() {
+    return this.#start;
+  }
+
+  get theoremList() {
+    return this.#theoremList;
   }
 }
 

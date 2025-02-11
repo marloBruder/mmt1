@@ -82,3 +82,10 @@ export interface ProofLine {
   indention: number;
   assertion: string;
 }
+
+export interface TheoremListEntry {
+  name: string;
+  theoremNumber: number;
+  assertion: string;
+  description: string;
+}

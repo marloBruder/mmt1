@@ -3,15 +3,17 @@
 
   let {
     onclick = () => {},
+    ondblclick = () => {},
     children,
     disabled,
     warning,
   }: {
     onclick?: MouseEventHandler<HTMLButtonElement>;
+    ondblclick?: MouseEventHandler<HTMLButtonElement>;
     children: any;
     disabled?: boolean;
     warning?: boolean;
   } = $props();
 </script>
 
-<button class="border border-black rounded px-1 disabled:bg-gray-300" class:bg-red-400={warning} {onclick} {disabled}>{@render children()}</button>
+<button class="border border-black rounded px-1 disabled:bg-gray-300" class:bg-red-400={warning} {onclick} {ondblclick} {disabled}>{@render children()}</button>

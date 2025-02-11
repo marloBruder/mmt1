@@ -4,10 +4,20 @@
   import ExplorerHeader from "./explorer/ExplorerHeader.svelte";
   import ExplorerButton from "./explorer/ExplorerButton.svelte";
   import { page } from "$app/stores";
+  import RoundButton from "$lib/components/util/RoundButton.svelte";
+  import { tabManager, TheoremExplorerTab } from "$lib/sharedState/tabData.svelte";
 
   let filter = $state("");
   let quickSearchResults: string[] = $state([]);
   let more = $state(false);
+
+  let newExplorerTabClick = () => {
+    tabManager.openTab(new TheoremExplorerTab());
+  };
+
+  let newExplorerTabDblClick = () => {
+    tabManager.makeSameTempTabPermanent(new TheoremExplorerTab());
+  };
 
   let quickSearchInput = async () => {
     [quickSearchResults, more] = await invoke("quick_search", { query: filter, onlyTen: true });
@@ -28,6 +38,9 @@
 </script>
 
 <div class="h-full overflow-y-auto overflow-x-hidden">
+  <div class="p-2">
+    <RoundButton onclick={newExplorerTabClick} ondblclick={newExplorerTabDblClick}>New Explorer Tab</RoundButton>
+  </div>
   <div class="p-2">
     Quick Search:
     <input bind:value={filter} oninput={quickSearchInput} class="border border-black rounded" />
