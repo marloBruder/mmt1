@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::util::theorem_iterator::TheoremIterator;
+
 #[derive(Debug, Default)]
 pub struct MetamathData {
     pub constants: Vec<Constant>,
@@ -90,6 +92,13 @@ pub struct ProofLine {
     pub reference: String,
     pub indention: i32,
     pub assertion: String,
+}
+
+pub struct TheoremListEntry {
+    pub name: String,
+    pub theorem_number: u32,
+    pub assertion: String,
+    pub description: String,
 }
 
 impl MetamathData {
@@ -230,6 +239,10 @@ impl Header {
         }
         sum
     }
+
+    pub fn theorem_iter(&self) -> TheoremIterator {
+        TheoremIterator::new(self)
+    }
 }
 
 impl HeaderPath {
@@ -305,10 +318,26 @@ impl serde::Serialize for TheoremPageData {
     {
         use serde::ser::SerializeStruct;
 
-        let mut state = serializer.serialize_struct("TheoremPageData", 2)?;
+        let mut state = serializer.serialize_struct("TheoremPageData", 3)?;
         state.serialize_field("theorem", &self.theorem)?;
         state.serialize_field("theoremNumber", &self.theorem_number)?;
         state.serialize_field("proofLines", &self.proof_lines)?;
+        state.end()
+    }
+}
+
+impl serde::Serialize for TheoremListEntry {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("TheoremListEntry", 4)?;
+        state.serialize_field("name", &self.name)?;
+        state.serialize_field("theoremNumber", &self.theorem_number)?;
+        state.serialize_field("assertion", &self.assertion)?;
+        state.serialize_field("description", &self.description)?;
         state.end()
     }
 }

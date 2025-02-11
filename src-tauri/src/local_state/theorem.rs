@@ -2,7 +2,7 @@ use tauri::async_runtime::Mutex;
 
 use crate::{
     metamath::calc_theorem_page_data,
-    model::{Hypothesis, MetamathData, Theorem, TheoremPageData, TheoremPath},
+    model::{Hypothesis, MetamathData, Theorem, TheoremListEntry, TheoremPageData, TheoremPath},
     AppState, Error,
 };
 
@@ -88,4 +88,33 @@ pub fn add_theorem_local(
     );
 
     Ok(())
+}
+
+#[tauri::command]
+pub async fn get_theorem_list_local(
+    state: tauri::State<'_, Mutex<AppState>>,
+    from: u32,
+    to: u32,
+) -> Result<Vec<TheoremListEntry>, Error> {
+    if from > to || from == 0 || to == 0 {
+        return Err(Error::InvaildArgumentError);
+    }
+
+    let app_state = state.lock().await;
+    let db_state = app_state.db_state.as_ref().ok_or(Error::NoDatabaseError)?;
+
+    Ok(db_state
+        .metamath_data
+        .theorem_list_header
+        .theorem_iter()
+        .skip((from - 1) as usize)
+        .take((to - from) as usize)
+        .enumerate()
+        .map(|(i, theorem)| TheoremListEntry {
+            name: theorem.name.clone(),
+            theorem_number: from + (i as u32),
+            assertion: theorem.assertion.clone(),
+            description: theorem.description.clone(),
+        })
+        .collect())
 }
