@@ -38,7 +38,12 @@
     <div class="border-gray-500 border-y">
       {theoremListEntry.description}
     </div>
-    <div>
+    {#each theoremListEntry.hypotheses as hypothesis}
+      <div>
+        <MetamathExpression expression={hypothesis}></MetamathExpression>
+      </div>
+    {/each}
+    <div class={theoremListEntry.hypotheses.length != 0 ? "border-t border-gray-400 " : ""}>
       <MetamathExpression expression={theoremListEntry.assertion}></MetamathExpression>
     </div>
   </div>

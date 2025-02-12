@@ -86,6 +86,7 @@ export interface ProofLine {
 export interface TheoremListEntry {
   name: string;
   theoremNumber: number;
+  hypotheses: string[];
   assertion: string;
   description: string;
 }

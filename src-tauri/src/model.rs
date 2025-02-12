@@ -97,6 +97,7 @@ pub struct ProofLine {
 pub struct TheoremListEntry {
     pub name: String,
     pub theorem_number: u32,
+    pub hypotheses: Vec<String>,
     pub assertion: String,
     pub description: String,
 }
@@ -333,9 +334,10 @@ impl serde::Serialize for TheoremListEntry {
     {
         use serde::ser::SerializeStruct;
 
-        let mut state = serializer.serialize_struct("TheoremListEntry", 4)?;
+        let mut state = serializer.serialize_struct("TheoremListEntry", 5)?;
         state.serialize_field("name", &self.name)?;
         state.serialize_field("theoremNumber", &self.theorem_number)?;
+        state.serialize_field("hypotheses", &self.hypotheses)?;
         state.serialize_field("assertion", &self.assertion)?;
         state.serialize_field("description", &self.description)?;
         state.end()
