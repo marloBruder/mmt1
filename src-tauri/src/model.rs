@@ -144,6 +144,22 @@ impl FloatingHypohesis {
     }
 }
 
+impl Theorem {
+    pub fn to_theorem_list_entry(&self, theorem_number: u32) -> TheoremListEntry {
+        TheoremListEntry {
+            name: self.name.clone(),
+            theorem_number,
+            hypotheses: self
+                .hypotheses
+                .iter()
+                .map(|hypothesis| hypothesis.hypothesis.clone())
+                .collect(),
+            assertion: self.assertion.clone(),
+            description: self.description.clone(),
+        }
+    }
+}
+
 impl Header {
     pub fn representation(&self) -> HeaderRepresentation {
         HeaderRepresentation {

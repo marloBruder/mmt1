@@ -110,16 +110,6 @@ pub async fn get_theorem_list_local(
         .skip((from - 1) as usize)
         .take((to - from) as usize)
         .enumerate()
-        .map(|(i, theorem)| TheoremListEntry {
-            name: theorem.name.clone(),
-            theorem_number: from + (i as u32),
-            hypotheses: theorem
-                .hypotheses
-                .iter()
-                .map(|hypothesis| hypothesis.hypothesis.clone())
-                .collect(),
-            assertion: theorem.assertion.clone(),
-            description: theorem.description.clone(),
-        })
+        .map(|(i, theorem)| theorem.to_theorem_list_entry(from + (i as u32)))
         .collect())
 }

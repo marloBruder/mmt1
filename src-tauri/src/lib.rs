@@ -10,6 +10,7 @@ mod explorer;
 mod local_state;
 mod metamath;
 mod model;
+mod search;
 mod util;
 
 pub struct AppState {
@@ -44,6 +45,7 @@ pub fn run() {
             editor::delete_in_progress_theorem,
             explorer::add_header,
             explorer::quick_search,
+            search::search_theorems,
             metamath::turn_into_theorem,
             metamath::text_to_constants,
             metamath::text_to_variables,
