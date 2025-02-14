@@ -1,13 +1,22 @@
-<script>
-  import { goto } from "$app/navigation";
+<script lang="ts">
+  import RoundButton from "$lib/components/util/RoundButton.svelte";
+  import type { SearchParameters } from "$lib/sharedState/model.svelte";
+  import { SearchTab, tabManager } from "$lib/sharedState/tabData.svelte";
+
+  let searchParameters: SearchParameters = $state({ label: "" });
+
+  let searchClick = async () => {
+    tabManager.openTab(new SearchTab(searchParameters));
+  };
 </script>
 
-<div>
-  <p>This is the Search Component</p>
-  <button
-    class="border border-black ml-2 mt-2 rounded p-1"
-    onclick={() => {
-      goto("/");
-    }}>Back to main menu (temp)</button
-  >
+<div class="p-2">
+  <div>
+    <label for="search-input">Label:</label>
+    <br />
+    <input id="search-input" class="border border-black rounded" bind:value={searchParameters.label} autocomplete="off" />
+  </div>
+  <div class="pt-2">
+    <RoundButton onclick={searchClick}>Search</RoundButton>
+  </div>
 </div>

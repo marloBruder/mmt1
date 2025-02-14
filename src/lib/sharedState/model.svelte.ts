@@ -90,3 +90,7 @@ export interface TheoremListEntry {
   assertion: string;
   description: string;
 }
+
+export interface SearchParameters {
+  label: string;
+}

@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Constant, FloatingHypotheses, HtmlRepresentation, InProgressTheorem, TheoremListEntry, TheoremPageData, TheoremPath, Variable } from "./model.svelte";
+import type { Constant, FloatingHypotheses, HtmlRepresentation, InProgressTheorem, SearchParameters, TheoremListEntry, TheoremPageData, TheoremPath, Variable } from "./model.svelte";
 import { nameListData } from "./nameListData.svelte";
 import { explorerData } from "./explorerData.svelte";
 import type { Component } from "svelte";
@@ -7,6 +7,7 @@ import TheoremTabComponent from "$lib/components/tabs/TheoremTabComponent.svelte
 import SettingsTabComponent from "$lib/components/tabs/SettingsTabComponent.svelte";
 import EditorTabComponent from "$lib/components/tabs/EditorTabComponent.svelte";
 import TheoremExplorerTabComponent from "$lib/components/tabs/TheoremExplorerTabComponent.svelte";
+import SearchTabComponent from "$lib/components/tabs/SearchTabComponent.svelte";
 
 class TabManager {
   #tabs: Tab[] = $state([]);
@@ -232,6 +233,38 @@ export class TheoremExplorerTab extends Tab {
 
   get theoremList() {
     return this.#theoremList;
+  }
+}
+
+export class SearchTab extends Tab {
+  component = SearchTabComponent;
+
+  #searchParameters: SearchParameters = $state({ label: "" });
+  #searchResult: TheoremListEntry[] = $state([]);
+
+  constructor(searchParameters: SearchParameters) {
+    super();
+    this.#searchParameters.label = searchParameters.label;
+  }
+
+  async loadData(): Promise<void> {
+    this.#searchResult = await invoke("search_theorems", { searchParameters: this.#searchParameters });
+  }
+
+  name(): string {
+    return "Search: " + this.#searchParameters.label;
+  }
+
+  sameTab(tab: Tab): boolean {
+    return false;
+  }
+
+  get searchParameters() {
+    return this.#searchParameters;
+  }
+
+  get searchResult() {
+    return this.#searchResult;
   }
 }
 
