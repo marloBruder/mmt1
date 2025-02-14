@@ -18,13 +18,26 @@ pub async fn search_theorems(
 
     let mut result = Vec::new();
 
-    if let Some((theorem, theorem_number)) = db_state
-        .metamath_data
-        .theorem_list_header
-        .find_theorem_by_name_calc_number(&search_parameters.label)
-    {
-        result.push(theorem.to_theorem_list_entry(theorem_number));
-    }
+    // if let Some((theorem, theorem_number)) = db_state
+    //     .metamath_data
+    //     .theorem_list_header
+    //     .find_theorem_by_name_calc_number(&search_parameters.label)
+    // {
+    //     result.push(theorem.to_theorem_list_entry(theorem_number));
+    // }
+
+    result.append(
+        &mut db_state
+            .metamath_data
+            .theorem_list_header
+            .theorem_iter()
+            .enumerate()
+            .filter(|(_, theorem)| theorem.name.contains(&search_parameters.label))
+            .map(|(theorem_number, theorem)| {
+                theorem.to_theorem_list_entry((theorem_number as u32) + 1)
+            })
+            .collect(),
+    );
 
     Ok(result)
 }
