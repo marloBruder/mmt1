@@ -239,7 +239,7 @@ export class TheoremExplorerTab extends Tab {
 export class SearchTab extends Tab {
   component = SearchTabComponent;
 
-  #searchParameters: SearchParameters = $state({ label: "" });
+  #searchParameters: SearchParameters = $state({ label: "", start: 0, amount: 100 });
   #searchResult: TheoremListEntry[] = $state([]);
 
   constructor(searchParameters: SearchParameters) {
@@ -249,6 +249,18 @@ export class SearchTab extends Tab {
 
   async loadData(): Promise<void> {
     this.#searchResult = await invoke("search_theorems", { searchParameters: this.#searchParameters });
+  }
+
+  async previousPage() {
+    if (this.#searchParameters.start >= 100) {
+      this.#searchParameters.start -= 100;
+      await this.loadData();
+    }
+  }
+
+  async nextPage() {
+    this.#searchParameters.start += 100;
+    await this.loadData();
   }
 
   name(): string {

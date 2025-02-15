@@ -5,6 +5,8 @@ use crate::{model::TheoremListEntry, AppState, Error};
 
 #[derive(Deserialize)]
 pub struct SearchParameters {
+    pub start: u32,
+    pub amount: u32,
     pub label: String,
 }
 
@@ -33,6 +35,8 @@ pub async fn search_theorems(
             .theorem_iter()
             .enumerate()
             .filter(|(_, theorem)| theorem.name.contains(&search_parameters.label))
+            .skip(search_parameters.start as usize)
+            .take(search_parameters.amount as usize)
             .map(|(theorem_number, theorem)| {
                 theorem.to_theorem_list_entry((theorem_number as u32) + 1)
             })

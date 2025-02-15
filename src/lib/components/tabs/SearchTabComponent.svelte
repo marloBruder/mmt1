@@ -10,6 +10,14 @@
     }
     throw Error("Wrong Tab Type");
   });
+
+  let previousPageClick = async () => {
+    await searchTab.previousPage();
+  };
+
+  let nextPageClick = async () => {
+    await searchTab.nextPage();
+  };
 </script>
 
-<TheoremList theoremList={searchTab.searchResult}></TheoremList>
+<TheoremList theoremList={searchTab.searchResult} {previousPageClick} {nextPageClick}></TheoremList>

@@ -92,5 +92,7 @@ export interface TheoremListEntry {
 }
 
 export interface SearchParameters {
+  start: number;
+  amount: number;
   label: string;
 }
