@@ -18,7 +18,7 @@ class TabManager {
     return 0 <= this.#openTabIndex && this.#openTabIndex < this.#tabs.length ? this.#tabs[this.#openTabIndex] : null;
   }
 
-  async openTab(newTab: Tab) {
+  async openTab(newTab: Tab, permanent: boolean = false) {
     for (let [index, tab] of this.#tabs.entries()) {
       if (tab.sameTab(newTab)) {
         this.#openTabIndex = index;
@@ -30,10 +30,15 @@ class TabManager {
     if (0 <= this.#tempTabIndex && this.#tempTabIndex < this.#tabs.length) {
       this.#tabs[this.#tempTabIndex] = newTab;
       this.#openTabIndex = this.#tempTabIndex;
+      if (permanent) {
+        this.#tempTabIndex = -1;
+      }
     } else {
       this.#tabs.push(newTab);
       this.#openTabIndex = this.#tabs.length - 1;
-      this.#tempTabIndex = this.#tabs.length - 1;
+      if (!permanent) {
+        this.#tempTabIndex = this.#tabs.length - 1;
+      }
     }
   }
 
@@ -224,7 +229,7 @@ export class TheoremExplorerTab extends Tab {
   }
 
   sameTab(tab: Tab): boolean {
-    return tab instanceof TheoremExplorerTab;
+    return false;
   }
 
   get start() {

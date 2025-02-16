@@ -27,8 +27,7 @@
       let name = newTabName;
       nameListData.addInProgressTheoremName(name);
       newTabName = "";
-      await tabManager.openTab(new EditorTab(name));
-      tabManager.makeOpenTempTabPermanent();
+      await tabManager.openTab(new EditorTab(name), true);
     });
   };
 

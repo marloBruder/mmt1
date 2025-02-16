@@ -12,11 +12,7 @@
   let more = $state(false);
 
   let newExplorerTabClick = () => {
-    tabManager.openTab(new TheoremExplorerTab());
-  };
-
-  let newExplorerTabDblClick = () => {
-    tabManager.makeSameTempTabPermanent(new TheoremExplorerTab());
+    tabManager.openTab(new TheoremExplorerTab(), true);
   };
 
   let quickSearchInput = async () => {
@@ -39,7 +35,7 @@
 
 <div class="h-full overflow-y-auto overflow-x-hidden">
   <div class="p-2">
-    <RoundButton onclick={newExplorerTabClick} ondblclick={newExplorerTabDblClick}>New Explorer Tab</RoundButton>
+    <RoundButton onclick={newExplorerTabClick}>New Explorer Tab</RoundButton>
   </div>
   <div class="p-2">
     Quick Search:
