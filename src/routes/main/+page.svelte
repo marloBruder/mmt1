@@ -1,6 +1,7 @@
 <script lang="ts">
   import NavSidebar from "$lib/components/nav/navSidebar/NavSidebar.svelte";
   import TabBar from "$lib/components/nav/TabBar.svelte";
+  import TitleBar from "$lib/components/nav/TitleBar.svelte";
   import EmptyTabComponent from "$lib/components/tabs/EmptyTabComponent.svelte";
   import { tabManager } from "$lib/sharedState/tabData.svelte";
 
@@ -8,6 +9,9 @@
 </script>
 
 <div class="h-screen w-screen custom-grid-layout fixed">
+  <div class="titleBar border-b border-black overflow-hidden">
+    <TitleBar></TitleBar>
+  </div>
   <div class="sideBar border-r border-gray-400 overflow-hidden">
     <NavSidebar></NavSidebar>
   </div>
@@ -29,10 +33,15 @@
   .custom-grid-layout {
     display: grid;
     grid-template-areas:
+      "titleBar titleBar"
       "sideBar tabBar"
       "sideBar tab";
     grid-template-columns: 20rem auto;
-    grid-template-rows: 2rem auto;
+    grid-template-rows: 2rem 2rem auto;
+  }
+
+  .titleBar {
+    grid-area: titleBar;
   }
 
   .sideBar {
