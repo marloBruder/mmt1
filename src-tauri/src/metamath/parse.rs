@@ -1,6 +1,7 @@
 use std::fs::read_to_string;
 
 use sqlx::SqliteConnection;
+use tauri::async_runtime::Mutex;
 
 use crate::{
     database::{
@@ -10,15 +11,34 @@ use crate::{
         variable::add_variable_database_raw,
     },
     model::{
-        Constant, FloatingHypohesis, Header, HtmlRepresentation, Hypothesis, MetamathData, Theorem,
-        Variable,
+        Constant, FloatingHypohesis, Header, HeaderRepresentation, HtmlRepresentation, Hypothesis,
+        MetamathData, Theorem, Variable,
     },
-    Error,
+    AppState, Error,
 };
+
+#[tauri::command]
+pub async fn open_metamath_database(
+    state: tauri::State<'_, Mutex<AppState>>,
+    mm_file_path: &str,
+) -> Result<(HeaderRepresentation, Vec<HtmlRepresentation>), Error> {
+    let mut metamath_data: MetamathData = Default::default();
+
+    parse_mm_file(mm_file_path, &mut metamath_data).await?;
+
+    let mut app_state = state.lock().await;
+
+    let header_rep = metamath_data.theorem_list_header.representation();
+
+    let html_reps = metamath_data.html_representations.clone();
+
+    app_state.metamath_data = Some(metamath_data);
+
+    Ok((header_rep, html_reps))
+}
 
 pub async fn parse_mm_file(
     mm_file_path: &str,
-    conn: &mut SqliteConnection,
     metamath_data: &mut MetamathData,
 ) -> Result<(), Error> {
     let file_content = read_to_string(mm_file_path).unwrap();
@@ -129,7 +149,7 @@ pub async fn parse_mm_file(
                             })
                         }
 
-                        set_html_representations_database(conn, &html_representations).await?;
+                        // set_html_representations_database(conn, &html_representations).await?;
 
                         metamath_data.html_representations = html_representations.clone();
                     } else {
@@ -175,13 +195,13 @@ pub async fn parse_mm_file(
                                 });
                                 curr_header = parent_header.sub_headers.last_mut().unwrap();
 
-                                add_header_database(
-                                    conn,
-                                    next_db_index,
-                                    actual_depth,
-                                    &curr_header.title,
-                                )
-                                .await?;
+                                // add_header_database(
+                                //     conn,
+                                //     next_db_index,
+                                //     actual_depth,
+                                //     &curr_header.title,
+                                // )
+                                // .await?;
                                 next_db_index += 1;
                             }
                         }
@@ -236,7 +256,7 @@ pub async fn parse_mm_file(
                             metamath_data.constants.push(Constant {
                                 symbol: const_symbol.to_string(),
                             });
-                            add_constant_database_raw(conn, next_const_index, const_symbol).await?;
+                            // add_constant_database_raw(conn, next_const_index, const_symbol).await?;
 
                             next_const_index += 1;
                             active_consts.push(const_symbol);
@@ -270,7 +290,7 @@ pub async fn parse_mm_file(
                                 metamath_data.variables.push(Variable {
                                     symbol: var_symbol.to_string(),
                                 });
-                                add_variable_database_raw(conn, next_var_index, var_symbol).await?;
+                                // add_variable_database_raw(conn, next_var_index, var_symbol).await?;
 
                                 next_var_index += 1;
                             }
@@ -328,14 +348,14 @@ pub async fn parse_mm_file(
                         typecode: typecode.to_string(),
                         variable: variable.to_string(),
                     });
-                    add_floating_hypothesis_database_raw(
-                        conn,
-                        next_float_hyp_index,
-                        label,
-                        typecode,
-                        variable,
-                    )
-                    .await?;
+                    // add_floating_hypothesis_database_raw(
+                    //     conn,
+                    //     next_float_hyp_index,
+                    //     label,
+                    //     typecode,
+                    //     variable,
+                    // )
+                    // .await?;
 
                     next_float_hyp_index += 1;
                 }
@@ -390,17 +410,17 @@ pub async fn parse_mm_file(
                     ));
                 }
 
-                add_theorem_database(
-                    conn,
-                    next_db_index,
-                    &label,
-                    &description,
-                    &disjoints,
-                    &hypotheses,
-                    &assertion,
-                    proof.as_deref(),
-                )
-                .await?;
+                // add_theorem_database(
+                //     conn,
+                //     next_db_index,
+                //     &label,
+                //     &description,
+                //     &disjoints,
+                //     &hypotheses,
+                //     &assertion,
+                //     proof.as_deref(),
+                // )
+                // .await?;
                 next_db_index += 1;
 
                 curr_header.theorems.push(Theorem {

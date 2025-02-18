@@ -47,6 +47,7 @@ pub fn run() {
             // metamath::text_to_variables,
             // metamath::text_to_floating_hypotheses,
             // metamath::text_to_html_representations,
+            metamath::parse::open_metamath_database,
             local_state::constant::get_constants_local,
             local_state::variable::get_variables_local,
             local_state::floating_hypothesis::get_floating_hypotheses_local,

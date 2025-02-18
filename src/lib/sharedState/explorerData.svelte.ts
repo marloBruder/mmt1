@@ -63,6 +63,17 @@ class ExplorerData {
     this.#theoremListHeader = { title: "Explorer:", opened: false, theoremNames: [], subHeaders: [] };
   }
 
+  resetExplorerWithFirstHeader(headerRepresentation: HeaderRepresentation) {
+    this.#theoremListHeader = {
+      title: "Explorer:",
+      opened: false,
+      theoremNames: headerRepresentation.theoremNames,
+      subHeaders: headerRepresentation.subHeaderNames.map((subHeaderName) => {
+        return { title: subHeaderName, opened: false, theoremNames: [], subHeaders: [] };
+      }),
+    };
+  }
+
   get theoremListHeader() {
     return this.#theoremListHeader;
   }

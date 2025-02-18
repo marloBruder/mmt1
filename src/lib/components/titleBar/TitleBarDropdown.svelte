@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import type { MouseEventHandler } from "svelte/elements";
 
-  let { title, buttons }: { title: string; buttons: string[] } = $props();
+  let { title, buttons }: { title: string; buttons: { title: string; buttonClick: MouseEventHandler<HTMLButtonElement> }[] } = $props();
 
   let buttonID = $derived("titleBarDropdownButton-" + title);
   let dropdownID = $derived("titleBarDropdown-" + title);
@@ -11,18 +12,6 @@
   let onclick = () => {
     open = !open;
   };
-
-  // $effect(() => {
-  //   if (open) {
-  //     let button = document.getElementById(buttonID);
-  //     let dropdown = document.getElementById(dropdownID);
-
-  //     dropdown.style.x = button?.style.x;
-  //     console.log("Was here");
-  //     console.log(button?.);
-  //     dropdown.style.y = button?.style.y + button?.style.height;
-  //   }
-  // });
 
   let onfocusout = () => {
     setTimeout(() => {
@@ -39,7 +28,7 @@
     <div id={dropdownID} class="fixed bg-white border border-black p-2">
       {#each buttons as button}
         <div>
-          <button>{button}</button>
+          <button onclick={button.buttonClick}>{button.title}</button>
         </div>
       {/each}
     </div>
