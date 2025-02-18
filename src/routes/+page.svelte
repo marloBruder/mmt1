@@ -20,6 +20,7 @@
   import { nameListData } from "$lib/sharedState/nameListData.svelte";
   import { explorerData } from "$lib/sharedState/explorerData.svelte";
   import { htmlData } from "$lib/sharedState/htmlData.svelte";
+  import { onMount } from "svelte";
 
   let createNewDB = async () => {
     // Allow user to select file location
@@ -57,6 +58,10 @@
       });
     }
   };
+
+  onMount(() => {
+    goto("/main");
+  });
 </script>
 
 <main>

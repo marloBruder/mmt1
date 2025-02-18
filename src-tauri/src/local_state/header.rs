@@ -11,10 +11,10 @@ pub async fn get_header_local(
     header_path: HeaderPath,
 ) -> Result<HeaderRepresentation, Error> {
     let app_state = state.lock().await;
-    let db_state = app_state.db_state.as_ref().ok_or(Error::NoDatabaseError)?;
+    let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
     Ok(header_path
-        .resolve(&db_state.metamath_data.theorem_list_header)
+        .resolve(&metamath_data.theorem_list_header)
         .ok_or(Error::NotFoundError)?
         .representation())
 }

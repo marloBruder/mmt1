@@ -2,7 +2,7 @@ use crate::{metamath::parse, Error};
 use sqlx::{migrate::MigrateDatabase, Connection, Sqlite, SqliteConnection};
 use tauri::async_runtime::Mutex;
 
-use crate::{model::MetamathData, AppState, DatabaseState};
+use crate::{model::MetamathData, AppState};
 
 pub mod constant;
 pub mod floating_hypothesis;
@@ -12,136 +12,136 @@ pub mod in_progress_theorem;
 pub mod theorem;
 pub mod variable;
 
-// Tauri Command for creating a new database
-// If the database already exists, it will instead return an DatabaseExistsError
-#[tauri::command]
-pub async fn create_database(
-    state: tauri::State<'_, Mutex<AppState>>,
-    file_path: &str,
-) -> Result<(), Error> {
-    if Sqlite::database_exists(file_path).await.unwrap_or(false) {
-        return Err(Error::DatabaseExistsError);
-    }
-    create_or_override_database(state, file_path).await
-}
+// // Tauri Command for creating a new database
+// // If the database already exists, it will instead return an DatabaseExistsError
+// #[tauri::command]
+// pub async fn create_database(
+//     state: tauri::State<'_, Mutex<AppState>>,
+//     file_path: &str,
+// ) -> Result<(), Error> {
+//     if Sqlite::database_exists(file_path).await.unwrap_or(false) {
+//         return Err(Error::DatabaseExistsError);
+//     }
+//     create_or_override_database(state, file_path).await
+// }
 
-// Tauri Command for creating a new database or overriding it if it already exists
-#[tauri::command]
-pub async fn create_or_override_database(
-    state: tauri::State<'_, Mutex<AppState>>,
-    file_path: &str,
-) -> Result<(), Error> {
-    Sqlite::create_database(file_path)
-        .await
-        .or(Err(Error::CreateDatabaseError))?;
+// // Tauri Command for creating a new database or overriding it if it already exists
+// #[tauri::command]
+// pub async fn create_or_override_database(
+//     state: tauri::State<'_, Mutex<AppState>>,
+//     file_path: &str,
+// ) -> Result<(), Error> {
+//     Sqlite::create_database(file_path)
+//         .await
+//         .or(Err(Error::CreateDatabaseError))?;
 
-    let mut conn = SqliteConnection::connect(file_path)
-        .await
-        .or(Err(Error::ConnectDatabaseError))?;
+//     let mut conn = SqliteConnection::connect(file_path)
+//         .await
+//         .or(Err(Error::ConnectDatabaseError))?;
 
-    sqlx::query(sql::INIT_DB)
-        .execute(&mut conn)
-        .await
-        .or(Err(Error::SqlError))?;
+//     sqlx::query(sql::INIT_DB)
+//         .execute(&mut conn)
+//         .await
+//         .or(Err(Error::SqlError))?;
 
-    let mut app_state = state.lock().await;
+//     let mut app_state = state.lock().await;
 
-    app_state.db_state = Some(DatabaseState {
-        db_conn: conn,
-        metamath_data: Default::default(),
-    });
+//     app_state.db_state = Some(DatabaseState {
+//         db_conn: conn,
+//         metamath_data: Default::default(),
+//     });
 
-    Ok(())
-}
+//     Ok(())
+// }
 
-#[tauri::command]
-pub async fn open_database(
-    state: tauri::State<'_, Mutex<AppState>>,
-    file_path: &str,
-) -> Result<(), Error> {
-    let mut conn = SqliteConnection::connect(file_path)
-        .await
-        .or(Err(Error::ConnectDatabaseError))?;
+// #[tauri::command]
+// pub async fn open_database(
+//     state: tauri::State<'_, Mutex<AppState>>,
+//     file_path: &str,
+// ) -> Result<(), Error> {
+//     let mut conn = SqliteConnection::connect(file_path)
+//         .await
+//         .or(Err(Error::ConnectDatabaseError))?;
 
-    sql::check_returns_rows_or_error(sql::CONSTANT_TABLE_CHECK, &mut conn).await?;
-    sql::check_returns_rows_or_error(sql::VARIABLE_TABLE_CHECK, &mut conn).await?;
-    sql::check_returns_rows_or_error(sql::FLOATING_HYPOTHESIS_TABLE_CHECK, &mut conn).await?;
-    sql::check_returns_rows_or_error(sql::THEOREM_TABLE_CHECK, &mut conn).await?;
-    sql::check_returns_rows_or_error(sql::IN_PROGRESS_THEOREM_TABLE_CHECK, &mut conn).await?;
-    sql::check_returns_rows_or_error(sql::HEADER_TABLE_CHECK, &mut conn).await?;
-    sql::check_returns_rows_or_error(sql::HTML_REPRESENTATION_TABLE_CHECK, &mut conn).await?;
+//     sql::check_returns_rows_or_error(sql::CONSTANT_TABLE_CHECK, &mut conn).await?;
+//     sql::check_returns_rows_or_error(sql::VARIABLE_TABLE_CHECK, &mut conn).await?;
+//     sql::check_returns_rows_or_error(sql::FLOATING_HYPOTHESIS_TABLE_CHECK, &mut conn).await?;
+//     sql::check_returns_rows_or_error(sql::THEOREM_TABLE_CHECK, &mut conn).await?;
+//     sql::check_returns_rows_or_error(sql::IN_PROGRESS_THEOREM_TABLE_CHECK, &mut conn).await?;
+//     sql::check_returns_rows_or_error(sql::HEADER_TABLE_CHECK, &mut conn).await?;
+//     sql::check_returns_rows_or_error(sql::HTML_REPRESENTATION_TABLE_CHECK, &mut conn).await?;
 
-    let constants = constant::get_constants_database(&mut conn).await?;
-    let variables = variable::get_variables_database(&mut conn).await?;
-    let floating_hypotheses =
-        floating_hypothesis::get_floating_hypotheses_database(&mut conn).await?;
-    let theorem_list_header = header::get_theorem_list_header_database(&mut conn).await?;
-    let in_progress_theorems =
-        in_progress_theorem::get_in_progress_theorems_database(&mut conn).await?;
-    let html_representations =
-        html_representation::get_html_representations_database(&mut conn).await?;
+//     let constants = constant::get_constants_database(&mut conn).await?;
+//     let variables = variable::get_variables_database(&mut conn).await?;
+//     let floating_hypotheses =
+//         floating_hypothesis::get_floating_hypotheses_database(&mut conn).await?;
+//     let theorem_list_header = header::get_theorem_list_header_database(&mut conn).await?;
+//     let in_progress_theorems =
+//         in_progress_theorem::get_in_progress_theorems_database(&mut conn).await?;
+//     let html_representations =
+//         html_representation::get_html_representations_database(&mut conn).await?;
 
-    let mut app_state = state.lock().await;
+//     let mut app_state = state.lock().await;
 
-    app_state.db_state = Some(DatabaseState {
-        db_conn: conn,
-        metamath_data: MetamathData {
-            constants,
-            variables,
-            floating_hypotheses,
-            in_progress_theorems,
-            theorem_list_header,
-            html_representations,
-        },
-    });
+//     app_state.db_state = Some(DatabaseState {
+//         db_conn: conn,
+//         metamath_data: MetamathData {
+//             constants,
+//             variables,
+//             floating_hypotheses,
+//             in_progress_theorems,
+//             theorem_list_header,
+//             html_representations,
+//         },
+//     });
 
-    Ok(())
-}
+//     Ok(())
+// }
 
-#[tauri::command]
-pub async fn import_database(
-    state: tauri::State<'_, Mutex<AppState>>,
-    mm_file_path: &str,
-    db_file_path: &str,
-) -> Result<(), Error> {
-    if Sqlite::database_exists(db_file_path).await.unwrap_or(false) {
-        return Err(Error::DatabaseExistsError);
-    }
-    import_and_override_database(state, mm_file_path, db_file_path).await
-}
+// #[tauri::command]
+// pub async fn import_database(
+//     state: tauri::State<'_, Mutex<AppState>>,
+//     mm_file_path: &str,
+//     db_file_path: &str,
+// ) -> Result<(), Error> {
+//     if Sqlite::database_exists(db_file_path).await.unwrap_or(false) {
+//         return Err(Error::DatabaseExistsError);
+//     }
+//     import_and_override_database(state, mm_file_path, db_file_path).await
+// }
 
-#[tauri::command]
-pub async fn import_and_override_database(
-    state: tauri::State<'_, Mutex<AppState>>,
-    mm_file_path: &str,
-    db_file_path: &str,
-) -> Result<(), Error> {
-    Sqlite::create_database(db_file_path)
-        .await
-        .or(Err(Error::CreateDatabaseError))?;
+// #[tauri::command]
+// pub async fn import_and_override_database(
+//     state: tauri::State<'_, Mutex<AppState>>,
+//     mm_file_path: &str,
+//     db_file_path: &str,
+// ) -> Result<(), Error> {
+//     Sqlite::create_database(db_file_path)
+//         .await
+//         .or(Err(Error::CreateDatabaseError))?;
 
-    let mut conn = SqliteConnection::connect(db_file_path)
-        .await
-        .or(Err(Error::ConnectDatabaseError))?;
+//     let mut conn = SqliteConnection::connect(db_file_path)
+//         .await
+//         .or(Err(Error::ConnectDatabaseError))?;
 
-    sqlx::query(sql::INIT_DB)
-        .execute(&mut conn)
-        .await
-        .or(Err(Error::SqlError))?;
+//     sqlx::query(sql::INIT_DB)
+//         .execute(&mut conn)
+//         .await
+//         .or(Err(Error::SqlError))?;
 
-    let mut metamath_data: MetamathData = Default::default();
+//     let mut metamath_data: MetamathData = Default::default();
 
-    parse::parse_mm_file(mm_file_path, &mut conn, &mut metamath_data).await?;
+//     parse::parse_mm_file(mm_file_path, &mut conn, &mut metamath_data).await?;
 
-    let mut app_state = state.lock().await;
+//     let mut app_state = state.lock().await;
 
-    app_state.db_state = Some(DatabaseState {
-        db_conn: conn,
-        metamath_data,
-    });
+//     app_state.db_state = Some(DatabaseState {
+//         db_conn: conn,
+//         metamath_data,
+//     });
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 mod sql {
     use sqlx::SqliteConnection;

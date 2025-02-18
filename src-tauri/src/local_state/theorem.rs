@@ -12,15 +12,14 @@ pub async fn get_theorem_page_data_local(
     name: &str,
 ) -> Result<TheoremPageData, Error> {
     let app_state = state.lock().await;
-    let db_state = app_state.db_state.as_ref().ok_or(Error::NoDatabaseError)?;
+    let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
-    let (theorem, theorem_number) = db_state
-        .metamath_data
+    let (theorem, theorem_number) = metamath_data
         .theorem_list_header
         .find_theorem_by_name_calc_number(name)
         .ok_or(Error::NotFoundError)?;
 
-    return calc_theorem_page_data(theorem, theorem_number, &db_state.metamath_data);
+    return calc_theorem_page_data(theorem, theorem_number, metamath_data);
 }
 
 pub fn get_theorem_insert_position(
@@ -101,10 +100,9 @@ pub async fn get_theorem_list_local(
     }
 
     let app_state = state.lock().await;
-    let db_state = app_state.db_state.as_ref().ok_or(Error::NoDatabaseError)?;
+    let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
-    Ok(db_state
-        .metamath_data
+    Ok(metamath_data
         .theorem_list_header
         .theorem_iter()
         .skip((from - 1) as usize)

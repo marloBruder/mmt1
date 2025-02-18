@@ -20,14 +20,14 @@ pub async fn add_header(
     }
 
     let mut app_state = state.lock().await;
-    let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
+    let metamath_data = app_state.metamath_data.as_mut().ok_or(Error::NoMmDbError)?;
 
-    add_header_local(&mut db_state.metamath_data, title, &insert_path)?;
+    add_header_local(metamath_data, title, &insert_path)?;
 
-    let db_index = calc_db_index_for_header(&db_state.metamath_data, &insert_path)?;
-    let depth = (insert_path.path.len() as i32) - 1;
+    // let db_index = calc_db_index_for_header(&db_state.metamath_data, &insert_path)?;
+    // let depth = (insert_path.path.len() as i32) - 1;
 
-    add_header_database(&mut db_state.db_conn, db_index, depth, title).await?;
+    // add_header_database(&mut db_state.db_conn, db_index, depth, title).await?;
 
     Ok(())
 }
@@ -41,13 +41,12 @@ pub async fn quick_search(
     query: &str,
     only_ten: bool,
 ) -> Result<(Vec<String>, bool), Error> {
-    let mut app_state = state.lock().await;
-    let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
+    let app_state = state.lock().await;
+    let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
     let limit = if only_ten { 11 } else { u32::MAX };
 
-    let mut theorems =
-        find_theorem_names(&db_state.metamath_data.theorem_list_header, query, limit);
+    let mut theorems = find_theorem_names(&metamath_data.theorem_list_header, query, limit);
 
     let mut more = false;
     if only_ten && theorems.len() == 11 {

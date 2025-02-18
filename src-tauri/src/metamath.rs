@@ -11,7 +11,7 @@ use crate::{
         constant::set_constants_local,
         floating_hypothesis::{get_floating_hypothesis_by_label, set_floating_hypotheses_local},
         html_representation::set_html_representations_local,
-        in_progress_theorem::delete_in_progress_theorem_local,
+        // in_progress_theorem::delete_in_progress_theorem_local,
         theorem::{add_theorem_local, get_theorem_insert_position},
         variable::set_variables_local,
     },
@@ -81,12 +81,12 @@ pub async fn turn_into_theorem(
     }
 
     let mut app_state = state.lock().await;
-    let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
+    let metamath_data = app_state.metamath_data.as_mut().ok_or(Error::NoMmDbError)?;
 
-    let insert_path = get_theorem_insert_position(&db_state.metamath_data, position_name)?;
+    let insert_path = get_theorem_insert_position(metamath_data, position_name)?;
 
     add_theorem_local(
-        &mut db_state.metamath_data,
+        metamath_data,
         &name,
         &description,
         &disjoints,
@@ -96,24 +96,24 @@ pub async fn turn_into_theorem(
         &insert_path,
     )?;
 
-    let db_index = calc_db_index_for_theorem(&db_state.metamath_data, &insert_path)?;
+    // delete_in_progress_theorem_local(metamath_data, &name);
 
-    add_theorem_database(
-        &mut db_state.db_conn,
-        db_index,
-        &name,
-        &description,
-        &disjoints,
-        &hypotheses,
-        &assertion,
-        proof.as_deref(),
-    )
-    .await
-    .or(Err(Error::SqlError))?;
+    // let db_index = calc_db_index_for_theorem(&db_state.metamath_data, &insert_path)?;
 
-    delete_in_progress_theorem_database(&mut db_state.db_conn, &name).await?;
+    // add_theorem_database(
+    //     &mut db_state.db_conn,
+    //     db_index,
+    //     &name,
+    //     &description,
+    //     &disjoints,
+    //     &hypotheses,
+    //     &assertion,
+    //     proof.as_deref(),
+    // )
+    // .await
+    // .or(Err(Error::SqlError))?;
 
-    delete_in_progress_theorem_local(&mut db_state.metamath_data, &name);
+    // delete_in_progress_theorem_database(&mut db_state.db_conn, &name).await?;
 
     Ok(insert_path)
 }
@@ -132,274 +132,212 @@ fn get_next_as_string_until(iter: &mut std::str::SplitWhitespace, until: &str) -
     result
 }
 
-#[tauri::command]
-pub async fn text_to_constants(
-    state: tauri::State<'_, Mutex<AppState>>,
-    text: &str,
-) -> Result<Vec<Constant>, Error> {
-    if !text.is_ascii() {
-        return Err(Error::InvalidCharactersError);
-    }
+// #[tauri::command]
+// pub async fn text_to_constants(
+//     state: tauri::State<'_, Mutex<AppState>>,
+//     text: &str,
+// ) -> Result<Vec<Constant>, Error> {
+//     if !text.is_ascii() {
+//         return Err(Error::InvalidCharactersError);
+//     }
 
-    let symbols = text_to_constant_or_variable_symbols(text, true)?;
+//     let symbols = text_to_constant_or_variable_symbols(text, true)?;
 
-    let mut app_state = state.lock().await;
-    let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
+//     let mut app_state = state.lock().await;
+//     let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
 
-    set_constants_database(&mut db_state.db_conn, &symbols).await?;
+//     set_constants_database(&mut db_state.db_conn, &symbols).await?;
 
-    set_constants_local(&mut db_state.metamath_data, &symbols);
+//     set_constants_local(&mut db_state.metamath_data, &symbols);
 
-    let mut constants = Vec::new();
+//     let mut constants = Vec::new();
 
-    for symbol in symbols {
-        constants.push(Constant {
-            symbol: symbol.to_string(),
-        })
-    }
+//     for symbol in symbols {
+//         constants.push(Constant {
+//             symbol: symbol.to_string(),
+//         })
+//     }
 
-    Ok(constants)
-}
+//     Ok(constants)
+// }
 
-#[tauri::command]
-pub async fn text_to_variables(
-    state: tauri::State<'_, Mutex<AppState>>,
-    text: &str,
-) -> Result<Vec<Variable>, Error> {
-    if !text.is_ascii() {
-        return Err(Error::InvalidCharactersError);
-    }
+// #[tauri::command]
+// pub async fn text_to_variables(
+//     state: tauri::State<'_, Mutex<AppState>>,
+//     text: &str,
+// ) -> Result<Vec<Variable>, Error> {
+//     if !text.is_ascii() {
+//         return Err(Error::InvalidCharactersError);
+//     }
 
-    let symbols = text_to_constant_or_variable_symbols(text, false)?;
+//     let symbols = text_to_constant_or_variable_symbols(text, false)?;
 
-    let mut app_state = state.lock().await;
-    let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
+//     let mut app_state = state.lock().await;
+//     let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
 
-    set_variables_database(&mut db_state.db_conn, &symbols).await?;
+//     set_variables_database(&mut db_state.db_conn, &symbols).await?;
 
-    set_variables_local(&mut db_state.metamath_data, &symbols);
+//     set_variables_local(&mut db_state.metamath_data, &symbols);
 
-    let mut variables = Vec::new();
+//     let mut variables = Vec::new();
 
-    for symbol in symbols {
-        variables.push(Variable {
-            symbol: symbol.to_string(),
-        })
-    }
+//     for symbol in symbols {
+//         variables.push(Variable {
+//             symbol: symbol.to_string(),
+//         })
+//     }
 
-    Ok(variables)
-}
+//     Ok(variables)
+// }
 
-// Takes a text and returns references to the symbols between
-// "$c" and "$.", if constant is true,
-// "$v" and "$.", if constant is false
-// If there is a string not between these, the function returns an Error
-fn text_to_constant_or_variable_symbols(text: &str, constant: bool) -> Result<Vec<&str>, Error> {
-    let mut symbols = Vec::new();
+// // Takes a text and returns references to the symbols between
+// // "$c" and "$.", if constant is true,
+// // "$v" and "$.", if constant is false
+// // If there is a string not between these, the function returns an Error
+// fn text_to_constant_or_variable_symbols(text: &str, constant: bool) -> Result<Vec<&str>, Error> {
+//     let mut symbols = Vec::new();
 
-    // True if token is after "$c", but before the next "$."
-    let mut within_statement = false;
+//     // True if token is after "$c", but before the next "$."
+//     let mut within_statement = false;
 
-    for token in text.split_whitespace() {
-        if !within_statement {
-            match token {
-                "$c" if constant => within_statement = true,
-                "$v" if !constant => within_statement = true,
-                _ => return Err(Error::InvalidFormatError),
-            }
-        } else {
-            match token {
-                "$." => within_statement = false,
-                s => symbols.push(s),
-            }
-        }
-    }
+//     for token in text.split_whitespace() {
+//         if !within_statement {
+//             match token {
+//                 "$c" if constant => within_statement = true,
+//                 "$v" if !constant => within_statement = true,
+//                 _ => return Err(Error::InvalidFormatError),
+//             }
+//         } else {
+//             match token {
+//                 "$." => within_statement = false,
+//                 s => symbols.push(s),
+//             }
+//         }
+//     }
 
-    Ok(symbols)
-}
+//     Ok(symbols)
+// }
 
-#[tauri::command]
-pub async fn text_to_floating_hypotheses(
-    state: State<'_, Mutex<AppState>>,
-    text: &str,
-) -> Result<Vec<FloatingHypohesis>, Error> {
-    if !text.is_ascii() {
-        return Err(Error::InvalidCharactersError);
-    }
+// #[tauri::command]
+// pub async fn text_to_floating_hypotheses(
+//     state: State<'_, Mutex<AppState>>,
+//     text: &str,
+// ) -> Result<Vec<FloatingHypohesis>, Error> {
+//     if !text.is_ascii() {
+//         return Err(Error::InvalidCharactersError);
+//     }
 
-    let mut floating_hypotheses = Vec::new();
+//     let mut floating_hypotheses = Vec::new();
 
-    let mut token_iter = text.split_whitespace();
+//     let mut token_iter = text.split_whitespace();
 
-    let mut next_label: Option<&str> = None;
+//     let mut next_label: Option<&str> = None;
 
-    while let Some(token) = token_iter.next() {
-        match (token, next_label) {
-            ("$f", Some(label)) => {
-                let typecode = token_iter.next();
-                let variable = token_iter.next();
+//     while let Some(token) = token_iter.next() {
+//         match (token, next_label) {
+//             ("$f", Some(label)) => {
+//                 let typecode = token_iter.next();
+//                 let variable = token_iter.next();
 
-                if token_iter.next() == Some("$.") {
-                    floating_hypotheses.push(FloatingHypohesis {
-                        label: label.to_string(),
-                        // Safe unwraps, because the if branch requires a later call of next to have returned Some
-                        typecode: typecode.unwrap().to_string(),
-                        variable: variable.unwrap().to_string(),
-                    });
-                    next_label = None;
-                } else {
-                    return Err(Error::InvalidFormatError);
-                }
-            }
-            (label, None) => next_label = Some(label),
-            (_, _) => return Err(Error::InvalidFormatError),
-        }
-    }
+//                 if token_iter.next() == Some("$.") {
+//                     floating_hypotheses.push(FloatingHypohesis {
+//                         label: label.to_string(),
+//                         // Safe unwraps, because the if branch requires a later call of next to have returned Some
+//                         typecode: typecode.unwrap().to_string(),
+//                         variable: variable.unwrap().to_string(),
+//                     });
+//                     next_label = None;
+//                 } else {
+//                     return Err(Error::InvalidFormatError);
+//                 }
+//             }
+//             (label, None) => next_label = Some(label),
+//             (_, _) => return Err(Error::InvalidFormatError),
+//         }
+//     }
 
-    let mut app_state = state.lock().await;
-    let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
+//     let mut app_state = state.lock().await;
+//     let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
 
-    set_floating_hypotheses_database(&mut db_state.db_conn, &floating_hypotheses).await?;
+//     set_floating_hypotheses_database(&mut db_state.db_conn, &floating_hypotheses).await?;
 
-    set_floating_hypotheses_local(&mut db_state.metamath_data, &floating_hypotheses);
+//     set_floating_hypotheses_local(&mut db_state.metamath_data, &floating_hypotheses);
 
-    Ok(floating_hypotheses)
-}
+//     Ok(floating_hypotheses)
+// }
 
-#[tauri::command]
-pub async fn text_to_html_representations(
-    state: State<'_, Mutex<AppState>>,
-    text: &str,
-) -> Result<Vec<HtmlRepresentation>, Error> {
-    if !text.is_ascii() {
-        return Err(Error::InvalidCharactersError);
-    }
+// #[tauri::command]
+// pub async fn text_to_html_representations(
+//     state: State<'_, Mutex<AppState>>,
+//     text: &str,
+// ) -> Result<Vec<HtmlRepresentation>, Error> {
+//     if !text.is_ascii() {
+//         return Err(Error::InvalidCharactersError);
+//     }
 
-    let tokens = tokenize_typesetting_text(text)?;
-    let mut token_iter = tokens.iter();
+//     let tokens = tokenize_typesetting_text(text)?;
+//     let mut token_iter = tokens.iter();
 
-    let mut html_representations = Vec::new();
+//     let mut html_representations = Vec::new();
 
-    loop {
-        let mut statement_tokens: Vec<&str> = Vec::new();
-        while let Some(&token) = token_iter.next() {
-            if !token.starts_with("/*") {
-                if token != ";" {
-                    statement_tokens.push(token);
-                } else {
-                    break;
-                }
-            }
-        }
+//     loop {
+//         let mut statement_tokens: Vec<&str> = Vec::new();
+//         while let Some(&token) = token_iter.next() {
+//             if !token.starts_with("/*") {
+//                 if token != ";" {
+//                     statement_tokens.push(token);
+//                 } else {
+//                     break;
+//                 }
+//             }
+//         }
 
-        if statement_tokens.len() == 0 {
-            break;
-        }
+//         if statement_tokens.len() == 0 {
+//             break;
+//         }
 
-        if statement_tokens.len() < 4
-            || statement_tokens.len() % 2 != 0
-            || statement_tokens[0] != "htmldef"
-            || statement_tokens[2] != "as"
-        {
-            return Err(Error::InvalidFormatError);
-        }
+//         if statement_tokens.len() < 4
+//             || statement_tokens.len() % 2 != 0
+//             || statement_tokens[0] != "htmldef"
+//             || statement_tokens[2] != "as"
+//         {
+//             return Err(Error::InvalidFormatError);
+//         }
 
-        let mut html: String =
-            get_str_in_quotes(statement_tokens[3]).ok_or(Error::InvalidFormatError)?;
+//         let mut html: String =
+//             get_str_in_quotes(statement_tokens[3]).ok_or(Error::InvalidFormatError)?;
 
-        let mut next_html_index = 5;
+//         let mut next_html_index = 5;
 
-        while next_html_index < statement_tokens.len() {
-            if statement_tokens[next_html_index - 1] != "+" {
-                return Err(Error::InvalidFormatError);
-            }
-            html.push_str(
-                &get_str_in_quotes(statement_tokens[next_html_index])
-                    .ok_or(Error::InvalidFormatError)?,
-            );
+//         while next_html_index < statement_tokens.len() {
+//             if statement_tokens[next_html_index - 1] != "+" {
+//                 return Err(Error::InvalidFormatError);
+//             }
+//             html.push_str(
+//                 &get_str_in_quotes(statement_tokens[next_html_index])
+//                     .ok_or(Error::InvalidFormatError)?,
+//             );
 
-            next_html_index += 2;
-        }
+//             next_html_index += 2;
+//         }
 
-        html_representations.push(HtmlRepresentation {
-            symbol: get_str_in_quotes(statement_tokens[1])
-                .ok_or(Error::InvalidFormatError)?
-                .to_string(),
-            html,
-        })
-    }
+//         html_representations.push(HtmlRepresentation {
+//             symbol: get_str_in_quotes(statement_tokens[1])
+//                 .ok_or(Error::InvalidFormatError)?
+//                 .to_string(),
+//             html,
+//         })
+//     }
 
-    // let mut index: usize = advance_until_non_whitespace(text, 0);
+//     let mut app_state = state.lock().await;
+//     let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
 
-    // while index < text.len() {
-    //     let token_end = advance_until_whitespace(text, index);
+//     set_html_representations_database(&mut db_state.db_conn, &html_representations).await?;
 
-    //     if &text[index..token_end] != "htmldef" {
-    //         println!("htmldef error");
-    //         println!("index: {}", index);
-    //         println!("Token_end: {}", token_end);
-    //         return Err(Error::InvalidFormatError);
-    //     }
+//     set_html_representations_local(&mut db_state.metamath_data, &html_representations);
 
-    //     index = advance_until_non_whitespace(text, token_end);
-
-    //     if text.as_bytes()[index] != b'\"' {
-    //         println!("symbol start quotes error");
-    //         return Err(Error::InvalidFormatError);
-    //     }
-
-    //     let token_end = advance_until_quotes(text, index + 1);
-
-    //     let symbol = text[(index + 1)..token_end].to_string();
-
-    //     if advance_until_whitespace(text, token_end) != token_end + 1 {
-    //         println!("symbol end quotes error");
-    //         println!("Symbol: {}", symbol);
-    //         println!("Token_end: {}", token_end);
-    //         println!("Function: {}", advance_until_whitespace(text, token_end));
-    //         return Err(Error::InvalidFormatError);
-    //     }
-
-    //     index = advance_until_non_whitespace(text, token_end + 1);
-
-    //     let token_end = advance_until_whitespace(text, index);
-
-    //     if &text[index..token_end] != "as" {
-    //         println!("as error");
-    //         return Err(Error::InvalidFormatError);
-    //     }
-
-    //     index = advance_until_non_whitespace(text, token_end);
-
-    //     if text.as_bytes()[index] != b'\"' {
-    //         println!("html start quotes error");
-    //         return Err(Error::InvalidFormatError);
-    //     }
-
-    //     let token_end = advance_until_quotes(text, index + 1);
-
-    //     let html = text[(index + 1)..token_end].to_string();
-
-    //     if token_end + 1 >= text.len() || text.as_bytes()[token_end + 1] != b';' {
-    //         println!("html end quotes error");
-    //         println!("html: {}", html);
-    //         return Err(Error::InvalidFormatError);
-    //     }
-
-    //     index = advance_until_non_whitespace(text, token_end + 2);
-
-    //     html_representations.push(HtmlRepresentation { symbol, html })
-    // }
-
-    let mut app_state = state.lock().await;
-    let db_state = app_state.db_state.as_mut().ok_or(Error::NoDatabaseError)?;
-
-    set_html_representations_database(&mut db_state.db_conn, &html_representations).await?;
-
-    set_html_representations_local(&mut db_state.metamath_data, &html_representations);
-
-    Ok(html_representations)
-}
+//     Ok(html_representations)
+// }
 
 fn tokenize_typesetting_text(text: &str) -> Result<Vec<&str>, Error> {
     let mut tokens = Vec::new();

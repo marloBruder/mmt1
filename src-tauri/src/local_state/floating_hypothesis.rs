@@ -10,9 +10,9 @@ pub async fn get_floating_hypotheses_local(
     state: tauri::State<'_, Mutex<AppState>>,
 ) -> Result<Vec<FloatingHypohesis>, Error> {
     let app_state = state.lock().await;
-    let db_state = app_state.db_state.as_ref().ok_or(Error::NoDatabaseError)?;
+    let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
-    Ok(db_state.metamath_data.floating_hypotheses.clone())
+    Ok(metamath_data.floating_hypotheses.clone())
 }
 
 pub fn get_floating_hypothesis_by_label<'a>(
