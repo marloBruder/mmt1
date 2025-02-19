@@ -95,6 +95,8 @@ pub async fn parse_mm_file(
                         let typesetting_tokens = super::tokenize_typesetting_text(&last_comment)?;
                         let mut typesetting_token_iter = typesetting_tokens.iter();
 
+                        typesetting_token_iter.next(); // Flush out leading "$t"
+
                         let mut html_representations = Vec::new();
 
                         loop {
