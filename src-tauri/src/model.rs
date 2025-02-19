@@ -7,7 +7,6 @@ pub struct MetamathData {
     pub constants: Vec<Constant>,
     pub variables: Vec<Variable>,
     pub floating_hypotheses: Vec<FloatingHypohesis>,
-    pub in_progress_theorems: Vec<InProgressTheorem>,
     pub theorem_list_header: Header,
     pub html_representations: Vec<HtmlRepresentation>,
 }
@@ -43,12 +42,6 @@ pub struct Theorem {
 pub struct Hypothesis {
     pub label: String,
     pub hypothesis: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct InProgressTheorem {
-    pub name: String,
-    pub text: String,
 }
 
 #[derive(Debug, Default)]
@@ -110,12 +103,6 @@ impl MetamathData {
             .is_some()
         {
             return true;
-        }
-
-        for in_progress_theorem in &self.in_progress_theorems {
-            if in_progress_theorem.name == label {
-                return true;
-            }
         }
 
         false

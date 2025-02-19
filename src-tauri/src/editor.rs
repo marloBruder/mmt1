@@ -1,17 +1,6 @@
 use tauri::async_runtime::Mutex;
 
-use crate::{
-    database::in_progress_theorem::{
-        add_in_progress_theorem_database, delete_in_progress_theorem_database,
-        set_in_progress_theorem_name_database, set_in_progress_theorem_text_database,
-    },
-    local_state::in_progress_theorem::{
-        // add_in_progress_theorem_local, delete_in_progress_theorem_local,
-        // set_in_progress_theorem_name_local, set_in_progress_theorem_text_local,
-    },
-    model::MetamathData,
-    AppState, Error,
-};
+use crate::{model::MetamathData, AppState, Error};
 
 // #[tauri::command]
 // pub async fn add_in_progress_theorem(

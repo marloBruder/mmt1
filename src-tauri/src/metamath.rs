@@ -3,7 +3,7 @@ use crate::{
         constant::set_constants_database,
         floating_hypothesis::set_floating_hypotheses_database,
         html_representation::set_html_representations_database,
-        in_progress_theorem::delete_in_progress_theorem_database,
+        // in_progress_theorem::delete_in_progress_theorem_database,
         theorem::{add_theorem_database, calc_db_index_for_theorem},
         variable::set_variables_database,
     },
@@ -16,8 +16,8 @@ use crate::{
         variable::set_variables_local,
     },
     model::{
-        Constant, FloatingHypohesis, HtmlRepresentation, Hypothesis, InProgressTheorem,
-        MetamathData, ProofLine, Theorem, TheoremPageData, TheoremPath, Variable,
+        Constant, FloatingHypohesis, HtmlRepresentation, Hypothesis, MetamathData, ProofLine,
+        Theorem, TheoremPageData, TheoremPath, Variable,
     },
     AppState, Error,
 };
@@ -29,10 +29,10 @@ pub mod parse;
 #[tauri::command]
 pub async fn turn_into_theorem(
     state: tauri::State<'_, Mutex<AppState>>,
-    in_progress_theorem: InProgressTheorem,
+    text: &str,
     position_name: &str,
 ) -> Result<TheoremPath, Error> {
-    if !in_progress_theorem.text.is_ascii() {
+    if !text.is_ascii() {
         return Err(Error::InvalidCharactersError);
     }
 
@@ -45,7 +45,7 @@ pub async fn turn_into_theorem(
     let mut assertion: Option<String> = None;
     let mut proof: Option<String> = None;
 
-    let mut token_iter = in_progress_theorem.text.split_whitespace();
+    let mut token_iter = text.split_whitespace();
     while let Some(token) = token_iter.next() {
         match token {
             "$(" => description = get_next_as_string_until(&mut token_iter, "$)"),
@@ -75,10 +75,6 @@ pub async fn turn_into_theorem(
 
     let name = name.ok_or(Error::InvalidFormatError)?;
     let assertion = assertion.ok_or(Error::InvalidFormatError)?;
-
-    if name != in_progress_theorem.name {
-        return Err(Error::InvalidFormatError);
-    }
 
     let mut app_state = state.lock().await;
     let metamath_data = app_state.metamath_data.as_mut().ok_or(Error::NoMmDbError)?;
