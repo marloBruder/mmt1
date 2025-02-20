@@ -5,9 +5,9 @@
   import ChevronDownIcon from "$lib/icons/ChevronDownIcon.svelte";
   import ChevronRightIcon from "$lib/icons/ChevronRightIcon.svelte";
   import PlusIcon from "$lib/icons/PlusIcon.svelte";
-  import { page } from "$app/stores";
   import { explorerData } from "$lib/sharedState/explorerData.svelte";
   import ExplorerButton from "./ExplorerButton.svelte";
+  import { tabManager, TheoremTab } from "$lib/sharedState/tabData.svelte";
 
   let { header, headerPath }: { header: NameListHeader; headerPath: HeaderPath } = $props();
 
@@ -91,9 +91,9 @@
   };
 
   let openTheoremName: string | null = $derived.by(() => {
-    let segments = $page.url.pathname.split("/");
-    if (segments.length == 4 && segments[1] == "main" && segments[2] == "theorem") {
-      return segments[3];
+    let openTab = tabManager.getOpenTab();
+    if (openTab instanceof TheoremTab) {
+      return openTab.theoremName;
     }
     return null;
   });
