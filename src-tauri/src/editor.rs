@@ -1,6 +1,89 @@
+use std::fs;
+
 use tauri::async_runtime::Mutex;
 
-use crate::{model::MetamathData, AppState, Error};
+use crate::{AppState, Error};
+
+pub struct Folder {
+    file_names: Vec<String>,
+    subfolder_names: Vec<String>,
+}
+
+#[tauri::command]
+pub async fn open_folder(
+    state: tauri::State<'_, Mutex<AppState>>,
+    folder_path: &str,
+) -> Result<Folder, Error> {
+    let mut app_state = state.lock().await;
+
+    let folder = get_folder(folder_path).await?;
+
+    app_state.open_folder = Some(folder_path.to_string());
+
+    Ok(folder)
+}
+
+#[tauri::command]
+pub async fn get_subfolder(
+    state: tauri::State<'_, Mutex<AppState>>,
+    relative_path: &str,
+) -> Result<Folder, Error> {
+    let app_state = state.lock().await;
+    let mut open_folder = app_state
+        .open_folder
+        .as_ref()
+        .ok_or(Error::NoOpenFolderError)?
+        .clone();
+
+    open_folder.push('/');
+    open_folder.push_str(relative_path);
+
+    get_folder(&open_folder).await
+}
+
+pub async fn get_folder(full_path: &str) -> Result<Folder, Error> {
+    let mut file_names = Vec::new();
+    let mut subfolder_names = Vec::new();
+
+    for entry in fs::read_dir(full_path).or(Err(Error::FailedFolderReadError))? {
+        let entry = entry.or(Err(Error::FailedFolderReadError))?;
+
+        if entry.path().is_file() {
+            file_names.push(
+                entry
+                    .file_name()
+                    .into_string()
+                    .or(Err(Error::FailedFolderReadError))?,
+            );
+        } else {
+            subfolder_names.push(
+                entry
+                    .file_name()
+                    .into_string()
+                    .or(Err(Error::FailedFolderReadError))?,
+            );
+        }
+    }
+
+    Ok(Folder {
+        file_names,
+        subfolder_names,
+    })
+}
+
+impl serde::Serialize for Folder {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("Folder", 2)?;
+        state.serialize_field("fileNames", &self.file_names)?;
+        state.serialize_field("subfolderNames", &self.subfolder_names)?;
+        state.end()
+    }
+}
 
 // #[tauri::command]
 // pub async fn add_in_progress_theorem(

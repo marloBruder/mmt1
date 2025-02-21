@@ -14,11 +14,13 @@ mod util;
 
 pub struct AppState {
     metamath_data: Option<MetamathData>,
+    open_folder: Option<String>,
 }
 
 fn app_setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     app.manage(Mutex::new(AppState {
         metamath_data: None,
+        open_folder: None,
     }));
     // app.manage::<Mutex<Option<AppState>>>(Mutex::new(None));
     Ok(())
@@ -42,6 +44,8 @@ pub fn run() {
             explorer::add_header,
             explorer::quick_search,
             search::search_theorems,
+            editor::open_folder,
+            editor::get_subfolder,
             metamath::turn_into_theorem,
             // metamath::text_to_constants,
             // metamath::text_to_variables,
@@ -108,6 +112,9 @@ pub enum Error {
     InternalLogicError,
     InvaildArgumentError,
     InvalidDatabaseDataError,
+
+    FailedFolderReadError,
+    NoOpenFolderError,
 }
 
 impl fmt::Display for Error {
