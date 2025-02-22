@@ -24,6 +24,15 @@ pub async fn open_folder(
 }
 
 #[tauri::command]
+pub async fn close_folder(state: tauri::State<'_, Mutex<AppState>>) -> Result<(), ()> {
+    let mut app_state = state.lock().await;
+
+    app_state.open_folder = None;
+
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn get_subfolder(
     state: tauri::State<'_, Mutex<AppState>>,
     relative_path: &str,

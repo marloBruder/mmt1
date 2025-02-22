@@ -45,6 +45,7 @@ pub fn run() {
             explorer::quick_search,
             search::search_theorems,
             editor::open_folder,
+            editor::close_folder,
             editor::get_subfolder,
             metamath::turn_into_theorem,
             // metamath::text_to_constants,
