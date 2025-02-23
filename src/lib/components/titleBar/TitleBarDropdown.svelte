@@ -25,7 +25,7 @@
     {title}
   </button>
   {#if open}
-    <div id={dropdownID} class="fixed bg-white border border-black p-2">
+    <div id={dropdownID} class="fixed bg-white border border-black p-2 z-50">
       {#each buttons as button}
         <div>
           <button onclick={button.buttonClick}>{button.title}</button>

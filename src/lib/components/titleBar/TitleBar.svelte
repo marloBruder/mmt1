@@ -3,9 +3,10 @@
   import TitleBarDropdown from "./TitleBarDropdown.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { open } from "@tauri-apps/plugin-dialog";
-  import type { HeaderRepresentation, HtmlRepresentation } from "$lib/sharedState/model.svelte";
+  import type { FolderRepresentation, HeaderRepresentation, HtmlRepresentation } from "$lib/sharedState/model.svelte";
   import { explorerData } from "$lib/sharedState/explorerData.svelte";
   import { htmlData } from "$lib/sharedState/htmlData.svelte";
+  import { fileExplorerData } from "$lib/sharedState/fileExplorerData.svelte";
 
   const appWindow = getCurrentWindow();
 
@@ -22,7 +23,25 @@
   };
 
   let fileDropdownButtons = [
-    { title: "Open Folder", buttonClick: () => {} },
+    {
+      title: "Open Folder",
+      buttonClick: async () => {
+        const folderPath = await open({ multiple: false, directory: true });
+
+        if (folderPath) {
+          let folderRep = (await invoke("open_folder", { folderPath })) as FolderRepresentation;
+          let folderPathSplit = folderPath.split("\\");
+          fileExplorerData.resetDataWithFirstFolder(folderPathSplit[folderPathSplit.length - 1], folderRep);
+        }
+      },
+    },
+    {
+      title: "Close Folder",
+      buttonClick: async () => {
+        await invoke("close_folder");
+        fileExplorerData.resetData();
+      },
+    },
     { title: "Exit", buttonClick: closeClick },
   ];
 

@@ -96,3 +96,13 @@ export interface SearchParameters {
   amount: number;
   label: string;
 }
+
+export interface Folder {
+  name: string;
+  content: { fileNames: string[]; subfolders: Folder[] } | null;
+}
+
+export interface FolderRepresentation {
+  fileNames: string[];
+  subfolderNames: string[];
+}

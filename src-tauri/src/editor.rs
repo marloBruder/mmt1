@@ -4,7 +4,7 @@ use tauri::async_runtime::Mutex;
 
 use crate::{AppState, Error};
 
-pub struct Folder {
+pub struct FolderRepresentation {
     file_names: Vec<String>,
     subfolder_names: Vec<String>,
 }
@@ -13,7 +13,7 @@ pub struct Folder {
 pub async fn open_folder(
     state: tauri::State<'_, Mutex<AppState>>,
     folder_path: &str,
-) -> Result<Folder, Error> {
+) -> Result<FolderRepresentation, Error> {
     let mut app_state = state.lock().await;
 
     let folder = get_folder(folder_path).await?;
@@ -36,7 +36,7 @@ pub async fn close_folder(state: tauri::State<'_, Mutex<AppState>>) -> Result<()
 pub async fn get_subfolder(
     state: tauri::State<'_, Mutex<AppState>>,
     relative_path: &str,
-) -> Result<Folder, Error> {
+) -> Result<FolderRepresentation, Error> {
     let app_state = state.lock().await;
     let mut open_folder = app_state
         .open_folder
@@ -50,7 +50,7 @@ pub async fn get_subfolder(
     get_folder(&open_folder).await
 }
 
-pub async fn get_folder(full_path: &str) -> Result<Folder, Error> {
+pub async fn get_folder(full_path: &str) -> Result<FolderRepresentation, Error> {
     let mut file_names = Vec::new();
     let mut subfolder_names = Vec::new();
 
@@ -74,13 +74,13 @@ pub async fn get_folder(full_path: &str) -> Result<Folder, Error> {
         }
     }
 
-    Ok(Folder {
+    Ok(FolderRepresentation {
         file_names,
         subfolder_names,
     })
 }
 
-impl serde::Serialize for Folder {
+impl serde::Serialize for FolderRepresentation {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::ser::Serializer,
