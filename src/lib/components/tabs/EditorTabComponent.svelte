@@ -13,9 +13,7 @@
     throw Error("Wrong Tab Type");
   });
 
-  let theorem = $derived(editorTab.inProgressTheorem);
-
-  let oldName: string = "";
+  let nameInput: string = $state("");
 
   let nameDisabled: boolean = $state(true);
 
@@ -29,34 +27,24 @@
   });
 
   let editName = () => {
-    oldName = theorem.name;
+    nameInput = editorTab.fileName;
     nameDisabled = false;
   };
 
   let saveName = async () => {
-    invoke("set_in_progress_theorem_name", { oldName, newName: theorem.name }).then(() => {
-      nameDisabled = true;
-      if (oldName != theorem.name) {
-        nameListData.changeInProgressTheoremName(oldName, theorem.name);
-        editorTab.changeEditorID(theorem.name);
-      }
-    });
-
-    // if (oldName != theorem.name && !nameListData.validNewName(theorem.name)) {
-    //   throw Error("Invalid Name");
-    // }
-    // nameDisabled = true;
-    // if (oldName != theorem.name) {
-    //   invoke("set_in_progress_theorem_name", { oldName, newName: theorem.name });
-    //   nameListData.changeInProgressTheoremName(oldName, theorem.name);
-    //   tab.changeEditorID(theorem.name);
-    //   goto("/main/editor/" + theorem.name);
-    // }
+    // invoke("set_in_progress_theorem_name", { oldName, newName: theorem.name }).then(() => {
+    //   nameDisabled = true;
+    //   if (oldName != theorem.name) {
+    //     nameListData.changeInProgressTheoremName(oldName, theorem.name);
+    //     editorTab.changeEditorID(theorem.name);
+    //   }
+    // });
+    nameDisabled = true;
   };
 
   let abortNameSave = () => {
     nameDisabled = true;
-    theorem.name = oldName;
+    nameInput = editorTab.fileName;
   };
 
   let onFocusOutName = async () => {
@@ -80,7 +68,7 @@
   let textChanged: boolean = $state(false);
 
   let saveText = () => {
-    invoke("set_in_progress_theorem", { name: editorTab.inProgressTheoremName, text: theorem.text });
+    invoke("save_file", { relativePath: editorTab.filePath, content: editorTab.text });
     textChanged = false;
   };
 
@@ -103,7 +91,7 @@
 <div class="m-2">
   <div class="mb-2">
     <label for="tabName">Theorem name:</label>
-    <input id="tabName" type="text" bind:value={theorem.name} onfocusout={onFocusOutName} onkeydown={onkeyDownName} disabled={nameDisabled} autocomplete="off" class="disabled:bg-gray-300" />
+    <input id="tabName" type="text" bind:value={nameInput} onfocusout={onFocusOutName} onkeydown={onkeyDownName} disabled={nameDisabled} autocomplete="off" class="disabled:bg-gray-300" />
   </div>
   <RoundButton onclick={editName} disabled={!nameDisabled}>Edit name</RoundButton>
 </div>
@@ -117,5 +105,5 @@
   <RoundButton onclick={turnIntoAxiom}>Turn into theorem</RoundButton>
 </div>
 <div>
-  <textarea bind:value={theorem.text} oninput={textChange} class="w-full resize-none h-96"></textarea>
+  <textarea bind:value={editorTab.text} oninput={textChange} class="w-full resize-none h-96"></textarea>
 </div>

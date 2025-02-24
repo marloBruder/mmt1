@@ -288,52 +288,56 @@ export class SearchTab extends Tab {
 export class EditorTab extends Tab {
   component = EditorTabComponent;
 
-  #inProgressTheoremName: string = $state("");
-  #inProgressTheorem: InProgressTheorem = $state({ name: "", text: "" });
+  #filePath: string = $state("");
+  #fileName: string = $derived.by(() => {
+    let segments = this.#filePath.split("\\");
+    return segments[segments.length - 1];
+  });
 
-  constructor(inProgressTheoremName: string) {
+  text: string = $state("");
+
+  constructor(filePath: string) {
     super();
-    this.#inProgressTheoremName = inProgressTheoremName;
+    this.#filePath = filePath;
   }
 
   async loadData(): Promise<void> {
-    this.#inProgressTheorem = await invoke("get_in_progress_theorem_local", { name: this.#inProgressTheoremName });
+    this.text = await invoke("read_file", { relativePath: this.#filePath });
   }
 
   name(): string {
-    return this.#inProgressTheoremName;
+    return this.#fileName;
   }
 
   sameTab(tab: Tab): boolean {
-    return tab instanceof EditorTab && this.#inProgressTheoremName == tab.inProgressTheoremName;
+    return tab instanceof EditorTab && this.#filePath == tab.filePath;
   }
 
   changeEditorID(newID: string) {
-    this.#inProgressTheoremName = newID;
+    // this.#inProgressTheoremName = newID;
   }
 
   async deleteTheorem() {
-    await invoke("delete_in_progress_theorem", { name: this.#inProgressTheoremName });
-    tabManager.closeOpenTab();
-    nameListData.removeInProgressTheoremName(this.#inProgressTheoremName);
-    return;
+    // await invoke("delete_in_progress_theorem", { name: this.#inProgressTheoremName });
+    // tabManager.closeOpenTab();
+    // nameListData.removeInProgressTheoremName(this.#inProgressTheoremName);
+    // return;
   }
 
   async convertToTheorem(placeAfter: string) {
-    let dataUnknown = await invoke("turn_into_theorem", { inProgressTheorem: this.#inProgressTheorem, positionName: placeAfter });
-    let theoremPath = dataUnknown as TheoremPath;
-
-    nameListData.removeInProgressTheoremName(this.#inProgressTheorem.name);
-    await explorerData.addTheoremName(theoremPath, this.#inProgressTheorem.name);
-    tabManager.changeTab(new TheoremTab(this.#inProgressTheorem.name));
+    // let dataUnknown = await invoke("turn_into_theorem", { inProgressTheorem: this.#inProgressTheorem, positionName: placeAfter });
+    // let theoremPath = dataUnknown as TheoremPath;
+    // nameListData.removeInProgressTheoremName(this.#inProgressTheorem.name);
+    // await explorerData.addTheoremName(theoremPath, this.#inProgressTheorem.name);
+    // tabManager.changeTab(new TheoremTab(this.#inProgressTheorem.name));
   }
 
-  get inProgressTheorem() {
-    return this.#inProgressTheorem;
+  get filePath() {
+    return this.#filePath;
   }
 
-  get inProgressTheoremName() {
-    return this.#inProgressTheoremName;
+  get fileName() {
+    return this.#fileName;
   }
 }
 

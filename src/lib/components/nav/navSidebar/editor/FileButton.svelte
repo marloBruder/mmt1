@@ -1,17 +1,17 @@
 <script lang="ts">
-  import { tabManager, TheoremTab } from "$lib/sharedState/tabData.svelte";
+  import { EditorTab, tabManager } from "$lib/sharedState/tabData.svelte";
 
-  let { fileName }: { fileName: string } = $props();
+  let { folderPath, fileName }: { folderPath: string; fileName: string } = $props();
 
-  let explorerClick = (name: string) => {
-    // tabManager.openTab(new TheoremTab(name));
+  let explorerClick = () => {
+    tabManager.openTab(new EditorTab(folderPath + "\\" + fileName));
   };
 
-  let explorerDblClick = (name: string) => {
-    // tabManager.makeSameTempTabPermanent(new TheoremTab(name));
+  let explorerDblClick = () => {
+    tabManager.makeSameTempTabPermanent(new EditorTab(folderPath + "\\" + fileName));
   };
 </script>
 
 <div>
-  <button class="w-full text-left pl-2 hover:bg-gray-200" onclick={() => explorerClick(fileName)} ondblclick={() => explorerDblClick(fileName)}>{fileName}</button>
+  <button class="w-full text-left pl-2 hover:bg-gray-200" onclick={explorerClick} ondblclick={explorerDblClick}>{fileName}</button>
 </div>
