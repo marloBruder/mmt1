@@ -1,3 +1,3 @@
-<div class="h-full w-full border-green-500 border-8">
+<div class="h-full w-full p-2">
   <p>This the the empty main section</p>
 </div>

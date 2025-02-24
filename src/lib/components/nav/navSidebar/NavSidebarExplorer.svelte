@@ -33,7 +33,7 @@
   });
 </script>
 
-<div class="h-full overflow-y-auto overflow-x-hidden">
+<div class="h-full">
   <div class="p-2">
     <RoundButton onclick={newExplorerTabClick}>New Explorer Tab</RoundButton>
   </div>
