@@ -47,6 +47,8 @@ pub fn run() {
             editor::open_folder,
             editor::close_folder,
             editor::get_subfolder,
+            editor::read_file,
+            editor::save_file,
             metamath::turn_into_theorem,
             // metamath::text_to_constants,
             // metamath::text_to_variables,
@@ -114,8 +116,10 @@ pub enum Error {
     InvaildArgumentError,
     InvalidDatabaseDataError,
 
-    FailedFolderReadError,
     NoOpenFolderError,
+    FolderReadError,
+    FileReadError,
+    FileWriteError,
 }
 
 impl fmt::Display for Error {

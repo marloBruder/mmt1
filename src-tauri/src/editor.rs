@@ -54,22 +54,22 @@ pub async fn get_folder(full_path: &str) -> Result<FolderRepresentation, Error> 
     let mut file_names = Vec::new();
     let mut subfolder_names = Vec::new();
 
-    for entry in fs::read_dir(full_path).or(Err(Error::FailedFolderReadError))? {
-        let entry = entry.or(Err(Error::FailedFolderReadError))?;
+    for entry in fs::read_dir(full_path).or(Err(Error::FolderReadError))? {
+        let entry = entry.or(Err(Error::FolderReadError))?;
 
         if entry.path().is_file() {
             file_names.push(
                 entry
                     .file_name()
                     .into_string()
-                    .or(Err(Error::FailedFolderReadError))?,
+                    .or(Err(Error::FolderReadError))?,
             );
         } else {
             subfolder_names.push(
                 entry
                     .file_name()
                     .into_string()
-                    .or(Err(Error::FailedFolderReadError))?,
+                    .or(Err(Error::FolderReadError))?,
             );
         }
     }
@@ -78,6 +78,45 @@ pub async fn get_folder(full_path: &str) -> Result<FolderRepresentation, Error> 
         file_names,
         subfolder_names,
     })
+}
+
+#[tauri::command]
+pub async fn read_file(
+    state: tauri::State<'_, Mutex<AppState>>,
+    relative_path: &str,
+) -> Result<String, Error> {
+    let app_state = state.lock().await;
+
+    let mut file_path = app_state
+        .open_folder
+        .as_ref()
+        .ok_or(Error::NoOpenFolderError)?
+        .clone();
+    file_path.push('/');
+    file_path.push_str(relative_path);
+
+    Ok(fs::read_to_string(file_path).or(Err(Error::FileReadError))?)
+}
+
+#[tauri::command]
+pub async fn save_file(
+    state: tauri::State<'_, Mutex<AppState>>,
+    relative_path: &str,
+    content: &str,
+) -> Result<(), Error> {
+    let app_state = state.lock().await;
+
+    let mut file_path = app_state
+        .open_folder
+        .as_ref()
+        .ok_or(Error::NoOpenFolderError)?
+        .clone();
+    file_path.push('/');
+    file_path.push_str(relative_path);
+
+    fs::write(file_path, content).or(Err(Error::FileWriteError))?;
+
+    Ok(())
 }
 
 impl serde::Serialize for FolderRepresentation {
