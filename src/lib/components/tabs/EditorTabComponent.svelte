@@ -86,6 +86,20 @@
   };
 
   let placeAfter = $state("");
+
+  $effect(() => {
+    let textarea = document.getElementById("editorTextarea");
+    if (textarea) {
+      let lines = 1;
+      for (let char of editorTab.text) {
+        if (char === "\n") {
+          lines++;
+        }
+      }
+      console.log(lines);
+      textarea.style.height = lines * 1.5 + "rem";
+    }
+  });
 </script>
 
 <div class="m-2">
@@ -105,5 +119,5 @@
   <RoundButton onclick={turnIntoAxiom}>Turn into theorem</RoundButton>
 </div>
 <div>
-  <textarea bind:value={editorTab.text} oninput={textChange} class="w-full resize-none h-96"></textarea>
+  <textarea id="editorTextarea" bind:value={editorTab.text} oninput={textChange} class="w-full resize-none h-96 text-nowrap overflow-x-hidden"></textarea>
 </div>
