@@ -7,6 +7,9 @@
   import { explorerData } from "$lib/sharedState/explorerData.svelte";
   import { htmlData } from "$lib/sharedState/htmlData.svelte";
   import { fileExplorerData } from "$lib/sharedState/fileExplorerData.svelte";
+  import CloseIcon from "$lib/icons/titleBar/CloseIcon.svelte";
+  import MaximizeIcon from "$lib/icons/titleBar/MaximizeIcon.svelte";
+  import MinimizeIcon from "$lib/icons/titleBar/MinimizeIcon.svelte";
 
   const appWindow = getCurrentWindow();
 
@@ -68,8 +71,8 @@
     <TitleBarDropdown title="Metamath" buttons={metamathDropdownButtons}></TitleBarDropdown>
   </div>
   <div class="flex">
-    <button class="mx-4" onclick={minimizeClick}>MIN</button>
-    <button class="mx-4" onclick={maximizeClick}>MAX</button>
-    <button class="mx-4" onclick={closeClick}>CLOSE</button>
+    <button class="mx-3" onclick={minimizeClick}><MinimizeIcon /></button>
+    <button class="mx-3" onclick={maximizeClick}><MaximizeIcon /></button>
+    <button class="mx-3" onclick={closeClick}><CloseIcon /></button>
   </div>
 </div>
