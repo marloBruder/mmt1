@@ -1,6 +1,5 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
-  import { nameListData } from "$lib/sharedState/nameListData.svelte";
   import RoundButton from "$lib/components/util/RoundButton.svelte";
   import { EditorTab, tabManager, type Tab } from "$lib/sharedState/tabData.svelte";
 
@@ -100,6 +99,14 @@
       textarea.style.height = lines * 1.5 + "rem";
     }
   });
+
+  let belowTextareaClick = () => {
+    let textarea = document.getElementById("editorTextarea");
+    if (textarea && textarea instanceof HTMLTextAreaElement) {
+      textarea.focus();
+      textarea.setSelectionRange(-1, -1);
+    }
+  };
 </script>
 
 <div class="m-2">
@@ -118,6 +125,7 @@
   <input id="placeAfter" bind:value={placeAfter} autocomplete="off" />
   <RoundButton onclick={turnIntoAxiom}>Turn into theorem</RoundButton>
 </div>
-<div>
-  <textarea id="editorTextarea" bind:value={editorTab.text} oninput={textChange} class="w-full resize-none h-96 text-nowrap overflow-x-hidden"></textarea>
+<div class="font-mono">
+  <textarea id="editorTextarea" bind:value={editorTab.text} oninput={textChange} class="w-full resize-none h-96 text-nowrap overflow-x-hidden focus:outline-none" spellcheck="false"></textarea>
+  <button class="w-full h-screen cursor-text" onclick={belowTextareaClick} aria-label="below-textrea"></button>
 </div>
