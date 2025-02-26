@@ -12,6 +12,16 @@
     throw Error("Wrong Tab Type");
   });
 
+  let lines = $derived.by(() => {
+    let lines = 1;
+    for (let char of editorTab.text) {
+      if (char === "\n") {
+        lines++;
+      }
+    }
+    return lines;
+  });
+
   let nameInput: string = $state("");
 
   let nameDisabled: boolean = $state(true);
@@ -89,13 +99,6 @@
   $effect(() => {
     let textarea = document.getElementById("editorTextarea");
     if (textarea) {
-      let lines = 1;
-      for (let char of editorTab.text) {
-        if (char === "\n") {
-          lines++;
-        }
-      }
-      console.log(lines);
       textarea.style.height = lines * 1.5 + "rem";
     }
   });
@@ -126,6 +129,15 @@
   <RoundButton onclick={turnIntoAxiom}>Turn into theorem</RoundButton>
 </div>
 <div class="font-mono">
-  <textarea id="editorTextarea" bind:value={editorTab.text} oninput={textChange} class="w-full resize-none h-96 text-nowrap overflow-x-hidden focus:outline-none" spellcheck="false"></textarea>
-  <button class="w-full h-screen cursor-text" onclick={belowTextareaClick} aria-label="below-textrea"></button>
+  <div class="w-8 float-left text-right">
+    {#each { length: lines } as _, i}
+      <div>
+        {i}
+      </div>
+    {/each}
+  </div>
+  <div class="ml-12">
+    <textarea id="editorTextarea" bind:value={editorTab.text} oninput={textChange} class="w-full resize-none h-96 text-nowrap overflow-x-hidden focus:outline-none" spellcheck="false"></textarea>
+    <button class="w-full h-screen cursor-text" onclick={belowTextareaClick} aria-label="below-textrea"></button>
+  </div>
 </div>
