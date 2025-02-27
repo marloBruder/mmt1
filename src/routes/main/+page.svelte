@@ -6,6 +6,18 @@
   import { tabManager } from "$lib/sharedState/tabData.svelte";
 
   let openTab = $derived(tabManager.getOpenTab());
+
+  $effect(() => {
+    if (openTab) {
+      document.getElementById("tabContainer")!.scrollTop = openTab.scrollTop;
+    }
+  });
+
+  let onscrollTab = (e: UIEvent) => {
+    if (openTab) {
+      openTab.scrollTop = (e.target as HTMLElement).scrollTop;
+    }
+  };
 </script>
 
 <div class="h-screen w-screen custom-grid-layout fixed">
@@ -18,7 +30,7 @@
   <div class="tabBar overflow-hidden">
     <TabBar></TabBar>
   </div>
-  <div class="tab overflow-auto">
+  <div id="tabContainer" class="tab overflow-auto" onscroll={onscrollTab}>
     {#if openTab != null}
       <openTab.component tab={openTab}></openTab.component>
     {:else}

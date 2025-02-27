@@ -170,6 +170,8 @@ export { tabManager };
 export abstract class Tab {
   abstract readonly component: Component<{ tab: Tab }>;
 
+  scrollTop: number = 0;
+
   abstract loadData(): Promise<void>;
 
   abstract name(): string;
