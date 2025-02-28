@@ -3,10 +3,11 @@ use std::u32;
 use tauri::async_runtime::Mutex;
 
 use crate::{
-    database::header::{add_header_database, calc_db_index_for_header},
+    // database::header::{add_header_database, calc_db_index_for_header},
     local_state::header::add_header_local,
     model::{Header, HeaderPath},
-    AppState, Error,
+    AppState,
+    Error,
 };
 
 #[tauri::command]
@@ -46,7 +47,7 @@ pub async fn quick_search(
 
     let limit = if only_ten { 11 } else { u32::MAX };
 
-    let mut theorems = find_theorem_names(&metamath_data.theorem_list_header, query, limit);
+    let mut theorems = find_theorem_labels(&metamath_data.database_header, query, limit);
 
     let mut more = false;
     if only_ten && theorems.len() == 11 {
@@ -57,70 +58,30 @@ pub async fn quick_search(
     Ok((theorems, more))
 }
 
-// Find all theorem names that match the query in the following order:
+// Find all theorem labels that match the query in the following order:
 // 1: The name that fully matches the query (if it exists)
-// 2: Names that start with the query
-// 3: Names that contain the query
-fn find_theorem_names(header: &Header, query: &str, limit: u32) -> Vec<String> {
+// 2: Labels that start with the query
+// 3: Labels that contain the query
+fn find_theorem_labels(header: &Header, query: &str, limit: u32) -> Vec<String> {
     let mut theorems = Vec::new();
 
-    let exact_match = header.find_theorem_by_name(query);
+    let exact_match = header.find_theorem_by_label(query);
 
     if let Some(theorem) = exact_match {
-        theorems.push(theorem.name.clone())
+        theorems.push(theorem.label.clone())
     }
 
-    theorems.append(&mut find_theorem_names_helper(
-        header,
-        query,
-        limit - (theorems.len() as u32),
-        true,
-    ));
+    header
+        .theorem_iter()
+        .filter(|t| t.label != query && t.label.starts_with(query))
+        .take((limit as usize) - theorems.len())
+        .for_each(|t| theorems.push(t.label.clone()));
 
-    theorems.append(&mut find_theorem_names_helper(
-        header,
-        query,
-        limit - (theorems.len() as u32),
-        false,
-    ));
+    header
+        .theorem_iter()
+        .filter(|t| t.label != query && !t.label.starts_with(query) && t.label.contains(query))
+        .take((limit as usize) - theorems.len())
+        .for_each(|t| theorems.push(t.label.clone()));
 
     theorems
-}
-
-fn find_theorem_names_helper(
-    header: &Header,
-    query: &str,
-    limit: u32,
-    starts_with: bool,
-) -> Vec<String> {
-    let mut res = Vec::new();
-
-    for theorem in &header.theorems {
-        let theorem_starts_with = theorem.name.starts_with(query);
-        if theorem.name != query
-            && ((starts_with && theorem_starts_with)
-                || (!starts_with && !theorem_starts_with && theorem.name.contains(query)))
-        {
-            res.push(theorem.name.clone());
-
-            if res.len() as u32 == limit {
-                return res;
-            }
-        }
-    }
-
-    for subheader in &header.sub_headers {
-        res.append(&mut find_theorem_names_helper(
-            subheader,
-            query,
-            limit - (res.len() as u32),
-            starts_with,
-        ));
-
-        if res.len() as u32 == limit {
-            return res;
-        }
-    }
-
-    res
 }

@@ -4,16 +4,18 @@ use crate::{
         floating_hypothesis::set_floating_hypotheses_database,
         html_representation::set_html_representations_database,
         // in_progress_theorem::delete_in_progress_theorem_database,
-        theorem::{add_theorem_database, calc_db_index_for_theorem},
+        theorem::{add_theorem_database /*calc_db_index_for_theorem*/},
         variable::set_variables_database,
     },
     local_state::{
-        constant::set_constants_local,
-        floating_hypothesis::{get_floating_hypothesis_by_label, set_floating_hypotheses_local},
+        // constant::set_constants_local,
+        floating_hypothesis::{
+            get_floating_hypothesis_by_label, /*set_floating_hypotheses_local*/
+        },
         html_representation::set_html_representations_local,
         // in_progress_theorem::delete_in_progress_theorem_local,
         theorem::{add_theorem_local, get_theorem_insert_position},
-        variable::set_variables_local,
+        // variable::set_variables_local,
     },
     model::{
         Constant, FloatingHypohesis, HtmlRepresentation, Hypothesis, MetamathData, ProofLine,
@@ -702,12 +704,7 @@ fn statement_as_string_without_typecode(statement: &str) -> String {
 }
 
 fn is_variable(symbol: &str, metamath_data: &MetamathData) -> bool {
-    for variable in &metamath_data.variables {
-        if variable.symbol == symbol {
-            return true;
-        }
-    }
-    false
+    metamath_data.optimized_data.variables.contains(symbol)
 }
 
 fn calc_proof_step_numbers(theorem: &Theorem) -> Result<Vec<(u32, bool)>, Error> {
@@ -804,9 +801,7 @@ fn calc_proof_steps(
             "(" => {}
             ")" => break,
             label => {
-                let theorem_option = metamath_data
-                    .theorem_list_header
-                    .find_theorem_by_name(label);
+                let theorem_option = metamath_data.database_header.find_theorem_by_label(label);
                 //.ok_or(Error::NotFoundError)?;
                 if let Some(theorem) = theorem_option {
                     let label_theorem_hypotheses =
@@ -849,7 +844,7 @@ fn calc_all_hypotheses_of_theorem(
     let variables = calc_variables_of_theorem(theorem, metamath_data);
 
     // Calculate proof steps of floating hypotheses
-    for floating_hypothesis in &metamath_data.floating_hypotheses {
+    for floating_hypothesis in &metamath_data.optimized_data.floating_hypotheses {
         for &variable in &variables {
             if floating_hypothesis.variable == variable {
                 let mut statement = floating_hypothesis.typecode.clone();

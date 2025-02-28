@@ -6,13 +6,13 @@ use tauri::async_runtime::Mutex;
 use crate::{
     database::{
         constant::add_constant_database_raw,
-        floating_hypothesis::add_floating_hypothesis_database_raw, header::add_header_database,
+        floating_hypothesis::add_floating_hypothesis_database_raw, /*header::add_header_database*/
         html_representation::set_html_representations_database, theorem::add_theorem_database,
         variable::add_variable_database_raw,
     },
     model::{
         Constant, FloatingHypohesis, Header, HeaderRepresentation, HtmlRepresentation, Hypothesis,
-        MetamathData, Theorem, Variable,
+        MetamathData, Statement::*, Theorem, Variable,
     },
     AppState, Error,
 };
@@ -28,7 +28,7 @@ pub async fn open_metamath_database(
 
     let mut app_state = state.lock().await;
 
-    let header_rep = metamath_data.theorem_list_header.representation();
+    let header_rep = metamath_data.database_header.to_representation();
 
     let html_reps = metamath_data.html_representations.clone();
 
@@ -69,7 +69,7 @@ pub async fn parse_mm_file(
 
     let mut active_hyps: Vec<Vec<Hypothesis>> = vec![Vec::new()];
 
-    let mut curr_header: &mut Header = &mut metamath_data.theorem_list_header;
+    let mut curr_header: &mut Header = &mut metamath_data.database_header;
     let mut next_db_index = 0;
 
     let mut token_iter = file_content.split_whitespace();
@@ -180,7 +180,7 @@ pub async fn parse_mm_file(
                             header_title.pop();
 
                             if header_closed {
-                                let mut parent_header = &mut metamath_data.theorem_list_header;
+                                let mut parent_header = &mut metamath_data.database_header;
                                 let mut actual_depth = 0;
                                 for _ in 0..depth {
                                     parent_header = if parent_header.sub_headers.len() != 0 {
@@ -192,7 +192,7 @@ pub async fn parse_mm_file(
                                 }
                                 parent_header.sub_headers.push(Header {
                                     title: header_title,
-                                    theorems: Vec::new(),
+                                    content: Vec::new(),
                                     sub_headers: Vec::new(),
                                 });
                                 curr_header = parent_header.sub_headers.last_mut().unwrap();
@@ -255,9 +255,9 @@ pub async fn parse_mm_file(
                                 return Err(Error::TwiceDeclaredConstError);
                             }
 
-                            metamath_data.constants.push(Constant {
+                            curr_header.content.push(ConstantStatement(Constant {
                                 symbol: const_symbol.to_string(),
-                            });
+                            }));
                             // add_constant_database_raw(conn, next_const_index, const_symbol).await?;
 
                             next_const_index += 1;
@@ -289,9 +289,13 @@ pub async fn parse_mm_file(
                             }
 
                             if !prev_variables.contains(&var_symbol) {
-                                metamath_data.variables.push(Variable {
+                                curr_header.content.push(VariableStatement(Variable {
                                     symbol: var_symbol.to_string(),
-                                });
+                                }));
+                                metamath_data
+                                    .optimized_data
+                                    .variables
+                                    .insert(var_symbol.to_string());
                                 // add_variable_database_raw(conn, next_var_index, var_symbol).await?;
 
                                 next_var_index += 1;
@@ -345,11 +349,21 @@ pub async fn parse_mm_file(
 
                 // TODO: check if order is same as locally declared
                 if scope == 0 {
-                    metamath_data.floating_hypotheses.push(FloatingHypohesis {
-                        label: label.to_string(),
-                        typecode: typecode.to_string(),
-                        variable: variable.to_string(),
-                    });
+                    curr_header
+                        .content
+                        .push(FloatingHypohesisStatement(FloatingHypohesis {
+                            label: label.to_string(),
+                            typecode: typecode.to_string(),
+                            variable: variable.to_string(),
+                        }));
+                    metamath_data
+                        .optimized_data
+                        .floating_hypotheses
+                        .push(FloatingHypohesis {
+                            label: label.to_string(),
+                            typecode: typecode.to_string(),
+                            variable: variable.to_string(),
+                        });
                     // add_floating_hypothesis_database_raw(
                     //     conn,
                     //     next_float_hyp_index,
@@ -425,14 +439,14 @@ pub async fn parse_mm_file(
                 // .await?;
                 next_db_index += 1;
 
-                curr_header.theorems.push(Theorem {
-                    name: label,
+                curr_header.content.push(TheoremStatement(Theorem {
+                    label,
                     description,
                     disjoints,
                     hypotheses,
                     assertion,
                     proof,
-                });
+                }));
             }
             label => {
                 if next_label.is_none() {

@@ -14,9 +14,9 @@ pub async fn get_header_local(
     let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
     Ok(header_path
-        .resolve(&metamath_data.theorem_list_header)
+        .resolve(&metamath_data.database_header)
         .ok_or(Error::NotFoundError)?
-        .representation())
+        .to_representation())
 }
 
 pub fn add_header_local(
@@ -24,7 +24,7 @@ pub fn add_header_local(
     title: &str,
     insert_path: &HeaderPath,
 ) -> Result<(), Error> {
-    let mut header = &mut metamath_data.theorem_list_header;
+    let mut header = &mut metamath_data.database_header;
 
     for (loop_index, &pos_index) in insert_path.path.iter().enumerate() {
         if loop_index != insert_path.path.len() - 1 {
@@ -37,7 +37,7 @@ pub fn add_header_local(
                 pos_index,
                 Header {
                     title: title.to_string(),
-                    theorems: Vec::new(),
+                    content: Vec::new(),
                     sub_headers: Vec::new(),
                 },
             );

@@ -12,14 +12,18 @@ pub async fn get_variables_local(
     let app_state = state.lock().await;
     let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
-    Ok(metamath_data.variables.clone())
+    Ok(metamath_data
+        .database_header
+        .variable_iter()
+        .map(|v| v.clone())
+        .collect())
 }
 
-pub fn set_variables_local(metamath_data: &mut MetamathData, symbols: &Vec<&str>) {
-    metamath_data.variables = Vec::new();
-    for symbol in symbols {
-        metamath_data.variables.push(Variable {
-            symbol: symbol.to_string(),
-        })
-    }
-}
+// pub fn set_variables_local(metamath_data: &mut MetamathData, symbols: &Vec<&str>) {
+//     metamath_data.variables = Vec::new();
+//     for symbol in symbols {
+//         metamath_data.variables.push(Variable {
+//             symbol: symbol.to_string(),
+//         })
+//     }
+// }

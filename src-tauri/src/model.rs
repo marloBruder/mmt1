@@ -1,14 +1,34 @@
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 
-use crate::util::theorem_iterator::TheoremIterator;
+use crate::util::theorem_iterator::{
+    ConstantIterator, HeaderIterator, TheoremIterator, VariableIterator,
+};
+use Statement::*;
 
 #[derive(Debug, Default)]
 pub struct MetamathData {
-    pub constants: Vec<Constant>,
-    pub variables: Vec<Variable>,
-    pub floating_hypotheses: Vec<FloatingHypohesis>,
-    pub theorem_list_header: Header,
+    // pub constants: Vec<Constant>,
+    // pub variables: Vec<Variable>,
+    // pub floating_hypotheses: Vec<FloatingHypohesis>,
+    pub database_header: Header,
     pub html_representations: Vec<HtmlRepresentation>,
+    pub optimized_data: OptimizedMetamathData,
+}
+
+#[derive(Debug, Default)]
+pub struct OptimizedMetamathData {
+    pub variables: HashSet<String>,
+    pub floating_hypotheses: Vec<FloatingHypohesis>,
+}
+
+#[derive(Debug)]
+pub enum Statement {
+    TheoremStatement(Theorem),
+    ConstantStatement(Constant),
+    VariableStatement(Variable),
+    FloatingHypohesisStatement(FloatingHypohesis),
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -30,7 +50,7 @@ pub struct FloatingHypohesis {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Theorem {
-    pub name: String,
+    pub label: String,
     pub description: String,
     pub disjoints: Vec<String>,
     pub hypotheses: Vec<Hypothesis>,
@@ -47,14 +67,19 @@ pub struct Hypothesis {
 #[derive(Debug, Default)]
 pub struct Header {
     pub title: String,
-    pub theorems: Vec<Theorem>,
+    pub content: Vec<Statement>,
     pub sub_headers: Vec<Header>,
 }
 
 pub struct HeaderRepresentation {
     pub title: String,
-    pub theorem_names: Vec<String>,
-    pub sub_header_names: Vec<String>,
+    pub content_titles: Vec<HeaderContentRepresentation>,
+    pub sub_header_titles: Vec<String>,
+}
+
+pub struct HeaderContentRepresentation {
+    pub content_type: String,
+    pub title: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -88,7 +113,7 @@ pub struct ProofLine {
 }
 
 pub struct TheoremListEntry {
-    pub name: String,
+    pub label: String,
     pub theorem_number: u32,
     pub hypotheses: Vec<String>,
     pub assertion: String,
@@ -97,11 +122,7 @@ pub struct TheoremListEntry {
 
 impl MetamathData {
     pub fn label_exists(&self, label: &str) -> bool {
-        if self
-            .theorem_list_header
-            .find_theorem_by_name(label)
-            .is_some()
-        {
+        if self.database_header.find_theorem_by_label(label).is_some() {
             return true;
         }
 
@@ -125,6 +146,36 @@ impl MetamathData {
     }
 }
 
+// impl Statement {
+//     pub fn is_variable(&self) -> bool {
+//         match self {
+//             VariableStatement(_) => true,
+//             _ => false,
+//         }
+//     }
+
+//     pub fn is_costant(&self) -> bool {
+//         match self {
+//             ConstantStatement(_) => true,
+//             _ => false,
+//         }
+//     }
+
+//     pub fn is_floating_hypothesis(&self) -> bool {
+//         match self {
+//             FloatingHypohesisStatement(_) => true,
+//             _ => false,
+//         }
+//     }
+
+//     pub fn is_theorem(&self) -> bool {
+//         match self {
+//             TheoremStatement(_) => true,
+//             _ => false,
+//         }
+//     }
+// }
+
 impl FloatingHypohesis {
     pub fn to_assertions_string(&self) -> String {
         format!("{} {}", self.typecode, self.variable)
@@ -134,7 +185,7 @@ impl FloatingHypohesis {
 impl Theorem {
     pub fn to_theorem_list_entry(&self, theorem_number: u32) -> TheoremListEntry {
         TheoremListEntry {
-            name: self.name.clone(),
+            label: self.label.clone(),
             theorem_number,
             hypotheses: self
                 .hypotheses
@@ -148,69 +199,75 @@ impl Theorem {
 }
 
 impl Header {
-    pub fn representation(&self) -> HeaderRepresentation {
+    pub fn to_representation(&self) -> HeaderRepresentation {
         HeaderRepresentation {
             title: self.title.clone(),
-            theorem_names: self.theorems.iter().map(|t| t.name.clone()).collect(),
-            sub_header_names: self.sub_headers.iter().map(|sh| sh.title.clone()).collect(),
+            content_titles: self
+                .content
+                .iter()
+                .map(|t| match t {
+                    ConstantStatement(constant) => HeaderContentRepresentation {
+                        content_type: "ConstantStatement".to_string(),
+                        title: constant.symbol.clone(),
+                    },
+                    VariableStatement(variable) => HeaderContentRepresentation {
+                        content_type: "VariableStatement".to_string(),
+                        title: variable.symbol.clone(),
+                    },
+                    FloatingHypohesisStatement(floating_hypohesis) => HeaderContentRepresentation {
+                        content_type: "FloatingHypohesisStatement".to_string(),
+                        title: floating_hypohesis.label.clone(),
+                    },
+                    TheoremStatement(theorem) => HeaderContentRepresentation {
+                        content_type: "TheoremStatement".to_string(),
+                        title: theorem.label.clone(),
+                    },
+                })
+                .collect(),
+            sub_header_titles: self.sub_headers.iter().map(|sh| sh.title.clone()).collect(),
         }
     }
 
-    pub fn find_theorem_by_name(&self, name: &str) -> Option<&Theorem> {
-        for theorem in &self.theorems {
-            if theorem.name == name {
-                return Some(theorem);
-            }
-        }
+    pub fn find_theorem_by_label(&self, label: &str) -> Option<&Theorem> {
+        self.theorem_iter().find(|t| t.label == label)
 
-        for sub_header in &self.sub_headers {
-            let sub_header_res = sub_header.find_theorem_by_name(name);
-            if sub_header_res.is_some() {
-                return sub_header_res;
-            }
-        }
+        // for theorem in &self.theorems {
+        //     if theorem.name == name {
+        //         return Some(theorem);
+        //     }
+        // }
 
-        None
+        // for sub_header in &self.sub_headers {
+        //     let sub_header_res = sub_header.find_theorem_by_name(name);
+        //     if sub_header_res.is_some() {
+        //         return sub_header_res;
+        //     }
+        // }
+
+        // None
     }
 
-    pub fn find_theorem_by_name_calc_number(&self, name: &str) -> Option<(&Theorem, u32)> {
-        self.find_theorem_by_name_calc_number_rec(name, &mut 0)
+    pub fn find_theorem_by_label_calc_number(&self, label: &str) -> Option<(u32, &Theorem)> {
+        self.theorem_iter()
+            .enumerate()
+            .find(|(_, t)| t.label == label)
+            .map(|(i, t)| (i as u32, t))
     }
 
-    fn find_theorem_by_name_calc_number_rec(
-        &self,
-        name: &str,
-        prev_count: &mut u32,
-    ) -> Option<(&Theorem, u32)> {
-        for theorem in &self.theorems {
-            *prev_count += 1;
-            if theorem.name == name {
-                return Some((theorem, *prev_count));
-            }
-        }
-
-        for sub_header in &self.sub_headers {
-            let sub_header_res = sub_header.find_theorem_by_name_calc_number_rec(name, prev_count);
-            if sub_header_res.is_some() {
-                return sub_header_res;
-            }
-        }
-
-        None
-    }
-
-    pub fn calc_theorem_path_by_name(&self, name: &str) -> Option<TheoremPath> {
-        for (index, theorem) in self.theorems.iter().enumerate() {
-            if theorem.name == name {
-                return Some(TheoremPath {
-                    header_path: HeaderPath { path: Vec::new() },
-                    theorem_index: index,
-                });
+    pub fn calc_theorem_path_by_label(&self, label: &str) -> Option<TheoremPath> {
+        for (index, statement) in self.content.iter().enumerate() {
+            if let TheoremStatement(theorem) = statement {
+                if theorem.label == label {
+                    return Some(TheoremPath {
+                        header_path: HeaderPath { path: Vec::new() },
+                        theorem_index: index,
+                    });
+                }
             }
         }
 
         for (index, sub_header) in self.sub_headers.iter().enumerate() {
-            let sub_header_res = sub_header.calc_theorem_path_by_name(name);
+            let sub_header_res = sub_header.calc_theorem_path_by_label(label);
             if let Some(mut theorem_path) = sub_header_res {
                 theorem_path.header_path.path.insert(0, index);
                 return Some(theorem_path);
@@ -236,12 +293,24 @@ impl Header {
         None
     }
 
-    pub fn count_theorems_and_headers(&self) -> i32 {
-        let mut sum = 1 + self.theorems.len() as i32;
-        for sub_header in &self.sub_headers {
-            sum += sub_header.count_theorems_and_headers();
-        }
-        sum
+    // pub fn count_theorems_and_headers(&self) -> i32 {
+    //     let mut sum = 1 + self.theorems.len() as i32;
+    //     for sub_header in &self.sub_headers {
+    //         sum += sub_header.count_theorems_and_headers();
+    //     }
+    //     sum
+    // }
+
+    pub fn iter(&self) -> HeaderIterator {
+        HeaderIterator::new(self)
+    }
+
+    pub fn constant_iter(&self) -> ConstantIterator {
+        ConstantIterator::new(self)
+    }
+
+    pub fn variable_iter(&self) -> VariableIterator {
+        VariableIterator::new(self)
     }
 
     pub fn theorem_iter(&self) -> TheoremIterator {
@@ -293,10 +362,24 @@ impl serde::Serialize for HeaderRepresentation {
     {
         use serde::ser::SerializeStruct;
 
-        let mut state = serializer.serialize_struct("HeaderRepresentation", 2)?;
+        let mut state = serializer.serialize_struct("HeaderRepresentation", 3)?;
         state.serialize_field("title", &self.title)?;
-        state.serialize_field("theoremNames", &self.theorem_names)?;
-        state.serialize_field("subHeaderNames", &self.sub_header_names)?;
+        state.serialize_field("contentTitles", &self.content_titles)?;
+        state.serialize_field("subHeaderTitles", &self.sub_header_titles)?;
+        state.end()
+    }
+}
+
+impl serde::Serialize for HeaderContentRepresentation {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("HeaderContentRepresentation", 2)?;
+        state.serialize_field("contentType", &self.content_type)?;
+        state.serialize_field("title", &self.title)?;
         state.end()
     }
 }
@@ -338,7 +421,7 @@ impl serde::Serialize for TheoremListEntry {
         use serde::ser::SerializeStruct;
 
         let mut state = serializer.serialize_struct("TheoremListEntry", 5)?;
-        state.serialize_field("name", &self.name)?;
+        state.serialize_field("label", &self.label)?;
         state.serialize_field("theoremNumber", &self.theorem_number)?;
         state.serialize_field("hypotheses", &self.hypotheses)?;
         state.serialize_field("assertion", &self.assertion)?;

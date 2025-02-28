@@ -4,39 +4,39 @@ use crate::{
 };
 use sqlx::SqliteConnection;
 
-pub fn calc_db_index_for_theorem(
-    metamath_data: &MetamathData,
-    insert_path: &TheoremPath,
-) -> Result<i32, Error> {
-    let mut sum = -1; // Start at -1 to not count the top-most header, which is not stored in the db
+// pub fn calc_db_index_for_theorem(
+//     metamath_data: &MetamathData,
+//     insert_path: &TheoremPath,
+// ) -> Result<i32, Error> {
+//     let mut sum = -1; // Start at -1 to not count the top-most header, which is not stored in the db
 
-    let mut header = &metamath_data.theorem_list_header;
+//     let mut header = &metamath_data.database_header;
 
-    for &pos_index in &insert_path.header_path.path {
-        sum += 1;
-        sum += header.theorems.len() as i32;
-        for index in 0..pos_index {
-            sum += header
-                .sub_headers
-                .get(index)
-                .ok_or(Error::InternalLogicError)?
-                .count_theorems_and_headers();
-        }
-        header = header
-            .sub_headers
-            .get(pos_index)
-            .ok_or(Error::InternalLogicError)?;
-    }
+//     for &pos_index in &insert_path.header_path.path {
+//         sum += 1;
+//         sum += header.content.len() as i32;
+//         for index in 0..pos_index {
+//             sum += header
+//                 .sub_headers
+//                 .get(index)
+//                 .ok_or(Error::InternalLogicError)?
+//                 .count_theorems_and_headers();
+//         }
+//         header = header
+//             .sub_headers
+//             .get(pos_index)
+//             .ok_or(Error::InternalLogicError)?;
+//     }
 
-    if header.theorems.len() >= insert_path.theorem_index {
-        sum += 1;
-        sum += insert_path.theorem_index as i32;
+//     if header.theorems.len() >= insert_path.theorem_index {
+//         sum += 1;
+//         sum += insert_path.theorem_index as i32;
 
-        Ok(sum)
-    } else {
-        Err(Error::InternalLogicError)
-    }
-}
+//         Ok(sum)
+//     } else {
+//         Err(Error::InternalLogicError)
+//     }
+// }
 
 pub async fn add_theorem_database(
     conn: &mut SqliteConnection,

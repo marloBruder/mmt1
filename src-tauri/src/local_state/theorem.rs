@@ -2,7 +2,10 @@ use tauri::async_runtime::Mutex;
 
 use crate::{
     metamath::calc_theorem_page_data,
-    model::{Hypothesis, MetamathData, Theorem, TheoremListEntry, TheoremPageData, TheoremPath},
+    model::{
+        Hypothesis, MetamathData, Statement::*, Theorem, TheoremListEntry, TheoremPageData,
+        TheoremPath,
+    },
     AppState, Error,
 };
 
@@ -14,9 +17,9 @@ pub async fn get_theorem_page_data_local(
     let app_state = state.lock().await;
     let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
-    let (theorem, theorem_number) = metamath_data
-        .theorem_list_header
-        .find_theorem_by_name_calc_number(name)
+    let (theorem_number, theorem) = metamath_data
+        .database_header
+        .find_theorem_by_label_calc_number(name)
         .ok_or(Error::NotFoundError)?;
 
     return calc_theorem_page_data(theorem, theorem_number, metamath_data);
@@ -30,7 +33,7 @@ pub fn get_theorem_insert_position(
         // Safe unwrap because of the prior condition
         let (_, header_title) = position_name.split_once(' ').unwrap();
         let header_path_res = metamath_data
-            .theorem_list_header
+            .database_header
             .calc_header_path_by_title(header_title);
 
         if let Some(header_path) = header_path_res {
@@ -43,8 +46,8 @@ pub fn get_theorem_insert_position(
         }
     } else {
         let theorem_path_res = metamath_data
-            .theorem_list_header
-            .calc_theorem_path_by_name(position_name);
+            .database_header
+            .calc_theorem_path_by_label(position_name);
 
         if let Some(mut theorem_path) = theorem_path_res {
             theorem_path.theorem_index += 1;
@@ -57,7 +60,7 @@ pub fn get_theorem_insert_position(
 
 pub fn add_theorem_local(
     metamath_data: &mut MetamathData,
-    name: &str,
+    label: &str,
     description: &str,
     disjoints: &Vec<String>,
     hypotheses: &Vec<Hypothesis>,
@@ -67,23 +70,23 @@ pub fn add_theorem_local(
 ) -> Result<(), Error> {
     let header = insert_path
         .header_path
-        .resolve_mut(&mut metamath_data.theorem_list_header)
+        .resolve_mut(&mut metamath_data.database_header)
         .ok_or(Error::NotFoundError)?;
 
-    if header.theorems.len() < insert_path.theorem_index {
+    if header.content.len() < insert_path.theorem_index {
         return Err(Error::NotFoundError);
     }
 
-    header.theorems.insert(
+    header.content.insert(
         insert_path.theorem_index,
-        Theorem {
-            name: name.to_string(),
+        TheoremStatement(Theorem {
+            label: label.to_string(),
             description: description.to_string(),
             disjoints: disjoints.clone(),
             hypotheses: hypotheses.clone(),
             assertion: assertion.to_string(),
             proof: proof.map(|s| s.to_string()),
-        },
+        }),
     );
 
     Ok(())
@@ -103,7 +106,7 @@ pub async fn get_theorem_list_local(
     let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
     Ok(metamath_data
-        .theorem_list_header
+        .database_header
         .theorem_iter()
         .skip((from - 1) as usize)
         .take((to - from) as usize)

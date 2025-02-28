@@ -19,10 +19,10 @@ pub async fn search_theorems(
     let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
     Ok(metamath_data
-        .theorem_list_header
+        .database_header
         .theorem_iter()
         .enumerate()
-        .filter(|(_, theorem)| theorem.name.contains(&search_parameters.label))
+        .filter(|(_, theorem)| theorem.label.contains(&search_parameters.label))
         .skip(search_parameters.start as usize)
         .take(search_parameters.amount as usize)
         .map(|(theorem_number, theorem)| theorem.to_theorem_list_entry((theorem_number as u32) + 1))
