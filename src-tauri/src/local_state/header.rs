@@ -29,16 +29,16 @@ pub fn add_header_local(
     for (loop_index, &pos_index) in insert_path.path.iter().enumerate() {
         if loop_index != insert_path.path.len() - 1 {
             header = header
-                .sub_headers
+                .subheaders
                 .get_mut(pos_index)
                 .ok_or(Error::InternalLogicError)?;
         } else {
-            header.sub_headers.insert(
+            header.subheaders.insert(
                 pos_index,
                 Header {
                     title: title.to_string(),
                     content: Vec::new(),
-                    sub_headers: Vec::new(),
+                    subheaders: Vec::new(),
                 },
             );
         }

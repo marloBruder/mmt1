@@ -68,16 +68,17 @@ pub struct Hypothesis {
 pub struct Header {
     pub title: String,
     pub content: Vec<Statement>,
-    pub sub_headers: Vec<Header>,
+    pub subheaders: Vec<Header>,
 }
 
 pub struct HeaderRepresentation {
     pub title: String,
     pub content_titles: Vec<HeaderContentRepresentation>,
-    pub sub_header_titles: Vec<String>,
+    pub subheader_titles: Vec<String>,
 }
 
 pub struct HeaderContentRepresentation {
+    //Should only ever be "ConstantStatement" or "VariableStatement" or "FloatingHypohesisStatement" or "TheoremStatement";
     pub content_type: String,
     pub title: String,
 }
@@ -224,7 +225,7 @@ impl Header {
                     },
                 })
                 .collect(),
-            sub_header_titles: self.sub_headers.iter().map(|sh| sh.title.clone()).collect(),
+            subheader_titles: self.subheaders.iter().map(|sh| sh.title.clone()).collect(),
         }
     }
 
@@ -266,7 +267,7 @@ impl Header {
             }
         }
 
-        for (index, sub_header) in self.sub_headers.iter().enumerate() {
+        for (index, sub_header) in self.subheaders.iter().enumerate() {
             let sub_header_res = sub_header.calc_theorem_path_by_label(label);
             if let Some(mut theorem_path) = sub_header_res {
                 theorem_path.header_path.path.insert(0, index);
@@ -282,7 +283,7 @@ impl Header {
             return Some(HeaderPath { path: Vec::new() });
         }
 
-        for (index, sub_header) in self.sub_headers.iter().enumerate() {
+        for (index, sub_header) in self.subheaders.iter().enumerate() {
             let sub_header_res = sub_header.calc_header_path_by_title(title);
             if let Some(mut header_path) = sub_header_res {
                 header_path.path.insert(0, index);
@@ -323,7 +324,7 @@ impl HeaderPath {
         let mut header = top_header;
 
         for &index in &self.path {
-            header = header.sub_headers.get(index)?;
+            header = header.subheaders.get(index)?;
         }
 
         Some(header)
@@ -333,7 +334,7 @@ impl HeaderPath {
         let mut header = top_header;
 
         for &index in &self.path {
-            header = header.sub_headers.get_mut(index)?;
+            header = header.subheaders.get_mut(index)?;
         }
 
         Some(header)
@@ -365,7 +366,7 @@ impl serde::Serialize for HeaderRepresentation {
         let mut state = serializer.serialize_struct("HeaderRepresentation", 3)?;
         state.serialize_field("title", &self.title)?;
         state.serialize_field("contentTitles", &self.content_titles)?;
-        state.serialize_field("subHeaderTitles", &self.sub_header_titles)?;
+        state.serialize_field("subheaderTitles", &self.subheader_titles)?;
         state.end()
     }
 }

@@ -34,11 +34,11 @@ impl<'a> Iterator for HeaderIterator<'a> {
                 return self.curr_header.content.get(self.next_content_index - 1);
             }
 
-            if self.next_header_index < self.curr_header.sub_headers.len() {
+            if self.next_header_index < self.curr_header.subheaders.len() {
                 self.past.push((self.curr_header, self.next_header_index));
                 self.curr_header = self
                     .curr_header
-                    .sub_headers
+                    .subheaders
                     .get(self.next_header_index)
                     .unwrap();
                 self.next_content_index = 0;

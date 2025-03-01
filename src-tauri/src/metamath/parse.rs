@@ -183,19 +183,19 @@ pub async fn parse_mm_file(
                                 let mut parent_header = &mut metamath_data.database_header;
                                 let mut actual_depth = 0;
                                 for _ in 0..depth {
-                                    parent_header = if parent_header.sub_headers.len() != 0 {
+                                    parent_header = if parent_header.subheaders.len() != 0 {
                                         actual_depth += 1;
-                                        parent_header.sub_headers.last_mut().unwrap()
+                                        parent_header.subheaders.last_mut().unwrap()
                                     } else {
                                         parent_header
                                     }
                                 }
-                                parent_header.sub_headers.push(Header {
+                                parent_header.subheaders.push(Header {
                                     title: header_title,
                                     content: Vec::new(),
-                                    sub_headers: Vec::new(),
+                                    subheaders: Vec::new(),
                                 });
-                                curr_header = parent_header.sub_headers.last_mut().unwrap();
+                                curr_header = parent_header.subheaders.last_mut().unwrap();
 
                                 // add_header_database(
                                 //     conn,

@@ -43,17 +43,23 @@ export interface InProgressTheorem {
 // Used to store the explorer state
 export interface NameListHeader {
   title: string;
-  opened: boolean;
-  theoremNames: string[];
-  subHeaders: NameListHeader[];
+  content: {
+    contentTitles: HeaderContentRepresentation[];
+    subheaders: NameListHeader[];
+  } | null;
 }
 
 // Header, but both theorem and subheader lists have been replaced by names
 // Used to recieve data about a singular header from backend
 export interface HeaderRepresentation {
   title: string;
-  theoremNames: string[];
-  subHeaderNames: string[];
+  contentTitles: HeaderContentRepresentation[];
+  subheaderTitles: string[];
+}
+
+export interface HeaderContentRepresentation {
+  contentType: "ConstantStatement" | "VariableStatement" | "FloatingHypohesisStatement" | "TheoremStatement";
+  title: string;
 }
 
 export interface HeaderPath {

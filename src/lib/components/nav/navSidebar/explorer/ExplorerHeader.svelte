@@ -27,12 +27,11 @@
   };
 
   let toggleOpen = async () => {
-    if (!header.opened) {
+    if (header.content === null) {
       explorerData.loadHeader(headerPath, header);
     } else {
       explorerData.unloadHeader(header);
     }
-    header.opened = !header.opened;
   };
 
   let addingSubheader = $state(false);
@@ -41,15 +40,12 @@
 
   $effect(() => {
     if (addingSubheader) {
-      let input = document.getElementById("subheaderName");
-      if (input) {
-        input.focus();
-      }
+      document.getElementById("subheaderName")!.focus();
     }
   });
 
   let openAddSubheaderInput = async () => {
-    if (!header.opened) {
+    if (header.content === null) {
       await toggleOpen();
     }
     addingSubheader = true;
@@ -62,8 +58,10 @@
       throw Error("Invalid Name");
     }
     addingSubheader = false;
-    await invoke("add_header", { title: newSubheaderTitle, insertPath: calcNewPath(header.subHeaders.length) });
-    header.subHeaders.push({ title: newSubheaderTitle, opened: true, theoremNames: [], subHeaders: [] });
+    if (header.content) {
+      await invoke("add_header", { title: newSubheaderTitle, insertPath: calcNewPath(header.content!.subheaders.length) });
+      header.content.subheaders.push({ title: newSubheaderTitle, content: null });
+    }
   };
 
   let abortAddingSubheader = () => {
@@ -102,7 +100,7 @@
 <div class="relative h-6 hover:bg-gray-200">
   <button class="h-full w-full text-left absolute" onclick={toggleOpen}>
     <div class="h-6 w-6 div float-left">
-      {#if header.opened}
+      {#if header.content !== null}
         <ChevronDownIcon></ChevronDownIcon>
       {:else}
         <ChevronRightIcon></ChevronRightIcon>
@@ -117,14 +115,16 @@
     <PlusIcon></PlusIcon>
   </button>
 </div>
-<div class="pl-3">
-  {#each header.theoremNames as theoremName}
-    <ExplorerButton {theoremName} {openTheoremName}></ExplorerButton>
-  {/each}
-  {#each header.subHeaders as subHeader, index}
-    <ExplorerHeader header={subHeader} headerPath={calcNewPath(index)}></ExplorerHeader>
-  {/each}
-  {#if addingSubheader}
-    <input id="subheaderName" type="text" bind:value={newSubheaderTitle} onfocusout={onFocusOutSubheaderTitle} onkeydown={onkeyDownSubheaderTitle} disabled={!addingSubheader} autocomplete="off" class="disabled:bg-gray-300" />
-  {/if}
-</div>
+{#if header.content !== null}
+  <div class="pl-3">
+    {#each header.content.contentTitles as contentTitle}
+      <ExplorerButton {contentTitle} {openTheoremName}></ExplorerButton>
+    {/each}
+    {#each header.content.subheaders as subHeader, index}
+      <ExplorerHeader header={subHeader} headerPath={calcNewPath(index)}></ExplorerHeader>
+    {/each}
+    {#if addingSubheader}
+      <input id="subheaderName" type="text" bind:value={newSubheaderTitle} onfocusout={onFocusOutSubheaderTitle} onkeydown={onkeyDownSubheaderTitle} disabled={!addingSubheader} autocomplete="off" class="disabled:bg-gray-300" />
+    {/if}
+  </div>
+{/if}
