@@ -6,6 +6,23 @@ use crate::{
 };
 
 #[tauri::command]
+pub async fn get_floating_hypothesis_local(
+    state: tauri::State<'_, Mutex<AppState>>,
+    label: &str,
+) -> Result<FloatingHypohesis, Error> {
+    let app_state = state.lock().await;
+    let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
+
+    metamath_data
+        .optimized_data
+        .floating_hypotheses
+        .iter()
+        .find(|fh| fh.label == label)
+        .map(|fh| fh.clone())
+        .ok_or(Error::NotFoundError)
+}
+
+#[tauri::command]
 pub async fn get_floating_hypotheses_local(
     state: tauri::State<'_, Mutex<AppState>>,
 ) -> Result<Vec<FloatingHypohesis>, Error> {

@@ -15,8 +15,8 @@
 {#each theoremList as theoremListEntry}
   <div class="my-10 text-center border-black border-y">
     <div>
-      <button onclick={() => theoremClick(theoremListEntry.name)}>
-        {theoremListEntry.name}
+      <button onclick={() => theoremClick(theoremListEntry.label)}>
+        {theoremListEntry.label}
       </button>
       <small>
         {theoremListEntry.theoremNumber}

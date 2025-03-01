@@ -57,6 +57,7 @@ pub fn run() {
             metamath::parse::open_metamath_database,
             local_state::constant::get_constants_local,
             local_state::variable::get_variables_local,
+            local_state::floating_hypothesis::get_floating_hypothesis_local,
             local_state::floating_hypothesis::get_floating_hypotheses_local,
             local_state::theorem::get_theorem_page_data_local,
             local_state::theorem::get_theorem_list_local,

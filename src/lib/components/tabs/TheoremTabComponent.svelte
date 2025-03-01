@@ -33,7 +33,7 @@
     {#if theorem.proof}Theorem
     {:else}Axiom
     {/if}
-    {theorem.name}
+    {theorem.label}
     <small class="text-sm">
       {pageData.theoremNumber}
     </small>

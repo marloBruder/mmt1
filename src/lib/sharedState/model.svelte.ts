@@ -13,14 +13,14 @@ export interface Variable {
   symbol: string;
 }
 
-export interface FloatingHypotheses {
+export interface FloatingHypothesis {
   label: string;
   typecode: string;
   variable: string;
 }
 
 export interface Theorem {
-  name: string;
+  label: string;
   description: string;
   disjoints: string[];
   hypotheses: Hypothesis[];
@@ -90,7 +90,7 @@ export interface ProofLine {
 }
 
 export interface TheoremListEntry {
-  name: string;
+  label: string;
   theoremNumber: number;
   hypotheses: string[];
   assertion: string;

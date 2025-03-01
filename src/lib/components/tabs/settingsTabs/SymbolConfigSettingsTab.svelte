@@ -1,7 +1,7 @@
 <script lang="ts">
   import RoundButton from "$lib/components/util/RoundButton.svelte";
   import { htmlData } from "$lib/sharedState/htmlData.svelte";
-  import type { Constant, FloatingHypotheses, HtmlRepresentation, Variable } from "$lib/sharedState/model.svelte";
+  import type { Constant, FloatingHypothesis, HtmlRepresentation, Variable } from "$lib/sharedState/model.svelte";
   import type { SettingsTab } from "$lib/sharedState/tabData.svelte";
   import { invoke } from "@tauri-apps/api/core";
 
@@ -49,7 +49,7 @@
       } else if (variablesTab) {
         tab.variables = newDataUnknown as Variable[];
       } else if (floatingHypothesesTab) {
-        tab.floatingHypotheses = newDataUnknown as FloatingHypotheses[];
+        tab.floatingHypotheses = newDataUnknown as FloatingHypothesis[];
       } else if (htmlRepresentationsTab) {
         tab.htmlRepresentations = newDataUnknown as HtmlRepresentation[];
         htmlData.loadLocal(tab.htmlRepresentations);

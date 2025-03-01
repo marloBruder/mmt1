@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Constant, FloatingHypotheses, HtmlRepresentation, InProgressTheorem, SearchParameters, TheoremListEntry, TheoremPageData, TheoremPath, Variable } from "./model.svelte";
+import type { Constant, FloatingHypothesis, HtmlRepresentation, InProgressTheorem, SearchParameters, TheoremListEntry, TheoremPageData, TheoremPath, Variable } from "./model.svelte";
 import { nameListData } from "./nameListData.svelte";
 import { explorerData } from "./explorerData.svelte";
 import type { Component } from "svelte";
@@ -183,7 +183,7 @@ export class TheoremTab extends Tab {
   component = TheoremTabComponent;
 
   #theoremName: string;
-  #pageData: TheoremPageData = $state({ theorem: { name: "", description: "", disjoints: [], hypotheses: [], assertion: "", proof: null }, theoremNumber: 0, proofLines: [] });
+  #pageData: TheoremPageData = $state({ theorem: { label: "", description: "", disjoints: [], hypotheses: [], assertion: "", proof: null }, theoremNumber: 0, proofLines: [] });
 
   constructor(theoremName: string) {
     super();
@@ -348,7 +348,7 @@ export class SettingsTab extends Tab {
 
   constants: Constant[] = $state([]);
   variables: Variable[] = $state([]);
-  floatingHypotheses: FloatingHypotheses[] = $state([]);
+  floatingHypotheses: FloatingHypothesis[] = $state([]);
   htmlRepresentations: HtmlRepresentation[] = $state([]);
 
   constructor() {

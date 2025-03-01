@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { FloatingHypothesisTab } from "$lib/components/tabs/FloatingHypothesisTabComponent.svelte";
   import MetamathExpression from "$lib/components/util/MetamathExpression.svelte";
   import type { HeaderContentRepresentation } from "$lib/sharedState/model.svelte";
   import { tabManager, TheoremTab } from "$lib/sharedState/tabData.svelte";
@@ -6,7 +7,14 @@
   let { contentTitle, openTheoremName }: { contentTitle: HeaderContentRepresentation; openTheoremName: string | null } = $props();
 
   let explorerClick = () => {
-    tabManager.openTab(new TheoremTab(contentTitle.title));
+    switch (contentTitle.contentType) {
+      case "FloatingHypohesisStatement":
+        tabManager.openTab(new FloatingHypothesisTab(contentTitle.title));
+        break;
+      case "TheoremStatement":
+        tabManager.openTab(new TheoremTab(contentTitle.title));
+        break;
+    }
   };
 
   let explorerDblClick = () => {

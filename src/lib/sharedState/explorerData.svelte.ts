@@ -6,7 +6,6 @@ class ExplorerData {
 
   // intoHeader is given seperately from headerPath for performance reasons
   // Make sure intoHeader is located at headerPath, else there will be bugs
-  // Will only load header if it was previously empty
   async loadHeader(headerPath: HeaderPath, intoHeader: NameListHeader) {
     let headerRepresentation = (await invoke("get_header_local", { headerPath: { path: headerPath.path } })) as HeaderRepresentation;
     intoHeader.content = {
