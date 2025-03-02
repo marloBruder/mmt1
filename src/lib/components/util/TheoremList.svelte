@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { TheoremListEntry } from "$lib/sharedState/model.svelte";
-  import { tabManager, TheoremTab } from "$lib/sharedState/tabData.svelte";
+  import { tabManager, TheoremTab } from "$lib/sharedState/tabManager.svelte";
   import type { MouseEventHandler } from "svelte/elements";
   import MetamathExpression from "./MetamathExpression.svelte";
   import RoundButton from "./RoundButton.svelte";

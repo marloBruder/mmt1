@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { SettingsTab, tabManager } from "$lib/sharedState/tabData.svelte";
+  import { SettingsTab, tabManager } from "$lib/sharedState/tabManager.svelte";
 
   let { activeTab, tabInfo, onClick = (i) => {} }: { activeTab: number; tabInfo: { title: string }[]; onClick: (tabIndex: number) => void } = $props();
 

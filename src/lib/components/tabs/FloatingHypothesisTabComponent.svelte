@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import { Tab } from "$lib/sharedState/tabData.svelte";
+  import { Tab } from "$lib/sharedState/tabManager.svelte";
   import FloatingHypothesisTabComponent from "$lib/components/tabs/FloatingHypothesisTabComponent.svelte";
   import type { FloatingHypothesis } from "$lib/sharedState/model.svelte";
   import { invoke } from "@tauri-apps/api/core";

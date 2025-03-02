@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { TheoremExplorerTab, type Tab } from "$lib/sharedState/tabData.svelte";
+  import { TheoremExplorerTab, type Tab } from "$lib/sharedState/tabManager.svelte";
   import TheoremList from "../util/TheoremList.svelte";
 
   let { tab }: { tab: Tab } = $props();

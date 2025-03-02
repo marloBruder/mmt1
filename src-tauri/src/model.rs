@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
-use crate::util::theorem_iterator::{
+use crate::util::header_iterators::{
     ConstantIterator, HeaderIterator, TheoremIterator, VariableIterator,
 };
 use Statement::*;

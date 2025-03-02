@@ -1,6 +1,6 @@
 <script lang="ts">
   import SymbolConfigSettingsTab from "$lib/components/tabs/settingsTabs/SymbolConfigSettingsTab.svelte";
-  import { SettingsTab, type Tab } from "$lib/sharedState/tabData.svelte";
+  import { SettingsTab, type Tab } from "$lib/sharedState/tabManager.svelte";
 
   let { tab }: { tab: Tab } = $props();
 

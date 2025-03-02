@@ -2,7 +2,7 @@
   import RoundButton from "$lib/components/util/RoundButton.svelte";
   import { htmlData } from "$lib/sharedState/htmlData.svelte";
   import type { Constant, FloatingHypothesis, HtmlRepresentation, Variable } from "$lib/sharedState/model.svelte";
-  import type { SettingsTab } from "$lib/sharedState/tabData.svelte";
+  import type { SettingsTab } from "$lib/sharedState/tabManager.svelte";
   import { invoke } from "@tauri-apps/api/core";
 
   let { constantsTab, variablesTab, floatingHypothesesTab, htmlRepresentationsTab, tab }: { constantsTab?: boolean; variablesTab?: boolean; floatingHypothesesTab?: boolean; htmlRepresentationsTab?: boolean; tab: SettingsTab } = $props();

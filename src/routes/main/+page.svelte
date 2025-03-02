@@ -3,7 +3,7 @@
   import TabBar from "$lib/components/nav/TabBar.svelte";
   import TitleBar from "$lib/components/titleBar/TitleBar.svelte";
   import EmptyTabComponent from "$lib/components/tabs/EmptyTabComponent.svelte";
-  import { tabManager } from "$lib/sharedState/tabData.svelte";
+  import { tabManager } from "$lib/sharedState/tabManager.svelte";
 
   let openTab = $derived(tabManager.getOpenTab());
 

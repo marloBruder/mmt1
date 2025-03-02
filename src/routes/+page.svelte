@@ -16,7 +16,7 @@
   import { goto } from "$app/navigation";
   import { invoke } from "@tauri-apps/api/core";
   import { save, confirm, open } from "@tauri-apps/plugin-dialog";
-  import { tabManager } from "$lib/sharedState/tabData.svelte";
+  import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { nameListData } from "$lib/sharedState/nameListData.svelte";
   import { explorerData } from "$lib/sharedState/explorerData.svelte";
   import { htmlData } from "$lib/sharedState/htmlData.svelte";

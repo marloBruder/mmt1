@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tabManager } from "$lib/sharedState/tabData.svelte";
+  import { tabManager } from "$lib/sharedState/tabManager.svelte";
 
   let tabClick = (index: number) => {
     tabManager.openTabWithIndex(index);

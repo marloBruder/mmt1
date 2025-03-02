@@ -1,7 +1,7 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import RoundButton from "$lib/components/util/RoundButton.svelte";
-  import { EditorTab, tabManager, type Tab } from "$lib/sharedState/tabData.svelte";
+  import { EditorTab, tabManager, type Tab } from "$lib/sharedState/tabManager.svelte";
 
   let { tab }: { tab: Tab } = $props();
 

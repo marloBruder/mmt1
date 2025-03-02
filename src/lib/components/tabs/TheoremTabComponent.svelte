@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Tab, tabManager, TheoremTab } from "$lib/sharedState/tabData.svelte";
+  import { Tab, tabManager, TheoremTab } from "$lib/sharedState/tabManager.svelte";
   import MetamathExpression from "$lib/components/util/MetamathExpression.svelte";
 
   let { tab }: { tab: Tab } = $props();

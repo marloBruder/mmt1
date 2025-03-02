@@ -2,7 +2,7 @@
   import { FloatingHypothesisTab } from "$lib/components/tabs/FloatingHypothesisTabComponent.svelte";
   import MetamathExpression from "$lib/components/util/MetamathExpression.svelte";
   import type { HeaderContentRepresentation } from "$lib/sharedState/model.svelte";
-  import { tabManager, TheoremTab } from "$lib/sharedState/tabData.svelte";
+  import { tabManager, TheoremTab } from "$lib/sharedState/tabManager.svelte";
 
   let { contentTitle, openTheoremName }: { contentTitle: HeaderContentRepresentation; openTheoremName: string | null } = $props();
 

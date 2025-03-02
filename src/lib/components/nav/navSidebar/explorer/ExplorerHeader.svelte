@@ -7,7 +7,7 @@
   import PlusIcon from "$lib/icons/PlusIcon.svelte";
   import { explorerData } from "$lib/sharedState/explorerData.svelte";
   import ExplorerButton from "./ExplorerButton.svelte";
-  import { tabManager, TheoremTab } from "$lib/sharedState/tabData.svelte";
+  import { tabManager, TheoremTab } from "$lib/sharedState/tabManager.svelte";
 
   let { header, headerPath }: { header: NameListHeader; headerPath: HeaderPath } = $props();
 
