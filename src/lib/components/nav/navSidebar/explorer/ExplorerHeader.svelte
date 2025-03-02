@@ -87,14 +87,6 @@
       abortAddingSubheader();
     }
   };
-
-  let openTheoremName: string | null = $derived.by(() => {
-    let openTab = tabManager.getOpenTab();
-    if (openTab instanceof TheoremTab) {
-      return openTab.theoremName;
-    }
-    return null;
-  });
 </script>
 
 <div class="relative h-6 hover:bg-gray-200">
@@ -118,7 +110,7 @@
 {#if header.content !== null}
   <div class="pl-3">
     {#each header.content.contentTitles as contentTitle}
-      <ExplorerButton {contentTitle} {openTheoremName}></ExplorerButton>
+      <ExplorerButton {contentTitle}></ExplorerButton>
     {/each}
     {#each header.content.subheaders as subHeader, index}
       <ExplorerHeader header={subHeader} headerPath={calcNewPath(index)}></ExplorerHeader>

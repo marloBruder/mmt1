@@ -4,7 +4,12 @@
   import type { HeaderContentRepresentation } from "$lib/sharedState/model.svelte";
   import { tabManager, TheoremTab } from "$lib/sharedState/tabManager.svelte";
 
-  let { contentTitle, openTheoremName }: { contentTitle: HeaderContentRepresentation; openTheoremName: string | null } = $props();
+  let { contentTitle }: { contentTitle: HeaderContentRepresentation } = $props();
+
+  let isOpenTab = $derived.by(() => {
+    let openTab = tabManager.getOpenTab();
+    return (contentTitle.contentType == "TheoremStatement" && openTab instanceof TheoremTab && openTab.theoremName == contentTitle.title) || (contentTitle.contentType == "FloatingHypohesisStatement" && openTab instanceof FloatingHypothesisTab && openTab.label == contentTitle.title);
+  });
 
   let explorerClick = () => {
     switch (contentTitle.contentType) {
@@ -23,7 +28,7 @@
 </script>
 
 <div>
-  <button class={"w-full text-left pl-2 " + (contentTitle.title === openTheoremName ? " bg-gray-300 " : " hover:bg-gray-200 ")} onclick={() => explorerClick()} ondblclick={() => explorerDblClick()}>
+  <button class={"w-full text-left pl-2 " + (isOpenTab ? " bg-gray-300 " : " hover:bg-gray-200 ")} onclick={() => explorerClick()} ondblclick={() => explorerDblClick()}>
     {#if contentTitle.contentType === "ConstantStatement"}
       {"Constant: "}
       <MetamathExpression expression={contentTitle.title}></MetamathExpression>

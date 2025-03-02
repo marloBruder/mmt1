@@ -23,14 +23,6 @@
     [quickSearchResults, more] = await invoke("quick_search", { query: filter, onlyTen: false });
     console.log(quickSearchResults);
   };
-
-  let openTheoremName: string | null = $derived.by(() => {
-    let segments = $page.url.pathname.split("/");
-    if (segments.length == 4 && segments[1] == "main" && segments[2] == "theorem") {
-      return segments[3];
-    }
-    return null;
-  });
 </script>
 
 <div class="h-full">
@@ -48,7 +40,7 @@
     </div>
   {:else}
     {#each quickSearchResults as theoremName}
-      <ExplorerButton contentTitle={{ contentType: "TheoremStatement", title: theoremName }} {openTheoremName}></ExplorerButton>
+      <ExplorerButton contentTitle={{ contentType: "TheoremStatement", title: theoremName }}></ExplorerButton>
     {/each}
     {#if more}
       <button onclick={loadAllQuickSearch}>Load all</button>
