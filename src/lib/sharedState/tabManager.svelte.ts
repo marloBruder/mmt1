@@ -326,7 +326,9 @@ export class EditorTab extends Tab {
     // return;
   }
 
-  async convertToTheorem(placeAfter: string) {
+  async addToDatabase() {
+    await invoke("add_to_database", { text: this.text });
+
     // let dataUnknown = await invoke("turn_into_theorem", { inProgressTheorem: this.#inProgressTheorem, positionName: placeAfter });
     // let theoremPath = dataUnknown as TheoremPath;
     // nameListData.removeInProgressTheoremName(this.#inProgressTheorem.name);

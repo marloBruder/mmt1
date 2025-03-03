@@ -90,8 +90,8 @@
     textChanged = true;
   };
 
-  let turnIntoAxiom = () => {
-    editorTab.convertToTheorem(placeAfter);
+  let addToDatabase = () => {
+    editorTab.addToDatabase();
   };
 
   let placeAfter = $state("");
@@ -126,7 +126,7 @@
 <div class="p-2 border-t border-gray-400">
   <label for="placeAfter">Place after:</label>
   <input id="placeAfter" bind:value={placeAfter} autocomplete="off" />
-  <RoundButton onclick={turnIntoAxiom}>Turn into theorem</RoundButton>
+  <RoundButton onclick={addToDatabase}>Add to database</RoundButton>
 </div>
 <div class="font-mono">
   <div class="w-8 float-left text-right">

@@ -4,6 +4,8 @@ use tauri::async_runtime::Mutex;
 
 use crate::{AppState, Error};
 
+pub mod parse_mmp;
+
 pub struct FolderRepresentation {
     file_names: Vec<String>,
     subfolder_names: Vec<String>,

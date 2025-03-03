@@ -16,7 +16,7 @@
   let onfocusout = () => {
     setTimeout(() => {
       open = false;
-    }, 100);
+    }, 150);
   };
 </script>
 
