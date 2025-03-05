@@ -122,6 +122,14 @@ pub enum Error {
     FolderReadError,
     FileReadError,
     FileWriteError,
+
+    // Parsing mmp file errors
+    WhitespaceBeforeFirstTokenError, // Returned if there is whitepace before the first token
+    MissingTheoremLabelError, // Returned if there is a $theorem statement without a follow up token
+    TooManyTheoremLabelTokensError, // Returned if there is a $theorem statement with too many follow up tokens
+    TokensAfterAllowDiscouragedError, // Returned if there are tokens after $allowdiscouraged
+    MissingLocateAfterLabelError, // Returned if there is a $locateafter statement without a follow up token
+    TooManyLocateAfterTokensError, // Returned if there is a $locateafter statement with too many follow up tokens
 }
 
 impl fmt::Display for Error {
