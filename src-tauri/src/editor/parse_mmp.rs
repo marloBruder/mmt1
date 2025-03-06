@@ -6,8 +6,14 @@ struct MmpStructuredInfo {
     distinct_vars: Vec<String>,
     mmj2_steps: Vec<(String, String)>,
     allow_discouraged: bool,
-    locate_after: Option<String>,
+    locate_after: Option<LocateAfter>,
     comments: Vec<String>,
+}
+
+enum LocateAfter {
+    LocateAfter(String),
+    LocateAfterConst(String),
+    LocateAfterVar(String),
 }
 
 #[tauri::command]
@@ -34,7 +40,7 @@ fn statements_to_mmp_structured_info(
     let mut distinct_vars: Vec<String> = Vec::new();
     let mut mmj2_steps: Vec<(String, String)> = Vec::new();
     let mut allow_discouraged: bool = false;
-    let mut locate_after: Option<String> = None;
+    let mut locate_after: Option<LocateAfter> = None;
     let mut comments: Vec<String> = Vec::new();
 
     for tokens in statements {
@@ -43,6 +49,10 @@ fn statements_to_mmp_structured_info(
 
         match token_iter.next().ok_or(Error::InternalLogicError)? {
             "$theorem" => {
+                if theorem_label.is_some() {
+                    return Err(Error::MultipleTheoremLabelError);
+                }
+
                 theorem_label = Some(
                     token_iter
                         .next()
@@ -67,18 +77,56 @@ fn statements_to_mmp_structured_info(
                 }
             }
             "$allowdiscouraged" => {
+                if allow_discouraged {
+                    return Err(Error::MultipleAllowDiscouragedError);
+                }
+
                 allow_discouraged = true;
                 if token_iter.next().is_some() {
                     return Err(Error::TokensAfterAllowDiscouragedError);
                 }
             }
             "$locateafter" => {
-                locate_after = Some(
+                if locate_after.is_some() {
+                    return Err(Error::MultipleLocateAfterError);
+                }
+
+                locate_after = Some(LocateAfter::LocateAfter(
                     token_iter
                         .next()
                         .ok_or(Error::MissingLocateAfterLabelError)?
                         .to_string(),
-                );
+                ));
+                if token_iter.next().is_some() {
+                    return Err(Error::TooManyLocateAfterTokensError);
+                }
+            }
+            "$locateafterconst" => {
+                if locate_after.is_some() {
+                    return Err(Error::MultipleLocateAfterError);
+                }
+
+                locate_after = Some(LocateAfter::LocateAfterConst(
+                    token_iter
+                        .next()
+                        .ok_or(Error::MissingLocateAfterLabelError)?
+                        .to_string(),
+                ));
+                if token_iter.next().is_some() {
+                    return Err(Error::TooManyLocateAfterTokensError);
+                }
+            }
+            "$locateaftervar" => {
+                if locate_after.is_some() {
+                    return Err(Error::MultipleLocateAfterError);
+                }
+
+                locate_after = Some(LocateAfter::LocateAfterVar(
+                    token_iter
+                        .next()
+                        .ok_or(Error::MissingLocateAfterLabelError)?
+                        .to_string(),
+                ));
                 if token_iter.next().is_some() {
                     return Err(Error::TooManyLocateAfterTokensError);
                 }
@@ -107,7 +155,7 @@ fn statements_to_mmp_structured_info(
                 }
                 comments.push(comment);
             }
-            t => {
+            t if !t.starts_with("$") => {
                 let mut expression: String = token_iter.fold(String::new(), |mut s, t| {
                     s.push_str(t);
                     s.push(' ');
@@ -116,6 +164,7 @@ fn statements_to_mmp_structured_info(
                 expression.pop();
                 mmj2_steps.push((t.to_string(), expression));
             }
+            _ => return Err(Error::InvalidDollarTokenError),
         }
     }
     // println!("Theorem Label: {:?}\n", theorem_label);

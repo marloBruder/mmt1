@@ -125,11 +125,15 @@ pub enum Error {
 
     // Parsing mmp file errors
     WhitespaceBeforeFirstTokenError, // Returned if there is whitepace before the first token
+    MultipleTheoremLabelError,       // Returned if there are more than one $theorem statements
     MissingTheoremLabelError, // Returned if there is a $theorem statement without a follow up token
     TooManyTheoremLabelTokensError, // Returned if there is a $theorem statement with too many follow up tokens
+    MultipleAllowDiscouragedError,  // Returned if there are multiple $allowdiscouraged statements
     TokensAfterAllowDiscouragedError, // Returned if there are tokens after $allowdiscouraged
+    MultipleLocateAfterError, // Returned if there are multiple $locateafter(-var/-const) statements
     MissingLocateAfterLabelError, // Returned if there is a $locateafter statement without a follow up token
     TooManyLocateAfterTokensError, // Returned if there is a $locateafter statement with too many follow up tokens
+    InvalidDollarTokenError, // Returned if there is a statement that starts with $ not followed by a vaild statement type
 }
 
 impl fmt::Display for Error {
