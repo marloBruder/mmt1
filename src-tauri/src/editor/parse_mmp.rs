@@ -2,6 +2,8 @@ use crate::{AppState, Error};
 use tauri::async_runtime::Mutex;
 
 struct MmpStructuredInfo {
+    constants: Option<String>,
+    variables: Vec<String>,
     theorem_label: Option<String>,
     distinct_vars: Vec<String>,
     mmj2_steps: Vec<(String, String)>,
@@ -30,12 +32,18 @@ pub async fn add_to_database(
 
     let app_state = state.lock().await;
 
+    if mmp_structured_info.theorem_label.is_some() {
+        //Add theorem to database
+    }
+
     Ok(())
 }
 
 fn statements_to_mmp_structured_info(
     statements: Vec<Vec<&str>>,
 ) -> Result<MmpStructuredInfo, Error> {
+    let mut constants: Option<String> = None;
+    let mut variables: Vec<String> = Vec::new();
     let mut theorem_label: Option<String> = None;
     let mut distinct_vars: Vec<String> = Vec::new();
     let mut mmj2_steps: Vec<(String, String)> = Vec::new();
@@ -48,6 +56,36 @@ fn statements_to_mmp_structured_info(
         let mut token_iter = tokens.iter().map(|t| *t).filter(|t| *t != "\n");
 
         match token_iter.next().ok_or(Error::InternalLogicError)? {
+            "$c" => {
+                if constants.is_some() {
+                    return Err(Error::MutipleConstStatementsError);
+                }
+
+                let (count, mut constants_string) =
+                    token_iter.fold((0, String::new()), |(i, mut s), t| {
+                        s.push_str(t);
+                        s.push(' ');
+                        (i + 1, s)
+                    });
+                constants_string.pop();
+                if count < 1 {
+                    return Err(Error::EmptyConstStatementError);
+                }
+                constants = Some(constants_string);
+            }
+            "$v" => {
+                let (count, mut variable_string) =
+                    token_iter.fold((0, String::new()), |(i, mut s), t| {
+                        s.push_str(t);
+                        s.push(' ');
+                        (i + 1, s)
+                    });
+                variable_string.pop();
+                if count < 1 {
+                    return Err(Error::EmptyVarStatementError);
+                }
+                variables.push(variable_string);
+            }
             "$theorem" => {
                 if theorem_label.is_some() {
                     return Err(Error::MultipleTheoremLabelError);
@@ -64,17 +102,17 @@ fn statements_to_mmp_structured_info(
                 }
             }
             "$d" => {
-                let mut distinct_var: String = token_iter.fold(String::new(), |mut s, t| {
-                    s.push_str(t);
-                    s.push(' ');
-                    s
-                });
+                let (count, mut distinct_var) =
+                    token_iter.fold((0, String::new()), |(i, mut s), t| {
+                        s.push_str(t);
+                        s.push(' ');
+                        (i + 1, s)
+                    });
                 distinct_var.pop();
-                if distinct_var.len() >= 2 {
-                    distinct_vars.push(distinct_var);
-                } else {
+                if count < 2 {
                     return Err(Error::ZeroOrOneSymbolDisjError);
                 }
+                distinct_vars.push(distinct_var);
             }
             "$allowdiscouraged" => {
                 if allow_discouraged {
@@ -150,7 +188,9 @@ fn statements_to_mmp_structured_info(
                         comment.push(' ');
                     }
                 }
-                while comment.as_bytes()[comment.len() - 1].is_ascii_whitespace() {
+                while comment.len() > 0
+                    && comment.as_bytes()[comment.len() - 1].is_ascii_whitespace()
+                {
                     comment.pop();
                 }
                 comments.push(comment);
@@ -175,6 +215,8 @@ fn statements_to_mmp_structured_info(
     // println!("Comments: {:?}\n", comments);
 
     Ok(MmpStructuredInfo {
+        constants,
+        variables,
         theorem_label,
         distinct_vars,
         mmj2_steps,

@@ -125,7 +125,10 @@ pub enum Error {
 
     // Parsing mmp file errors
     WhitespaceBeforeFirstTokenError, // Returned if there is whitepace before the first token
-    MultipleTheoremLabelError,       // Returned if there are more than one $theorem statements
+    MutipleConstStatementsError,     // Returned if there are multipe $c statements
+    // EmptyConstStatementError: Also used when parsing mmp files
+    // EmptyVarStatementError: Also used when parsing mmp files
+    MultipleTheoremLabelError, // Returned if there are more than one $theorem statements
     MissingTheoremLabelError, // Returned if there is a $theorem statement without a follow up token
     TooManyTheoremLabelTokensError, // Returned if there is a $theorem statement with too many follow up tokens
     MultipleAllowDiscouragedError,  // Returned if there are multiple $allowdiscouraged statements
