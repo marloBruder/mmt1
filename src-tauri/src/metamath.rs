@@ -26,6 +26,7 @@ use crate::{
 use std::collections::HashMap;
 use tauri::{async_runtime::Mutex, State};
 
+pub mod export;
 pub mod parse;
 
 #[tauri::command]

@@ -47,6 +47,8 @@ pub async fn parse_mm_file(
         return Err(Error::InvalidCharactersError);
     }
 
+    metamath_data.database_path = mm_file_path.to_string();
+
     // Scope starting at 0, +1 for every "${", -1 for every "$}""
     let mut scope = 0;
 

@@ -15,6 +15,7 @@ pub struct MetamathData {
     pub database_header: Header,
     pub html_representations: Vec<HtmlRepresentation>,
     pub optimized_data: OptimizedMetamathData,
+    pub database_path: String,
 }
 
 #[derive(Debug, Default)]
@@ -29,6 +30,11 @@ pub enum Statement {
     ConstantStatement(Constant),
     VariableStatement(Variable),
     FloatingHypohesisStatement(FloatingHypohesis),
+}
+
+pub enum DatabaseElement<'a> {
+    Header(&'a Header, u32),
+    Statement(&'a Statement),
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -2,7 +2,7 @@
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import TitleBarDropdown from "./TitleBarDropdown.svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import { open } from "@tauri-apps/plugin-dialog";
+  import { open, save } from "@tauri-apps/plugin-dialog";
   import type { FolderRepresentation, HeaderRepresentation, HtmlRepresentation } from "$lib/sharedState/model.svelte";
   import { explorerData } from "$lib/sharedState/explorerData.svelte";
   import { htmlData } from "$lib/sharedState/htmlData.svelte";
@@ -58,6 +58,16 @@
           let [topHeaderRep, htmlReps]: [HeaderRepresentation, HtmlRepresentation[]] = await invoke("open_metamath_database", { mmFilePath: filePath });
           explorerData.resetExplorerWithFirstHeader(topHeaderRep);
           htmlData.loadLocal(htmlReps);
+        }
+      },
+    },
+    {
+      title: "Export Metamath Database",
+      buttonClick: async () => {
+        const filePath = await save({ filters: [{ name: "Metamath Database", extensions: ["mm"] }] });
+
+        if (filePath) {
+          await invoke("export_database", { filePath });
         }
       },
     },

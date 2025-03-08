@@ -1,7 +1,7 @@
 use std::iter::FilterMap;
 
 use crate::model::{
-    Constant, Header,
+    Constant, DatabaseElement, Header,
     Statement::{self, *},
     Theorem, Variable,
 };
@@ -25,13 +25,18 @@ impl<'a> HeaderIterator<'a> {
 }
 
 impl<'a> Iterator for HeaderIterator<'a> {
-    type Item = &'a Statement;
+    type Item = DatabaseElement<'a>;
 
-    fn next(&mut self) -> Option<&'a Statement> {
+    fn next(&mut self) -> Option<DatabaseElement<'a>> {
         loop {
             if self.next_content_index < self.curr_header.content.len() {
                 self.next_content_index += 1;
-                return self.curr_header.content.get(self.next_content_index - 1);
+                return Some(DatabaseElement::Statement(
+                    self.curr_header
+                        .content
+                        .get(self.next_content_index - 1)
+                        .unwrap(),
+                ));
             }
 
             if self.next_header_index < self.curr_header.subheaders.len() {
@@ -43,7 +48,10 @@ impl<'a> Iterator for HeaderIterator<'a> {
                     .unwrap();
                 self.next_content_index = 0;
                 self.next_header_index = 0;
-                continue;
+                return Some(DatabaseElement::Header(
+                    self.curr_header,
+                    self.past.len() as u32,
+                ));
             }
 
             if self.past.len() != 0 {
@@ -74,18 +82,19 @@ impl<'a> Iterator for HeaderIterator<'a> {
 // }
 
 pub struct ConstantIterator<'a> {
-    inner: FilterMap<HeaderIterator<'a>, Box<dyn FnMut(&Statement) -> Option<&Constant>>>,
+    inner: FilterMap<HeaderIterator<'a>, Box<dyn FnMut(DatabaseElement) -> Option<&Constant>>>,
 }
 
 impl<'a> ConstantIterator<'a> {
     pub fn new(top_header: &'a Header) -> ConstantIterator<'a> {
         ConstantIterator {
-            inner: top_header.iter().filter_map(Box::new(|s| {
-                if let ConstantStatement(constant) = s {
-                    Some(constant)
-                } else {
-                    None
+            inner: top_header.iter().filter_map(Box::new(|e| {
+                if let DatabaseElement::Statement(s) = e {
+                    if let ConstantStatement(constant) = s {
+                        return Some(constant);
+                    }
                 }
+                None
             })),
         }
     }
@@ -100,18 +109,19 @@ impl<'a> Iterator for ConstantIterator<'a> {
 }
 
 pub struct VariableIterator<'a> {
-    inner: FilterMap<HeaderIterator<'a>, Box<dyn FnMut(&Statement) -> Option<&Variable>>>,
+    inner: FilterMap<HeaderIterator<'a>, Box<dyn FnMut(DatabaseElement) -> Option<&Variable>>>,
 }
 
 impl<'a> VariableIterator<'a> {
     pub fn new(top_header: &'a Header) -> VariableIterator<'a> {
         VariableIterator {
-            inner: top_header.iter().filter_map(Box::new(|s| {
-                if let VariableStatement(variable) = s {
-                    Some(variable)
-                } else {
-                    None
+            inner: top_header.iter().filter_map(Box::new(|e| {
+                if let DatabaseElement::Statement(s) = e {
+                    if let VariableStatement(variable) = s {
+                        return Some(variable);
+                    }
                 }
+                None
             })),
         }
     }
@@ -126,18 +136,19 @@ impl<'a> Iterator for VariableIterator<'a> {
 }
 
 pub struct TheoremIterator<'a> {
-    inner: FilterMap<HeaderIterator<'a>, Box<dyn FnMut(&Statement) -> Option<&Theorem>>>,
+    inner: FilterMap<HeaderIterator<'a>, Box<dyn FnMut(DatabaseElement) -> Option<&Theorem>>>,
 }
 
 impl<'a> TheoremIterator<'a> {
     pub fn new(top_header: &'a Header) -> TheoremIterator<'a> {
         TheoremIterator {
-            inner: top_header.iter().filter_map(Box::new(|s| {
-                if let TheoremStatement(theorem) = s {
-                    Some(theorem)
-                } else {
-                    None
+            inner: top_header.iter().filter_map(Box::new(|e| {
+                if let DatabaseElement::Statement(s) = e {
+                    if let TheoremStatement(theorem) = s {
+                        return Some(theorem);
+                    }
                 }
+                None
             })),
         }
     }
