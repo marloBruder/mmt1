@@ -26,15 +26,21 @@ pub struct OptimizedMetamathData {
 
 #[derive(Debug)]
 pub enum Statement {
-    TheoremStatement(Theorem),
+    CommentStatement(Comment),
     ConstantStatement(Constant),
     VariableStatement(Variable),
     FloatingHypohesisStatement(FloatingHypohesis),
+    TheoremStatement(Theorem),
 }
 
 pub enum DatabaseElement<'a> {
     Header(&'a Header, u32),
     Statement(&'a Statement),
+}
+
+#[derive(Debug)]
+pub struct Comment {
+    pub text: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -213,6 +219,10 @@ impl Header {
                 .content
                 .iter()
                 .map(|t| match t {
+                    CommentStatement(_) => HeaderContentRepresentation {
+                        content_type: "CommentStatement".to_string(),
+                        title: "Comment".to_string(),
+                    },
                     ConstantStatement(constant) => HeaderContentRepresentation {
                         content_type: "ConstantStatement".to_string(),
                         title: constant.symbol.clone(),

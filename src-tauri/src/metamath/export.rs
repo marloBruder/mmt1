@@ -42,7 +42,7 @@ fn calc_database_string(metamath_data: &MetamathData) -> String {
             DatabaseElement::Header(header, depth) => {
                 res.push_str("$(\n");
                 res.push_str(header_line(depth));
-                res.push('\n');
+                res.push_str("\n  ");
                 res.push_str(&header.title);
                 res.push('\n');
                 res.push_str(header_line(depth));
@@ -50,6 +50,11 @@ fn calc_database_string(metamath_data: &MetamathData) -> String {
                 res.push_str("$)\n\n");
             }
             DatabaseElement::Statement(statement) => match statement {
+                CommentStatement(comment) => {
+                    res.push_str("$( ");
+                    res.push_str(&comment.text);
+                    res.push_str(" )$\n\n");
+                }
                 ConstantStatement(constant) => {
                     res.push_str("$c ");
                     res.push_str(&constant.symbol);

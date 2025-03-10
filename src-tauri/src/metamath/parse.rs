@@ -11,8 +11,8 @@ use crate::{
         variable::add_variable_database_raw,
     },
     model::{
-        Constant, FloatingHypohesis, Header, HeaderRepresentation, HtmlRepresentation, Hypothesis,
-        MetamathData, Statement::*, Theorem, Variable,
+        Comment, Constant, FloatingHypohesis, Header, HeaderRepresentation, HtmlRepresentation,
+        Hypothesis, MetamathData, Statement::*, Theorem, Variable,
     },
     AppState, Error,
 };
@@ -52,7 +52,7 @@ pub async fn parse_mm_file(
     // Scope starting at 0, +1 for every "${", -1 for every "$}""
     let mut scope = 0;
 
-    let mut last_comment: String = String::new();
+    // let mut last_comment: String = String::new();
 
     let mut next_label: Option<&str> = None;
 
@@ -89,12 +89,12 @@ pub async fn parse_mm_file(
     while let Some(token) = token_iter.next() {
         match token {
             "$(" => {
-                last_comment = super::get_next_as_string_until(&mut token_iter, "$)");
-                let mut comment_iter = last_comment.split_whitespace();
+                let comment = super::get_next_as_string_until(&mut token_iter, "$)");
+                let mut comment_iter = comment.split_whitespace();
 
                 if let Some(first_token) = comment_iter.next() {
                     if first_token == "$t" {
-                        let typesetting_tokens = super::tokenize_typesetting_text(&last_comment)?;
+                        let typesetting_tokens = super::tokenize_typesetting_text(&comment)?;
                         let mut typesetting_token_iter = typesetting_tokens.iter();
 
                         typesetting_token_iter.next(); // Flush out leading "$t"
@@ -208,6 +208,10 @@ pub async fn parse_mm_file(
                                 // .await?;
                                 next_db_index += 1;
                             }
+                        } else {
+                            curr_header.content.push(CommentStatement(Comment {
+                                text: comment.clone(),
+                            }));
                         }
                     }
                 }
@@ -407,7 +411,17 @@ pub async fn parse_mm_file(
                 let label = next_label.ok_or(Error::MissingLabelError)?.to_string();
                 next_label = None;
 
-                let description = last_comment.clone();
+                let description = if let Some(CommentStatement(_)) = curr_header.content.last() {
+                    if let Some(CommentStatement(comment)) = curr_header.content.pop() {
+                        comment.text
+                    } else {
+                        // Can't happen
+                        String::new()
+                    }
+                } else {
+                    String::new()
+                };
+
                 let disjoints = active_disjs.clone().into_iter().flatten().collect();
                 let hypotheses = active_hyps.clone().into_iter().flatten().collect();
 
