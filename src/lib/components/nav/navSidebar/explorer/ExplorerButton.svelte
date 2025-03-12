@@ -23,7 +23,14 @@
   };
 
   let explorerDblClick = () => {
-    tabManager.makeSameTempTabPermanent(new TheoremTab(contentTitle.title));
+    switch (contentTitle.contentType) {
+      case "FloatingHypohesisStatement":
+        tabManager.makeSameTempTabPermanent(new FloatingHypothesisTab(contentTitle.title));
+        break;
+      case "TheoremStatement":
+        tabManager.makeSameTempTabPermanent(new TheoremTab(contentTitle.title));
+        break;
+    }
   };
 </script>
 

@@ -38,7 +38,7 @@ pub enum DatabaseElement<'a> {
     Statement(&'a Statement),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Comment {
     pub text: String,
 }
@@ -90,7 +90,7 @@ pub struct HeaderRepresentation {
 }
 
 pub struct HeaderContentRepresentation {
-    //Should only ever be "ConstantStatement" or "VariableStatement" or "FloatingHypohesisStatement" or "TheoremStatement";
+    //Should only ever be "CommentStatement" or "ConstantStatement" or "VariableStatement" or "FloatingHypohesisStatement" or "TheoremStatement";
     pub content_type: String,
     pub title: String,
 }

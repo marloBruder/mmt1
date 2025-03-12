@@ -151,6 +151,15 @@ class TabManager {
     this.#tempTabIndex = -1;
   }
 
+  doesSameTabExist(tab: Tab) {
+    for (let tab2 of this.#tabs) {
+      if (tab2.sameTab(tab)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   get tabs() {
     return this.#tabs;
   }

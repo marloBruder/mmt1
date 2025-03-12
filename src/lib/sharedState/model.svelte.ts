@@ -5,6 +5,10 @@ export interface MetamathData {
   in_progress_theorems: InProgressTheorem[];
 }
 
+export interface Comment {
+  text: string;
+}
+
 export interface Constant {
   symbol: string;
 }
@@ -58,7 +62,7 @@ export interface HeaderRepresentation {
 }
 
 export interface HeaderContentRepresentation {
-  contentType: "ConstantStatement" | "VariableStatement" | "FloatingHypohesisStatement" | "TheoremStatement";
+  contentType: "CommentStatement" | "ConstantStatement" | "VariableStatement" | "FloatingHypohesisStatement" | "TheoremStatement";
   title: string;
 }
 

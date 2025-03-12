@@ -58,6 +58,7 @@ pub fn run() {
             metamath::export::save_database,
             metamath::export::export_database,
             metamath::parse::open_metamath_database,
+            local_state::comment::get_comment_local,
             local_state::constant::get_constants_local,
             local_state::variable::get_variables_local,
             local_state::floating_hypothesis::get_floating_hypothesis_local,

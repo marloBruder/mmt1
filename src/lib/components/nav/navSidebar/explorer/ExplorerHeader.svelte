@@ -8,17 +8,12 @@
   import { explorerData } from "$lib/sharedState/explorerData.svelte";
   import ExplorerButton from "./ExplorerButton.svelte";
   import { tabManager, TheoremTab } from "$lib/sharedState/tabManager.svelte";
+  import { util } from "$lib/sharedState/util.svelte";
+  import ExplorerCommentButton from "./ExplorerCommentButton.svelte";
 
   let { header, headerPath }: { header: NameListHeader; headerPath: HeaderPath } = $props();
 
-  let pathString = $derived.by(() => {
-    let stringRep = "";
-    for (let pos of headerPath.path) {
-      stringRep = stringRep + (pos + 1) + ".";
-    }
-    stringRep = stringRep.slice(0, stringRep.length - 1);
-    return stringRep;
-  });
+  let pathString = $derived(util.headerPathToStringRep(headerPath));
 
   let calcNewPath = (index: number): HeaderPath => {
     let newPath = { path: headerPath.path.slice() };
@@ -30,6 +25,7 @@
     if (header.content === null) {
       explorerData.loadHeader(headerPath, header);
     } else {
+      commentNum = 0;
       explorerData.unloadHeader(header);
     }
   };
@@ -87,6 +83,13 @@
       abortAddingSubheader();
     }
   };
+
+  let commentNum = 0;
+
+  let newCommentNum = () => {
+    commentNum++;
+    return commentNum - 1;
+  };
 </script>
 
 <div class="relative h-6 hover:bg-gray-200">
@@ -110,7 +113,11 @@
 {#if header.content !== null}
   <div class="pl-3">
     {#each header.content.contentTitles as contentTitle}
-      <ExplorerButton {contentTitle}></ExplorerButton>
+      {#if contentTitle.contentType === "CommentStatement"}
+        <ExplorerCommentButton {headerPath} commentNum={newCommentNum()}></ExplorerCommentButton>
+      {:else}
+        <ExplorerButton {contentTitle}></ExplorerButton>
+      {/if}
     {/each}
     {#each header.content.subheaders as subHeader, index}
       <ExplorerHeader header={subHeader} headerPath={calcNewPath(index)}></ExplorerHeader>
