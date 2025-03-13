@@ -151,11 +151,10 @@ class TabManager {
     this.#tempTabIndex = -1;
   }
 
-  doesSameTabExist(tab: Tab) {
-    for (let tab2 of this.#tabs) {
-      if (tab2.sameTab(tab)) {
-        return true;
-      }
+  isSameTabOpen(tab: Tab) {
+    let openTab = this.#tabs[this.#openTabIndex];
+    if (openTab) {
+      return tab.sameTab(openTab);
     }
     return false;
   }

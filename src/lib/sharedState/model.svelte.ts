@@ -62,7 +62,7 @@ export interface HeaderRepresentation {
 }
 
 export interface HeaderContentRepresentation {
-  contentType: "CommentStatement" | "ConstantStatement" | "VariableStatement" | "FloatingHypohesisStatement" | "TheoremStatement";
+  contentType: "CommentStatement" | "ConstantStatement" | "VariableStatement" | "FloatingHypothesisStatement" | "TheoremStatement";
   title: string;
 }
 

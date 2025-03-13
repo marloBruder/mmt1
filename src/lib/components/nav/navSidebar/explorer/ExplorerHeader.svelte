@@ -6,10 +6,12 @@
   import ChevronRightIcon from "$lib/icons/ChevronRightIcon.svelte";
   import PlusIcon from "$lib/icons/PlusIcon.svelte";
   import { explorerData } from "$lib/sharedState/explorerData.svelte";
-  import ExplorerButton from "./ExplorerButton.svelte";
-  import { tabManager, TheoremTab } from "$lib/sharedState/tabManager.svelte";
   import { util } from "$lib/sharedState/util.svelte";
   import ExplorerCommentButton from "./ExplorerCommentButton.svelte";
+  import ExplorerFloatingHypothesisButton from "./ExplorerFloatingHypothesisButton.svelte";
+  import ExplorerVariableButton from "./ExplorerVariableButton.svelte";
+  import ExplorerConstantButton from "./ExplorerConstantButton.svelte";
+  import ExplorerTheoremButton from "./ExplorerTheoremButton.svelte";
 
   let { header, headerPath }: { header: NameListHeader; headerPath: HeaderPath } = $props();
 
@@ -115,8 +117,14 @@
     {#each header.content.contentTitles as contentTitle}
       {#if contentTitle.contentType === "CommentStatement"}
         <ExplorerCommentButton {headerPath} commentNum={newCommentNum()}></ExplorerCommentButton>
-      {:else}
-        <ExplorerButton {contentTitle}></ExplorerButton>
+      {:else if contentTitle.contentType === "ConstantStatement"}
+        <ExplorerConstantButton constant={contentTitle.title}></ExplorerConstantButton>
+      {:else if contentTitle.contentType === "VariableStatement"}
+        <ExplorerVariableButton variable={contentTitle.title}></ExplorerVariableButton>
+      {:else if contentTitle.contentType === "FloatingHypothesisStatement"}
+        <ExplorerFloatingHypothesisButton label={contentTitle.title}></ExplorerFloatingHypothesisButton>
+      {:else if contentTitle.contentType === "TheoremStatement"}
+        <ExplorerTheoremButton label={contentTitle.title}></ExplorerTheoremButton>
       {/if}
     {/each}
     {#each header.content.subheaders as subHeader, index}

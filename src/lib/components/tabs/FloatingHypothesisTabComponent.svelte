@@ -7,7 +7,7 @@
   export class FloatingHypothesisTab extends Tab {
     component = FloatingHypothesisTabComponent;
 
-    #label: string = $state("");
+    #label: string;
     #floatingHypothesis: FloatingHypothesis = $state({ label: "", typecode: "", variable: "" });
 
     constructor(label: string) {

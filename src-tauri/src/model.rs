@@ -232,7 +232,7 @@ impl Header {
                         title: variable.symbol.clone(),
                     },
                     FloatingHypohesisStatement(floating_hypohesis) => HeaderContentRepresentation {
-                        content_type: "FloatingHypohesisStatement".to_string(),
+                        content_type: "FloatingHypothesisStatement".to_string(),
                         title: floating_hypohesis.label.clone(),
                     },
                     TheoremStatement(theorem) => HeaderContentRepresentation {
