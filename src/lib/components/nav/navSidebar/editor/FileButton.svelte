@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { EditorTab, tabManager } from "$lib/sharedState/tabManager.svelte";
+  import { EditorTab } from "$lib/components/tabs/EditorTabComponent.svelte";
+  import { tabManager } from "$lib/sharedState/tabManager.svelte";
 
   let { folderPath, fileName }: { folderPath: string; fileName: string } = $props();
 

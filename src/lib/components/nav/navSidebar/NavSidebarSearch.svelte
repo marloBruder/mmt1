@@ -1,7 +1,8 @@
 <script lang="ts">
+  import { SearchTab } from "$lib/components/tabs/SearchTabComponent.svelte";
   import RoundButton from "$lib/components/util/RoundButton.svelte";
   import type { SearchParameters } from "$lib/sharedState/model.svelte";
-  import { SearchTab, tabManager } from "$lib/sharedState/tabManager.svelte";
+  import { tabManager } from "$lib/sharedState/tabManager.svelte";
 
   let searchParameters: SearchParameters = $state({ label: "", start: 0, amount: 100 });
 

@@ -1,7 +1,69 @@
+<script lang="ts" module>
+  import EditorTabComponent from "$lib/components/tabs/EditorTabComponent.svelte";
+
+  export class EditorTab extends Tab {
+    component = EditorTabComponent;
+
+    #filePath: string = $state("");
+    #fileName: string = $derived.by(() => {
+      let segments = this.#filePath.split("\\");
+      return segments[segments.length - 1];
+    });
+
+    text: string = $state("");
+
+    constructor(filePath: string) {
+      super();
+      this.#filePath = filePath;
+    }
+
+    async loadData(): Promise<void> {
+      this.text = await invoke("read_file", { relativePath: this.#filePath });
+    }
+
+    name(): string {
+      return this.#fileName;
+    }
+
+    sameTab(tab: Tab): boolean {
+      return tab instanceof EditorTab && this.#filePath == tab.filePath;
+    }
+
+    changeEditorID(newID: string) {
+      // this.#inProgressTheoremName = newID;
+    }
+
+    async deleteTheorem() {
+      // await invoke("delete_in_progress_theorem", { name: this.#inProgressTheoremName });
+      // tabManager.closeOpenTab();
+      // nameListData.removeInProgressTheoremName(this.#inProgressTheoremName);
+      // return;
+    }
+
+    async addToDatabase() {
+      await invoke("add_to_database", { text: this.text });
+
+      // let dataUnknown = await invoke("turn_into_theorem", { inProgressTheorem: this.#inProgressTheorem, positionName: placeAfter });
+      // let theoremPath = dataUnknown as TheoremPath;
+      // nameListData.removeInProgressTheoremName(this.#inProgressTheorem.name);
+      // await explorerData.addTheoremName(theoremPath, this.#inProgressTheorem.name);
+      // tabManager.changeTab(new TheoremTab(this.#inProgressTheorem.name));
+    }
+
+    get filePath() {
+      return this.#filePath;
+    }
+
+    get fileName() {
+      return this.#fileName;
+    }
+  }
+</script>
+
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import RoundButton from "$lib/components/util/RoundButton.svelte";
-  import { EditorTab, tabManager, type Tab } from "$lib/sharedState/tabManager.svelte";
+  import { Tab, tabManager } from "$lib/sharedState/tabManager.svelte";
 
   let { tab }: { tab: Tab } = $props();
 

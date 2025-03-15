@@ -1,6 +1,40 @@
+<script lang="ts" module>
+  import SettingsTabComponent from "$lib/components/tabs/SettingsTabComponent.svelte";
+
+  export class SettingsTab extends Tab {
+    component = SettingsTabComponent;
+
+    constants: Constant[] = $state([]);
+    variables: Variable[] = $state([]);
+    floatingHypotheses: FloatingHypothesis[] = $state([]);
+    htmlRepresentations: HtmlRepresentation[] = $state([]);
+
+    async loadData(): Promise<void> {
+      this.constants = await invoke("get_constants_local");
+      this.variables = await invoke("get_variables_local");
+      this.floatingHypotheses = await invoke("get_floating_hypotheses_local");
+      this.htmlRepresentations = await invoke("get_html_representations_local");
+    }
+
+    name(): string {
+      return "Settings";
+    }
+
+    sameTab(tab: Tab) {
+      return tab instanceof SettingsTab;
+    }
+
+    validTab(): boolean {
+      return true;
+    }
+  }
+</script>
+
 <script lang="ts">
   import SymbolConfigSettingsTab from "$lib/components/tabs/settingsTabs/SymbolConfigSettingsTab.svelte";
-  import { SettingsTab, type Tab } from "$lib/sharedState/tabManager.svelte";
+  import type { Constant, FloatingHypothesis, HtmlRepresentation, Variable } from "$lib/sharedState/model.svelte";
+  import { Tab } from "$lib/sharedState/tabManager.svelte";
+  import { invoke } from "@tauri-apps/api/core";
 
   let { tab }: { tab: Tab } = $props();
 

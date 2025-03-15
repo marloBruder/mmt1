@@ -5,7 +5,9 @@
   import ExplorerButton from "./explorer/ExplorerButton.svelte";
   import { page } from "$app/stores";
   import RoundButton from "$lib/components/util/RoundButton.svelte";
-  import { tabManager, TheoremExplorerTab } from "$lib/sharedState/tabManager.svelte";
+  import { tabManager } from "$lib/sharedState/tabManager.svelte";
+  import { TheoremExplorerTab } from "$lib/components/tabs/TheoremExplorerTabComponent.svelte";
+  import ExplorerTheoremButton from "./explorer/ExplorerTheoremButton.svelte";
 
   let filter = $state("");
   let quickSearchResults: string[] = $state([]);
@@ -40,7 +42,7 @@
     </div>
   {:else}
     {#each quickSearchResults as theoremName}
-      <ExplorerButton contentTitle={{ contentType: "TheoremStatement", title: theoremName }}></ExplorerButton>
+      <ExplorerTheoremButton label={theoremName}></ExplorerTheoremButton>
     {/each}
     {#if more}
       <button onclick={loadAllQuickSearch}>Load all</button>

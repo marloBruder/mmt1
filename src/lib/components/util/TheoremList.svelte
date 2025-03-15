@@ -1,9 +1,10 @@
 <script lang="ts">
   import type { TheoremListEntry } from "$lib/sharedState/model.svelte";
-  import { tabManager, TheoremTab } from "$lib/sharedState/tabManager.svelte";
+  import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import type { MouseEventHandler } from "svelte/elements";
   import MetamathExpression from "./MetamathExpression.svelte";
   import RoundButton from "./RoundButton.svelte";
+  import { TheoremTab } from "../tabs/TheoremTabComponent.svelte";
 
   let { theoremList, previousPageClick = () => {}, nextPageClick = () => {} }: { theoremList: TheoremListEntry[]; previousPageClick?: MouseEventHandler<HTMLButtonElement>; nextPageClick?: MouseEventHandler<HTMLButtonElement> } = $props();
 

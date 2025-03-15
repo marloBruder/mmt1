@@ -1,5 +1,44 @@
+<script lang="ts" module>
+  import { Tab } from "$lib/sharedState/tabManager.svelte";
+  import TheoremTabComponent from "$lib/components/tabs/TheoremTabComponent.svelte";
+  import type { TheoremPageData } from "$lib/sharedState/model.svelte";
+  import { invoke } from "@tauri-apps/api/core";
+
+  export class TheoremTab extends Tab {
+    component = TheoremTabComponent;
+
+    #theoremName: string;
+    #pageData: TheoremPageData = $state({ theorem: { label: "", description: "", disjoints: [], hypotheses: [], assertion: "", proof: null }, theoremNumber: 0, proofLines: [] });
+
+    constructor(theoremName: string) {
+      super();
+      this.#theoremName = theoremName;
+    }
+
+    async loadData(): Promise<void> {
+      this.#pageData = await invoke("get_theorem_page_data_local", { name: this.#theoremName });
+    }
+
+    name(): string {
+      return this.#theoremName;
+    }
+
+    sameTab(tab: Tab): boolean {
+      return tab instanceof TheoremTab && this.#theoremName == tab.theoremName;
+    }
+
+    get pageData() {
+      return this.#pageData;
+    }
+
+    get theoremName() {
+      return this.#theoremName;
+    }
+  }
+</script>
+
 <script lang="ts">
-  import { Tab, tabManager, TheoremTab } from "$lib/sharedState/tabManager.svelte";
+  import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import MetamathExpression from "$lib/components/util/MetamathExpression.svelte";
 
   let { tab }: { tab: Tab } = $props();

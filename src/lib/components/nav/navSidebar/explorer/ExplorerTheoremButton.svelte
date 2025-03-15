@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { tabManager, TheoremTab } from "$lib/sharedState/tabManager.svelte";
+  import { TheoremTab } from "$lib/components/tabs/TheoremTabComponent.svelte";
+  import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import ExplorerButton from "./ExplorerButton.svelte";
 
   let { label }: { label: string } = $props();
