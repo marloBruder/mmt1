@@ -5,20 +5,15 @@
   import MetamathExpression from "./MetamathExpression.svelte";
   import RoundButton from "./RoundButton.svelte";
   import { TheoremTab } from "../tabs/TheoremTabComponent.svelte";
+  import TheoremLink from "./TheoremLink.svelte";
 
   let { theoremList, previousPageClick = () => {}, nextPageClick = () => {} }: { theoremList: TheoremListEntry[]; previousPageClick?: MouseEventHandler<HTMLButtonElement>; nextPageClick?: MouseEventHandler<HTMLButtonElement> } = $props();
-
-  let theoremClick = async (label: string) => {
-    await tabManager.changeTab(new TheoremTab(label));
-  };
 </script>
 
 {#each theoremList as theoremListEntry}
   <div class="my-10 text-center border-black border-y">
     <div>
-      <button onclick={() => theoremClick(theoremListEntry.label)}>
-        {theoremListEntry.label}
-      </button>
+      <TheoremLink label={theoremListEntry.label}></TheoremLink>
       <small>
         {theoremListEntry.theoremNumber}
       </small>

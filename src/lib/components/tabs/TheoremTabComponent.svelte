@@ -40,6 +40,7 @@
 <script lang="ts">
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import MetamathExpression from "$lib/components/util/MetamathExpression.svelte";
+  import TheoremLink from "../util/TheoremLink.svelte";
 
   let { tab }: { tab: Tab } = $props();
 
@@ -60,10 +61,6 @@
       }
     }
     return false;
-  };
-
-  let refClick = (name: string) => {
-    tabManager.changeTab(new TheoremTab(name));
   };
 </script>
 
@@ -139,7 +136,7 @@
               </td>
               <td class="border border-gray-600 py-1 px-2">
                 {#if !isHypothesisName(proofLine.reference)}
-                  <button onclick={() => refClick(proofLine.reference)}>{proofLine.reference}</button>
+                  <TheoremLink label={proofLine.reference}></TheoremLink>
                 {:else}
                   {proofLine.reference}
                 {/if}
