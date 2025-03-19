@@ -11,6 +11,7 @@
     });
 
     text: string = $state("");
+    textChanged: boolean = $state(false);
 
     constructor(filePath: string) {
       super();
@@ -136,11 +137,9 @@
     }
   };
 
-  let textChanged: boolean = $state(false);
-
   let saveText = () => {
     invoke("save_file", { relativePath: editorTab.filePath, content: editorTab.text });
-    textChanged = false;
+    editorTab.textChanged = false;
   };
 
   let deleteTheorem = () => {
@@ -149,7 +148,7 @@
 
   let textChange = () => {
     tabManager.makeOpenTempTabPermanent();
-    textChanged = true;
+    editorTab.textChanged = true;
   };
 
   let addToDatabase = () => {
@@ -182,7 +181,7 @@
   <RoundButton onclick={editName} disabled={!nameDisabled}>Edit name</RoundButton>
 </div>
 <div class="p-2 border-t border-gray-400">
-  <RoundButton onclick={saveText} disabled={!textChanged}>Save</RoundButton>
+  <RoundButton onclick={saveText} disabled={!editorTab.textChanged}>Save</RoundButton>
   <RoundButton onclick={deleteTheorem} warning>Delete</RoundButton>
 </div>
 <div class="p-2 border-t border-gray-400">
