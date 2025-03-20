@@ -30,6 +30,10 @@
       return tab instanceof EditorTab && this.#filePath == tab.filePath;
     }
 
+    showDot(): boolean {
+      return this.textChanged;
+    }
+
     changeEditorID(newID: string) {
       // this.#inProgressTheoremName = newID;
     }

@@ -1,6 +1,6 @@
 <script lang="ts">
   import NavSidebar from "$lib/components/nav/navSidebar/NavSidebar.svelte";
-  import TabBar from "$lib/components/nav/TabBar.svelte";
+  import TabBar from "$lib/components/nav/tabBar/TabBar.svelte";
   import TitleBar from "$lib/components/titleBar/TitleBar.svelte";
   import EmptyTabComponent from "$lib/components/tabs/EmptyTabComponent.svelte";
   import { tabManager } from "$lib/sharedState/tabManager.svelte";

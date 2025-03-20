@@ -176,4 +176,8 @@ export abstract class Tab {
   abstract name(): string;
 
   abstract sameTab(tab: Tab): boolean;
+
+  showDot(): boolean {
+    return false;
+  }
 }
