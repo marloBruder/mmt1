@@ -19,6 +19,10 @@
       this.#floatingHypothesis = await invoke("get_floating_hypothesis_local", { label: this.#label });
     }
 
+    unloadData(): void {
+      this.#floatingHypothesis = { label: "", typecode: "", variable: "" };
+    }
+
     name(): string {
       return this.#label;
     }

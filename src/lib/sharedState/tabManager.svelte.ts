@@ -34,10 +34,14 @@ class TabManager {
   }
 
   async changeTab(newTab: Tab) {
-    if (this.#tabs.length == 0) {
+    if (this.getOpenTab() === null) {
       this.openTab(newTab);
     } else {
       await newTab.loadData();
+      this.#tabs[this.#openTabIndex].unloadData();
+
+      newTab.previousTab = this.#tabs[this.#openTabIndex];
+      this.#tabs[this.#openTabIndex].nextTab = newTab;
       this.#tabs[this.#openTabIndex] = newTab;
     }
   }
@@ -132,6 +136,26 @@ class TabManager {
   //   }
   // }
 
+  async switchToPreviousTab() {
+    let openTab = this.getOpenTab();
+    if (openTab && openTab.previousTab) {
+      openTab.unloadData();
+      await openTab.previousTab.loadData();
+
+      this.#tabs[this.#openTabIndex] = openTab.previousTab;
+    }
+  }
+
+  async switchToNextTab() {
+    let openTab = this.getOpenTab();
+    if (openTab && openTab.nextTab) {
+      openTab.unloadData();
+      await openTab.nextTab.loadData();
+
+      this.#tabs[this.#openTabIndex] = openTab.nextTab;
+    }
+  }
+
   closeOpenTab() {
     this.closeTabWithIndex(this.#openTabIndex);
   }
@@ -170,8 +194,12 @@ export abstract class Tab {
   abstract readonly component: Component<{ tab: Tab }>;
 
   scrollTop: number = 0;
+  previousTab: Tab | null = null;
+  nextTab: Tab | null = null;
 
   abstract loadData(): Promise<void>;
+
+  abstract unloadData(): void;
 
   abstract name(): string;
 

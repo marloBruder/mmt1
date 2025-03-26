@@ -19,6 +19,10 @@
       this.#comment = (await invoke("get_comment_local", { headerPath: this.#headerPath, commentNum: this.#commentNum })) as Comment;
     }
 
+    unloadData(): void {
+      this.#comment = { text: "" };
+    }
+
     name(): string {
       return "Comment " + util.headerPathToStringRep(this.#headerPath) + "#" + (this.#commentNum + 1);
     }

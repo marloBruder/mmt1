@@ -16,6 +16,13 @@
       this.htmlRepresentations = await invoke("get_html_representations_local");
     }
 
+    unloadData(): void {
+      this.constants = [];
+      this.variables = [];
+      this.floatingHypotheses = [];
+      this.htmlRepresentations = [];
+    }
+
     name(): string {
       return "Settings";
     }

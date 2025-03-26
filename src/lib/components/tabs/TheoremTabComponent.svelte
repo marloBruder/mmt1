@@ -19,6 +19,10 @@
       this.#pageData = await invoke("get_theorem_page_data_local", { name: this.#theoremName });
     }
 
+    unloadData(): void {
+      this.#pageData = { theorem: { label: "", description: "", disjoints: [], hypotheses: [], assertion: "", proof: null }, theoremNumber: 0, proofLines: [] };
+    }
+
     name(): string {
       return this.#theoremName;
     }

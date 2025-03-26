@@ -12,6 +12,10 @@
       this.#theoremList = await invoke("get_theorem_list_local", { from: this.#start, to: this.#start + 100 });
     }
 
+    unloadData(): void {
+      this.#theoremList = [];
+    }
+
     async changePage(newStart: number) {
       this.#start = newStart;
       await this.loadData();

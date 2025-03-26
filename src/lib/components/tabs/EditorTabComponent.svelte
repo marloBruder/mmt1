@@ -22,6 +22,11 @@
       this.text = await invoke("read_file", { relativePath: this.#filePath });
     }
 
+    unloadData(): void {
+      this.text = "";
+      this.textChanged = false;
+    }
+
     name(): string {
       return this.#fileName;
     }

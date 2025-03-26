@@ -17,6 +17,10 @@
       this.#searchResult = await invoke("search_theorems", { searchParameters: this.#searchParameters });
     }
 
+    unloadData(): void {
+      this.#searchResult = [];
+    }
+
     async previousPage() {
       if (this.#searchParameters.start >= 100) {
         this.#searchParameters.start -= 100;
