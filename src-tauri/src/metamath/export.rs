@@ -51,9 +51,10 @@ fn calc_database_string(metamath_data: &MetamathData) -> String {
             }
             DatabaseElement::Statement(statement) => match statement {
                 CommentStatement(comment) => {
-                    res.push_str("$( ");
-                    res.push_str(&comment.text);
-                    res.push_str(" )$\n\n");
+                    res.push_str("$(");
+                    write_text_wrapped(&mut res, &comment.text, "  ");
+                    write_text_wrapped(&mut res, "$)", "  ");
+                    res.push_str("\n\n");
                 }
                 ConstantStatement(constant) => {
                     res.push_str("$c ");
@@ -87,24 +88,27 @@ fn calc_database_string(metamath_data: &MetamathData) -> String {
                         res.push_str(&hyp.hypothesis);
                         res.push_str(" $.\n");
                     }
-                    res.push_str("  $( ");
-                    res.push_str(&theorem.description);
-                    res.push_str("\n  $)\n");
+                    res.push_str("  $(");
+                    write_text_wrapped(&mut res, &theorem.description, "    ");
+                    write_text_wrapped(&mut res, "$)", "    ");
+                    res.push('\n');
 
                     res.push_str("  ");
                     res.push_str(&theorem.label);
                     match &theorem.proof {
                         None => {
-                            res.push_str(" $a ");
-                            res.push_str(&theorem.assertion);
-                            res.push_str("\n $.\n");
+                            write_text_wrapped(&mut res, "$a", "    ");
+                            write_text_wrapped(&mut res, &theorem.assertion, "    ");
+                            write_text_wrapped(&mut res, "$.", "    ");
+                            res.push('\n');
                         }
                         Some(proof) => {
-                            res.push_str(" $p ");
-                            res.push_str(&theorem.assertion);
-                            res.push_str("\n $= ");
-                            res.push_str(proof);
-                            res.push_str("\n $.\n");
+                            write_text_wrapped(&mut res, "$p", "    ");
+                            write_text_wrapped(&mut res, &theorem.assertion, "    ");
+                            write_text_wrapped(&mut res, "$=", "    ");
+                            write_text_wrapped(&mut res, proof, "    ");
+                            write_text_wrapped(&mut res, "$.", "    ");
+                            res.push('\n');
                         }
                     }
                     res.push_str("$}\n\n");
@@ -114,6 +118,36 @@ fn calc_database_string(metamath_data: &MetamathData) -> String {
     }
 
     res
+}
+
+fn write_text_wrapped(target: &mut String, text: &str, line_prefix: &str) {
+    let line_legth = 80;
+    let mut curr_line_length = last_line_length(&target) as usize;
+
+    for token in text.split_ascii_whitespace() {
+        if curr_line_length + 1 + token.len() < line_legth {
+            target.push(' ');
+            target.push_str(token);
+            curr_line_length += 1 + token.len();
+        } else {
+            target.push('\n');
+            target.push_str(line_prefix);
+            target.push_str(token);
+            curr_line_length = line_prefix.len() + token.len();
+        }
+    }
+}
+
+fn last_line_length(text: &str) -> u32 {
+    let mut len = 0;
+    let mut index = text.len() - 1;
+
+    while index > 0 && text.as_bytes()[index] != b'\n' {
+        len += 1;
+        index -= 1;
+    }
+
+    len
 }
 
 fn header_line(depth: u32) -> &'static str {
