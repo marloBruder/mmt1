@@ -160,6 +160,18 @@
     editorTab.textChanged = true;
   };
 
+  let textareaKeyDown = async (e: KeyboardEvent) => {
+    if (e.key === "u" && e.ctrlKey) {
+      e.preventDefault();
+      let textarea = document.getElementById("editorTextarea") as HTMLTextAreaElement;
+      let resultText = (await invoke("unify", { text: textarea.value, cursorPos: textarea.selectionStart })) as string;
+      if (resultText != editorTab.text) {
+        editorTab.text = resultText;
+        editorTab.textChanged = true;
+      }
+    }
+  };
+
   let addToDatabase = () => {
     editorTab.addToDatabase();
   };
@@ -207,7 +219,7 @@
     {/each}
   </div>
   <div class="ml-12">
-    <textarea id="editorTextarea" bind:value={editorTab.text} oninput={textChange} class="w-full resize-none h-96 text-nowrap overflow-x-hidden focus:outline-none" spellcheck="false"></textarea>
+    <textarea id="editorTextarea" bind:value={editorTab.text} oninput={textChange} onkeydown={textareaKeyDown} class="w-full resize-none h-96 text-nowrap overflow-x-hidden focus:outline-none" spellcheck="false"></textarea>
     <button class="w-full h-screen cursor-text" onclick={belowTextareaClick} aria-label="below-textrea"></button>
   </div>
 </div>
