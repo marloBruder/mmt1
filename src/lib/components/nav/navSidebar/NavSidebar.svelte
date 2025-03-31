@@ -3,19 +3,25 @@
   import NavSidebarExplorer from "./NavSidebarExplorer.svelte";
   import NavSidebarSearch from "./NavSidebarSearch.svelte";
   import NavSidebarEditor from "./NavSidebarEditor.svelte";
+  import BookIcon from "$lib/icons/navSidebar/BookIcon.svelte";
+  import SearchIcon from "$lib/icons/navSidebar/SearchIcon.svelte";
+  import FileIcon from "$lib/icons/navSidebar/FileIcon.svelte";
 
   let tabInfo = [
     {
       title: "Explorer",
       component: NavSidebarExplorer,
+      icon: BookIcon,
     },
     {
       title: "Search",
       component: NavSidebarSearch,
+      icon: SearchIcon,
     },
     {
       title: "Editor",
       component: NavSidebarEditor,
+      icon: FileIcon,
     },
   ];
 
