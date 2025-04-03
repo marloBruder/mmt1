@@ -1,16 +1,13 @@
 <script lang="ts">
-  import type { TheoremListEntry } from "$lib/sharedState/model.svelte";
-  import { tabManager } from "$lib/sharedState/tabManager.svelte";
-  import type { MouseEventHandler } from "svelte/elements";
+  import type { TheoremListData } from "$lib/sharedState/model.svelte";
   import MetamathExpression from "./MetamathExpression.svelte";
   import RoundButton from "./RoundButton.svelte";
-  import { TheoremTab } from "../tabs/TheoremTabComponent.svelte";
   import TheoremLink from "./TheoremLink.svelte";
 
-  let { theoremList, previousPageClick = () => {}, nextPageClick = () => {} }: { theoremList: TheoremListEntry[]; previousPageClick?: MouseEventHandler<HTMLButtonElement>; nextPageClick?: MouseEventHandler<HTMLButtonElement> } = $props();
+  let { theoremListData, previousPageClick, nextPageClick, pageButtonClick, pageNum }: { theoremListData: TheoremListData; previousPageClick: () => void; nextPageClick: () => void; pageButtonClick: (pageNum: number) => void; pageNum: number } = $props();
 </script>
 
-{#each theoremList as theoremListEntry}
+{#each theoremListData.list as theoremListEntry}
   <div class="my-10 text-center border-black border-y">
     <div>
       <TheoremLink label={theoremListEntry.label}></TheoremLink>
@@ -32,6 +29,11 @@
   </div>
 {/each}
 <div class=" p-2 flex justify-around">
-  <RoundButton onclick={previousPageClick}>Previous Page</RoundButton>
-  <RoundButton onclick={nextPageClick}>Next Page</RoundButton>
+  <RoundButton onclick={previousPageClick} disabled={pageNum <= 0}>Previous Page</RoundButton>
+  <RoundButton onclick={nextPageClick} disabled={pageNum >= theoremListData.pageAmount - 1}>Next Page</RoundButton>
+</div>
+<div>
+  {#each { length: theoremListData.pageAmount } as _, i}
+    <button onclick={() => pageButtonClick(i)} class="px-2">{i + 1}</button>
+  {/each}
 </div>

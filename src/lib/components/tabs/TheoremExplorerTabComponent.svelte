@@ -1,46 +1,46 @@
 <script lang="ts" module>
   import TheoremExplorerTabComponent from "$lib/components/tabs/TheoremExplorerTabComponent.svelte";
-  import type { TheoremListEntry } from "$lib/sharedState/model.svelte";
+  import type { TheoremListData, TheoremListEntry } from "$lib/sharedState/model.svelte";
 
   export class TheoremExplorerTab extends Tab {
     component = TheoremExplorerTabComponent;
 
-    #start: number = $state(1);
-    #theoremList: TheoremListEntry[] = $state([]);
+    #page: number = $state(0);
+    #theoremListData: TheoremListData = $state({ list: [], pageAmount: 0 });
+
+    constructor(page: number) {
+      super();
+      this.#page = page;
+    }
 
     async loadData(): Promise<void> {
-      this.#theoremList = await invoke("get_theorem_list_local", { from: this.#start, to: this.#start + 100 });
+      this.#theoremListData = await invoke("get_theorem_list_local", { page: this.#page });
     }
 
     unloadData(): void {
-      this.#theoremList = [];
-    }
-
-    async changePage(newStart: number) {
-      this.#start = newStart;
-      await this.loadData();
+      this.#theoremListData = { list: [], pageAmount: 0 };
     }
 
     name(): string {
-      return "Theorem Explorer";
+      return "Theorem Explorer Page " + (this.#page + 1);
     }
 
     sameTab(tab: Tab): boolean {
       return false;
     }
 
-    get start() {
-      return this.#start;
+    get page() {
+      return this.#page;
     }
 
-    get theoremList() {
-      return this.#theoremList;
+    get theoremListData() {
+      return this.#theoremListData;
     }
   }
 </script>
 
 <script lang="ts">
-  import { Tab } from "$lib/sharedState/tabManager.svelte";
+  import { Tab, tabManager } from "$lib/sharedState/tabManager.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import TheoremList from "../util/TheoremList.svelte";
 
@@ -53,13 +53,17 @@
     throw Error("Wrong Tab Type");
   });
 
-  let nextPageClick = async () => {
-    await theoremExplorerTab.changePage(theoremExplorerTab.start + 100);
+  let previousPageClick = () => {
+    tabManager.changeTab(new TheoremExplorerTab(theoremExplorerTab.page - 1));
   };
 
-  let previousPageClick = async () => {
-    await theoremExplorerTab.changePage(theoremExplorerTab.start - 100);
+  let nextPageClick = () => {
+    tabManager.changeTab(new TheoremExplorerTab(theoremExplorerTab.page + 1));
+  };
+
+  let pageButtonClick = (pageNum: number) => {
+    tabManager.changeTab(new TheoremExplorerTab(pageNum));
   };
 </script>
 
-<TheoremList theoremList={theoremExplorerTab.theoremList} {previousPageClick} {nextPageClick}></TheoremList>
+<TheoremList theoremListData={theoremExplorerTab.theoremListData} {previousPageClick} {nextPageClick} {pageButtonClick} pageNum={theoremExplorerTab.page}></TheoremList>

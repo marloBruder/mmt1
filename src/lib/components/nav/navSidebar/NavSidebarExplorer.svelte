@@ -14,7 +14,7 @@
   let more = $state(false);
 
   let newExplorerTabClick = () => {
-    tabManager.openTab(new TheoremExplorerTab(), true);
+    tabManager.openTab(new TheoremExplorerTab(0), true);
   };
 
   let quickSearchInput = async () => {

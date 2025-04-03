@@ -1,43 +1,31 @@
 <script lang="ts" module>
   import SearchTabComponent from "$lib/components/tabs/SearchTabComponent.svelte";
-  import type { SearchParameters, TheoremListEntry } from "$lib/sharedState/model.svelte";
+  import type { SearchParameters, TheoremListData } from "$lib/sharedState/model.svelte";
 
   export class SearchTab extends Tab {
     component = SearchTabComponent;
 
-    #searchParameters: SearchParameters = $state({ label: "", start: 0, amount: 100 });
-    #searchResult: TheoremListEntry[] = $state([]);
+    #searchParameters: SearchParameters = $state({ page: 0, label: "" });
+    #searchResult: TheoremListData = $state({ list: [], pageAmount: 0 });
 
     constructor(searchParameters: SearchParameters) {
       super();
-      this.#searchParameters.label = searchParameters.label;
+      this.#searchParameters = searchParameters;
     }
 
     async loadData(): Promise<void> {
-      this.#searchResult = await invoke("search_theorems", { searchParameters: this.#searchParameters });
+      this.#searchResult = (await invoke("search_theorems", { searchParameters: this.#searchParameters })) as TheoremListData;
     }
 
     unloadData(): void {
-      this.#searchResult = [];
-    }
-
-    async previousPage() {
-      if (this.#searchParameters.start >= 100) {
-        this.#searchParameters.start -= 100;
-        await this.loadData();
-      }
-    }
-
-    async nextPage() {
-      this.#searchParameters.start += 100;
-      await this.loadData();
+      this.#searchResult = { list: [], pageAmount: 0 };
     }
 
     name(): string {
       return "Search: " + this.#searchParameters.label;
     }
 
-    sameTab(tab: Tab): boolean {
+    sameTab(_tab: Tab): boolean {
       return false;
     }
 
@@ -52,7 +40,7 @@
 </script>
 
 <script lang="ts">
-  import { Tab } from "$lib/sharedState/tabManager.svelte";
+  import { Tab, tabManager } from "$lib/sharedState/tabManager.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import TheoremList from "../util/TheoremList.svelte";
 
@@ -65,13 +53,20 @@
     throw Error("Wrong Tab Type");
   });
 
-  let previousPageClick = async () => {
-    await searchTab.previousPage();
+  let previousPageClick = () => {
+    let searchParams = { ...searchTab.searchParameters, page: searchTab.searchParameters.page - 1 };
+    tabManager.changeTab(new SearchTab(searchParams));
   };
 
-  let nextPageClick = async () => {
-    await searchTab.nextPage();
+  let nextPageClick = () => {
+    let searchParams = { ...searchTab.searchParameters, page: searchTab.searchParameters.page + 1 };
+    tabManager.changeTab(new SearchTab(searchParams));
+  };
+
+  let pageButtonClick = (pageNum: number) => {
+    let searchParams = { ...searchTab.searchParameters, page: pageNum };
+    tabManager.changeTab(new SearchTab(searchParams));
   };
 </script>
 
-<TheoremList theoremList={searchTab.searchResult} {previousPageClick} {nextPageClick}></TheoremList>
+<TheoremList theoremListData={searchTab.searchResult} {previousPageClick} {nextPageClick} {pageButtonClick} pageNum={searchTab.searchParameters.page}></TheoremList>

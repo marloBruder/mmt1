@@ -3,7 +3,7 @@ use tauri::async_runtime::Mutex;
 use crate::{
     metamath::calc_theorem_page_data,
     model::{
-        Hypothesis, MetamathData, Statement::*, Theorem, TheoremListEntry, TheoremPageData,
+        Hypothesis, MetamathData, Statement::*, Theorem, TheoremListData, TheoremPageData,
         TheoremPath,
     },
     AppState, Error,
@@ -92,25 +92,30 @@ pub fn add_theorem_local(
     Ok(())
 }
 
+// page starts at 0
 #[tauri::command]
 pub async fn get_theorem_list_local(
     state: tauri::State<'_, Mutex<AppState>>,
-    from: u32,
-    to: u32,
-) -> Result<Vec<TheoremListEntry>, Error> {
-    if from > to || from == 0 || to == 0 {
-        return Err(Error::InvaildArgumentError);
-    }
-
+    page: u32,
+) -> Result<TheoremListData, Error> {
     let app_state = state.lock().await;
     let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
-    Ok(metamath_data
+    let mut theorem_amount: i32 = 0;
+    let mut list = Vec::new();
+
+    metamath_data
         .database_header
         .theorem_iter()
-        .skip((from - 1) as usize)
-        .take((to - from) as usize)
         .enumerate()
-        .map(|(i, theorem)| theorem.to_theorem_list_entry(from + (i as u32)))
-        .collect())
+        .for_each(|(i, theorem)| {
+            if page * 100 <= i as u32 && (i as u32) < (page + 1) * 100 {
+                list.push(theorem.to_theorem_list_entry((i as u32) + 1));
+            }
+            theorem_amount += 1;
+        });
+
+    let page_amount = (((theorem_amount - 1) / 100) + 1) as u32;
+
+    Ok(TheoremListData { list, page_amount })
 }

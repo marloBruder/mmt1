@@ -4,10 +4,10 @@
   import type { SearchParameters } from "$lib/sharedState/model.svelte";
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
 
-  let searchParameters: SearchParameters = $state({ label: "", start: 0, amount: 100 });
+  let searchParameters: SearchParameters = $state({ label: "", page: 0 });
 
   let searchClick = async () => {
-    tabManager.openTab(new SearchTab(searchParameters), true);
+    tabManager.openTab(new SearchTab({ ...searchParameters }), true);
   };
 </script>
 

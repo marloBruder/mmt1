@@ -125,6 +125,11 @@ pub struct ProofLine {
     pub assertion: String,
 }
 
+pub struct TheoremListData {
+    pub list: Vec<TheoremListEntry>,
+    pub page_amount: u32,
+}
+
 pub struct TheoremListEntry {
     pub label: String,
     pub theorem_number: u32,
@@ -426,6 +431,20 @@ impl serde::Serialize for TheoremPageData {
         state.serialize_field("theorem", &self.theorem)?;
         state.serialize_field("theoremNumber", &self.theorem_number)?;
         state.serialize_field("proofLines", &self.proof_lines)?;
+        state.end()
+    }
+}
+
+impl serde::Serialize for TheoremListData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("TheoremListData", 2)?;
+        state.serialize_field("list", &self.list)?;
+        state.serialize_field("pageAmount", &self.page_amount)?;
         state.end()
     }
 }

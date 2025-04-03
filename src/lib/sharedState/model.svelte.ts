@@ -93,6 +93,11 @@ export interface ProofLine {
   assertion: string;
 }
 
+export interface TheoremListData {
+  list: TheoremListEntry[];
+  pageAmount: number;
+}
+
 export interface TheoremListEntry {
   label: string;
   theoremNumber: number;
@@ -102,8 +107,7 @@ export interface TheoremListEntry {
 }
 
 export interface SearchParameters {
-  start: number;
-  amount: number;
+  page: number;
   label: string;
 }
 
