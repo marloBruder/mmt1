@@ -1,10 +1,6 @@
 use std::iter::FilterMap;
 
-use crate::model::{
-    Constant, DatabaseElement, Header,
-    Statement::{self, *},
-    Theorem, Variable,
-};
+use crate::model::{Constant, DatabaseElement, Header, Statement::*, Theorem, Variable};
 
 pub struct HeaderIterator<'a> {
     curr_header: &'a Header,

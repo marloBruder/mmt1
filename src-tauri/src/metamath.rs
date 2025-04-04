@@ -1,30 +1,19 @@
 use crate::{
-    database::{
-        constant::set_constants_database,
-        floating_hypothesis::set_floating_hypotheses_database,
-        html_representation::set_html_representations_database,
-        // in_progress_theorem::delete_in_progress_theorem_database,
-        theorem::{add_theorem_database /*calc_db_index_for_theorem*/},
-        variable::set_variables_database,
-    },
     local_state::{
         // constant::set_constants_local,
         floating_hypothesis::{
             get_floating_hypothesis_by_label, /*set_floating_hypotheses_local*/
         },
-        html_representation::set_html_representations_local,
+        // html_representation::set_html_representations_local,
         // in_progress_theorem::delete_in_progress_theorem_local,
         theorem::{add_theorem_local, get_theorem_insert_position},
         // variable::set_variables_local,
     },
-    model::{
-        Constant, FloatingHypohesis, HtmlRepresentation, Hypothesis, MetamathData, ProofLine,
-        Theorem, TheoremPageData, TheoremPath, Variable,
-    },
+    model::{Hypothesis, MetamathData, ProofLine, Theorem, TheoremPageData, TheoremPath},
     AppState, Error,
 };
 use std::collections::HashMap;
-use tauri::{async_runtime::Mutex, State};
+use tauri::async_runtime::Mutex;
 
 pub mod export;
 pub mod parse;
@@ -96,24 +85,7 @@ pub async fn turn_into_theorem(
         &insert_path,
     )?;
 
-    // delete_in_progress_theorem_local(metamath_data, &name);
-
-    // let db_index = calc_db_index_for_theorem(&db_state.metamath_data, &insert_path)?;
-
-    // add_theorem_database(
-    //     &mut db_state.db_conn,
-    //     db_index,
-    //     &name,
-    //     &description,
-    //     &disjoints,
-    //     &hypotheses,
-    //     &assertion,
-    //     proof.as_deref(),
-    // )
-    // .await
-    // .or(Err(Error::SqlError))?;
-
-    // delete_in_progress_theorem_database(&mut db_state.db_conn, &name).await?;
+    //TODO: Add to database
 
     Ok(insert_path)
 }

@@ -3,7 +3,6 @@ use std::fmt;
 use model::MetamathData;
 use tauri::{async_runtime::Mutex, App, Manager};
 
-mod database;
 mod editor;
 mod explorer;
 mod local_state;
@@ -67,8 +66,6 @@ pub fn run() {
             local_state::theorem::get_theorem_page_data_local,
             local_state::theorem::get_theorem_list_local,
             local_state::header::get_header_local,
-            // local_state::in_progress_theorem::get_in_progress_theorem_local,
-            // local_state::in_progress_theorem::get_in_progress_theorem_names_local,
             local_state::html_representation::get_html_representations_local,
         ])
         .setup(|app| app_setup(app))

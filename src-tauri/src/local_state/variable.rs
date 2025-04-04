@@ -1,9 +1,6 @@
 use tauri::async_runtime::Mutex;
 
-use crate::{
-    model::{MetamathData, Variable},
-    AppState, Error,
-};
+use crate::{model::Variable, AppState, Error};
 
 #[tauri::command]
 pub async fn get_variables_local(

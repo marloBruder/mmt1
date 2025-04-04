@@ -138,31 +138,31 @@ pub struct TheoremListEntry {
     pub description: String,
 }
 
-impl MetamathData {
-    pub fn label_exists(&self, label: &str) -> bool {
-        if self.database_header.find_theorem_by_label(label).is_some() {
-            return true;
-        }
+// impl MetamathData {
+//     pub fn label_exists(&self, label: &str) -> bool {
+//         if self.database_header.find_theorem_by_label(label).is_some() {
+//             return true;
+//         }
 
-        false
-    }
+//         false
+//     }
 
-    pub fn valid_label(label: &str) -> bool {
-        if label == "" {
-            return false;
-        }
+//     pub fn valid_label(label: &str) -> bool {
+//         if label == "" {
+//             return false;
+//         }
 
-        for ch in label.chars() {
-            match ch {
-                'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '.' | '-' => {}
-                _ => {
-                    return false;
-                }
-            }
-        }
-        true
-    }
-}
+//         for ch in label.chars() {
+//             match ch {
+//                 'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '.' | '-' => {}
+//                 _ => {
+//                     return false;
+//                 }
+//             }
+//         }
+//         true
+//     }
+// }
 
 // impl Statement {
 //     pub fn is_variable(&self) -> bool {

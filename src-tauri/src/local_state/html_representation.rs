@@ -1,7 +1,4 @@
-use crate::{
-    model::{HtmlRepresentation, MetamathData},
-    AppState, Error,
-};
+use crate::{model::HtmlRepresentation, AppState, Error};
 use tauri::async_runtime::Mutex;
 
 #[tauri::command]
@@ -14,9 +11,9 @@ pub async fn get_html_representations_local(
     Ok(metamath_data.html_representations.clone())
 }
 
-pub fn set_html_representations_local(
-    metamath_data: &mut MetamathData,
-    html_representations: &Vec<HtmlRepresentation>,
-) {
-    metamath_data.html_representations = html_representations.clone();
-}
+// pub fn set_html_representations_local(
+//     metamath_data: &mut MetamathData,
+//     html_representations: &Vec<HtmlRepresentation>,
+// ) {
+//     metamath_data.html_representations = html_representations.clone();
+// }

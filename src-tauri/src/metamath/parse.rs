@@ -1,15 +1,8 @@
 use std::fs::read_to_string;
 
-use sqlx::SqliteConnection;
 use tauri::async_runtime::Mutex;
 
 use crate::{
-    database::{
-        constant::add_constant_database_raw,
-        floating_hypothesis::add_floating_hypothesis_database_raw, /*header::add_header_database*/
-        html_representation::set_html_representations_database, theorem::add_theorem_database,
-        variable::add_variable_database_raw,
-    },
     model::{
         Comment, Constant, FloatingHypohesis, Header, HeaderRepresentation, HtmlRepresentation,
         Hypothesis, MetamathData, Statement::*, Theorem, Variable,
@@ -56,14 +49,11 @@ pub async fn parse_mm_file(
 
     let mut next_label: Option<&str> = None;
 
-    let mut next_const_index = 0;
     let mut active_consts: Vec<&str> = Vec::new();
 
-    let mut next_var_index = 0;
     let mut active_vars: Vec<Vec<&str>> = vec![Vec::new()];
     let mut prev_variables: Vec<&str> = Vec::new();
 
-    let mut next_float_hyp_index = 0;
     let mut active_float_hyps: Vec<Vec<RefFloatingHypothesis>> = vec![Vec::new()];
     let mut prev_float_hyps: Vec<RefFloatingHypothesis> = Vec::new();
 
@@ -72,7 +62,6 @@ pub async fn parse_mm_file(
     let mut active_hyps: Vec<Vec<Hypothesis>> = vec![Vec::new()];
 
     let mut curr_header: &mut Header = &mut metamath_data.database_header;
-    let mut next_db_index = 0;
 
     let mut token_iter = file_content.split_whitespace();
 
@@ -153,8 +142,6 @@ pub async fn parse_mm_file(
                             })
                         }
 
-                        // set_html_representations_database(conn, &html_representations).await?;
-
                         metamath_data.html_representations = html_representations.clone();
                     } else {
                         let mut depth = -1;
@@ -183,10 +170,10 @@ pub async fn parse_mm_file(
 
                             if header_closed {
                                 let mut parent_header = &mut metamath_data.database_header;
-                                let mut actual_depth = 0;
+                                // let mut actual_depth = 0;
                                 for _ in 0..depth {
                                     parent_header = if parent_header.subheaders.len() != 0 {
-                                        actual_depth += 1;
+                                        // actual_depth += 1;
                                         parent_header.subheaders.last_mut().unwrap()
                                     } else {
                                         parent_header
@@ -198,15 +185,6 @@ pub async fn parse_mm_file(
                                     subheaders: Vec::new(),
                                 });
                                 curr_header = parent_header.subheaders.last_mut().unwrap();
-
-                                // add_header_database(
-                                //     conn,
-                                //     next_db_index,
-                                //     actual_depth,
-                                //     &curr_header.title,
-                                // )
-                                // .await?;
-                                next_db_index += 1;
                             }
                         } else {
                             curr_header.content.push(CommentStatement(Comment {
@@ -264,9 +242,7 @@ pub async fn parse_mm_file(
                             curr_header.content.push(ConstantStatement(Constant {
                                 symbol: const_symbol.to_string(),
                             }));
-                            // add_constant_database_raw(conn, next_const_index, const_symbol).await?;
 
-                            next_const_index += 1;
                             active_consts.push(const_symbol);
                             at_least_one_symbol = true;
                         }
@@ -302,9 +278,6 @@ pub async fn parse_mm_file(
                                     .optimized_data
                                     .variables
                                     .insert(var_symbol.to_string());
-                                // add_variable_database_raw(conn, next_var_index, var_symbol).await?;
-
-                                next_var_index += 1;
                             }
 
                             active_vars[scope].push(var_symbol);
@@ -370,16 +343,6 @@ pub async fn parse_mm_file(
                             typecode: typecode.to_string(),
                             variable: variable.to_string(),
                         });
-                    // add_floating_hypothesis_database_raw(
-                    //     conn,
-                    //     next_float_hyp_index,
-                    //     label,
-                    //     typecode,
-                    //     variable,
-                    // )
-                    // .await?;
-
-                    next_float_hyp_index += 1;
                 }
 
                 active_float_hyps[scope].push(RefFloatingHypothesis { typecode, variable });
@@ -441,19 +404,6 @@ pub async fn parse_mm_file(
                         "$.",
                     ));
                 }
-
-                // add_theorem_database(
-                //     conn,
-                //     next_db_index,
-                //     &label,
-                //     &description,
-                //     &disjoints,
-                //     &hypotheses,
-                //     &assertion,
-                //     proof.as_deref(),
-                // )
-                // .await?;
-                next_db_index += 1;
 
                 curr_header.content.push(TheoremStatement(Theorem {
                     label,
