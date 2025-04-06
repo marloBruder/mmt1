@@ -1,7 +1,7 @@
 use tauri::async_runtime::Mutex;
 
 use crate::{
-    metamath::calc_theorem_page_data,
+    metamath,
     model::{
         Hypothesis, MetamathData, Statement::*, Theorem, TheoremListData, TheoremPageData,
         TheoremPath,
@@ -12,17 +12,12 @@ use crate::{
 #[tauri::command]
 pub async fn get_theorem_page_data_local(
     state: tauri::State<'_, Mutex<AppState>>,
-    name: &str,
+    label: &str,
 ) -> Result<TheoremPageData, Error> {
     let app_state = state.lock().await;
     let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
-    let (theorem_number, theorem) = metamath_data
-        .database_header
-        .find_theorem_by_label_calc_number(name)
-        .ok_or(Error::NotFoundError)?;
-
-    return calc_theorem_page_data(theorem, theorem_number, metamath_data);
+    metamath::calc_theorem_page_data(label, metamath_data)
 }
 
 pub fn get_theorem_insert_position(

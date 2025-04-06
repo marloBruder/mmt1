@@ -7,42 +7,41 @@
   export class TheoremTab extends Tab {
     component = TheoremTabComponent;
 
-    #theoremName: string;
-    #pageData: TheoremPageData = $state({ theorem: { label: "", description: "", disjoints: [], hypotheses: [], assertion: "", proof: null }, theoremNumber: 0, proofLines: [] });
+    #theoremLabel: string;
+    #pageData: TheoremPageData = $state({ theorem: { label: "", description: "", disjoints: [], hypotheses: [], assertion: "", proof: null }, theoremNumber: 0, proofLines: [], lastTheoremLabel: null, nextTheoremLabel: null });
 
-    constructor(theoremName: string) {
+    constructor(theoremLabel: string) {
       super();
-      this.#theoremName = theoremName;
+      this.#theoremLabel = theoremLabel;
     }
 
     async loadData(): Promise<void> {
-      this.#pageData = await invoke("get_theorem_page_data_local", { name: this.#theoremName });
+      this.#pageData = await invoke("get_theorem_page_data_local", { label: this.#theoremLabel });
     }
 
     unloadData(): void {
-      this.#pageData = { theorem: { label: "", description: "", disjoints: [], hypotheses: [], assertion: "", proof: null }, theoremNumber: 0, proofLines: [] };
+      this.#pageData = { theorem: { label: "", description: "", disjoints: [], hypotheses: [], assertion: "", proof: null }, theoremNumber: 0, proofLines: [], lastTheoremLabel: null, nextTheoremLabel: null };
     }
 
     name(): string {
-      return this.#theoremName;
+      return this.#theoremLabel;
     }
 
     sameTab(tab: Tab): boolean {
-      return tab instanceof TheoremTab && this.#theoremName == tab.theoremName;
+      return tab instanceof TheoremTab && this.#theoremLabel == tab.theoremLabel;
     }
 
     get pageData() {
       return this.#pageData;
     }
 
-    get theoremName() {
-      return this.#theoremName;
+    get theoremLabel() {
+      return this.#theoremLabel;
     }
   }
 </script>
 
 <script lang="ts">
-  import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import MetamathExpression from "$lib/components/util/MetamathExpression.svelte";
   import TheoremLink from "../util/TheoremLink.svelte";
 
@@ -68,16 +67,24 @@
   };
 </script>
 
-<div class="text-center py-4">
-  <h1 class="text-3xl">
-    {#if theorem.proof}Theorem
-    {:else}Axiom
-    {/if}
-    {theorem.label}
-    <small class="text-sm">
-      {pageData.theoremNumber}
-    </small>
-  </h1>
+<div class="text-center pb-4 flex">
+  <div class="w-1/5 pt-2">
+    <TheoremLink text={"< Previous"} label={pageData.lastTheoremLabel ? pageData.lastTheoremLabel : ""} disabled={pageData.lastTheoremLabel === null}></TheoremLink>
+  </div>
+  <div class="w-3/5 pt-4">
+    <h1 class="text-3xl">
+      {#if theorem.proof}Theorem
+      {:else}Axiom
+      {/if}
+      {theorem.label}
+      <small class="text-sm">
+        {pageData.theoremNumber}
+      </small>
+    </h1>
+  </div>
+  <div class="w-1/5 pt-2">
+    <TheoremLink text={"Next >"} label={pageData.nextTheoremLabel ? pageData.nextTheoremLabel : ""} disabled={pageData.nextTheoremLabel === null}></TheoremLink>
+  </div>
 </div>
 <div class="text-center">
   {#if theorem.hypotheses.length != 0}

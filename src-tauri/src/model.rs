@@ -115,6 +115,8 @@ pub struct TheoremPageData {
     pub theorem: Theorem,
     pub theorem_number: u32,
     pub proof_lines: Vec<ProofLine>,
+    pub last_theorem_label: Option<String>,
+    pub next_theorem_label: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -269,13 +271,6 @@ impl Header {
         // None
     }
 
-    pub fn find_theorem_by_label_calc_number(&self, label: &str) -> Option<(u32, &Theorem)> {
-        self.theorem_iter()
-            .enumerate()
-            .find(|(_, t)| t.label == label)
-            .map(|(i, t)| (i as u32, t))
-    }
-
     pub fn calc_theorem_path_by_label(&self, label: &str) -> Option<TheoremPath> {
         for (index, statement) in self.content.iter().enumerate() {
             if let TheoremStatement(theorem) = statement {
@@ -427,10 +422,12 @@ impl serde::Serialize for TheoremPageData {
     {
         use serde::ser::SerializeStruct;
 
-        let mut state = serializer.serialize_struct("TheoremPageData", 3)?;
+        let mut state = serializer.serialize_struct("TheoremPageData", 5)?;
         state.serialize_field("theorem", &self.theorem)?;
         state.serialize_field("theoremNumber", &self.theorem_number)?;
         state.serialize_field("proofLines", &self.proof_lines)?;
+        state.serialize_field("lastTheoremLabel", &self.last_theorem_label)?;
+        state.serialize_field("nextTheoremLabel", &self.next_theorem_label)?;
         state.end()
     }
 }

@@ -10,6 +10,7 @@ use crate::{
         // variable::set_variables_local,
     },
     model::{Hypothesis, MetamathData, ProofLine, Theorem, TheoremPageData, TheoremPath},
+    util::last_curr_next_iterator::IntoLastCurrNextIterator,
     AppState, Error,
 };
 use std::collections::HashMap;
@@ -459,15 +460,29 @@ struct StackLine {
 }
 
 pub fn calc_theorem_page_data(
-    theorem: &Theorem,
-    theorem_number: u32,
+    label: &str,
     metamath_data: &MetamathData,
 ) -> Result<TheoremPageData, Error> {
+    let (theorem_i, (last_theorem, theorem, next_theorem)) = metamath_data
+        .database_header
+        .theorem_iter()
+        .last_curr_next()
+        .enumerate()
+        .find(|(_, (_, curr_t, _))| curr_t.label == label)
+        .ok_or(Error::NotFoundError)?;
+
+    let last_theorem_label = last_theorem.map(|t| t.label.clone());
+    let next_theorem_label = next_theorem.map(|t| t.label.clone());
+
+    let theorem_number = (theorem_i + 1) as u32;
+
     if theorem.proof == None {
         return Ok(TheoremPageData {
             theorem: theorem.clone(),
             theorem_number,
             proof_lines: Vec::new(),
+            last_theorem_label,
+            next_theorem_label,
         });
     }
     let mut proof_lines = Vec::new();
@@ -555,6 +570,8 @@ pub fn calc_theorem_page_data(
         theorem: theorem.clone(),
         theorem_number,
         proof_lines,
+        last_theorem_label,
+        next_theorem_label,
     })
 }
 

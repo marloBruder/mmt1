@@ -24,7 +24,6 @@ impl<T> Iterator for LastCurrNextIterator<T>
 where
     T: Iterator,
     T::Item: Copy,
-    T::Item: PartialEq,
 {
     type Item = (Option<T::Item>, T::Item, Option<T::Item>);
 
@@ -45,7 +44,6 @@ where
 pub trait IntoLastCurrNextIterator<T>
 where
     T: Iterator,
-    Self: Sized,
 {
     fn last_curr_next(self) -> LastCurrNextIterator<T>;
 }

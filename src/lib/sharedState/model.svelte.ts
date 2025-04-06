@@ -84,6 +84,8 @@ export interface TheoremPageData {
   theorem: Theorem;
   theoremNumber: number;
   proofLines: ProofLine[];
+  lastTheoremLabel: string | null;
+  nextTheoremLabel: string | null;
 }
 
 export interface ProofLine {

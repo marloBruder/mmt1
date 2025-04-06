@@ -2,19 +2,31 @@
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { TheoremTab } from "../tabs/TheoremTabComponent.svelte";
 
-  let { label }: { label: string } = $props();
+  let { label, text, disabled = false }: { label: string; text?: string; disabled?: boolean } = $props();
 
-  let refClick = (e: MouseEvent) => {
+  let onclick = (e: MouseEvent) => {
     tabManager.changeTab(new TheoremTab(label));
   };
 
-  let refMouseDown = (e: MouseEvent) => {
+  let onmouseup = (e: MouseEvent) => {
     if (e.button == 1) {
       e.preventDefault();
       tabManager.makeOpenTempTabPermanent();
       tabManager.openTab(new TheoremTab(label), true);
     }
   };
+
+  let onmousedown = (e: MouseEvent) => {
+    if (e.button == 1) {
+      e.preventDefault();
+    }
+  };
 </script>
 
-<button onclick={refClick} onmousedown={refMouseDown}>{label}</button>
+<button class={disabled ? "text-gray-400" : ""} {onclick} {onmousedown} {onmouseup} {disabled}>
+  {#if text}
+    {text}
+  {:else}
+    {label}
+  {/if}
+</button>
