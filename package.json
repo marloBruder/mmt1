@@ -15,7 +15,8 @@
   "dependencies": {
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.0.1",
-    "@tauri-apps/plugin-shell": "^2"
+    "@tauri-apps/plugin-shell": "^2",
+    "monaco-editor": "^0.52.2"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.5",
