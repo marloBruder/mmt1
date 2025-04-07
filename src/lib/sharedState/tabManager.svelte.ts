@@ -19,6 +19,7 @@ class TabManager {
 
     await newTab.loadData();
     if (0 <= this.#tempTabIndex && this.#tempTabIndex < this.#tabs.length) {
+      this.#tabs[this.#tempTabIndex].unloadData();
       this.#tabs[this.#tempTabIndex] = newTab;
       this.#openTabIndex = this.#tempTabIndex;
       if (permanent) {
@@ -115,6 +116,7 @@ class TabManager {
       //   closedCurrentTab = true;
       // }
 
+      this.#tabs[tabIndex].unloadData();
       this.#tabs.splice(tabIndex, 1);
 
       // if (closedCurrentTab && navigate) {

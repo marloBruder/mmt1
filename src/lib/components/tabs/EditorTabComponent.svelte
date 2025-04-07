@@ -13,6 +13,8 @@
     text: string = $state("");
     textChanged: boolean = $state(false);
 
+    #monacoModel: Monaco.editor.ITextModel | null = null;
+
     constructor(filePath: string) {
       super();
       this.#filePath = filePath;
@@ -20,11 +22,14 @@
 
     async loadData(): Promise<void> {
       this.text = await invoke("read_file", { relativePath: this.#filePath });
+      this.#monacoModel = monaco.editor.createModel(this.text, "mmp");
     }
 
     unloadData(): void {
       this.text = "";
       this.textChanged = false;
+      this.#monacoModel?.dispose();
+      this.#monacoModel = null;
     }
 
     name(): string {
@@ -67,13 +72,20 @@
     get fileName() {
       return this.#fileName;
     }
+
+    get monacoModel() {
+      return this.#monacoModel;
+    }
   }
 </script>
 
 <script lang="ts">
+  import type * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
   import { invoke } from "@tauri-apps/api/core";
   import RoundButton from "$lib/components/util/RoundButton.svelte";
   import { Tab, tabManager } from "$lib/sharedState/tabManager.svelte";
+  import { onDestroy, onMount } from "svelte";
+  import monaco from "$lib/monaco/monaco";
 
   let { tab }: { tab: Tab } = $props();
 
@@ -84,15 +96,33 @@
     throw Error("Wrong Tab Type");
   });
 
-  let lines = $derived.by(() => {
-    let lines = 1;
-    for (let char of editorTab.text) {
-      if (char === "\n") {
-        lines++;
-      }
-    }
-    return lines;
+  let editor: Monaco.editor.IStandaloneCodeEditor;
+  // let monaco: typeof Monaco;
+  let editorContainer: HTMLElement;
+
+  onMount(async () => {
+    editorContainer = document.getElementById("editor-area")!;
+    editor = monaco.editor.create(editorContainer);
   });
+
+  $effect(() => {
+    editor?.setModel(editorTab.monacoModel);
+  });
+
+  onDestroy(() => {
+    // monaco?.editor.getModels().forEach((model) => model.dispose());
+    editor?.dispose();
+  });
+
+  // let lines = $derived.by(() => {
+  //   let lines = 1;
+  //   for (let char of editorTab.text) {
+  //     if (char === "\n") {
+  //       lines++;
+  //     }
+  //   }
+  //   return lines;
+  // });
 
   let nameInput: string = $state("");
 
@@ -178,12 +208,12 @@
 
   let placeAfter = $state("");
 
-  $effect(() => {
-    let textarea = document.getElementById("editorTextarea");
-    if (textarea) {
-      textarea.style.height = lines * 1.5 + "rem";
-    }
-  });
+  // $effect(() => {
+  //   let textarea = document.getElementById("editorTextarea");
+  //   if (textarea) {
+  //     textarea.style.height = lines * 1.5 + "rem";
+  //   }
+  // });
 
   let belowTextareaClick = () => {
     let textarea = document.getElementById("editorTextarea");
@@ -194,7 +224,7 @@
   };
 </script>
 
-<div class="m-2">
+<!-- <div class="m-2">
   <div class="mb-2">
     <label for="tabName">Theorem name:</label>
     <input id="tabName" type="text" bind:value={nameInput} onfocusout={onFocusOutName} onkeydown={onkeyDownName} disabled={nameDisabled} autocomplete="off" class="disabled:bg-gray-300" />
@@ -209,9 +239,9 @@
   <label for="placeAfter">Place after:</label>
   <input id="placeAfter" bind:value={placeAfter} autocomplete="off" />
   <RoundButton onclick={addToDatabase}>Add to database</RoundButton>
-</div>
-<div class="font-mono">
-  <div class="w-8 float-left text-right">
+</div> -->
+<div id="editor-area" class="h-full w-full">
+  <!-- <div class="w-8 float-left text-right">
     {#each { length: lines } as _, i}
       <div>
         {i}
@@ -221,5 +251,5 @@
   <div class="ml-12">
     <textarea id="editorTextarea" bind:value={editorTab.text} oninput={textChange} onkeydown={textareaKeyDown} class="w-full resize-none h-96 text-nowrap overflow-x-hidden focus:outline-none" spellcheck="false"></textarea>
     <button class="w-full h-screen cursor-text" onclick={belowTextareaClick} aria-label="below-textrea"></button>
-  </div>
+  </div> -->
 </div>
