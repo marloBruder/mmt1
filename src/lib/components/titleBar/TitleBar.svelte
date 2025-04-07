@@ -41,11 +41,15 @@
     fileExplorerData.resetData();
   };
 
-  let onSaveFile = async () => {
-    tabManager.getOpenTab()?.saveFile();
+  let onSaveFileClick = async () => {
+    tabManager.getOpenTab()!.saveFile();
   };
 
-  let onOpenMetamathDatabase = async () => {
+  let onUnifyClick = async () => {
+    tabManager.getOpenTab()!.unify();
+  };
+
+  let onOpenMetamathDatabaseClick = async () => {
     const filePath = await open({ multiple: false, directory: false, filters: [{ name: "Metamath Database", extensions: ["mm"] }] });
 
     if (filePath) {
@@ -55,7 +59,7 @@
     }
   };
 
-  let onExportMetamathDatabase = async () => {
+  let onExportMetamathDatabaseClick = async () => {
     const filePath = await save({ filters: [{ name: "Metamath Database", extensions: ["mm"] }] });
 
     if (filePath) {
@@ -68,14 +72,17 @@
   <div class="pl-4 h-full flex items-center">
     <span class="text-xl pr-2">mmt1</span>
     <TitleBarDropdown title="File">
-      <div><button onclick={onOpenFolderClick}>{"Open Folder"}</button></div>
-      <div><button onclick={onCloseFolderClick}>{"Close Folder"}</button></div>
-      <div><button onclick={onSaveFile} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.saveFileDisabled() : true} class="disabled:text-gray-500">{"Save File"}</button></div>
-      <div><button onclick={closeClick}>{"Exit"}</button></div>
+      <div><button onclick={onOpenFolderClick}>Open Folder</button></div>
+      <div><button onclick={onCloseFolderClick}>Close Folder</button></div>
+      <div><button onclick={onSaveFileClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.saveFileDisabled() : true} class="disabled:text-gray-500">Save File</button></div>
+      <div><button onclick={closeClick}>Exit</button></div>
+    </TitleBarDropdown>
+    <TitleBarDropdown title="Unify">
+      <div><button onclick={onUnifyClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.unifyDisabled() : true} class="disabled:text-gray-500">Unify</button></div>
     </TitleBarDropdown>
     <TitleBarDropdown title="Metamath">
-      <div><button onclick={onOpenMetamathDatabase}>{"Open Metamath Database"}</button></div>
-      <div><button onclick={onExportMetamathDatabase}>{"Export Metamath Database"}</button></div>
+      <div><button onclick={onOpenMetamathDatabaseClick}>Open Metamath Database</button></div>
+      <div><button onclick={onExportMetamathDatabaseClick}>Export Metamath Database</button></div>
     </TitleBarDropdown>
   </div>
   <div class="flex">

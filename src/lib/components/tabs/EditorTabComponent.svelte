@@ -55,6 +55,17 @@
       return !this.textChanged;
     }
 
+    async unify(): Promise<void> {
+      let resultText = (await invoke("unify", { text: this.monacoModel!.getValue(), cursorPos: 0 })) as string;
+      if (resultText != this.monacoModel!.getValue()) {
+        this.monacoModel!.setValue(resultText);
+      }
+    }
+
+    unifyDisabled(): boolean {
+      return false;
+    }
+
     changeEditorID(newID: string) {
       // this.#inProgressTheoremName = newID;
     }
@@ -114,6 +125,24 @@
   onMount(async () => {
     editorContainer = document.getElementById("editor-area")!;
     editor = monaco.editor.create(editorContainer, { automaticLayout: true });
+
+    editor.addAction({
+      id: "unify-action",
+      label: "Unify",
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyU],
+      run: async () => {
+        await editorTab.unify();
+      },
+    });
+
+    editor.addAction({
+      id: "save-action",
+      label: "Save file",
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
+      run: async () => {
+        await editorTab.saveFile();
+      },
+    });
   });
 
   $effect(() => {

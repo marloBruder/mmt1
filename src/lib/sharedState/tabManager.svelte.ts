@@ -214,6 +214,12 @@ export abstract class Tab {
   async saveFile(): Promise<void> {}
 
   saveFileDisabled(): boolean {
-    return false;
+    return true;
+  }
+
+  async unify(): Promise<void> {}
+
+  unifyDisabled(): boolean {
+    return true;
   }
 }
