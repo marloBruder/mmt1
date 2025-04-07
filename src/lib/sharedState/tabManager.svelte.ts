@@ -210,4 +210,10 @@ export abstract class Tab {
   showDot(): boolean {
     return false;
   }
+
+  async saveFile(): Promise<void> {}
+
+  saveFileDisabled(): boolean {
+    return false;
+  }
 }

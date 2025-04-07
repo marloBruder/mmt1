@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, type Snippet } from "svelte";
   import type { MouseEventHandler } from "svelte/elements";
 
-  let { title, buttons }: { title: string; buttons: { title: string; buttonClick: MouseEventHandler<HTMLButtonElement> }[] } = $props();
+  let { title, children }: { title: string; children: Snippet } = $props();
 
   let buttonID = $derived("titleBarDropdownButton-" + title);
   let dropdownID = $derived("titleBarDropdown-" + title);
@@ -26,11 +26,7 @@
   </button>
   {#if open}
     <div id={dropdownID} class="fixed bg-white border border-black p-2 z-50">
-      {#each buttons as button}
-        <div>
-          <button onclick={button.buttonClick}>{button.title}</button>
-        </div>
-      {/each}
+      {@render children()}
     </div>
   {/if}
 </div>

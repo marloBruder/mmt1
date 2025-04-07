@@ -10,6 +10,7 @@
   import CloseIcon from "$lib/icons/titleBar/CloseIcon.svelte";
   import MaximizeIcon from "$lib/icons/titleBar/MaximizeIcon.svelte";
   import MinimizeIcon from "$lib/icons/titleBar/MinimizeIcon.svelte";
+  import { tabManager } from "$lib/sharedState/tabManager.svelte";
 
   const appWindow = getCurrentWindow();
 
@@ -25,60 +26,57 @@
     appWindow.close();
   };
 
-  let fileDropdownButtons = [
-    {
-      title: "Open Folder",
-      buttonClick: async () => {
-        const folderPath = await open({ multiple: false, directory: true });
+  let onOpenFolderClick = async () => {
+    const folderPath = await open({ multiple: false, directory: true });
 
-        if (folderPath) {
-          let folderRep = (await invoke("open_folder", { folderPath })) as FolderRepresentation;
-          let folderPathSplit = folderPath.split("\\");
-          fileExplorerData.resetDataWithFirstFolder(folderPathSplit[folderPathSplit.length - 1], folderRep);
-        }
-      },
-    },
-    {
-      title: "Close Folder",
-      buttonClick: async () => {
-        await invoke("close_folder");
-        fileExplorerData.resetData();
-      },
-    },
-    { title: "Exit", buttonClick: closeClick },
-  ];
+    if (folderPath) {
+      let folderRep = (await invoke("open_folder", { folderPath })) as FolderRepresentation;
+      let folderPathSplit = folderPath.split("\\");
+      fileExplorerData.resetDataWithFirstFolder(folderPathSplit[folderPathSplit.length - 1], folderRep);
+    }
+  };
 
-  let metamathDropdownButtons = [
-    {
-      title: "Open Metamath Database",
-      buttonClick: async () => {
-        const filePath = await open({ multiple: false, directory: false, filters: [{ name: "Metamath Database", extensions: ["mm"] }] });
+  let onCloseFolderClick = async () => {
+    await invoke("close_folder");
+    fileExplorerData.resetData();
+  };
 
-        if (filePath) {
-          let [topHeaderRep, htmlReps]: [HeaderRepresentation, HtmlRepresentation[]] = await invoke("open_metamath_database", { mmFilePath: filePath });
-          explorerData.resetExplorerWithFirstHeader(topHeaderRep);
-          htmlData.loadLocal(htmlReps);
-        }
-      },
-    },
-    {
-      title: "Export Metamath Database",
-      buttonClick: async () => {
-        const filePath = await save({ filters: [{ name: "Metamath Database", extensions: ["mm"] }] });
+  let onSaveFile = async () => {
+    tabManager.getOpenTab()?.saveFile();
+  };
 
-        if (filePath) {
-          await invoke("export_database", { filePath });
-        }
-      },
-    },
-  ];
+  let onOpenMetamathDatabase = async () => {
+    const filePath = await open({ multiple: false, directory: false, filters: [{ name: "Metamath Database", extensions: ["mm"] }] });
+
+    if (filePath) {
+      let [topHeaderRep, htmlReps]: [HeaderRepresentation, HtmlRepresentation[]] = await invoke("open_metamath_database", { mmFilePath: filePath });
+      explorerData.resetExplorerWithFirstHeader(topHeaderRep);
+      htmlData.loadLocal(htmlReps);
+    }
+  };
+
+  let onExportMetamathDatabase = async () => {
+    const filePath = await save({ filters: [{ name: "Metamath Database", extensions: ["mm"] }] });
+
+    if (filePath) {
+      await invoke("export_database", { filePath });
+    }
+  };
 </script>
 
 <div class="h-8 w-screen flex justify-between" data-tauri-drag-region>
   <div class="pl-4 h-full flex items-center">
     <span class="text-xl pr-2">mmt1</span>
-    <TitleBarDropdown title="File" buttons={fileDropdownButtons}></TitleBarDropdown>
-    <TitleBarDropdown title="Metamath" buttons={metamathDropdownButtons}></TitleBarDropdown>
+    <TitleBarDropdown title="File">
+      <div><button onclick={onOpenFolderClick}>{"Open Folder"}</button></div>
+      <div><button onclick={onCloseFolderClick}>{"Close Folder"}</button></div>
+      <div><button onclick={onSaveFile} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.saveFileDisabled() : true} class="disabled:text-gray-500">{"Save File"}</button></div>
+      <div><button onclick={closeClick}>{"Exit"}</button></div>
+    </TitleBarDropdown>
+    <TitleBarDropdown title="Metamath">
+      <div><button onclick={onOpenMetamathDatabase}>{"Open Metamath Database"}</button></div>
+      <div><button onclick={onExportMetamathDatabase}>{"Export Metamath Database"}</button></div>
+    </TitleBarDropdown>
   </div>
   <div class="flex">
     <button class="mx-3" onclick={minimizeClick}><MinimizeIcon /></button>

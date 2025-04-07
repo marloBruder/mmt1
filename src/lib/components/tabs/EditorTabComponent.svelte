@@ -10,7 +10,6 @@
       return segments[segments.length - 1];
     });
 
-    text: string = $state("");
     textChanged: boolean = $state(false);
 
     #monacoModel: Monaco.editor.ITextModel | null = null;
@@ -21,12 +20,15 @@
     }
 
     async loadData(): Promise<void> {
-      this.text = await invoke("read_file", { relativePath: this.#filePath });
-      this.#monacoModel = monaco.editor.createModel(this.text, "mmp");
+      let text = (await invoke("read_file", { relativePath: this.#filePath })) as string;
+      this.#monacoModel = monaco.editor.createModel(text, "mmp");
+      this.#monacoModel.onDidChangeContent(() => {
+        this.textChanged = true;
+        tabManager.makeOpenTempTabPermanent();
+      });
     }
 
     unloadData(): void {
-      this.text = "";
       this.textChanged = false;
       this.#monacoModel?.dispose();
       this.#monacoModel = null;
@@ -44,6 +46,15 @@
       return this.textChanged;
     }
 
+    async saveFile(): Promise<void> {
+      await invoke("save_file", { relativePath: this.#filePath, content: this.#monacoModel!.getValue() });
+      this.textChanged = false;
+    }
+
+    saveFileDisabled(): boolean {
+      return !this.textChanged;
+    }
+
     changeEditorID(newID: string) {
       // this.#inProgressTheoremName = newID;
     }
@@ -56,7 +67,7 @@
     }
 
     async addToDatabase() {
-      await invoke("add_to_database", { text: this.text });
+      await invoke("add_to_database", { text: this.monacoModel!.getValue() });
 
       // let dataUnknown = await invoke("turn_into_theorem", { inProgressTheorem: this.#inProgressTheorem, positionName: placeAfter });
       // let theoremPath = dataUnknown as TheoremPath;
@@ -102,7 +113,7 @@
 
   onMount(async () => {
     editorContainer = document.getElementById("editor-area")!;
-    editor = monaco.editor.create(editorContainer);
+    editor = monaco.editor.create(editorContainer, { automaticLayout: true });
   });
 
   $effect(() => {
@@ -176,11 +187,6 @@
     }
   };
 
-  let saveText = () => {
-    invoke("save_file", { relativePath: editorTab.filePath, content: editorTab.text });
-    editorTab.textChanged = false;
-  };
-
   let deleteTheorem = () => {
     editorTab.deleteTheorem();
   };
@@ -195,9 +201,9 @@
       e.preventDefault();
       let textarea = document.getElementById("editorTextarea") as HTMLTextAreaElement;
       let resultText = (await invoke("unify", { text: textarea.value, cursorPos: textarea.selectionStart })) as string;
-      if (resultText != editorTab.text) {
-        editorTab.text = resultText;
-        editorTab.textChanged = true;
+      if (resultText != editorTab.monacoModel?.getValue()) {
+        editorTab.monacoModel?.setValue(resultText);
+        // editorTab.textChanged = true;
       }
     }
   };
