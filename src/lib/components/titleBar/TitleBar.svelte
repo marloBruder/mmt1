@@ -11,6 +11,7 @@
   import MaximizeIcon from "$lib/icons/titleBar/MaximizeIcon.svelte";
   import MinimizeIcon from "$lib/icons/titleBar/MinimizeIcon.svelte";
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
+  import { setSyntaxHighlighting } from "$lib/monaco/monaco";
 
   const appWindow = getCurrentWindow();
 
@@ -56,6 +57,7 @@
       let [topHeaderRep, htmlReps]: [HeaderRepresentation, HtmlRepresentation[]] = await invoke("open_metamath_database", { mmFilePath: filePath });
       explorerData.resetExplorerWithFirstHeader(topHeaderRep);
       htmlData.loadLocal(htmlReps);
+      setSyntaxHighlighting();
     }
   };
 
