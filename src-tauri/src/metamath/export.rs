@@ -8,6 +8,21 @@ use crate::{
 };
 
 #[tauri::command]
+pub async fn new_database(
+    state: tauri::State<'_, Mutex<AppState>>,
+    file_path: &str,
+) -> Result<(), Error> {
+    let mut app_state = state.lock().await;
+
+    fs::write(file_path, "").or(Err(Error::FileWriteError))?;
+
+    app_state.metamath_data = Some(MetamathData::default());
+    app_state.metamath_data.as_mut().unwrap().database_path = file_path.to_string();
+
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn save_database(state: tauri::State<'_, Mutex<AppState>>) -> Result<(), Error> {
     let app_state = state.lock().await;
     let mm_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;

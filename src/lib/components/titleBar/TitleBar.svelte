@@ -50,6 +50,14 @@
     tabManager.getOpenTab()!.unify();
   };
 
+  let onNewMetamathDatabaseClick = async () => {
+    const filePath = await save({ filters: [{ name: "Metamath Database", extensions: ["mm"] }] });
+
+    if (filePath) {
+      await invoke("new_database", { filePath });
+    }
+  };
+
   let onOpenMetamathDatabaseClick = async () => {
     const filePath = await open({ multiple: false, directory: false, filters: [{ name: "Metamath Database", extensions: ["mm"] }] });
 
@@ -83,6 +91,7 @@
       <div><button onclick={onUnifyClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.unifyDisabled() : true} class="disabled:text-gray-500">Unify</button></div>
     </TitleBarDropdown>
     <TitleBarDropdown title="Metamath">
+      <div><button onclick={onNewMetamathDatabaseClick}>New Metamath Database</button></div>
       <div><button onclick={onOpenMetamathDatabaseClick}>Open Metamath Database</button></div>
       <div><button onclick={onExportMetamathDatabaseClick}>Export Metamath Database</button></div>
     </TitleBarDropdown>

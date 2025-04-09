@@ -54,6 +54,7 @@ pub fn run() {
             // metamath::text_to_variables,
             // metamath::text_to_floating_hypotheses,
             // metamath::text_to_html_representations,
+            metamath::export::new_database,
             metamath::export::save_database,
             metamath::export::export_database,
             metamath::parse::open_metamath_database,
