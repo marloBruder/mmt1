@@ -1,10 +1,13 @@
-use crate::{AppState, Error};
+use crate::{model::FloatingHypohesis, AppState, Error};
 use tauri::async_runtime::Mutex;
 
 struct MmpStructuredInfo {
     constants: Option<String>,
     variables: Vec<String>,
+    floating_hypotheses: Vec<FloatingHypohesis>,
     theorem_label: Option<String>,
+    axiom_label: Option<String>,
+    header: Option<(String, String)>,
     distinct_vars: Vec<String>,
     mmj2_steps: Vec<(String, String)>,
     allow_discouraged: bool,
@@ -33,7 +36,19 @@ pub async fn add_to_database(
     let app_state = state.lock().await;
 
     if mmp_structured_info.theorem_label.is_some() {
-        //Add theorem to database
+        // Add theorem to database
+    } else if mmp_structured_info.axiom_label.is_some() {
+        // Add axiom to database
+    } else if mmp_structured_info.header.is_some() {
+        // Add header to database
+    } else if mmp_structured_info.floating_hypotheses.len() > 0 {
+        // Add floating hypothesis to database
+    } else if mmp_structured_info.variables.len() > 0 {
+        // Add variables to database
+    } else if mmp_structured_info.constants.is_some() {
+        // Add constants to database
+    } else if mmp_structured_info.comments.len() > 0 {
+        // Add comment to database
     }
 
     Ok(())
@@ -44,7 +59,10 @@ fn statements_to_mmp_structured_info(
 ) -> Result<MmpStructuredInfo, Error> {
     let mut constants: Option<String> = None;
     let mut variables: Vec<String> = Vec::new();
+    let mut floating_hypotheses: Vec<FloatingHypohesis> = Vec::new();
     let mut theorem_label: Option<String> = None;
+    let mut axiom_label: Option<String> = None;
+    let mut header: Option<(String, String)> = None;
     let mut distinct_vars: Vec<String> = Vec::new();
     let mut mmj2_steps: Vec<(String, String)> = Vec::new();
     let mut allow_discouraged: bool = false;
@@ -56,6 +74,28 @@ fn statements_to_mmp_structured_info(
         let mut token_iter = tokens.iter().map(|t| *t).filter(|t| *t != "\n");
 
         match token_iter.next().ok_or(Error::InternalLogicError)? {
+            "$header" => {
+                if header.is_some() {
+                    return Err(Error::MultipleHeaderStatementError);
+                }
+
+                let pos = token_iter
+                    .next()
+                    .ok_or(Error::TooFewHeaderTokensError)?
+                    .to_string();
+                let mut title = token_iter.fold(String::new(), |mut s, t| {
+                    s.push_str(t);
+                    s.push(' ');
+                    s
+                });
+                title.pop();
+
+                if title.len() == 0 {
+                    return Err(Error::TooFewHeaderTokensError);
+                }
+
+                header = Some((pos, title))
+            }
             "$c" => {
                 if constants.is_some() {
                     return Err(Error::MutipleConstStatementsError);
@@ -86,6 +126,30 @@ fn statements_to_mmp_structured_info(
                 }
                 variables.push(variable_string);
             }
+            "$f" => {
+                let label = token_iter
+                    .next()
+                    .ok_or(Error::FloatHypStatementFormatError)?
+                    .to_string();
+                let typecode = token_iter
+                    .next()
+                    .ok_or(Error::FloatHypStatementFormatError)?
+                    .to_string();
+                let variable = token_iter
+                    .next()
+                    .ok_or(Error::FloatHypStatementFormatError)?
+                    .to_string();
+
+                floating_hypotheses.push(FloatingHypohesis {
+                    label,
+                    typecode,
+                    variable,
+                });
+
+                if token_iter.next().is_some() {
+                    return Err(Error::FloatHypStatementFormatError);
+                }
+            }
             "$theorem" => {
                 if theorem_label.is_some() {
                     return Err(Error::MultipleTheoremLabelError);
@@ -97,8 +161,25 @@ fn statements_to_mmp_structured_info(
                         .ok_or(Error::MissingTheoremLabelError)?
                         .to_string(),
                 );
+
                 if token_iter.next().is_some() {
                     return Err(Error::TooManyTheoremLabelTokensError);
+                }
+            }
+            "$axiom" => {
+                if axiom_label.is_some() {
+                    return Err(Error::MultipleAxiomLabelError);
+                }
+
+                axiom_label = Some(
+                    token_iter
+                        .next()
+                        .ok_or(Error::MissingAxiomLabelError)?
+                        .to_string(),
+                );
+
+                if token_iter.next().is_some() {
+                    return Err(Error::TooManyAxiomLabelTokensError);
                 }
             }
             "$d" => {
@@ -217,7 +298,10 @@ fn statements_to_mmp_structured_info(
     Ok(MmpStructuredInfo {
         constants,
         variables,
+        floating_hypotheses,
         theorem_label,
+        axiom_label,
+        header,
         distinct_vars,
         mmj2_steps,
         allow_discouraged,

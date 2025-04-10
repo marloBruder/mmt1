@@ -127,13 +127,19 @@ pub enum Error {
 
     // Parsing mmp file errors
     WhitespaceBeforeFirstTokenError, // Returned if there is whitepace before the first token
-    MutipleConstStatementsError,     // Returned if there are multipe $c statements
+    MultipleHeaderStatementError,    // Returned if there are mutliple $header statements
+    TooFewHeaderTokensError, // Returned if there are less than 2 tokens after $header statement
+    MutipleConstStatementsError, // Returned if there are multipe $c statements
     // EmptyConstStatementError: Also used when parsing mmp files
     // EmptyVarStatementError: Also used when parsing mmp files
+    // FloatHypStatementFormatError: Also used when parsing mmp files
     MultipleTheoremLabelError, // Returned if there are more than one $theorem statements
     MissingTheoremLabelError, // Returned if there is a $theorem statement without a follow up token
     TooManyTheoremLabelTokensError, // Returned if there is a $theorem statement with too many follow up tokens
-    MultipleAllowDiscouragedError,  // Returned if there are multiple $allowdiscouraged statements
+    MultipleAxiomLabelError,        // Returned if there are more than one $axiom statements
+    MissingAxiomLabelError, // Returned if there is a $axiom statement without a follow up token
+    TooManyAxiomLabelTokensError, // Returned if there is a $axiom statement with too many follow up tokens
+    MultipleAllowDiscouragedError, // Returned if there are multiple $allowdiscouraged statements
     TokensAfterAllowDiscouragedError, // Returned if there are tokens after $allowdiscouraged
     MultipleLocateAfterError, // Returned if there are multiple $locateafter(-var/-const) statements
     MissingLocateAfterLabelError, // Returned if there is a $locateafter statement without a follow up token
