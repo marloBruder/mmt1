@@ -222,4 +222,10 @@ export abstract class Tab {
   unifyDisabled(): boolean {
     return true;
   }
+
+  async addToDatabase(): Promise<void> {}
+
+  addToDatabaseDisabled(): boolean {
+    return true;
+  }
 }

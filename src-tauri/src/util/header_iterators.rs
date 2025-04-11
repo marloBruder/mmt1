@@ -63,20 +63,6 @@ impl<'a> Iterator for HeaderIterator<'a> {
     }
 }
 
-// struct TheoremFilterMap;
-
-// impl FnOnce<(&Statement)> for TheoremFilterMap {
-//     type Output = Option<&Theorem>;
-
-//     extern "rust-call" fn call_once(self, s: (&Statement)) -> Option<&Theorem> {
-//         if let TheoremStatement(theorem) = s {
-//             Some(theorem)
-//         } else {
-//             None
-//         }
-//     }
-// }
-
 pub struct ConstantIterator<'a> {
     inner: FilterMap<HeaderIterator<'a>, Box<dyn FnMut(DatabaseElement) -> Option<&Constant>>>,
 }

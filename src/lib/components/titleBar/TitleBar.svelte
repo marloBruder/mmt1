@@ -76,6 +76,10 @@
       await invoke("export_database", { filePath });
     }
   };
+
+  let onAddToDatabaseClick = () => {
+    tabManager.getOpenTab()!.addToDatabase();
+  };
 </script>
 
 <div class="h-8 w-screen flex justify-between" data-tauri-drag-region>
@@ -84,7 +88,9 @@
     <TitleBarDropdown title="File">
       <div><button onclick={onOpenFolderClick}>Open Folder</button></div>
       <div><button onclick={onCloseFolderClick}>Close Folder</button></div>
+      <hr class="border-black" />
       <div><button onclick={onSaveFileClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.saveFileDisabled() : true} class="disabled:text-gray-500">Save File</button></div>
+      <hr class="border-black" />
       <div><button onclick={closeClick}>Exit</button></div>
     </TitleBarDropdown>
     <TitleBarDropdown title="Unify">
@@ -94,6 +100,8 @@
       <div><button onclick={onNewMetamathDatabaseClick}>New Metamath Database</button></div>
       <div><button onclick={onOpenMetamathDatabaseClick}>Open Metamath Database</button></div>
       <div><button onclick={onExportMetamathDatabaseClick}>Export Metamath Database</button></div>
+      <hr class="border-black" />
+      <div><button onclick={onAddToDatabaseClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.addToDatabaseDisabled() : true} class="disabled:text-gray-500">Add to database</button></div>
     </TitleBarDropdown>
   </div>
   <div class="flex">

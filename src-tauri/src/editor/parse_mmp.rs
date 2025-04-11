@@ -1,4 +1,7 @@
-use crate::{model::FloatingHypohesis, AppState, Error};
+use crate::{
+    model::{Comment, Constant, FloatingHypohesis, Header, Statement, Theorem, Variable},
+    AppState, Error,
+};
 use tauri::async_runtime::Mutex;
 
 struct MmpStructuredInfo {
@@ -33,7 +36,8 @@ pub async fn add_to_database(
     let statements = text_to_statements(text)?;
     let mmp_structured_info = statements_to_mmp_structured_info(statements)?;
 
-    let app_state = state.lock().await;
+    let mut app_state = state.lock().await;
+    let mm_data = app_state.metamath_data.as_mut().ok_or(Error::NoMmDbError)?;
 
     if mmp_structured_info.theorem_label.is_some() {
         // Add theorem to database
@@ -49,9 +53,100 @@ pub async fn add_to_database(
         // Add constants to database
     } else if mmp_structured_info.comments.len() > 0 {
         // Add comment to database
+        add_statement(
+            &mut mm_data.database_header,
+            &mmp_structured_info.locate_after,
+            Statement::CommentStatement(Comment {
+                text: mmp_structured_info.comments.into_iter().next().unwrap(),
+            }),
+        );
     }
 
     Ok(())
+}
+
+fn add_statement(
+    header: &mut Header,
+    locate_after: &Option<LocateAfter>,
+    statement: Statement,
+) -> Option<Statement> {
+    match locate_after {
+        Some(loc_after) => add_statement_locate_after(header, loc_after, statement),
+        None => {
+            add_statement_at_end(header, statement);
+            None
+        }
+    }
+}
+
+fn add_statement_locate_after(
+    header: &mut Header,
+    locate_after: &LocateAfter,
+    mut statement: Statement,
+) -> Option<Statement> {
+    for i in 0..header.content.len() {
+        match locate_after {
+            LocateAfter::LocateAfterConst(s) => {
+                if let Some(Statement::ConstantStatement(Constant { symbol })) =
+                    header.content.get(i)
+                {
+                    if symbol == s {
+                        header.content.insert(i + 1, statement);
+                        return None;
+                    }
+                }
+            }
+            LocateAfter::LocateAfterVar(s) => {
+                if let Some(Statement::VariableStatement(Variable { symbol })) =
+                    header.content.get(i)
+                {
+                    if symbol == s {
+                        header.content.insert(i + 1, statement);
+                        return None;
+                    }
+                }
+            }
+            LocateAfter::LocateAfter(s) => {
+                if let Some(Statement::TheoremStatement(Theorem { label, .. })) =
+                    header.content.get(i)
+                {
+                    if label == s {
+                        header.content.insert(i + 1, statement);
+                        return None;
+                    }
+                } else if let Some(Statement::FloatingHypohesisStatement(FloatingHypohesis {
+                    label,
+                    ..
+                })) = header.content.get(i)
+                {
+                    if label == s {
+                        header.content.insert(i + 1, statement);
+                        return None;
+                    }
+                }
+            }
+        }
+    }
+
+    for subheader in &mut header.subheaders {
+        statement = match add_statement_locate_after(subheader, locate_after, statement) {
+            Some(s) => s,
+            None => {
+                return None;
+            }
+        };
+    }
+
+    Some(statement)
+}
+
+fn add_statement_at_end(header: &mut Header, statement: Statement) {
+    let mut last_header = header;
+    while last_header.subheaders.len() > 0 {
+        last_header = last_header.subheaders.last_mut().unwrap();
+    }
+
+    last_header.content.push(statement);
 }
 
 fn statements_to_mmp_structured_info(
