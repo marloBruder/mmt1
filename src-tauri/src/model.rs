@@ -27,8 +27,8 @@ pub struct OptimizedMetamathData {
 #[derive(Debug)]
 pub enum Statement {
     CommentStatement(Comment),
-    ConstantStatement(Constant),
-    VariableStatement(Variable),
+    ConstantStatement(Vec<Constant>),
+    VariableStatement(Vec<Variable>),
     FloatingHypohesisStatement(FloatingHypohesis),
     TheoremStatement(Theorem),
 }
@@ -230,13 +230,31 @@ impl Header {
                         content_type: "CommentStatement".to_string(),
                         title: "Comment".to_string(),
                     },
-                    ConstantStatement(constant) => HeaderContentRepresentation {
+                    ConstantStatement(constants) => HeaderContentRepresentation {
                         content_type: "ConstantStatement".to_string(),
-                        title: constant.symbol.clone(),
+                        title: constants
+                            .iter()
+                            .fold((true, String::new()), |(first, mut s), c| {
+                                if !first {
+                                    s.push(' ');
+                                }
+                                s.push_str(&c.symbol);
+                                (false, s)
+                            })
+                            .1,
                     },
-                    VariableStatement(variable) => HeaderContentRepresentation {
+                    VariableStatement(variables) => HeaderContentRepresentation {
                         content_type: "VariableStatement".to_string(),
-                        title: variable.symbol.clone(),
+                        title: variables
+                            .iter()
+                            .fold((true, String::new()), |(first, mut s), v| {
+                                if !first {
+                                    s.push(' ');
+                                }
+                                s.push_str(&v.symbol);
+                                (false, s)
+                            })
+                            .1,
                     },
                     FloatingHypohesisStatement(floating_hypohesis) => HeaderContentRepresentation {
                         content_type: "FloatingHypothesisStatement".to_string(),

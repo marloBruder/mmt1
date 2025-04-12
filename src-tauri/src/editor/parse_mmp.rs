@@ -87,39 +87,31 @@ fn add_statement_locate_after(
     for i in 0..header.content.len() {
         match locate_after {
             LocateAfter::LocateAfterConst(s) => {
-                if let Some(Statement::ConstantStatement(Constant { symbol })) =
-                    header.content.get(i)
-                {
-                    if symbol == s {
+                if let Some(Statement::ConstantStatement(constants)) = header.content.get(i) {
+                    if constants.iter().find(|c| c.symbol == *s).is_some() {
                         header.content.insert(i + 1, statement);
                         return None;
                     }
                 }
             }
             LocateAfter::LocateAfterVar(s) => {
-                if let Some(Statement::VariableStatement(Variable { symbol })) =
-                    header.content.get(i)
-                {
-                    if symbol == s {
+                if let Some(Statement::VariableStatement(variables)) = header.content.get(i) {
+                    if variables.iter().find(|c| c.symbol == *s).is_some() {
                         header.content.insert(i + 1, statement);
                         return None;
                     }
                 }
             }
             LocateAfter::LocateAfter(s) => {
-                if let Some(Statement::TheoremStatement(Theorem { label, .. })) =
-                    header.content.get(i)
-                {
-                    if label == s {
+                if let Some(Statement::TheoremStatement(theorem)) = header.content.get(i) {
+                    if theorem.label == *s {
                         header.content.insert(i + 1, statement);
                         return None;
                     }
-                } else if let Some(Statement::FloatingHypohesisStatement(FloatingHypohesis {
-                    label,
-                    ..
-                })) = header.content.get(i)
+                } else if let Some(Statement::FloatingHypohesisStatement(floating_hypothesis)) =
+                    header.content.get(i)
                 {
-                    if label == s {
+                    if floating_hypothesis.label == *s {
                         header.content.insert(i + 1, statement);
                         return None;
                     }

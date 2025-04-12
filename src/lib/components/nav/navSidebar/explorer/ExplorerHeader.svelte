@@ -118,9 +118,9 @@
       {#if contentTitle.contentType === "CommentStatement"}
         <ExplorerCommentButton {headerPath} commentNum={newCommentNum()}></ExplorerCommentButton>
       {:else if contentTitle.contentType === "ConstantStatement"}
-        <ExplorerConstantButton constant={contentTitle.title}></ExplorerConstantButton>
+        <ExplorerConstantButton constants={contentTitle.title}></ExplorerConstantButton>
       {:else if contentTitle.contentType === "VariableStatement"}
-        <ExplorerVariableButton variable={contentTitle.title}></ExplorerVariableButton>
+        <ExplorerVariableButton variables={contentTitle.title}></ExplorerVariableButton>
       {:else if contentTitle.contentType === "FloatingHypothesisStatement"}
         <ExplorerFloatingHypothesisButton label={contentTitle.title}></ExplorerFloatingHypothesisButton>
       {:else if contentTitle.contentType === "TheoremStatement"}

@@ -64,7 +64,9 @@ impl<'a> Iterator for HeaderIterator<'a> {
 }
 
 pub struct ConstantIterator<'a> {
-    inner: FilterMap<HeaderIterator<'a>, Box<dyn FnMut(DatabaseElement) -> Option<&Constant>>>,
+    inner: FilterMap<HeaderIterator<'a>, Box<dyn FnMut(DatabaseElement) -> Option<&Vec<Constant>>>>,
+    curr_const_vec: Option<&'a Vec<Constant>>,
+    next_const_i: usize,
 }
 
 impl<'a> ConstantIterator<'a> {
@@ -72,12 +74,14 @@ impl<'a> ConstantIterator<'a> {
         ConstantIterator {
             inner: top_header.iter().filter_map(Box::new(|e| {
                 if let DatabaseElement::Statement(s) = e {
-                    if let ConstantStatement(constant) = s {
-                        return Some(constant);
+                    if let ConstantStatement(constants) = s {
+                        return Some(constants);
                     }
                 }
                 None
             })),
+            curr_const_vec: None,
+            next_const_i: 0,
         }
     }
 }
@@ -86,12 +90,28 @@ impl<'a> Iterator for ConstantIterator<'a> {
     type Item = &'a Constant;
 
     fn next(&mut self) -> Option<&'a Constant> {
-        self.inner.next()
+        if self.curr_const_vec.is_none() {
+            self.curr_const_vec = Some(self.inner.next()?);
+        }
+
+        if self.next_const_i < self.curr_const_vec.unwrap().len() {
+            self.next_const_i += 1;
+            return self.curr_const_vec.unwrap().get(self.next_const_i - 1);
+        }
+
+        self.next_const_i = 1;
+        self.curr_const_vec = Some(self.inner.next()?);
+        while self.curr_const_vec.unwrap().is_empty() {
+            self.curr_const_vec = Some(self.inner.next()?);
+        }
+        self.curr_const_vec.unwrap().get(0)
     }
 }
 
 pub struct VariableIterator<'a> {
-    inner: FilterMap<HeaderIterator<'a>, Box<dyn FnMut(DatabaseElement) -> Option<&Variable>>>,
+    inner: FilterMap<HeaderIterator<'a>, Box<dyn FnMut(DatabaseElement) -> Option<&Vec<Variable>>>>,
+    curr_var_vec: Option<&'a Vec<Variable>>,
+    next_var_i: usize,
 }
 
 impl<'a> VariableIterator<'a> {
@@ -99,12 +119,14 @@ impl<'a> VariableIterator<'a> {
         VariableIterator {
             inner: top_header.iter().filter_map(Box::new(|e| {
                 if let DatabaseElement::Statement(s) = e {
-                    if let VariableStatement(variable) = s {
-                        return Some(variable);
+                    if let VariableStatement(variables) = s {
+                        return Some(variables);
                     }
                 }
                 None
             })),
+            curr_var_vec: None,
+            next_var_i: 0,
         }
     }
 }
@@ -113,7 +135,21 @@ impl<'a> Iterator for VariableIterator<'a> {
     type Item = &'a Variable;
 
     fn next(&mut self) -> Option<&'a Variable> {
-        self.inner.next()
+        if self.curr_var_vec.is_none() {
+            self.curr_var_vec = Some(self.inner.next()?);
+        }
+
+        if self.next_var_i < self.curr_var_vec.unwrap().len() {
+            self.next_var_i += 1;
+            return self.curr_var_vec.unwrap().get(self.next_var_i - 1);
+        }
+
+        self.next_var_i = 1;
+        self.curr_var_vec = Some(self.inner.next()?);
+        while self.curr_var_vec.unwrap().is_empty() {
+            self.curr_var_vec = Some(self.inner.next()?);
+        }
+        self.curr_var_vec.unwrap().get(0)
     }
 }
 

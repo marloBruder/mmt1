@@ -220,13 +220,12 @@ pub async fn parse_mm_file(
                     return Err(Error::ConstStatementScopeError);
                 }
 
-                let mut at_least_one_symbol = false;
+                let mut constants: Vec<Constant> = Vec::new();
 
                 while let Some(const_token) = token_iter.next() {
                     match const_token {
                         "$(" => get_next_until(&mut token_iter, "$)"),
-                        "$." if at_least_one_symbol => break,
-                        "$." => return Err(Error::EmptyConstStatementError),
+                        "$." => break,
                         const_symbol => {
                             if !is_valid_math_symbol(const_symbol) {
                                 return Err(Error::InvalidSymbolError);
@@ -239,24 +238,28 @@ pub async fn parse_mm_file(
                                 return Err(Error::TwiceDeclaredConstError);
                             }
 
-                            curr_header.content.push(ConstantStatement(Constant {
+                            constants.push(Constant {
                                 symbol: const_symbol.to_string(),
-                            }));
+                            });
 
                             active_consts.push(const_symbol);
-                            at_least_one_symbol = true;
                         }
                     }
                 }
+
+                if constants.is_empty() {
+                    return Err(Error::EmptyConstStatementError);
+                }
+
+                curr_header.content.push(ConstantStatement(constants));
             }
             "$v" => {
-                let mut at_least_one_symbol = false;
+                let mut variables: Vec<Variable> = Vec::new();
 
                 while let Some(var_token) = token_iter.next() {
                     match var_token {
                         "$(" => get_next_until(&mut token_iter, "$)"),
-                        "$." if at_least_one_symbol => break,
-                        "$." => return Err(Error::EmptyVarStatementError),
+                        "$." => break,
                         var_symbol => {
                             if !is_valid_math_symbol(var_symbol) {
                                 return Err(Error::InvalidSymbolError);
@@ -270,20 +273,29 @@ pub async fn parse_mm_file(
                                 return Err(Error::TwiceDeclaredVarError);
                             }
 
-                            if !prev_variables.contains(&var_symbol) {
-                                curr_header.content.push(VariableStatement(Variable {
-                                    symbol: var_symbol.to_string(),
-                                }));
+                            // if !prev_variables.contains(&var_symbol) {
+                            variables.push(Variable {
+                                symbol: var_symbol.to_string(),
+                            });
+                            if scope == 0 {
                                 metamath_data
                                     .optimized_data
                                     .variables
                                     .insert(var_symbol.to_string());
                             }
+                            // }
 
                             active_vars[scope].push(var_symbol);
-                            at_least_one_symbol = true;
                         }
                     }
+                }
+
+                if variables.is_empty() {
+                    return Err(Error::EmptyVarStatementError);
+                }
+
+                if scope == 0 {
+                    curr_header.content.push(VariableStatement(variables));
                 }
             }
             "$f" => {

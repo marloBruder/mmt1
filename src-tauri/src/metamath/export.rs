@@ -71,15 +71,21 @@ fn calc_database_string(metamath_data: &MetamathData) -> String {
                     write_text_wrapped(&mut res, "$)", "  ");
                     res.push_str("\n\n");
                 }
-                ConstantStatement(constant) => {
+                ConstantStatement(constants) => {
                     res.push_str("$c ");
-                    res.push_str(&constant.symbol);
-                    res.push_str(" $.\n\n");
+                    for constant in constants {
+                        res.push_str(&constant.symbol);
+                        res.push(' ');
+                    }
+                    res.push_str("$.\n\n");
                 }
-                VariableStatement(variable) => {
+                VariableStatement(variables) => {
                     res.push_str("$v ");
-                    res.push_str(&variable.symbol);
-                    res.push_str(" $.\n\n");
+                    for variable in variables {
+                        res.push_str(&variable.symbol);
+                        res.push(' ');
+                    }
+                    res.push_str("$.\n\n");
                 }
                 FloatingHypohesisStatement(floating_hypothesis) => {
                     res.push_str(&floating_hypothesis.label);
