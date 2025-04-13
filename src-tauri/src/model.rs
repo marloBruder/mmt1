@@ -140,31 +140,55 @@ pub struct TheoremListEntry {
     pub description: String,
 }
 
-// impl MetamathData {
-//     pub fn label_exists(&self, label: &str) -> bool {
-//         if self.database_header.find_theorem_by_label(label).is_some() {
-//             return true;
-//         }
-
-//         false
-//     }
-
-//     pub fn valid_label(label: &str) -> bool {
-//         if label == "" {
-//             return false;
-//         }
-
-//         for ch in label.chars() {
-//             match ch {
-//                 'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '.' | '-' => {}
-//                 _ => {
-//                     return false;
-//                 }
-//             }
-//         }
-//         true
-//     }
-// }
+impl MetamathData {
+    pub fn valid_new_symbols(&self, symbols: &Vec<&str>) -> bool {
+        self.database_header
+            .iter()
+            .find(|c| match c {
+                DatabaseElement::Statement(s) => match s {
+                    Statement::CommentStatement(_) => false,
+                    Statement::ConstantStatement(consts) => {
+                        for c in consts {
+                            for symbol in symbols {
+                                if &c.symbol == symbol {
+                                    return true;
+                                }
+                            }
+                        }
+                        false
+                    }
+                    Statement::VariableStatement(vars) => {
+                        for v in vars {
+                            for symbol in symbols {
+                                if &v.symbol == symbol {
+                                    return true;
+                                }
+                            }
+                        }
+                        false
+                    }
+                    Statement::FloatingHypohesisStatement(fh) => {
+                        for symbol in symbols {
+                            if &fh.label == symbol {
+                                return true;
+                            }
+                        }
+                        false
+                    }
+                    Statement::TheoremStatement(t) => {
+                        for symbol in symbols {
+                            if &t.label == symbol {
+                                return true;
+                            }
+                        }
+                        false
+                    }
+                },
+                DatabaseElement::Header(_, _) => false,
+            })
+            .is_some()
+    }
+}
 
 // impl Statement {
 //     pub fn is_variable(&self) -> bool {

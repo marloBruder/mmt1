@@ -131,6 +131,7 @@ pub enum Error {
     TooFewHeaderTokensError, // Returned if there are less than 2 tokens after $header statement
     MutipleConstStatementsError, // Returned if there are multipe $c statements
     // EmptyConstStatementError: Also used when parsing mmp files
+    // TwiceDeclaredConstError: Also used when parsing mmp files
     // EmptyVarStatementError: Also used when parsing mmp files
     // FloatHypStatementFormatError: Also used when parsing mmp files
     MultipleTheoremLabelError, // Returned if there are more than one $theorem statements

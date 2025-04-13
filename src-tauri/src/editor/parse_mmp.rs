@@ -5,7 +5,7 @@ use crate::{
 use tauri::async_runtime::Mutex;
 
 struct MmpStructuredInfo {
-    constants: Option<String>,
+    constants: Vec<Constant>,
     variables: Vec<String>,
     floating_hypotheses: Vec<FloatingHypohesis>,
     theorem_label: Option<String>,
@@ -45,12 +45,28 @@ pub async fn add_to_database(
         // Add axiom to database
     } else if mmp_structured_info.header.is_some() {
         // Add header to database
-    } else if mmp_structured_info.floating_hypotheses.len() > 0 {
+    } else if !mmp_structured_info.floating_hypotheses.is_empty() {
         // Add floating hypothesis to database
-    } else if mmp_structured_info.variables.len() > 0 {
+    } else if !mmp_structured_info.variables.is_empty() {
         // Add variables to database
-    } else if mmp_structured_info.constants.is_some() {
+    } else if !mmp_structured_info.constants.is_empty() {
         // Add constants to database
+
+        if mm_data.valid_new_symbols(
+            &mmp_structured_info
+                .constants
+                .iter()
+                .map(|c| &*c.symbol)
+                .collect(),
+        ) {
+            return Err(Error::TwiceDeclaredConstError);
+        }
+
+        add_statement(
+            &mut mm_data.database_header,
+            &mmp_structured_info.locate_after,
+            Statement::ConstantStatement(mmp_structured_info.constants),
+        );
     } else if mmp_structured_info.comments.len() > 0 {
         // Add comment to database
         add_statement(
@@ -144,7 +160,7 @@ fn add_statement_at_end(header: &mut Header, statement: Statement) {
 fn statements_to_mmp_structured_info(
     statements: Vec<Vec<&str>>,
 ) -> Result<MmpStructuredInfo, Error> {
-    let mut constants: Option<String> = None;
+    let mut constants: Vec<Constant> = Vec::new();
     let mut variables: Vec<String> = Vec::new();
     let mut floating_hypotheses: Vec<FloatingHypohesis> = Vec::new();
     let mut theorem_label: Option<String> = None;
@@ -184,21 +200,19 @@ fn statements_to_mmp_structured_info(
                 header = Some((pos, title))
             }
             "$c" => {
-                if constants.is_some() {
+                if !constants.is_empty() {
                     return Err(Error::MutipleConstStatementsError);
                 }
 
-                let (count, mut constants_string) =
-                    token_iter.fold((0, String::new()), |(i, mut s), t| {
-                        s.push_str(t);
-                        s.push(' ');
-                        (i + 1, s)
+                for token in token_iter {
+                    constants.push(Constant {
+                        symbol: token.to_string(),
                     });
-                constants_string.pop();
-                if count < 1 {
+                }
+
+                if constants.is_empty() {
                     return Err(Error::EmptyConstStatementError);
                 }
-                constants = Some(constants_string);
             }
             "$v" => {
                 let (count, mut variable_string) =
