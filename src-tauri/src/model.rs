@@ -416,6 +416,25 @@ impl Header {
 }
 
 impl HeaderPath {
+    pub fn from_str(str: &str) -> Result<HeaderPath, ()> {
+        if str.contains('+') {
+            return Err(());
+        }
+
+        Ok(HeaderPath {
+            path: str
+                .split('.')
+                .map(|s| {
+                    let i = s.parse::<usize>().or(Err(()))?;
+                    if i == 0 {
+                        return Err(());
+                    }
+                    Ok(i - 1)
+                })
+                .collect::<Result<Vec<usize>, ()>>()?,
+        })
+    }
+
     pub fn resolve<'a>(&self, top_header: &'a Header) -> Option<&'a Header> {
         let mut header = top_header;
 

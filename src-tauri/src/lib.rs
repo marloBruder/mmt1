@@ -133,7 +133,8 @@ pub enum Error {
     // EmptyConstStatementError: Also used when parsing mmp files
     // EmptyVarStatementError: Also used when parsing mmp files
     // FloatHypStatementFormatError: Also used when parsing mmp files
-    MultipleTheoremLabelError, // Returned if there are more than one $theorem statements
+    InvalidHeaderPathStringError, // Returned if the token after $header is not a valid Headerpath
+    MultipleTheoremLabelError,    // Returned if there are more than one $theorem statements
     MissingTheoremLabelError, // Returned if there is a $theorem statement without a follow up token
     TooManyTheoremLabelTokensError, // Returned if there is a $theorem statement with too many follow up tokens
     MultipleAxiomLabelError,        // Returned if there are more than one $axiom statements

@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 
 use crate::{
-    model::{Comment, Constant, FloatingHypohesis, Header, MetamathData, Statement, Variable},
+    model::{
+        Comment, Constant, FloatingHypohesis, Header, HeaderPath, MetamathData, Statement, Variable,
+    },
     AppState, Error,
 };
 use tauri::async_runtime::Mutex;
@@ -46,7 +48,7 @@ pub async fn add_to_database(
     } else if mmp_structured_info.axiom_label.is_some() {
         // Add axiom to database
     } else if mmp_structured_info.header.is_some() {
-        // Add header to database
+        add_header_to_database(mm_data, mmp_structured_info)?;
     } else if !mmp_structured_info.floating_hypotheses.is_empty() {
         add_floating_hypothesis_to_database(mm_data, mmp_structured_info)?;
     } else if !mmp_structured_info.variables.is_empty() {
@@ -55,6 +57,53 @@ pub async fn add_to_database(
         add_constants_to_database(mm_data, mmp_structured_info)?;
     } else if mmp_structured_info.comments.len() > 0 {
         add_comment_to_database(mm_data, mmp_structured_info)?;
+    }
+
+    Ok(())
+}
+
+fn add_header_to_database(
+    mm_data: &mut MetamathData,
+    mmp_structured_info: MmpStructuredInfo,
+) -> Result<(), Error> {
+    if !mmp_structured_info.floating_hypotheses.is_empty()
+        || !mmp_structured_info.constants.is_empty()
+        || !mmp_structured_info.variables.is_empty()
+        || mmp_structured_info.allow_discouraged
+        || !mmp_structured_info.distinct_vars.is_empty()
+        || !mmp_structured_info.mmj2_steps.is_empty()
+        || mmp_structured_info.locate_after.is_some()
+    {
+        return Err(Error::StatementOutOfPlaceError);
+    }
+
+    let (header_path_string, header_title) = mmp_structured_info
+        .header
+        .ok_or(Error::InternalLogicError)?;
+
+    let mut header_path =
+        HeaderPath::from_str(&header_path_string).or(Err(Error::InvalidHeaderPathStringError))?;
+
+    let last_header_index = header_path.path.pop().ok_or(Error::InternalLogicError)?;
+
+    let header = header_path
+        .resolve_mut(&mut mm_data.database_header)
+        .ok_or(Error::InvalidHeaderPathStringError)?;
+
+    if last_header_index < header.subheaders.len() {
+        header
+            .subheaders
+            .get_mut(last_header_index)
+            .ok_or(Error::InternalLogicError)?
+            .title = header_title;
+    } else if last_header_index == header.subheaders.len() {
+        header.subheaders.push(Header {
+            title: header_title,
+            content: Vec::new(),
+            subheaders: Vec::new(),
+        });
+    } else if last_header_index > header.subheaders.len() {
+        return Err(Error::InvalidHeaderPathStringError);
     }
 
     Ok(())
