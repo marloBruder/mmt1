@@ -2,8 +2,12 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
-use crate::util::header_iterators::{
-    ConstantIterator, HeaderIterator, TheoremIterator, VariableIterator,
+use crate::{
+    util::header_iterators::{
+        ConstantIterator, FloatingHypothesisIterator, HeaderIterator, TheoremIterator,
+        VariableIterator,
+    },
+    Error,
 };
 use Statement::*;
 
@@ -188,6 +192,36 @@ impl MetamathData {
             })
             .is_none()
     }
+
+    pub fn recalc_optimized_floating_hypotheses_after_one_new(&mut self) -> Result<(), Error> {
+        let mut i: usize = 0;
+        for floating_hypothesis in self.database_header.floating_hypohesis_iter() {
+            let optimized_floating_hypothesis_option =
+                self.optimized_data.floating_hypotheses.get(i);
+
+            match optimized_floating_hypothesis_option {
+                Some(optimized_floating_hypothesis) => {
+                    if floating_hypothesis.label != optimized_floating_hypothesis.label {
+                        self.optimized_data
+                            .floating_hypotheses
+                            .insert(i, floating_hypothesis.clone());
+                        return Ok(());
+                    }
+                }
+                None => {
+                    // Happens when the new floating hypothesis was inserted at the end
+                    self.optimized_data
+                        .floating_hypotheses
+                        .push(floating_hypothesis.clone());
+                    return Ok(());
+                }
+            }
+
+            i += 1;
+        }
+
+        Ok(())
+    }
 }
 
 // impl Statement {
@@ -370,6 +404,10 @@ impl Header {
 
     pub fn variable_iter(&self) -> VariableIterator {
         VariableIterator::new(self)
+    }
+
+    pub fn floating_hypohesis_iter(&self) -> FloatingHypothesisIterator {
+        FloatingHypothesisIterator::new(self)
     }
 
     pub fn theorem_iter(&self) -> TheoremIterator {

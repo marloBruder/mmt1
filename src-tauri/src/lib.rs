@@ -130,11 +130,8 @@ pub enum Error {
     MultipleHeaderStatementError,    // Returned if there are mutliple $header statements
     TooFewHeaderTokensError, // Returned if there are less than 2 tokens after $header statement
     DuplicateSymbolError, // Returned if an added symbol (const, var or label) exists in the database already
-    MutipleConstStatementsError, // Returned if there are multipe $c statements
-    ConstStatementOutOfPlaceError, // Returned if there is a $c statement not on it's own
     // EmptyConstStatementError: Also used when parsing mmp files
     // EmptyVarStatementError: Also used when parsing mmp files
-    AddingMultipleVarStatementsAtOnceError, //Returned if there are more than one $v statements when adding variables
     // FloatHypStatementFormatError: Also used when parsing mmp files
     MultipleTheoremLabelError, // Returned if there are more than one $theorem statements
     MissingTheoremLabelError, // Returned if there is a $theorem statement without a follow up token
@@ -148,6 +145,7 @@ pub enum Error {
     MissingLocateAfterLabelError, // Returned if there is a $locateafter statement without a follow up token
     TooManyLocateAfterTokensError, // Returned if there is a $locateafter statement with too many follow up tokens
     InvalidDollarTokenError, // Returned if there is a statement that starts with $ not followed by a vaild statement type
+    StatementOutOfPlaceError, // Returned if there is a statement out of place, for example if there is a $v and a $c statement
 }
 
 impl fmt::Display for Error {

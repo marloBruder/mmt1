@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    model::{Comment, Constant, FloatingHypohesis, Header, Statement, Theorem, Variable},
+    model::{Comment, Constant, FloatingHypohesis, Header, MetamathData, Statement, Variable},
     AppState, Error,
 };
 use tauri::async_runtime::Mutex;
@@ -17,7 +17,7 @@ struct MmpStructuredInfo {
     mmj2_steps: Vec<(String, String)>,
     allow_discouraged: bool,
     locate_after: Option<LocateAfter>,
-    comments: Vec<String>,
+    comments: Vec<Comment>,
 }
 
 enum LocateAfter {
@@ -48,71 +48,151 @@ pub async fn add_to_database(
     } else if mmp_structured_info.header.is_some() {
         // Add header to database
     } else if !mmp_structured_info.floating_hypotheses.is_empty() {
-        // Add floating hypothesis to database
+        add_floating_hypothesis_to_database(mm_data, mmp_structured_info)?;
     } else if !mmp_structured_info.variables.is_empty() {
-        // Add variables to database
-
-        if mmp_structured_info.variables.len() > 1 {
-            return Err(Error::AddingMultipleVarStatementsAtOnceError);
-        }
-
-        if !mmp_structured_info.constants.is_empty() {
-            return Err(Error::ConstStatementOutOfPlaceError);
-        }
-
-        let var_strs = mmp_structured_info
-            .variables
-            .get(0)
-            .unwrap()
-            .iter()
-            .map(|v| &*v.symbol)
-            .collect();
-
-        if !mm_data.valid_new_symbols(&var_strs) {
-            return Err(Error::DuplicateSymbolError);
-        }
-
-        if !all_different_strs(&var_strs) {
-            return Err(Error::DuplicateSymbolError);
-        }
-
-        add_statement(
-            &mut mm_data.database_header,
-            &mmp_structured_info.locate_after,
-            Statement::VariableStatement(mmp_structured_info.variables.into_iter().next().unwrap()),
-        );
+        add_variables_to_database(mm_data, mmp_structured_info)?;
     } else if !mmp_structured_info.constants.is_empty() {
-        // Add constants to database
-
-        let const_strs = mmp_structured_info
-            .constants
-            .iter()
-            .map(|c| &*c.symbol)
-            .collect();
-
-        if !mm_data.valid_new_symbols(&const_strs) {
-            return Err(Error::DuplicateSymbolError);
-        }
-
-        if !all_different_strs(&const_strs) {
-            return Err(Error::DuplicateSymbolError);
-        }
-
-        add_statement(
-            &mut mm_data.database_header,
-            &mmp_structured_info.locate_after,
-            Statement::ConstantStatement(mmp_structured_info.constants),
-        );
+        add_constants_to_database(mm_data, mmp_structured_info)?;
     } else if mmp_structured_info.comments.len() > 0 {
-        // Add comment to database
-        add_statement(
-            &mut mm_data.database_header,
-            &mmp_structured_info.locate_after,
-            Statement::CommentStatement(Comment {
-                text: mmp_structured_info.comments.into_iter().next().unwrap(),
-            }),
-        );
+        add_comment_to_database(mm_data, mmp_structured_info)?;
     }
+
+    Ok(())
+}
+
+fn add_floating_hypothesis_to_database(
+    mm_data: &mut MetamathData,
+    mmp_structured_info: MmpStructuredInfo,
+) -> Result<(), Error> {
+    if mmp_structured_info.floating_hypotheses.len() > 1
+        || !mmp_structured_info.constants.is_empty()
+        || !mmp_structured_info.variables.is_empty()
+        || mmp_structured_info.allow_discouraged
+        || !mmp_structured_info.distinct_vars.is_empty()
+        || !mmp_structured_info.mmj2_steps.is_empty()
+    {
+        return Err(Error::StatementOutOfPlaceError);
+    }
+
+    let flaoting_hypothesis = mmp_structured_info
+        .floating_hypotheses
+        .into_iter()
+        .next()
+        .ok_or(Error::InternalLogicError)?;
+
+    if !mm_data.valid_new_symbols(&vec![&*flaoting_hypothesis.label]) {
+        return Err(Error::DuplicateSymbolError);
+    }
+
+    add_statement(
+        &mut mm_data.database_header,
+        &mmp_structured_info.locate_after,
+        Statement::FloatingHypohesisStatement(flaoting_hypothesis),
+    );
+
+    mm_data.recalc_optimized_floating_hypotheses_after_one_new()?;
+
+    Ok(())
+}
+
+fn add_variables_to_database(
+    mm_data: &mut MetamathData,
+    mmp_structured_info: MmpStructuredInfo,
+) -> Result<(), Error> {
+    if mmp_structured_info.variables.len() > 1
+        || !mmp_structured_info.constants.is_empty()
+        || mmp_structured_info.allow_discouraged
+        || !mmp_structured_info.distinct_vars.is_empty()
+        || !mmp_structured_info.mmj2_steps.is_empty()
+    {
+        return Err(Error::StatementOutOfPlaceError);
+    }
+
+    let variables = mmp_structured_info
+        .variables
+        .into_iter()
+        .next()
+        .ok_or(Error::InternalLogicError)?;
+
+    let var_strs = variables.iter().map(|v| &*v.symbol).collect();
+
+    if !mm_data.valid_new_symbols(&var_strs) {
+        return Err(Error::DuplicateSymbolError);
+    }
+
+    if !all_different_strs(&var_strs) {
+        return Err(Error::DuplicateSymbolError);
+    }
+
+    for var in &variables {
+        mm_data.optimized_data.variables.insert(var.symbol.clone());
+    }
+
+    add_statement(
+        &mut mm_data.database_header,
+        &mmp_structured_info.locate_after,
+        Statement::VariableStatement(variables),
+    );
+
+    Ok(())
+}
+
+fn add_constants_to_database(
+    mm_data: &mut MetamathData,
+    mmp_structured_info: MmpStructuredInfo,
+) -> Result<(), Error> {
+    if mmp_structured_info.allow_discouraged
+        || !mmp_structured_info.distinct_vars.is_empty()
+        || !mmp_structured_info.mmj2_steps.is_empty()
+    {
+        return Err(Error::StatementOutOfPlaceError);
+    }
+
+    let const_strs = mmp_structured_info
+        .constants
+        .iter()
+        .map(|c| &*c.symbol)
+        .collect();
+
+    if !mm_data.valid_new_symbols(&const_strs) {
+        return Err(Error::DuplicateSymbolError);
+    }
+
+    if !all_different_strs(&const_strs) {
+        return Err(Error::DuplicateSymbolError);
+    }
+
+    add_statement(
+        &mut mm_data.database_header,
+        &mmp_structured_info.locate_after,
+        Statement::ConstantStatement(mmp_structured_info.constants),
+    );
+
+    Ok(())
+}
+
+fn add_comment_to_database(
+    mm_data: &mut MetamathData,
+    mmp_structured_info: MmpStructuredInfo,
+) -> Result<(), Error> {
+    if mmp_structured_info.allow_discouraged
+        || !mmp_structured_info.distinct_vars.is_empty()
+        || !mmp_structured_info.mmj2_steps.is_empty()
+    {
+        return Err(Error::StatementOutOfPlaceError);
+    }
+
+    add_statement(
+        &mut mm_data.database_header,
+        &mmp_structured_info.locate_after,
+        Statement::CommentStatement(
+            mmp_structured_info
+                .comments
+                .into_iter()
+                .next()
+                .ok_or(Error::InternalLogicError)?,
+        ),
+    );
 
     Ok(())
 }
@@ -218,7 +298,7 @@ fn statements_to_mmp_structured_info(
     let mut mmj2_steps: Vec<(String, String)> = Vec::new();
     let mut allow_discouraged: bool = false;
     let mut locate_after: Option<LocateAfter> = None;
-    let mut comments: Vec<String> = Vec::new();
+    let mut comments: Vec<Comment> = Vec::new();
 
     for tokens in statements {
         // "\n" denote an empty line, which are only relevant for comments
@@ -249,7 +329,7 @@ fn statements_to_mmp_structured_info(
             }
             "$c" => {
                 if !constants.is_empty() {
-                    return Err(Error::MutipleConstStatementsError);
+                    return Err(Error::StatementOutOfPlaceError);
                 }
 
                 for token in token_iter {
@@ -425,7 +505,7 @@ fn statements_to_mmp_structured_info(
                 {
                     comment.pop();
                 }
-                comments.push(comment);
+                comments.push(Comment { text: comment });
             }
             t if !t.starts_with("$") => {
                 let mut expression: String = token_iter.fold(String::new(), |mut s, t| {
