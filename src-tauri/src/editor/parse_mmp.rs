@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{
     model::{Comment, Constant, FloatingHypohesis, Header, Statement, Theorem, Variable},
     AppState, Error,
@@ -6,7 +8,7 @@ use tauri::async_runtime::Mutex;
 
 struct MmpStructuredInfo {
     constants: Vec<Constant>,
-    variables: Vec<String>,
+    variables: Vec<Vec<Variable>>,
     floating_hypotheses: Vec<FloatingHypohesis>,
     theorem_label: Option<String>,
     axiom_label: Option<String>,
@@ -49,17 +51,51 @@ pub async fn add_to_database(
         // Add floating hypothesis to database
     } else if !mmp_structured_info.variables.is_empty() {
         // Add variables to database
+
+        if mmp_structured_info.variables.len() > 1 {
+            return Err(Error::AddingMultipleVarStatementsAtOnceError);
+        }
+
+        if !mmp_structured_info.constants.is_empty() {
+            return Err(Error::ConstStatementOutOfPlaceError);
+        }
+
+        let var_strs = mmp_structured_info
+            .variables
+            .get(0)
+            .unwrap()
+            .iter()
+            .map(|v| &*v.symbol)
+            .collect();
+
+        if !mm_data.valid_new_symbols(&var_strs) {
+            return Err(Error::DuplicateSymbolError);
+        }
+
+        if !all_different_strs(&var_strs) {
+            return Err(Error::DuplicateSymbolError);
+        }
+
+        add_statement(
+            &mut mm_data.database_header,
+            &mmp_structured_info.locate_after,
+            Statement::VariableStatement(mmp_structured_info.variables.into_iter().next().unwrap()),
+        );
     } else if !mmp_structured_info.constants.is_empty() {
         // Add constants to database
 
-        if mm_data.valid_new_symbols(
-            &mmp_structured_info
-                .constants
-                .iter()
-                .map(|c| &*c.symbol)
-                .collect(),
-        ) {
-            return Err(Error::TwiceDeclaredConstError);
+        let const_strs = mmp_structured_info
+            .constants
+            .iter()
+            .map(|c| &*c.symbol)
+            .collect();
+
+        if !mm_data.valid_new_symbols(&const_strs) {
+            return Err(Error::DuplicateSymbolError);
+        }
+
+        if !all_different_strs(&const_strs) {
+            return Err(Error::DuplicateSymbolError);
         }
 
         add_statement(
@@ -79,6 +115,18 @@ pub async fn add_to_database(
     }
 
     Ok(())
+}
+
+fn all_different_strs(strs: &Vec<&str>) -> bool {
+    let mut hash_set: HashSet<&str> = HashSet::new();
+
+    for str in strs {
+        if !hash_set.insert(*str) {
+            return false;
+        }
+    }
+
+    true
 }
 
 fn add_statement(
@@ -161,7 +209,7 @@ fn statements_to_mmp_structured_info(
     statements: Vec<Vec<&str>>,
 ) -> Result<MmpStructuredInfo, Error> {
     let mut constants: Vec<Constant> = Vec::new();
-    let mut variables: Vec<String> = Vec::new();
+    let mut variables: Vec<Vec<Variable>> = Vec::new();
     let mut floating_hypotheses: Vec<FloatingHypohesis> = Vec::new();
     let mut theorem_label: Option<String> = None;
     let mut axiom_label: Option<String> = None;
@@ -215,17 +263,19 @@ fn statements_to_mmp_structured_info(
                 }
             }
             "$v" => {
-                let (count, mut variable_string) =
-                    token_iter.fold((0, String::new()), |(i, mut s), t| {
-                        s.push_str(t);
-                        s.push(' ');
-                        (i + 1, s)
+                let mut variable_vec: Vec<Variable> = Vec::new();
+
+                for token in token_iter {
+                    variable_vec.push(Variable {
+                        symbol: token.to_string(),
                     });
-                variable_string.pop();
-                if count < 1 {
+                }
+
+                if variable_vec.is_empty() {
                     return Err(Error::EmptyVarStatementError);
                 }
-                variables.push(variable_string);
+
+                variables.push(variable_vec);
             }
             "$f" => {
                 let label = token_iter

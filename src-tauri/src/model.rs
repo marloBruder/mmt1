@@ -186,7 +186,7 @@ impl MetamathData {
                 },
                 DatabaseElement::Header(_, _) => false,
             })
-            .is_some()
+            .is_none()
     }
 }
 
