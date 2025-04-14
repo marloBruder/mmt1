@@ -1,6 +1,8 @@
 use std::iter::FilterMap;
 
-use crate::model::{Constant, DatabaseElement, Header, Statement::*, Theorem, Variable};
+use crate::model::{
+    Constant, DatabaseElement, FloatingHypohesis, Header, Statement::*, Theorem, Variable,
+};
 
 pub struct HeaderIterator<'a> {
     curr_header: &'a Header,
@@ -150,6 +152,36 @@ impl<'a> Iterator for VariableIterator<'a> {
             self.curr_var_vec = Some(self.inner.next()?);
         }
         self.curr_var_vec.unwrap().get(0)
+    }
+}
+
+pub struct FloatingHypothesisIterator<'a> {
+    inner: FilterMap<
+        HeaderIterator<'a>,
+        Box<dyn FnMut(DatabaseElement) -> Option<&FloatingHypohesis>>,
+    >,
+}
+
+impl<'a> FloatingHypothesisIterator<'a> {
+    pub fn new(top_header: &'a Header) -> FloatingHypothesisIterator<'a> {
+        FloatingHypothesisIterator {
+            inner: top_header.iter().filter_map(Box::new(|e| {
+                if let DatabaseElement::Statement(s) = e {
+                    if let FloatingHypohesisStatement(floating_hypothesis) = s {
+                        return Some(floating_hypothesis);
+                    }
+                }
+                None
+            })),
+        }
+    }
+}
+
+impl<'a> Iterator for FloatingHypothesisIterator<'a> {
+    type Item = &'a FloatingHypohesis;
+
+    fn next(&mut self) -> Option<&'a FloatingHypohesis> {
+        self.inner.next()
     }
 }
 
