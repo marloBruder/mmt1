@@ -13,6 +13,8 @@
     textChanged: boolean = $state(false);
 
     #monacoModel: Monaco.editor.ITextModel | null = null;
+    #monacoScrollTop: number = 0;
+    #monacoScrollLeft: number = 0;
 
     constructor(filePath: string) {
       super();
@@ -80,15 +82,9 @@
       return false;
     }
 
-    changeEditorID(newID: string) {
-      // this.#inProgressTheoremName = newID;
-    }
-
-    async deleteTheorem() {
-      // await invoke("delete_in_progress_theorem", { name: this.#inProgressTheoremName });
-      // tabManager.closeOpenTab();
-      // nameListData.removeInProgressTheoremName(this.#inProgressTheoremName);
-      // return;
+    setMonacoScrollInternal(scrollTop: number, scrollLeft: number) {
+      this.#monacoScrollTop = scrollTop;
+      this.#monacoScrollLeft = scrollLeft;
     }
 
     get filePath() {
@@ -101,6 +97,12 @@
 
     get monacoModel() {
       return this.#monacoModel;
+    }
+    get monacoScrollTop() {
+      return this.#monacoScrollTop;
+    }
+    get monacoScrollLeft() {
+      return this.#monacoScrollLeft;
     }
   }
 </script>
@@ -147,10 +149,16 @@
         await editorTab.saveFile();
       },
     });
+
+    editor.onDidScrollChange((e) => {
+      editorTab.setMonacoScrollInternal(e.scrollTop, e.scrollLeft);
+    });
   });
 
   $effect(() => {
     editor?.setModel(editorTab.monacoModel);
+    editor?.setScrollTop(editorTab.monacoScrollTop);
+    editor?.setScrollLeft(editorTab.monacoScrollLeft);
   });
 
   onDestroy(() => {
@@ -218,10 +226,6 @@
     } else if (event.key == "Escape") {
       abortNameSave();
     }
-  };
-
-  let deleteTheorem = () => {
-    editorTab.deleteTheorem();
   };
 
   let textChange = () => {
