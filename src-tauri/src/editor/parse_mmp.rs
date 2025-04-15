@@ -2,7 +2,8 @@ use std::collections::HashSet;
 
 use crate::{
     model::{
-        Comment, Constant, FloatingHypohesis, Header, HeaderPath, MetamathData, Statement, Variable,
+        Comment, Constant, FloatingHypohesis, Header, HeaderPath, Hypothesis, MetamathData,
+        Statement, Theorem, Variable,
     },
     AppState, Error,
 };
@@ -46,7 +47,7 @@ pub async fn add_to_database(
     if mmp_structured_info.theorem_label.is_some() {
         // Add theorem to database
     } else if mmp_structured_info.axiom_label.is_some() {
-        // Add axiom to database
+        add_axiom_to_database(mm_data, mmp_structured_info)?;
     } else if mmp_structured_info.header.is_some() {
         add_header_to_database(mm_data, mmp_structured_info)?;
     } else if !mmp_structured_info.floating_hypotheses.is_empty() {
@@ -58,6 +59,94 @@ pub async fn add_to_database(
     } else if mmp_structured_info.comments.len() > 0 {
         add_comment_to_database(mm_data, mmp_structured_info)?;
     }
+
+    Ok(())
+}
+
+fn add_axiom_to_database(
+    mm_data: &mut MetamathData,
+    mmp_structured_info: MmpStructuredInfo,
+) -> Result<(), Error> {
+    if !mmp_structured_info.constants.is_empty()
+        || mmp_structured_info.allow_discouraged
+        || mmp_structured_info.header.is_some()
+    {
+        return Err(Error::StatementOutOfPlaceError);
+    }
+
+    let mut symbols: Vec<&str> = Vec::new();
+
+    let axiom_label = mmp_structured_info
+        .axiom_label
+        .ok_or(Error::InternalLogicError)?;
+
+    symbols.push(&axiom_label);
+
+    let mut hypotheses: Vec<Hypothesis> = Vec::new();
+
+    if mmp_structured_info.mmj2_steps.is_empty() {
+        return Err(Error::MissingMmj2StepsError);
+    }
+
+    let mut assertion: String = String::new();
+
+    let mmj2_step_count = mmp_structured_info.mmj2_steps.len();
+
+    for (i, (prefix, expression)) in mmp_structured_info.mmj2_steps.into_iter().enumerate() {
+        let prefix_parts: Vec<&str> = prefix.split(':').collect();
+        if i != mmj2_step_count - 1 {
+            if prefix_parts.len() != 3
+                || !prefix_parts.get(0).unwrap().starts_with('h')
+                || prefix_parts.get(1).unwrap().len() != 0
+                || prefix_parts.get(2).unwrap().len() == 0
+                || expression.len() == 0
+            {
+                return Err(Error::InvalidMmj2StepPrefixError);
+            }
+            hypotheses.push(Hypothesis {
+                label: prefix_parts.get(2).unwrap().to_string(),
+                hypothesis: expression,
+            });
+        } else {
+            if prefix_parts.len() != 3
+                || prefix_parts.get(0).unwrap() != &"qed"
+                || prefix_parts.get(1).unwrap().len() != 0
+                || prefix_parts.get(2).unwrap().len() != 0
+            {
+                return Err(Error::InvalidMmj2StepPrefixError);
+            }
+            assertion = expression;
+        }
+    }
+    for hypothesis in &hypotheses {
+        symbols.push(&hypothesis.label)
+    }
+
+    if !mm_data.valid_new_symbols(&symbols) {
+        return Err(Error::InvalidSymbolError);
+    }
+
+    if !all_different_strs(&symbols) {
+        return Err(Error::DuplicateSymbolError);
+    }
+
+    add_statement(
+        &mut mm_data.database_header,
+        &mmp_structured_info.locate_after,
+        Statement::TheoremStatement(Theorem {
+            label: axiom_label,
+            description: mmp_structured_info
+                .comments
+                .into_iter()
+                .next()
+                .map(|c| c.text)
+                .unwrap_or(String::new()),
+            disjoints: mmp_structured_info.distinct_vars,
+            assertion,
+            hypotheses,
+            proof: None,
+        }),
+    );
 
     Ok(())
 }

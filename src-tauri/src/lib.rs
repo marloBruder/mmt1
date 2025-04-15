@@ -140,6 +140,8 @@ pub enum Error {
     MultipleAxiomLabelError,        // Returned if there are more than one $axiom statements
     MissingAxiomLabelError, // Returned if there is a $axiom statement without a follow up token
     TooManyAxiomLabelTokensError, // Returned if there is a $axiom statement with too many follow up tokens
+    InvalidMmj2StepPrefixError, // Returned if there is an invalid mmj2 step prefix, such as "x:x:x:x" or "x:x"
+    MissingMmj2StepsError,      // Returned if there are no mmj2 steps when adding theorem/axiom
     MultipleAllowDiscouragedError, // Returned if there are multiple $allowdiscouraged statements
     TokensAfterAllowDiscouragedError, // Returned if there are tokens after $allowdiscouraged
     MultipleLocateAfterError, // Returned if there are multiple $locateafter(-var/-const) statements
