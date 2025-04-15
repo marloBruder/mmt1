@@ -499,7 +499,9 @@ pub fn calc_theorem_page_data(
 
     let mut next_hypotheses_num = 1;
 
-    for (step_num, save) in step_numbers {
+    let step_numbers_len = step_numbers.len();
+
+    for (i, (step_num, save)) in step_numbers.into_iter().enumerate() {
         let step = proof_steps
             .get((step_num - 1) as usize)
             .ok_or(Error::InvalidProofError)?;
@@ -530,7 +532,9 @@ pub fn calc_theorem_page_data(
             });
         }
 
-        if stack.last().unwrap().statement.split_whitespace().next() == Some("|-") {
+        if stack.last().unwrap().statement.split_whitespace().next() == Some("|-")
+            || i == step_numbers_len - 1
+        {
             if step.display_step_number == -1 {
                 hypotheses_nums.reverse();
                 proof_lines.push(ProofLine {
