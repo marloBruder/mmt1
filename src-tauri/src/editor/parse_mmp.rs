@@ -45,7 +45,7 @@ pub async fn add_to_database(
     let mm_data = app_state.metamath_data.as_mut().ok_or(Error::NoMmDbError)?;
 
     if mmp_structured_info.theorem_label.is_some() {
-        // Add theorem to database
+        add_theorem_to_database(mm_data, mmp_structured_info)?;
     } else if mmp_structured_info.axiom_label.is_some() {
         add_axiom_to_database(mm_data, mmp_structured_info)?;
     } else if mmp_structured_info.header.is_some() {
@@ -61,6 +61,141 @@ pub async fn add_to_database(
     }
 
     Ok(())
+}
+
+fn add_theorem_to_database(
+    mm_data: &mut MetamathData,
+    mmp_structured_info: MmpStructuredInfo,
+) -> Result<(), Error> {
+    if mmp_structured_info.axiom_label.is_some()
+        || !mmp_structured_info.constants.is_empty()
+        || mmp_structured_info.header.is_some()
+    {
+        return Err(Error::StatementOutOfPlaceError);
+    }
+
+    let mut new_symbols: Vec<&str> = Vec::new();
+
+    let thoerem_label = mmp_structured_info
+        .theorem_label
+        .ok_or(Error::InternalLogicError)?;
+
+    new_symbols.push(&thoerem_label);
+
+    if mmp_structured_info.mmj2_steps.is_empty() {
+        return Err(Error::MissingMmj2StepsError);
+    }
+
+    let mut hypotheses: Vec<Hypothesis> = Vec::new();
+    let mut assertion: String = String::new();
+
+    let mut mmj2_steps_complete: Vec<Mmj2StepComplete> = Vec::new();
+
+    for (prefix, expression) in &mmp_structured_info.mmj2_steps {
+        let prefix_parts: Vec<&str> = prefix.split(':').collect();
+        if prefix_parts.len() != 3 {
+            return Err(Error::InvalidMmj2StepPrefixError);
+        }
+
+        let label = prefix_parts.get(2).unwrap();
+
+        let prefix_step_name = prefix_parts.get(0).unwrap();
+
+        let mut hypothesis = false;
+        let step_name: &str;
+
+        if prefix_step_name.starts_with('h') {
+            hypothesis = true;
+            step_name = prefix_step_name.split_at(1).1;
+            hypotheses.push(Hypothesis {
+                label: label.to_string(),
+                hypothesis: expression.to_string(),
+            });
+            new_symbols.push(label);
+        } else {
+            step_name = prefix_step_name;
+        }
+
+        if step_name == "qed" {
+            assertion = expression.clone();
+        }
+
+        if step_name.contains(',') {
+            return Err(Error::InvalidMmj2StepPrefixError);
+        }
+
+        let prefix_hyps = prefix_parts.get(1).unwrap();
+
+        let mut hyps: Vec<usize> = Vec::new();
+
+        if !prefix_hyps.is_empty() {
+            let hyp_strs: Vec<&str> = prefix_hyps.split(',').collect();
+            for hyp_str in &hyp_strs {
+                for (i, previous_step) in mmj2_steps_complete.iter().enumerate() {
+                    if previous_step.step_name == *hyp_str {
+                        hyps.push(i);
+                    }
+                }
+            }
+
+            if hyp_strs.len() != hyps.len() {
+                return Err(Error::InvalidMmj2StepPrefixError);
+            }
+        }
+
+        mmj2_steps_complete.push(Mmj2StepComplete {
+            hypothesis,
+            step_name,
+            hyps,
+            label,
+            expression,
+        });
+    }
+
+    if assertion == "" {
+        return Err(Error::MissingQedStepError);
+    }
+
+    if !mm_data.valid_new_symbols(&new_symbols) {
+        return Err(Error::DuplicateSymbolError);
+    }
+
+    if !all_different_strs(&new_symbols) {
+        return Err(Error::DuplicateSymbolError);
+    }
+
+    for mmj2_step in &mmj2_steps_complete {
+        println!("{:?}\n", mmj2_step);
+    }
+
+    add_statement(
+        &mut mm_data.database_header,
+        &mmp_structured_info.locate_after,
+        Statement::TheoremStatement(Theorem {
+            label: thoerem_label,
+            description: mmp_structured_info
+                .comments
+                .into_iter()
+                .next()
+                .map(|c| c.text)
+                .unwrap_or(String::new()),
+            disjoints: mmp_structured_info.distinct_vars,
+            assertion,
+            hypotheses,
+            proof: None,
+        }),
+    );
+
+    Ok(())
+}
+
+#[derive(Debug)]
+struct Mmj2StepComplete<'a> {
+    hypothesis: bool,
+    step_name: &'a str,
+    hyps: Vec<usize>,
+    label: &'a str,
+    expression: &'a str,
 }
 
 fn add_axiom_to_database(
@@ -82,11 +217,11 @@ fn add_axiom_to_database(
 
     symbols.push(&axiom_label);
 
-    let mut hypotheses: Vec<Hypothesis> = Vec::new();
-
     if mmp_structured_info.mmj2_steps.is_empty() {
         return Err(Error::MissingMmj2StepsError);
     }
+
+    let mut hypotheses: Vec<Hypothesis> = Vec::new();
 
     let mut assertion: String = String::new();
 
@@ -123,7 +258,7 @@ fn add_axiom_to_database(
     }
 
     if !mm_data.valid_new_symbols(&symbols) {
-        return Err(Error::InvalidSymbolError);
+        return Err(Error::DuplicateSymbolError);
     }
 
     if !all_different_strs(&symbols) {
