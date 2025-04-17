@@ -143,11 +143,14 @@ pub enum Error {
     InvalidMmj2StepPrefixError, // Returned if there is an invalid mmj2 step prefix, such as "x:x:x:x" or "x:x"
     MissingMmj2StepsError,      // Returned if there are no mmj2 steps when adding theorem/axiom
     MissingQedStepError,        // Returned if there is no qed step, but a $thereom statement
+    DuplicateStepNameError,     // Returned if there is a duplicate step name
+    TheoremLabelNotFoundError,  // Returned if a theorem label in a mmj2 step prefix does not exist
     MultipleAllowDiscouragedError, // Returned if there are multiple $allowdiscouraged statements
     TokensAfterAllowDiscouragedError, // Returned if there are tokens after $allowdiscouraged
     MultipleLocateAfterError, // Returned if there are multiple $locateafter(-var/-const) statements
     MissingLocateAfterLabelError, // Returned if there is a $locateafter statement without a follow up token
     TooManyLocateAfterTokensError, // Returned if there is a $locateafter statement with too many follow up tokens
+    MissingMmj2StepExpressionError, // Returned if a mmj2 step is missing it's expression
     InvalidDollarTokenError, // Returned if there is a statement that starts with $ not followed by a vaild statement type
     StatementOutOfPlaceError, // Returned if there is a statement out of place, for example if there is a $v and a $c statement
 }

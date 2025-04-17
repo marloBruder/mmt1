@@ -445,6 +445,8 @@ pub async fn parse_mm_file(
         }
     }
 
+    metamath_data.recalc_symbol_number_mapping();
+
     Ok(())
 }
 

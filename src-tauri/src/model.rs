@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
@@ -26,6 +26,15 @@ pub struct MetamathData {
 pub struct OptimizedMetamathData {
     pub variables: HashSet<String>,
     pub floating_hypotheses: Vec<FloatingHypohesis>,
+    pub symbol_number_mapping: SymbolNumberMapping,
+}
+
+#[derive(Debug, Default)]
+pub struct SymbolNumberMapping {
+    pub symbols: HashMap<u32, String>,
+    pub numbers: HashMap<String, u32>,
+    pub typecode_count: u32,
+    pub variable_count: u32,
 }
 
 #[derive(Debug)]
@@ -222,6 +231,11 @@ impl MetamathData {
 
         Ok(())
     }
+
+    pub fn recalc_symbol_number_mapping(&mut self) {
+        self.optimized_data.symbol_number_mapping =
+            SymbolNumberMapping::calc_mapping(&self.database_header);
+    }
 }
 
 // impl Statement {
@@ -253,6 +267,61 @@ impl MetamathData {
 //         }
 //     }
 // }
+
+impl SymbolNumberMapping {
+    pub fn calc_mapping(header: &Header) -> SymbolNumberMapping {
+        let mut symbols: HashMap<u32, String> = HashMap::new();
+        let mut numbers: HashMap<String, u32> = HashMap::new();
+        let mut next_i: u32 = 0;
+        let mut typecodes: Vec<&str> = Vec::new();
+
+        for fh in header.floating_hypohesis_iter() {
+            if typecodes.contains(&&*fh.typecode) {
+                typecodes.push(&fh.typecode);
+                let mut typecode_string = "$".to_string();
+                typecode_string.push_str(&fh.typecode);
+                symbols.insert(next_i, typecode_string.clone());
+                numbers.insert(typecode_string, next_i);
+                next_i += 1;
+            }
+        }
+
+        let typecode_count = next_i;
+
+        for var in header.variable_iter() {
+            symbols.insert(next_i, var.symbol.to_string());
+            numbers.insert(var.symbol.to_string(), next_i);
+            next_i += 1;
+        }
+
+        let variable_count = next_i - typecode_count;
+
+        for constant in header.constant_iter() {
+            symbols.insert(next_i, constant.symbol.to_string());
+            numbers.insert(constant.symbol.to_string(), next_i);
+            next_i += 1;
+        }
+
+        SymbolNumberMapping {
+            symbols,
+            numbers,
+            typecode_count,
+            variable_count,
+        }
+    }
+
+    pub fn is_typecode(&self, number: u32) -> bool {
+        return number < self.typecode_count;
+    }
+
+    pub fn is_variable(&self, number: u32) -> bool {
+        return self.typecode_count <= number && number < self.typecode_count + self.variable_count;
+    }
+
+    pub fn is_constant(&self, number: u32) -> bool {
+        return self.typecode_count + self.variable_count <= number;
+    }
+}
 
 impl FloatingHypohesis {
     pub fn to_assertions_string(&self) -> String {

@@ -97,7 +97,7 @@ fn add_theorem_to_database(
             return Err(Error::InvalidMmj2StepPrefixError);
         }
 
-        let label = prefix_parts.get(2).unwrap();
+        let label = *prefix_parts.get(2).unwrap();
 
         let prefix_step_name = prefix_parts.get(0).unwrap();
 
@@ -120,8 +120,26 @@ fn add_theorem_to_database(
             assertion = expression.clone();
         }
 
-        if step_name.contains(',') {
+        if step_name.contains(',') || step_name == "" {
             return Err(Error::InvalidMmj2StepPrefixError);
+        }
+
+        if mmj2_steps_complete
+            .iter()
+            .find(|msc| msc.step_name == step_name)
+            .is_some()
+        {
+            return Err(Error::DuplicateStepNameError);
+        }
+
+        if !hypothesis
+            && mm_data
+                .database_header
+                .theorem_iter()
+                .find(|t| t.label == label)
+                .is_none()
+        {
+            return Err(Error::TheoremLabelNotFoundError);
         }
 
         let prefix_hyps = prefix_parts.get(1).unwrap();
@@ -164,9 +182,7 @@ fn add_theorem_to_database(
         return Err(Error::DuplicateSymbolError);
     }
 
-    for mmj2_step in &mmj2_steps_complete {
-        println!("{:?}\n", mmj2_step);
-    }
+    let proof = calc_proof(mmj2_steps_complete, mm_data)?;
 
     add_statement(
         &mut mm_data.database_header,
@@ -182,7 +198,7 @@ fn add_theorem_to_database(
             disjoints: mmp_structured_info.distinct_vars,
             assertion,
             hypotheses,
-            proof: None,
+            proof,
         }),
     );
 
@@ -198,6 +214,20 @@ struct Mmj2StepComplete<'a> {
     expression: &'a str,
 }
 
+/**
+Assumes:
+- all labels are correct theorem labels
+- all hyps are numbers between 0 and ` mmj2_steps_complete.len() - 1 `
+- all hyps are lower than the index of the step they belong to (and therefore don't point recursivly at each other)
+*/
+fn calc_proof(
+    mmj2_steps_complete: Vec<Mmj2StepComplete>,
+    mm_data: &MetamathData,
+) -> Result<Option<String>, Error> {
+    Ok(None)
+}
+
+// TODO: make sure step names are unique
 fn add_axiom_to_database(
     mm_data: &mut MetamathData,
     mmp_structured_info: MmpStructuredInfo,
@@ -364,6 +394,7 @@ fn add_floating_hypothesis_to_database(
     );
 
     mm_data.recalc_optimized_floating_hypotheses_after_one_new()?;
+    mm_data.recalc_symbol_number_mapping();
 
     Ok(())
 }
@@ -407,6 +438,8 @@ fn add_variables_to_database(
         Statement::VariableStatement(variables),
     );
 
+    mm_data.recalc_symbol_number_mapping();
+
     Ok(())
 }
 
@@ -440,6 +473,8 @@ fn add_constants_to_database(
         &mmp_structured_info.locate_after,
         Statement::ConstantStatement(mmp_structured_info.constants),
     );
+
+    mm_data.recalc_symbol_number_mapping();
 
     Ok(())
 }
@@ -787,6 +822,9 @@ fn statements_to_mmp_structured_info(
                     s
                 });
                 expression.pop();
+                if expression.len() == 0 {
+                    return Err(Error::MissingMmj2StepExpressionError);
+                }
                 mmj2_steps.push((t.to_string(), expression));
             }
             _ => return Err(Error::InvalidDollarTokenError),
