@@ -280,7 +280,7 @@ impl SymbolNumberMapping {
     pub fn calc_mapping(header: &Header) -> SymbolNumberMapping {
         let mut symbols: HashMap<u32, String> = HashMap::new();
         let mut numbers: HashMap<String, u32> = HashMap::new();
-        let mut next_i: u32 = 0;
+        let mut next_i: u32 = 1;
         let mut typecodes: Vec<&str> = Vec::new();
 
         for fh in header.floating_hypohesis_iter() {
@@ -294,7 +294,7 @@ impl SymbolNumberMapping {
             }
         }
 
-        let typecode_count = next_i;
+        let typecode_count = next_i - 1;
 
         for var in header.variable_iter() {
             symbols.insert(next_i, var.symbol.to_string());
@@ -302,7 +302,7 @@ impl SymbolNumberMapping {
             next_i += 1;
         }
 
-        let variable_count = next_i - typecode_count;
+        let variable_count = next_i - typecode_count - 1;
 
         for constant in header.constant_iter() {
             symbols.insert(next_i, constant.symbol.to_string());
@@ -329,15 +329,15 @@ impl SymbolNumberMapping {
     }
 
     pub fn is_typecode(&self, number: u32) -> bool {
-        return number < self.typecode_count;
+        return number <= self.typecode_count;
     }
 
     pub fn is_variable(&self, number: u32) -> bool {
-        return self.typecode_count <= number && number < self.typecode_count + self.variable_count;
+        return self.typecode_count < number && number <= self.typecode_count + self.variable_count;
     }
 
     pub fn is_constant(&self, number: u32) -> bool {
-        return self.typecode_count + self.variable_count <= number;
+        return self.typecode_count + self.variable_count < number;
     }
 }
 
