@@ -145,6 +145,7 @@ pub enum Error {
     MissingQedStepError,        // Returned if there is no qed step, but a $thereom statement
     DuplicateStepNameError,     // Returned if there is a duplicate step name
     TheoremLabelNotFoundError,  // Returned if a theorem label in a mmj2 step prefix does not exist
+    InactiveMathSymbolError,    // Returned if an expression contains a symbol that is notr active
     MultipleAllowDiscouragedError, // Returned if there are multiple $allowdiscouraged statements
     TokensAfterAllowDiscouragedError, // Returned if there are tokens after $allowdiscouraged
     MultipleLocateAfterError, // Returned if there are multiple $locateafter(-var/-const) statements

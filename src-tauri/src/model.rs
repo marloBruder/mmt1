@@ -13,9 +13,6 @@ use Statement::*;
 
 #[derive(Debug, Default)]
 pub struct MetamathData {
-    // pub constants: Vec<Constant>,
-    // pub variables: Vec<Variable>,
-    // pub floating_hypotheses: Vec<FloatingHypohesis>,
     pub database_header: Header,
     pub html_representations: Vec<HtmlRepresentation>,
     pub optimized_data: OptimizedMetamathData,
@@ -235,6 +232,17 @@ impl MetamathData {
     pub fn recalc_symbol_number_mapping(&mut self) {
         self.optimized_data.symbol_number_mapping =
             SymbolNumberMapping::calc_mapping(&self.database_header);
+        // let mut i: u32 = 0;
+        // while let Some(symbol) = self.optimized_data.symbol_number_mapping.symbols.get(&i) {
+        //     println!("{}: {}", i, symbol);
+        //     i += 1;
+        //     if i == self.optimized_data.symbol_number_mapping.typecode_count
+        //         || i == self.optimized_data.symbol_number_mapping.typecode_count
+        //             + self.optimized_data.symbol_number_mapping.variable_count
+        //     {
+        //         println!("");
+        //     }
+        // }
     }
 }
 
@@ -276,7 +284,7 @@ impl SymbolNumberMapping {
         let mut typecodes: Vec<&str> = Vec::new();
 
         for fh in header.floating_hypohesis_iter() {
-            if typecodes.contains(&&*fh.typecode) {
+            if !typecodes.contains(&&*fh.typecode) {
                 typecodes.push(&fh.typecode);
                 let mut typecode_string = "$".to_string();
                 typecode_string.push_str(&fh.typecode);
@@ -308,6 +316,16 @@ impl SymbolNumberMapping {
             typecode_count,
             variable_count,
         }
+    }
+
+    pub fn expression_to_number_vec(&self, expression: &str) -> Result<Vec<u32>, ()> {
+        let mut expression_vec: Vec<u32> = Vec::new();
+
+        for token in expression.split_ascii_whitespace() {
+            expression_vec.push(*self.numbers.get(token).ok_or(())?);
+        }
+
+        Ok(expression_vec)
     }
 
     pub fn is_typecode(&self, number: u32) -> bool {

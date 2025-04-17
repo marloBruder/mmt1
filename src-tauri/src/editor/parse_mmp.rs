@@ -89,7 +89,7 @@ fn add_theorem_to_database(
     let mut hypotheses: Vec<Hypothesis> = Vec::new();
     let mut assertion: String = String::new();
 
-    let mut mmj2_steps_complete: Vec<Mmj2StepComplete> = Vec::new();
+    let mut mmj2_steps_processed: Vec<Mmj2StepProcessed> = Vec::new();
 
     for (prefix, expression) in &mmp_structured_info.mmj2_steps {
         let prefix_parts: Vec<&str> = prefix.split(':').collect();
@@ -124,7 +124,7 @@ fn add_theorem_to_database(
             return Err(Error::InvalidMmj2StepPrefixError);
         }
 
-        if mmj2_steps_complete
+        if mmj2_steps_processed
             .iter()
             .find(|msc| msc.step_name == step_name)
             .is_some()
@@ -149,7 +149,7 @@ fn add_theorem_to_database(
         if !prefix_hyps.is_empty() {
             let hyp_strs: Vec<&str> = prefix_hyps.split(',').collect();
             for hyp_str in &hyp_strs {
-                for (i, previous_step) in mmj2_steps_complete.iter().enumerate() {
+                for (i, previous_step) in mmj2_steps_processed.iter().enumerate() {
                     if previous_step.step_name == *hyp_str {
                         hyps.push(i);
                     }
@@ -161,12 +161,18 @@ fn add_theorem_to_database(
             }
         }
 
-        mmj2_steps_complete.push(Mmj2StepComplete {
+        let expression_vec = mm_data
+            .optimized_data
+            .symbol_number_mapping
+            .expression_to_number_vec(expression)
+            .or(Err(Error::InactiveMathSymbolError))?;
+
+        mmj2_steps_processed.push(Mmj2StepProcessed {
             hypothesis,
             step_name,
             hyps,
             label,
-            expression,
+            expression: expression_vec,
         });
     }
 
@@ -182,7 +188,7 @@ fn add_theorem_to_database(
         return Err(Error::DuplicateSymbolError);
     }
 
-    let proof = calc_proof(mmj2_steps_complete, mm_data)?;
+    let proof = calc_proof(mmj2_steps_processed, mm_data)?;
 
     add_statement(
         &mut mm_data.database_header,
@@ -206,22 +212,22 @@ fn add_theorem_to_database(
 }
 
 #[derive(Debug)]
-struct Mmj2StepComplete<'a> {
+struct Mmj2StepProcessed<'a> {
     hypothesis: bool,
     step_name: &'a str,
     hyps: Vec<usize>,
     label: &'a str,
-    expression: &'a str,
+    expression: Vec<u32>,
 }
 
 /**
 Assumes:
 - all labels are correct theorem labels
-- all hyps are numbers between 0 and ` mmj2_steps_complete.len() - 1 `
+- all hyps are numbers between 0 and ` mmj2_steps_processed.len() - 1 `
 - all hyps are lower than the index of the step they belong to (and therefore don't point recursivly at each other)
 */
 fn calc_proof(
-    mmj2_steps_complete: Vec<Mmj2StepComplete>,
+    mmj2_steps_processed: Vec<Mmj2StepProcessed>,
     mm_data: &MetamathData,
 ) -> Result<Option<String>, Error> {
     Ok(None)
