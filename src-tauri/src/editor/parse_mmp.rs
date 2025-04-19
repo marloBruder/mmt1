@@ -91,7 +91,9 @@ fn add_theorem_to_database(
 
     let mut mmj2_steps_processed: Vec<Mmj2StepProcessed> = Vec::new();
 
-    for (prefix, expression) in &mmp_structured_info.mmj2_steps {
+    let mut step_to_be_proven = -1;
+
+    for (i, (prefix, expression)) in mmp_structured_info.mmj2_steps.iter().enumerate() {
         let prefix_parts: Vec<&str> = prefix.split(':').collect();
         if prefix_parts.len() != 3 {
             return Err(Error::InvalidMmj2StepPrefixError);
@@ -118,6 +120,7 @@ fn add_theorem_to_database(
 
         if step_name == "qed" {
             assertion = expression.clone();
+            step_to_be_proven = i as i32;
         }
 
         if step_name.contains(',') || step_name == "" {
@@ -176,7 +179,7 @@ fn add_theorem_to_database(
         });
     }
 
-    if assertion == "" {
+    if step_to_be_proven == -1 {
         return Err(Error::MissingQedStepError);
     }
 
@@ -188,7 +191,7 @@ fn add_theorem_to_database(
         return Err(Error::DuplicateSymbolError);
     }
 
-    let proof = calc_proof(mmj2_steps_processed, mm_data)?;
+    let proof = calc_proof(mmj2_steps_processed, mm_data, step_to_be_proven as u32)?;
 
     add_statement(
         &mut mm_data.database_header,
@@ -229,7 +232,41 @@ Assumes:
 fn calc_proof(
     mmj2_steps_processed: Vec<Mmj2StepProcessed>,
     mm_data: &MetamathData,
+    step_to_be_proven: u32,
 ) -> Result<Option<String>, Error> {
+    let step = mmj2_steps_processed
+        .get(step_to_be_proven as usize)
+        .ok_or(Error::InternalLogicError)?;
+
+    let theorem_expression: Vec<u32> = mm_data
+        .optimized_data
+        .symbol_number_mapping
+        .expression_to_number_vec(
+            &mm_data
+                .database_header
+                .find_theorem_by_label(step.label)
+                .ok_or(Error::InternalLogicError)?
+                .assertion,
+        )
+        .or(Err(Error::InactiveMathSymbolError))?
+        .iter()
+        .map(|num| {
+            let var_typecode = mm_data
+                .optimized_data
+                .symbol_number_mapping
+                .variable_typecodes
+                .get(num);
+
+            if let Some(typecode) = var_typecode {
+                *typecode
+            } else {
+                *num
+            }
+        })
+        .collect();
+
+    println!("{:?}", theorem_expression);
+
     Ok(None)
 }
 

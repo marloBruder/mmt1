@@ -30,6 +30,7 @@ pub struct OptimizedMetamathData {
 pub struct SymbolNumberMapping {
     pub symbols: HashMap<u32, String>,
     pub numbers: HashMap<String, u32>,
+    pub variable_typecodes: HashMap<u32, u32>,
     pub typecode_count: u32,
     pub variable_count: u32,
 }
@@ -232,16 +233,16 @@ impl MetamathData {
     pub fn recalc_symbol_number_mapping(&mut self) {
         self.optimized_data.symbol_number_mapping =
             SymbolNumberMapping::calc_mapping(&self.database_header);
-        // let mut i: u32 = 0;
+        // let mut i: u32 = 1;
         // while let Some(symbol) = self.optimized_data.symbol_number_mapping.symbols.get(&i) {
         //     println!("{}: {}", i, symbol);
-        //     i += 1;
         //     if i == self.optimized_data.symbol_number_mapping.typecode_count
         //         || i == self.optimized_data.symbol_number_mapping.typecode_count
         //             + self.optimized_data.symbol_number_mapping.variable_count
         //     {
         //         println!("");
         //     }
+        //     i += 1;
         // }
     }
 }
@@ -280,6 +281,7 @@ impl SymbolNumberMapping {
     pub fn calc_mapping(header: &Header) -> SymbolNumberMapping {
         let mut symbols: HashMap<u32, String> = HashMap::new();
         let mut numbers: HashMap<String, u32> = HashMap::new();
+        let mut variable_typecodes: HashMap<u32, u32> = HashMap::new();
         let mut next_i: u32 = 1;
         let mut typecodes: Vec<&str> = Vec::new();
 
@@ -310,9 +312,18 @@ impl SymbolNumberMapping {
             next_i += 1;
         }
 
+        for fh in header.floating_hypohesis_iter() {
+            if let Some(num) = numbers.get(&fh.variable) {
+                let mut typecode_string = "$".to_string();
+                typecode_string.push_str(&fh.typecode);
+                variable_typecodes.insert(*num, *numbers.get(&typecode_string).unwrap());
+            }
+        }
+
         SymbolNumberMapping {
             symbols,
             numbers,
+            variable_typecodes,
             typecode_count,
             variable_count,
         }
