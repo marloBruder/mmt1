@@ -3,9 +3,12 @@ use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    util::header_iterators::{
-        ConstantIterator, FloatingHypothesisIterator, HeaderIterator, TheoremIterator,
-        VariableIterator,
+    util::{
+        earley_parser::{Grammar, GrammarRule},
+        header_iterators::{
+            ConstantIterator, FloatingHypothesisIterator, HeaderIterator, TheoremIterator,
+            VariableIterator,
+        },
     },
     Error,
 };
@@ -24,6 +27,7 @@ pub struct OptimizedMetamathData {
     pub variables: HashSet<String>,
     pub floating_hypotheses: Vec<FloatingHypohesis>,
     pub symbol_number_mapping: SymbolNumberMapping,
+    pub grammar: Grammar,
 }
 
 #[derive(Debug, Default)]
@@ -230,9 +234,14 @@ impl MetamathData {
         Ok(())
     }
 
-    pub fn recalc_symbol_number_mapping(&mut self) {
+    pub fn recalc_symbol_number_mapping_and_grammar(&mut self) -> Result<(), Error> {
         self.optimized_data.symbol_number_mapping =
             SymbolNumberMapping::calc_mapping(&self.database_header);
+
+        self.optimized_data.grammar = Grammar::calc_grammar(
+            &self.database_header,
+            &self.optimized_data.symbol_number_mapping,
+        )?;
         // let mut i: u32 = 1;
         // while let Some(symbol) = self.optimized_data.symbol_number_mapping.symbols.get(&i) {
         //     println!("{}: {}", i, symbol);
@@ -244,6 +253,10 @@ impl MetamathData {
         //     }
         //     i += 1;
         // }
+        // for grammar_rule in &self.optimized_data.grammar.rules {
+        //     println!("{:?}", grammar_rule);
+        // }
+        Ok(())
     }
 }
 
@@ -349,6 +362,67 @@ impl SymbolNumberMapping {
 
     pub fn is_constant(&self, number: u32) -> bool {
         return self.typecode_count + self.variable_count < number;
+    }
+}
+
+impl Grammar {
+    pub fn calc_grammar(
+        header: &Header,
+        symbol_number_mapping: &SymbolNumberMapping,
+    ) -> Result<Grammar, Error> {
+        let mut rules = Vec::new();
+
+        for floating_hypothesis in header.floating_hypohesis_iter() {
+            rules.push(GrammarRule {
+                left_side: *symbol_number_mapping
+                    .numbers
+                    .get(&format!("${}", floating_hypothesis.typecode))
+                    .ok_or(Error::InternalLogicError)?,
+                right_side: vec![*symbol_number_mapping
+                    .numbers
+                    .get(&floating_hypothesis.variable)
+                    .ok_or(Error::InternalLogicError)?],
+            });
+        }
+
+        for theorem in header.theorem_iter() {
+            if theorem.proof == None
+                && theorem
+                    .assertion
+                    .split_ascii_whitespace()
+                    .next()
+                    .ok_or(Error::InternalLogicError)?
+                    != "|-"
+                && theorem.hypotheses.len() == 0
+            {
+                let mut assertion_token_iter = theorem.assertion.split_ascii_whitespace();
+                let left_side = *symbol_number_mapping
+                    .numbers
+                    .get(&format!("${}", assertion_token_iter.next().unwrap()))
+                    .ok_or(Error::InternalLogicError)?;
+                let right_side = assertion_token_iter
+                    .map(|t| {
+                        let mut num = *symbol_number_mapping
+                            .numbers
+                            .get(t)
+                            .ok_or(Error::InternalLogicError)?;
+                        if symbol_number_mapping.is_variable(num) {
+                            num = *symbol_number_mapping
+                                .variable_typecodes
+                                .get(&num)
+                                .ok_or(Error::InternalLogicError)?;
+                        }
+                        Ok(num)
+                    })
+                    .collect::<Result<Vec<u32>, Error>>()?;
+                rules.push(GrammarRule {
+                    left_side,
+                    right_side,
+                });
+            }
+        }
+
+        Ok(Grammar { rules })
     }
 }
 

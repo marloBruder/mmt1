@@ -1,5 +1,6 @@
 use crate::{model::SymbolNumberMapping, Error};
 
+#[derive(Debug, Default)]
 pub struct Grammar {
     pub rules: Vec<GrammarRule>,
 }
@@ -9,6 +10,7 @@ pub struct ExtendedGrammar<'a> {
     pub main_rule: GrammarRule,
 }
 
+#[derive(Debug)]
 pub struct GrammarRule {
     pub left_side: u32,
     pub right_side: Vec<u32>,

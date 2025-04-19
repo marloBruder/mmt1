@@ -437,7 +437,7 @@ fn add_floating_hypothesis_to_database(
     );
 
     mm_data.recalc_optimized_floating_hypotheses_after_one_new()?;
-    mm_data.recalc_symbol_number_mapping();
+    mm_data.recalc_symbol_number_mapping_and_grammar()?;
 
     Ok(())
 }
@@ -481,7 +481,7 @@ fn add_variables_to_database(
         Statement::VariableStatement(variables),
     );
 
-    mm_data.recalc_symbol_number_mapping();
+    mm_data.recalc_symbol_number_mapping_and_grammar()?;
 
     Ok(())
 }
@@ -517,7 +517,7 @@ fn add_constants_to_database(
         Statement::ConstantStatement(mmp_structured_info.constants),
     );
 
-    mm_data.recalc_symbol_number_mapping();
+    mm_data.recalc_symbol_number_mapping_and_grammar()?;
 
     Ok(())
 }
