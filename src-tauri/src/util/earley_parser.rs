@@ -16,7 +16,7 @@ pub struct GrammarRule {
     pub right_side: Vec<u32>,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Eq, PartialOrd, Ord)]
 struct State {
     pub rule_i: i32,
     pub processed_i: u32,
@@ -61,19 +61,19 @@ pub fn earley_parse(
         },
     };
 
-    let mut state_sets: Vec<Vec<State>> = vec![vec![State {
+    let mut state_sets: Vec<StateSet> = vec![StateSet::new()];
+    state_sets.get_mut(0).unwrap().insert(State {
         rule_i: -1,
         processed_i: 0,
         start_i: 0,
-    }]];
+    });
 
     for k in 0..(expression.len() as u32 + 1) {
-        state_sets.push(Vec::new());
-        let mut next_state_i = 0;
+        state_sets.push(StateSet::new());
         while let Some(state) = state_sets
-            .get(k as usize)
+            .get_mut(k as usize)
             .unwrap()
-            .get(next_state_i)
+            .get_next()
             .map(|s| s.clone())
         {
             // if state is not finished
@@ -87,21 +87,20 @@ pub fn earley_parse(
             } else {
                 completer(&state, k, &extended_grammar, &mut state_sets)?;
             }
-            next_state_i += 1;
         }
     }
 
-    for k in 0..(expression.len() + 1) {
-        println!("{}:", k);
-        for state in state_sets.get(k).unwrap() {
-            println!("{:?}", state)
-        }
-    }
+    // for k in 0..(expression.len() + 1) {
+    //     println!("{}:", k);
+    //     for state in state_sets.get(k).unwrap() {
+    //         println!("{:?}", state)
+    //     }
+    // }
 
     Ok(state_sets
         .get(expression.len())
         .ok_or(Error::InternalLogicError)?
-        .contains(&State {
+        .processed_contains(&State {
             rule_i: -1,
             processed_i: match_against_len as u32,
             start_i: 0,
@@ -112,7 +111,7 @@ fn predictor(
     state: &State,
     k: u32,
     extended_grammar: &ExtendedGrammar,
-    state_sets: &mut Vec<Vec<State>>,
+    state_sets: &mut Vec<StateSet>,
 ) -> Result<(), Error> {
     for (rule_i, rule) in extended_grammar.grammar.rules.iter().enumerate() {
         if Some(rule.left_side) == state.next_token(extended_grammar) {
@@ -126,9 +125,7 @@ fn predictor(
                 start_i: k,
             };
 
-            if !current_set.contains(&new_state) {
-                current_set.push(new_state);
-            }
+            current_set.insert(new_state);
         }
     }
 
@@ -140,9 +137,8 @@ fn scanner(
     k: u32,
     expression: &Vec<u32>,
     extended_grammar: &ExtendedGrammar,
-    state_sets: &mut Vec<Vec<State>>,
+    state_sets: &mut Vec<StateSet>,
 ) -> Result<(), Error> {
-    println!("Scanning state: {:?}", state);
     if state.start_i < expression.len() as u32
         && state.next_token(extended_grammar) == expression.get(k as usize).map(|num| *num)
     {
@@ -156,10 +152,7 @@ fn scanner(
             start_i: state.start_i,
         };
 
-        if !next_set.contains(&new_state) {
-            println!("Added after scanning!");
-            next_set.push(new_state);
-        }
+        next_set.insert(new_state);
     }
 
     Ok(())
@@ -169,13 +162,13 @@ fn completer(
     state: &State,
     k: u32,
     extended_grammar: &ExtendedGrammar,
-    state_sets: &mut Vec<Vec<State>>,
+    state_sets: &mut Vec<StateSet>,
 ) -> Result<(), Error> {
     let mut i = 0;
     while let Some(other_state) = state_sets
         .get(state.start_i as usize)
         .ok_or(Error::InternalLogicError)?
-        .get(i)
+        .get_processed(i)
     {
         if Some(state.rule_left_side(extended_grammar)) == other_state.next_token(extended_grammar)
         {
@@ -189,12 +182,54 @@ fn completer(
                 .get_mut(k as usize)
                 .ok_or(Error::InternalLogicError)?;
 
-            if !current_set.contains(&new_state) {
-                current_set.push(new_state);
-            }
+            current_set.insert(new_state);
         }
         i += 1;
     }
 
     Ok(())
+}
+
+struct StateSet {
+    unprocessed_states: Vec<State>,
+    processed_states: Vec<State>,
+}
+
+impl StateSet {
+    pub fn new() -> StateSet {
+        StateSet {
+            unprocessed_states: Vec::new(),
+            processed_states: Vec::new(),
+        }
+    }
+
+    pub fn insert(&mut self, state: State) {
+        if self.processed_states.binary_search(&state).is_err() {
+            match self.unprocessed_states.binary_search(&state) {
+                Ok(_pos) => {}
+                Err(pos) => self.unprocessed_states.insert(pos, state),
+            }
+        }
+    }
+
+    pub fn get_next(&mut self) -> Option<&State> {
+        let state = self.unprocessed_states.pop()?;
+        let insert_pos;
+        match self.processed_states.binary_search(&state) {
+            Ok(pos) => insert_pos = pos, // Should theoretically never happen
+            Err(pos) => {
+                self.processed_states.insert(pos, state);
+                insert_pos = pos;
+            }
+        }
+        self.processed_states.get(insert_pos)
+    }
+
+    pub fn get_processed(&self, i: usize) -> Option<&State> {
+        self.processed_states.get(i)
+    }
+
+    pub fn processed_contains(&self, state: &State) -> bool {
+        self.processed_states.binary_search(state).is_ok()
+    }
 }
