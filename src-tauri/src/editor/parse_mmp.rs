@@ -5,6 +5,7 @@ use crate::{
         Comment, Constant, FloatingHypohesis, Header, HeaderPath, Hypothesis, MetamathData,
         Statement, Theorem, Variable,
     },
+    util::earley_parser::earley_parse,
     AppState, Error,
 };
 use tauri::async_runtime::Mutex;
@@ -164,6 +165,10 @@ fn add_theorem_to_database(
             }
         }
 
+        if hypothesis && !hyps.is_empty() {
+            return Err(Error::HypothesisWithHypsError);
+        }
+
         let expression_vec = mm_data
             .optimized_data
             .symbol_number_mapping
@@ -171,7 +176,7 @@ fn add_theorem_to_database(
             .or(Err(Error::InactiveMathSymbolError))?;
 
         mmj2_steps_processed.push(Mmj2StepProcessed {
-            hypothesis,
+            is_hypothesis: hypothesis,
             step_name,
             hyps,
             label,
@@ -216,7 +221,7 @@ fn add_theorem_to_database(
 
 #[derive(Debug)]
 struct Mmj2StepProcessed<'a> {
-    hypothesis: bool,
+    is_hypothesis: bool,
     step_name: &'a str,
     hyps: Vec<usize>,
     label: &'a str,
@@ -234,38 +239,65 @@ fn calc_proof(
     mm_data: &MetamathData,
     step_to_be_proven: u32,
 ) -> Result<Option<String>, Error> {
-    let step = mmj2_steps_processed
-        .get(step_to_be_proven as usize)
-        .ok_or(Error::InternalLogicError)?;
+    let mut i = 0;
+    for step in &mmj2_steps_processed {
+        i += 1;
+        println!("Step {}:", i);
 
-    let theorem_expression: Vec<u32> = mm_data
-        .optimized_data
-        .symbol_number_mapping
-        .expression_to_number_vec(
-            &mm_data
-                .database_header
-                .find_theorem_by_label(step.label)
-                .ok_or(Error::InternalLogicError)?
-                .assertion,
-        )
-        .or(Err(Error::InactiveMathSymbolError))?
-        .iter()
-        .map(|num| {
-            let var_typecode = mm_data
-                .optimized_data
-                .symbol_number_mapping
-                .variable_typecodes
-                .get(num);
+        if step.is_hypothesis {
+            continue;
+        }
 
-            if let Some(typecode) = var_typecode {
-                *typecode
-            } else {
-                *num
-            }
-        })
-        .collect();
+        let theorem_expression: Vec<u32> = mm_data
+            .optimized_data
+            .symbol_number_mapping
+            .expression_to_number_vec_replace_variables_with_typecodes(
+                &mm_data
+                    .database_header
+                    .find_theorem_by_label(step.label)
+                    .ok_or(Error::InternalLogicError)?
+                    .assertion,
+            )?;
 
-    println!("{:?}", theorem_expression);
+        let hypothesis_expressions: Vec<Vec<u32>> = mm_data
+            .database_header
+            .find_theorem_by_label(step.label)
+            .ok_or(Error::InternalLogicError)?
+            .hypotheses
+            .iter()
+            .map(|h| {
+                mm_data
+                    .optimized_data
+                    .symbol_number_mapping
+                    .expression_to_number_vec_replace_variables_with_typecodes(&h.hypothesis)
+            })
+            .collect::<Result<Vec<Vec<u32>>, Error>>()?;
+
+        for (i, hyp_expression) in hypothesis_expressions.into_iter().enumerate() {
+            println!(
+                "{}",
+                earley_parse(
+                    &mm_data.optimized_data.grammar,
+                    &mmj2_steps_processed
+                        .get(*step.hyps.get(i).ok_or(Error::Mmj2StepMissingHypError)?)
+                        .ok_or(Error::InternalLogicError)?
+                        .expression,
+                    hyp_expression,
+                    &mm_data.optimized_data.symbol_number_mapping
+                )?
+            );
+        }
+
+        println!(
+            "{}",
+            earley_parse(
+                &mm_data.optimized_data.grammar,
+                &step.expression,
+                theorem_expression,
+                &mm_data.optimized_data.symbol_number_mapping
+            )?
+        );
+    }
 
     Ok(None)
 }

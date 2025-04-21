@@ -352,6 +352,25 @@ impl SymbolNumberMapping {
         Ok(expression_vec)
     }
 
+    pub fn expression_to_number_vec_replace_variables_with_typecodes(
+        &self,
+        expression: &str,
+    ) -> Result<Vec<u32>, Error> {
+        Ok(expression
+            .split_ascii_whitespace()
+            .map(|t| {
+                let mut num = *self.numbers.get(t).ok_or(Error::InactiveMathSymbolError)?;
+                if self.is_variable(num) {
+                    num = *self
+                        .variable_typecodes
+                        .get(&num)
+                        .ok_or(Error::VariableWithoutTypecode)?;
+                }
+                Ok(num)
+            })
+            .collect::<Result<Vec<u32>, Error>>()?)
+    }
+
     pub fn is_typecode(&self, number: u32) -> bool {
         return number <= self.typecode_count;
     }
