@@ -14,6 +14,7 @@ pub struct ExtendedGrammar<'a> {
 pub struct GrammarRule {
     pub left_side: u32,
     pub right_side: Vec<u32>,
+    pub label: String,
 }
 
 #[derive(Clone, PartialEq, Debug, Eq, PartialOrd, Ord)]
@@ -21,6 +22,7 @@ struct State {
     pub rule_i: i32,
     pub processed_i: u32,
     pub start_i: u32,
+    pub proof: Vec<String>,
 }
 
 impl State {
@@ -35,13 +37,12 @@ impl State {
             .map(|t| *t)
     }
 
-    pub fn rule_left_side(&self, extended_grammar: &ExtendedGrammar) -> u32 {
+    pub fn rule<'a>(&self, extended_grammar: &'a ExtendedGrammar) -> &'a GrammarRule {
         extended_grammar
             .grammar
             .rules
             .get(self.rule_i as usize)
             .unwrap_or(&extended_grammar.main_rule)
-            .left_side
     }
 }
 
@@ -58,6 +59,7 @@ pub fn earley_parse(
         main_rule: GrammarRule {
             left_side: 0,
             right_side: match_against,
+            label: String::new(),
         },
     };
 
@@ -66,6 +68,7 @@ pub fn earley_parse(
         rule_i: -1,
         processed_i: 0,
         start_i: 0,
+        proof: Vec::new(),
     });
 
     for k in 0..(expression.len() as u32 + 1) {
@@ -97,14 +100,16 @@ pub fn earley_parse(
     //     }
     // }
 
-    Ok(state_sets
-        .get(expression.len())
-        .ok_or(Error::InternalLogicError)?
-        .processed_contains(&State {
-            rule_i: -1,
-            processed_i: match_against_len as u32,
-            start_i: 0,
-        }))
+    // Ok(state_sets
+    //     .get(expression.len())
+    //     .ok_or(Error::InternalLogicError)?
+    //     .processed_contains(&State {
+    //         rule_i: -1,
+    //         processed_i: match_against_len as u32,
+    //         start_i: 0,
+
+    //     }))
+    Ok(true)
 }
 
 fn predictor(
@@ -123,6 +128,7 @@ fn predictor(
                 rule_i: rule_i as i32,
                 processed_i: 0,
                 start_i: k,
+                proof: Vec::new(),
             };
 
             current_set.insert(new_state);
@@ -150,6 +156,7 @@ fn scanner(
             rule_i: state.rule_i,
             processed_i: state.processed_i + 1,
             start_i: state.start_i,
+            proof: state.proof.clone(),
         };
 
         next_set.insert(new_state);
@@ -170,13 +177,28 @@ fn completer(
         .ok_or(Error::InternalLogicError)?
         .get_processed(i)
     {
-        if Some(state.rule_left_side(extended_grammar)) == other_state.next_token(extended_grammar)
+        if Some(state.rule(extended_grammar).left_side) == other_state.next_token(extended_grammar)
         {
+            let mut new_proof = other_state.proof.clone();
+            if !state.proof.is_empty() {
+                new_proof.push(state.proof.join(" "));
+                new_proof.last_mut().unwrap().push(' ');
+                new_proof
+                    .last_mut()
+                    .unwrap()
+                    .push_str(&state.rule(extended_grammar).label);
+            } else {
+                new_proof.push(state.rule(extended_grammar).label.clone());
+            }
+
             let new_state = State {
                 rule_i: other_state.rule_i as i32,
                 processed_i: other_state.processed_i + 1,
                 start_i: other_state.start_i,
+                proof: new_proof,
             };
+
+            println!("{:?}", new_state.proof);
 
             let current_set = state_sets
                 .get_mut(k as usize)

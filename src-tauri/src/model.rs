@@ -401,6 +401,7 @@ impl Grammar {
                     .numbers
                     .get(&floating_hypothesis.variable)
                     .ok_or(Error::InternalLogicError)?],
+                label: floating_hypothesis.label.clone(),
             });
         }
 
@@ -437,6 +438,7 @@ impl Grammar {
                 rules.push(GrammarRule {
                     left_side,
                     right_side,
+                    label: theorem.label.clone(),
                 });
             }
         }
