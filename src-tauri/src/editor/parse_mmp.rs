@@ -275,7 +275,7 @@ fn calc_proof(
 
         for (i, hyp_expression) in hypothesis_expressions.into_iter().enumerate() {
             println!(
-                "{}",
+                "{:?}",
                 earley_parse(
                     &mm_data.optimized_data.grammar,
                     &mmj2_steps_processed
@@ -289,7 +289,7 @@ fn calc_proof(
         }
 
         println!(
-            "{}",
+            "{:?}",
             earley_parse(
                 &mm_data.optimized_data.grammar,
                 &step.expression,

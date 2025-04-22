@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use crate::{model::SymbolNumberMapping, Error};
 
 #[derive(Debug, Default)]
@@ -17,12 +19,104 @@ pub struct GrammarRule {
     pub label: String,
 }
 
-#[derive(Clone, PartialEq, Debug, Eq, PartialOrd, Ord)]
+#[derive(Debug)]
+struct StateSet {
+    unprocessed_states: Vec<State>,
+    processed_states: Vec<State>,
+}
+
+#[derive(Clone, Debug)]
 struct State {
     pub rule_i: i32,
     pub processed_i: u32,
     pub start_i: u32,
     pub proof: Vec<String>,
+}
+
+impl StateSet {
+    pub fn new() -> StateSet {
+        StateSet {
+            unprocessed_states: Vec::new(),
+            processed_states: Vec::new(),
+        }
+    }
+
+    pub fn insert(&mut self, state: State) {
+        if self.processed_states.binary_search(&state).is_err() {
+            match self.unprocessed_states.binary_search(&state) {
+                Ok(_pos) => {}
+                Err(pos) => self.unprocessed_states.insert(pos, state),
+            }
+        }
+    }
+
+    pub fn get_next(&mut self) -> Option<&State> {
+        let state = self.unprocessed_states.pop()?;
+        let insert_pos;
+        match self.processed_states.binary_search(&state) {
+            Ok(pos) => insert_pos = pos, // Should theoretically never happen
+            Err(pos) => {
+                self.processed_states.insert(pos, state);
+                insert_pos = pos;
+            }
+        }
+        self.processed_states.get(insert_pos)
+    }
+
+    pub fn get_processed(&self, i: usize) -> Option<&State> {
+        self.processed_states.get(i)
+    }
+
+    pub fn get_processed_binary_search(&mut self, state: &State) -> Option<State> {
+        match self.processed_states.binary_search(state) {
+            Ok(pos) => Some(self.processed_states.swap_remove(pos)),
+            Err(_) => None,
+        }
+    }
+}
+
+impl PartialEq for State {
+    // Implement PartialEq in a way that ignores the proof,
+    // as it is just additional information and should not impact which states are considered equal
+    fn eq(&self, other: &Self) -> bool {
+        self.rule_i == other.rule_i
+            && self.processed_i == other.processed_i
+            && self.start_i == other.start_i
+    }
+}
+
+impl Eq for State {}
+
+impl PartialOrd for State {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for State {
+    // Implement Ord in a way that ignores the proof,
+    // as it is just additional information and should not impact which states are considered equal
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.rule_i < other.rule_i {
+            return Ordering::Less;
+        }
+        if self.rule_i > other.rule_i {
+            return Ordering::Greater;
+        }
+        if self.processed_i < other.processed_i {
+            return Ordering::Less;
+        }
+        if self.processed_i > other.processed_i {
+            return Ordering::Greater;
+        }
+        if self.start_i < other.start_i {
+            return Ordering::Less;
+        }
+        if self.start_i > other.start_i {
+            return Ordering::Greater;
+        }
+        Ordering::Equal
+    }
 }
 
 impl State {
@@ -51,7 +145,7 @@ pub fn earley_parse(
     expression: &Vec<u32>,
     match_against: Vec<u32>,
     symbol_number_mapping: &SymbolNumberMapping,
-) -> Result<bool, Error> {
+) -> Result<Option<Vec<String>>, Error> {
     let match_against_len = match_against.len();
 
     let extended_grammar = ExtendedGrammar {
@@ -100,16 +194,18 @@ pub fn earley_parse(
     //     }
     // }
 
-    // Ok(state_sets
-    //     .get(expression.len())
-    //     .ok_or(Error::InternalLogicError)?
-    //     .processed_contains(&State {
-    //         rule_i: -1,
-    //         processed_i: match_against_len as u32,
-    //         start_i: 0,
+    // println!("{:?}", state_sets.get(expression.len()));
 
-    //     }))
-    Ok(true)
+    Ok(state_sets
+        .get_mut(expression.len())
+        .ok_or(Error::InternalLogicError)?
+        .get_processed_binary_search(&State {
+            rule_i: -1,
+            processed_i: match_against_len as u32,
+            start_i: 0,
+            proof: Vec::new(),
+        })
+        .map(|s| s.proof))
 }
 
 fn predictor(
@@ -198,7 +294,7 @@ fn completer(
                 proof: new_proof,
             };
 
-            println!("{:?}", new_state.proof);
+            // println!("{:?}", new_state.proof);
 
             let current_set = state_sets
                 .get_mut(k as usize)
@@ -210,48 +306,4 @@ fn completer(
     }
 
     Ok(())
-}
-
-struct StateSet {
-    unprocessed_states: Vec<State>,
-    processed_states: Vec<State>,
-}
-
-impl StateSet {
-    pub fn new() -> StateSet {
-        StateSet {
-            unprocessed_states: Vec::new(),
-            processed_states: Vec::new(),
-        }
-    }
-
-    pub fn insert(&mut self, state: State) {
-        if self.processed_states.binary_search(&state).is_err() {
-            match self.unprocessed_states.binary_search(&state) {
-                Ok(_pos) => {}
-                Err(pos) => self.unprocessed_states.insert(pos, state),
-            }
-        }
-    }
-
-    pub fn get_next(&mut self) -> Option<&State> {
-        let state = self.unprocessed_states.pop()?;
-        let insert_pos;
-        match self.processed_states.binary_search(&state) {
-            Ok(pos) => insert_pos = pos, // Should theoretically never happen
-            Err(pos) => {
-                self.processed_states.insert(pos, state);
-                insert_pos = pos;
-            }
-        }
-        self.processed_states.get(insert_pos)
-    }
-
-    pub fn get_processed(&self, i: usize) -> Option<&State> {
-        self.processed_states.get(i)
-    }
-
-    pub fn processed_contains(&self, state: &State) -> bool {
-        self.processed_states.binary_search(state).is_ok()
-    }
 }
