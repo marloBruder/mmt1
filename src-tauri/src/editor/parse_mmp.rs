@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     model::{
@@ -239,67 +239,122 @@ fn calc_proof(
     mm_data: &MetamathData,
     step_to_be_proven: u32,
 ) -> Result<Option<String>, Error> {
-    let mut i = 0;
+    let mut proofs: Vec<String> = Vec::new();
+
     for step in &mmj2_steps_processed {
-        i += 1;
-        println!("Step {}:", i);
-
         if step.is_hypothesis {
-            continue;
-        }
+            proofs.push(step.label.to_string());
+        } else {
+            let mut expressions: Vec<&Vec<u32>> = step
+                .hyps
+                .iter()
+                .map(|&hyp| {
+                    mmj2_steps_processed
+                        .get(hyp)
+                        .map(|s| &s.expression)
+                        .ok_or(Error::InternalLogicError)
+                })
+                .collect::<Result<Vec<&Vec<u32>>, Error>>()?;
 
-        let theorem_expression: Vec<u32> = mm_data
-            .optimized_data
-            .symbol_number_mapping
-            .expression_to_number_vec_replace_variables_with_typecodes(
-                &mm_data
-                    .database_header
-                    .find_theorem_by_label(step.label)
-                    .ok_or(Error::InternalLogicError)?
-                    .assertion,
-            )?;
+            expressions.push(&step.expression);
 
-        let hypothesis_expressions: Vec<Vec<u32>> = mm_data
-            .database_header
-            .find_theorem_by_label(step.label)
-            .ok_or(Error::InternalLogicError)?
-            .hypotheses
-            .iter()
-            .map(|h| {
-                mm_data
-                    .optimized_data
-                    .symbol_number_mapping
-                    .expression_to_number_vec_replace_variables_with_typecodes(&h.hypothesis)
-            })
-            .collect::<Result<Vec<Vec<u32>>, Error>>()?;
+            let (mut match_against_expressions, mut variable_vecs) = mm_data
+                .database_header
+                .find_theorem_by_label(step.label)
+                .ok_or(Error::InternalLogicError)?
+                .hypotheses
+                .iter()
+                .map(|h| {
+                    mm_data
+                        .optimized_data
+                        .symbol_number_mapping
+                        .expression_to_number_vec_replace_variables_with_typecodes(&h.hypothesis)
+                })
+                .collect::<Result<(Vec<Vec<u32>>, Vec<Vec<u32>>), Error>>()?;
 
-        for (i, hyp_expression) in hypothesis_expressions.into_iter().enumerate() {
-            println!(
-                "{:?}",
-                earley_parse(
-                    &mm_data.optimized_data.grammar,
-                    &mmj2_steps_processed
-                        .get(*step.hyps.get(i).ok_or(Error::Mmj2StepMissingHypError)?)
+            let (theorem_match_against, theorem_variables) = mm_data
+                .optimized_data
+                .symbol_number_mapping
+                .expression_to_number_vec_replace_variables_with_typecodes(
+                    &mm_data
+                        .database_header
+                        .find_theorem_by_label(step.label)
                         .ok_or(Error::InternalLogicError)?
-                        .expression,
-                    hyp_expression,
-                    &mm_data.optimized_data.symbol_number_mapping
-                )?
-            );
-        }
+                        .assertion,
+                )?;
+            match_against_expressions.push(theorem_match_against);
+            variable_vecs.push(theorem_variables);
 
-        println!(
-            "{:?}",
-            earley_parse(
-                &mm_data.optimized_data.grammar,
-                &step.expression,
-                theorem_expression,
-                &mm_data.optimized_data.symbol_number_mapping
-            )?
-        );
+            let mut variable_proofs: HashMap<u32, String> = HashMap::new();
+
+            for ((match_against_expression, expression), variables) in match_against_expressions
+                .into_iter()
+                .zip(expressions.into_iter())
+                .zip(variable_vecs.iter())
+            {
+                let new_var_proofs = earley_parse(
+                    &mm_data.optimized_data.grammar,
+                    expression,
+                    match_against_expression,
+                    &mm_data.optimized_data.symbol_number_mapping,
+                )?
+                .ok_or(Error::Mmj2StepParseError)?;
+
+                for (var_proof, variable) in new_var_proofs.into_iter().zip(variables.iter()) {
+                    match variable_proofs.get(variable) {
+                        Some(s) => {
+                            if *s != var_proof {
+                                return Err(Error::VarSubedWithDifferentStrsError);
+                            }
+                        }
+                        None => {
+                            variable_proofs.insert(*variable, var_proof);
+                        }
+                    }
+                }
+            }
+
+            let mut proof = mm_data
+                .database_header
+                .floating_hypohesis_iter()
+                .filter_map(|fh| {
+                    variable_proofs.remove(
+                        mm_data
+                            .optimized_data
+                            .symbol_number_mapping
+                            .numbers
+                            .get(&fh.variable)?,
+                    )
+                })
+                .fold(String::new(), |mut s, t| {
+                    s.push_str(&t);
+                    s.push(' ');
+                    s
+                });
+
+            proof = step
+                .hyps
+                .iter()
+                // proofs.get(*hyp) should allways be Some(_)
+                .filter_map(|hyp| proofs.get(*hyp))
+                .fold(proof, |mut s, t| {
+                    s.push_str(t);
+                    s.push(' ');
+                    s
+                });
+
+            proof.push_str(step.label);
+
+            proofs.push(proof);
+        }
+        println!("{}", proofs.last().unwrap())
     }
 
-    Ok(None)
+    if step_to_be_proven < proofs.len() as u32 {
+        Ok(Some(proofs.swap_remove(step_to_be_proven as usize)))
+    } else {
+        Ok(None)
+    }
 }
 
 // TODO: make sure step names are unique

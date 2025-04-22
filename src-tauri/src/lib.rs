@@ -149,7 +149,9 @@ pub enum Error {
     HypothesisWithHypsError,    // Returned if an mmj2 hypothesis step has hypothesis itself
     InactiveMathSymbolError,    // Returned if an expression contains a symbol that is notr active
     VariableWithoutTypecode,    // Returned if there is a variable used without typecode
-    MultipleAllowDiscouragedError, // Returned if there are multiple $allowdiscouraged statements
+    Mmj2StepParseError, // Returend if there the earley parser does not return the proof of an expression
+    VarSubedWithDifferentStrsError, //Returned if the same variable has been substituted with different Strings
+    MultipleAllowDiscouragedError,  // Returned if there are multiple $allowdiscouraged statements
     TokensAfterAllowDiscouragedError, // Returned if there are tokens after $allowdiscouraged
     MultipleLocateAfterError, // Returned if there are multiple $locateafter(-var/-const) statements
     MissingLocateAfterLabelError, // Returned if there is a $locateafter statement without a follow up token
