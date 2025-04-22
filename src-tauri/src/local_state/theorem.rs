@@ -57,7 +57,7 @@ pub fn add_theorem_local(
     metamath_data: &mut MetamathData,
     label: &str,
     description: &str,
-    disjoints: &Vec<String>,
+    distincts: &Vec<String>,
     hypotheses: &Vec<Hypothesis>,
     assertion: &str,
     proof: Option<&str>,
@@ -77,7 +77,7 @@ pub fn add_theorem_local(
         TheoremStatement(Theorem {
             label: label.to_string(),
             description: description.to_string(),
-            disjoints: disjoints.clone(),
+            distincts: distincts.clone(),
             hypotheses: hypotheses.clone(),
             assertion: assertion.to_string(),
             proof: proof.map(|s| s.to_string()),

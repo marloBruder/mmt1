@@ -8,7 +8,7 @@
     component = TheoremTabComponent;
 
     #theoremLabel: string;
-    #pageData: TheoremPageData = $state({ theorem: { label: "", description: "", disjoints: [], hypotheses: [], assertion: "", proof: null }, theoremNumber: 0, proofLines: [], lastTheoremLabel: null, nextTheoremLabel: null });
+    #pageData: TheoremPageData = $state({ theorem: { label: "", description: "", distincts: [], hypotheses: [], assertion: "", proof: null }, theoremNumber: 0, proofLines: [], lastTheoremLabel: null, nextTheoremLabel: null });
 
     constructor(theoremLabel: string) {
       super();
@@ -20,7 +20,7 @@
     }
 
     unloadData(): void {
-      this.#pageData = { theorem: { label: "", description: "", disjoints: [], hypotheses: [], assertion: "", proof: null }, theoremNumber: 0, proofLines: [], lastTheoremLabel: null, nextTheoremLabel: null };
+      this.#pageData = { theorem: { label: "", description: "", distincts: [], hypotheses: [], assertion: "", proof: null }, theoremNumber: 0, proofLines: [], lastTheoremLabel: null, nextTheoremLabel: null };
     }
 
     name(): string {
@@ -96,7 +96,7 @@
             {#each theorem.hypotheses as hypothesis}
               <tr>
                 <td>{hypothesis.label}: </td>
-                <td><MetamathExpression expression={hypothesis.hypothesis}></MetamathExpression></td>
+                <td><MetamathExpression expression={hypothesis.expression}></MetamathExpression></td>
               </tr>
             {/each}
           </tbody>
@@ -108,11 +108,11 @@
     <h2>Assertion:</h2>
     <p><MetamathExpression expression={theorem.assertion}></MetamathExpression></p>
   </div>
-  {#if theorem.disjoints.length != 0}
+  {#if theorem.distincts.length != 0}
     <div class="pb-4">
-      <h2>Disjoints:</h2>
-      {#each theorem.disjoints as disjoint}
-        <p><MetamathExpression expression={disjoint}></MetamathExpression></p>
+      <h2>Distinct variables:</h2>
+      {#each theorem.distincts as distinct}
+        <p><MetamathExpression expression={distinct}></MetamathExpression></p>
       {/each}
     </div>
   {/if}

@@ -57,7 +57,7 @@ pub async fn parse_mm_file(
     let mut active_float_hyps: Vec<Vec<RefFloatingHypothesis>> = vec![Vec::new()];
     let mut prev_float_hyps: Vec<RefFloatingHypothesis> = Vec::new();
 
-    let mut active_disjs: Vec<Vec<String>> = vec![Vec::new()];
+    let mut active_dists: Vec<Vec<String>> = vec![Vec::new()];
 
     let mut active_hyps: Vec<Vec<Hypothesis>> = vec![Vec::new()];
 
@@ -198,7 +198,7 @@ pub async fn parse_mm_file(
                 scope += 1;
                 active_vars.push(Vec::new());
                 active_float_hyps.push(Vec::new());
-                active_disjs.push(Vec::new());
+                active_dists.push(Vec::new());
                 active_hyps.push(Vec::new());
             }
             "$}" => {
@@ -212,7 +212,7 @@ pub async fn parse_mm_file(
                 prev_variables.append(&mut scoped_vars);
                 let mut scoped_float_hyps = active_float_hyps.pop().unwrap();
                 prev_float_hyps.append(&mut scoped_float_hyps);
-                active_disjs.pop();
+                active_dists.pop();
                 active_hyps.pop();
             }
             "$c" => {
@@ -363,24 +363,24 @@ pub async fn parse_mm_file(
                 let label = next_label.ok_or(Error::MissingLabelError)?.to_string();
                 next_label = None;
 
-                let hypothesis = get_next_as_string_check_expression(
+                let expression = get_next_as_string_check_expression(
                     &mut token_iter,
                     "$.",
                     &active_consts,
                     &active_vars,
                 )?;
 
-                active_hyps[scope].push(Hypothesis { label, hypothesis });
+                active_hyps[scope].push(Hypothesis { label, expression });
             }
             "$d" => {
-                let disj =
+                let dist =
                     get_next_as_string_until_check_vars(&mut token_iter, "$.", &active_vars)?;
 
-                if !disj.contains(' ') {
+                if !dist.contains(' ') {
                     return Err(Error::ZeroOrOneSymbolDisjError);
                 }
 
-                active_disjs[scope].push(disj);
+                active_dists[scope].push(dist);
             }
             keyword @ ("$a" | "$p") => {
                 let label = next_label.ok_or(Error::MissingLabelError)?.to_string();
@@ -397,7 +397,7 @@ pub async fn parse_mm_file(
                     String::new()
                 };
 
-                let disjoints = active_disjs.clone().into_iter().flatten().collect();
+                let distincts = active_dists.clone().into_iter().flatten().collect();
                 let hypotheses = active_hyps.clone().into_iter().flatten().collect();
 
                 let assertion_end_keyword = if keyword == "$a" { "$." } else { "$=" };
@@ -420,7 +420,7 @@ pub async fn parse_mm_file(
                 curr_header.content.push(TheoremStatement(Theorem {
                     label,
                     description,
-                    disjoints,
+                    distincts,
                     hypotheses,
                     assertion,
                     proof,

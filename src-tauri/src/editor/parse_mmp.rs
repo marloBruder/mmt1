@@ -112,7 +112,7 @@ fn add_theorem_to_database(
             step_name = prefix_step_name.split_at(1).1;
             hypotheses.push(Hypothesis {
                 label: label.to_string(),
-                hypothesis: expression.to_string(),
+                expression: expression.to_string(),
             });
             new_symbols.push(label);
         } else {
@@ -209,7 +209,7 @@ fn add_theorem_to_database(
                 .next()
                 .map(|c| c.text)
                 .unwrap_or(String::new()),
-            disjoints: mmp_structured_info.distinct_vars,
+            distincts: mmp_structured_info.distinct_vars,
             assertion,
             hypotheses,
             proof,
@@ -268,7 +268,7 @@ fn calc_proof(
                     mm_data
                         .optimized_data
                         .symbol_number_mapping
-                        .expression_to_number_vec_replace_variables_with_typecodes(&h.hypothesis)
+                        .expression_to_number_vec_replace_variables_with_typecodes(&h.expression)
                 })
                 .collect::<Result<(Vec<Vec<u32>>, Vec<Vec<u32>>), Error>>()?;
 
@@ -400,7 +400,7 @@ fn add_axiom_to_database(
             }
             hypotheses.push(Hypothesis {
                 label: prefix_parts.get(2).unwrap().to_string(),
-                hypothesis: expression,
+                expression,
             });
         } else {
             if prefix_parts.len() != 3
@@ -436,7 +436,7 @@ fn add_axiom_to_database(
                 .next()
                 .map(|c| c.text)
                 .unwrap_or(String::new()),
-            disjoints: mmp_structured_info.distinct_vars,
+            distincts: mmp_structured_info.distinct_vars,
             assertion,
             hypotheses,
             proof: None,

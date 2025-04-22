@@ -79,7 +79,7 @@ pub struct FloatingHypohesis {
 pub struct Theorem {
     pub label: String,
     pub description: String,
-    pub disjoints: Vec<String>,
+    pub distincts: Vec<String>,
     pub hypotheses: Vec<Hypothesis>,
     pub assertion: String,
     pub proof: Option<String>,
@@ -88,7 +88,7 @@ pub struct Theorem {
 #[derive(Debug, Clone, Serialize)]
 pub struct Hypothesis {
     pub label: String,
-    pub hypothesis: String,
+    pub expression: String,
 }
 
 #[derive(Debug, Default)]
@@ -466,7 +466,7 @@ impl Theorem {
             hypotheses: self
                 .hypotheses
                 .iter()
-                .map(|hypothesis| hypothesis.hypothesis.clone())
+                .map(|hypothesis| hypothesis.expression.clone())
                 .collect(),
             assertion: self.assertion.clone(),
             description: self.description.clone(),

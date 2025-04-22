@@ -97,7 +97,7 @@ fn calc_database_string(metamath_data: &MetamathData) -> String {
                 }
                 TheoremStatement(theorem) => {
                     res.push_str("${\n");
-                    for dist_vars in &theorem.disjoints {
+                    for dist_vars in &theorem.distincts {
                         res.push_str("  $d ");
                         res.push_str(dist_vars);
                         res.push_str(" $.\n")
@@ -106,7 +106,7 @@ fn calc_database_string(metamath_data: &MetamathData) -> String {
                         res.push_str("  ");
                         res.push_str(&hyp.label);
                         res.push_str(" $e ");
-                        res.push_str(&hyp.hypothesis);
+                        res.push_str(&hyp.expression);
                         res.push_str(" $.\n");
                     }
                     res.push_str("  $(");

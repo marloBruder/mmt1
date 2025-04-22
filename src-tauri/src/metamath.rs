@@ -49,8 +49,8 @@ pub async fn turn_into_theorem(
             }
             "$e" => {
                 let label = last_token.ok_or(Error::InvalidFormatError)?.to_string();
-                let hypothesis = get_next_as_string_until(&mut token_iter, "$.");
-                hypotheses.push(Hypothesis { label, hypothesis })
+                let expression = get_next_as_string_until(&mut token_iter, "$.");
+                hypotheses.push(Hypothesis { label, expression })
             }
             "$a" => {
                 name = last_token.map(|s| s.to_string());
@@ -745,7 +745,7 @@ fn calc_proof_step_from_label(
         return Ok(ProofStep {
             label: label.to_string(),
             hypotheses: Vec::new(),
-            statement: hyp.hypothesis.clone(),
+            statement: hyp.expression.clone(),
             display_step_number: -1,
         });
     }
@@ -935,7 +935,7 @@ fn calc_all_hypotheses_of_theorem(
 
     // Calculate proof steps of essential hypotheses
     for hypothesis in &theorem.hypotheses {
-        hypotheses.push((hypothesis.hypothesis.clone(), hypothesis.label.clone()));
+        hypotheses.push((hypothesis.expression.clone(), hypothesis.label.clone()));
     }
 
     hypotheses
@@ -948,7 +948,7 @@ fn calc_variables_of_theorem<'a>(
     let mut variables = get_variables_from_statement(&theorem.assertion, metamath_data);
 
     for hypothesis in &theorem.hypotheses {
-        let hypothesis_vars = get_variables_from_statement(&hypothesis.hypothesis, metamath_data);
+        let hypothesis_vars = get_variables_from_statement(&hypothesis.expression, metamath_data);
         for var in hypothesis_vars {
             if !variables.contains(&var) {
                 variables.push(var);

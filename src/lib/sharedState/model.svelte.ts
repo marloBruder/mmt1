@@ -26,7 +26,7 @@ export interface FloatingHypothesis {
 export interface Theorem {
   label: string;
   description: string;
-  disjoints: string[];
+  distincts: string[];
   hypotheses: Hypothesis[];
   assertion: string;
   proof: string | null;
@@ -34,7 +34,7 @@ export interface Theorem {
 
 export interface Hypothesis {
   label: string;
-  hypothesis: string;
+  expression: string;
 }
 
 export interface InProgressTheorem {
