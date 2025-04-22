@@ -487,8 +487,17 @@ pub fn calc_theorem_page_data(
     }
     let mut proof_lines = Vec::new();
 
-    let mut proof_steps = calc_proof_steps(theorem, metamath_data)?;
-    let step_numbers = calc_proof_step_numbers(theorem)?;
+    let mut proof_steps: Vec<ProofStep>;
+    // step numbers begin at 1
+    let step_numbers: Vec<(u32, bool)>;
+
+    if theorem.proof.as_ref().unwrap().starts_with("( ") {
+        proof_steps = calc_proof_steps_compressed(theorem, metamath_data)?;
+        step_numbers = calc_proof_step_numbers_compressed(theorem)?;
+    } else {
+        (proof_steps, step_numbers) =
+            calc_proof_steps_and_numbers_uncompressed(theorem, metamath_data)?;
+    }
 
     // for (i, step) in proof_steps.iter().enumerate() {
     //     println!("Step {}:\n{:?}", i + 1, step);
@@ -702,7 +711,80 @@ fn is_variable(symbol: &str, metamath_data: &MetamathData) -> bool {
     metamath_data.optimized_data.variables.contains(symbol)
 }
 
-fn calc_proof_step_numbers(theorem: &Theorem) -> Result<Vec<(u32, bool)>, Error> {
+fn calc_proof_steps_and_numbers_uncompressed(
+    theorem: &Theorem,
+    metamath_data: &MetamathData,
+) -> Result<(Vec<ProofStep>, Vec<(u32, bool)>), Error> {
+    let mut proof_steps: Vec<ProofStep> = Vec::new();
+    let mut proof_step_numbers: Vec<(u32, bool)> = Vec::new();
+
+    if let Some(proof) = theorem.proof.as_ref() {
+        for token in proof.split_ascii_whitespace() {
+            if let Some((i, _)) = proof_steps
+                .iter()
+                .enumerate()
+                .find(|(_, ps)| ps.label == token)
+            {
+                proof_step_numbers.push(((i + 1) as u32, false));
+            } else {
+                proof_steps.push(calc_proof_step_from_label(token, theorem, metamath_data)?);
+                proof_step_numbers.push((proof_steps.len() as u32, false))
+            }
+        }
+    }
+
+    Ok((proof_steps, proof_step_numbers))
+}
+
+fn calc_proof_step_from_label(
+    label: &str,
+    theorem: &Theorem,
+    metamath_data: &MetamathData,
+) -> Result<ProofStep, Error> {
+    if let Some(hyp) = theorem.hypotheses.iter().find(|h| h.label == label) {
+        return Ok(ProofStep {
+            label: label.to_string(),
+            hypotheses: Vec::new(),
+            statement: hyp.hypothesis.clone(),
+            display_step_number: -1,
+        });
+    }
+
+    if let Some(floating_hypothesis) = metamath_data
+        .database_header
+        .floating_hypohesis_iter()
+        .find(|fh| fh.label == label)
+    {
+        let label_theorem_hypotheses = calc_all_hypotheses_of_theorem(theorem, metamath_data);
+        return Ok(ProofStep {
+            label: label.to_string(),
+            hypotheses: Vec::new(),
+            statement: floating_hypothesis.to_assertions_string(),
+            display_step_number: -1,
+        });
+    }
+
+    if let Some(theorem) = metamath_data
+        .database_header
+        .theorem_iter()
+        .find(|t| t.label == label)
+    {
+        let label_theorem_hypotheses = calc_all_hypotheses_of_theorem(theorem, metamath_data);
+        return Ok(ProofStep {
+            label: label.to_string(),
+            hypotheses: label_theorem_hypotheses
+                .into_iter()
+                .map(|(hyp, _label)| hyp)
+                .collect(),
+            statement: theorem.assertion.clone(),
+            display_step_number: -1,
+        });
+    }
+
+    Err(Error::NotFoundError)
+}
+
+fn calc_proof_step_numbers_compressed(theorem: &Theorem) -> Result<Vec<(u32, bool)>, Error> {
     let proof = match theorem.proof.as_ref() {
         Some(proof) => &**proof,
         None => return Ok(Vec::new()),
@@ -769,7 +851,7 @@ fn compressed_num_to_num(compressed_num: &str) -> Result<u32, Error> {
     Ok(num)
 }
 
-fn calc_proof_steps(
+fn calc_proof_steps_compressed(
     theorem: &Theorem,
     metamath_data: &MetamathData,
 ) -> Result<Vec<ProofStep>, Error> {
@@ -804,8 +886,8 @@ fn calc_proof_steps(
                     steps.push(ProofStep {
                         label: label.to_string(),
                         hypotheses: label_theorem_hypotheses
-                            .iter()
-                            .map(|(hyp, _label)| hyp.clone())
+                            .into_iter()
+                            .map(|(hyp, _label)| hyp)
                             .collect(),
                         statement: theorem.assertion.clone(),
                         display_step_number: -1,
