@@ -9,23 +9,29 @@
 
 {#each theoremListData.list as theoremListEntry}
   <div class="my-10 text-center border-black border-y">
-    <div>
-      <TheoremLink label={theoremListEntry.label}></TheoremLink>
-      <small>
-        {theoremListEntry.theoremNumber}
-      </small>
-    </div>
-    <div class="border-gray-500 border-y">
-      {theoremListEntry.description}
-    </div>
-    {#each theoremListEntry.hypotheses as hypothesis}
+    {#if theoremListEntry.discriminator === "TheoremListEntry"}
       <div>
-        <MetamathExpression expression={hypothesis}></MetamathExpression>
+        <TheoremLink label={theoremListEntry.label}></TheoremLink>
+        <small>
+          {theoremListEntry.theoremNumber}
+        </small>
       </div>
-    {/each}
-    <div class={theoremListEntry.hypotheses.length != 0 ? "border-t border-gray-400 " : ""}>
-      <MetamathExpression expression={theoremListEntry.assertion}></MetamathExpression>
-    </div>
+      <div class="border-gray-500 border-y">
+        {theoremListEntry.description}
+      </div>
+      {#each theoremListEntry.hypotheses as hypothesis}
+        <div>
+          <MetamathExpression expression={hypothesis}></MetamathExpression>
+        </div>
+      {/each}
+      <div class={theoremListEntry.hypotheses.length != 0 ? "border-t border-gray-400 " : ""}>
+        <MetamathExpression expression={theoremListEntry.assertion}></MetamathExpression>
+      </div>
+    {:else if theoremListEntry.discriminator === "HeaderListEntry"}
+      <div class="text-2xl p-4">
+        {theoremListEntry.headerPath + " " + theoremListEntry.title}
+      </div>
+    {/if}
   </div>
 {/each}
 <div class=" p-2 flex justify-around">

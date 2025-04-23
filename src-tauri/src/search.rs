@@ -1,7 +1,10 @@
 use serde::Deserialize;
 use tauri::async_runtime::Mutex;
 
-use crate::{model::TheoremListData, AppState, Error};
+use crate::{
+    model::{ListEntry, TheoremListData},
+    AppState, Error,
+};
 
 // page starts at 0
 #[derive(Deserialize)]
@@ -19,7 +22,7 @@ pub async fn search_theorems(
     let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
     let mut theorem_amount: i32 = 0;
-    let mut list = Vec::new();
+    let mut list: Vec<ListEntry> = Vec::new();
 
     metamath_data
         .database_header
@@ -31,7 +34,9 @@ pub async fn search_theorems(
             if search_parameters.page * 100 <= search_result_number as u32
                 && (search_result_number as u32) < (search_parameters.page + 1) * 100
             {
-                list.push(theorem.to_theorem_list_entry((theorem_number + 1) as u32));
+                list.push(ListEntry::Theorem(
+                    theorem.to_theorem_list_entry((theorem_number + 1) as u32),
+                ));
             }
             theorem_amount += 1;
         });

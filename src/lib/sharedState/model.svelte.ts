@@ -96,9 +96,11 @@ export interface ProofLine {
 }
 
 export interface TheoremListData {
-  list: TheoremListEntry[];
+  list: ListEntry[];
   pageAmount: number;
 }
+
+export type ListEntry = TheoremListEntry | HeaderListEntry;
 
 export interface TheoremListEntry {
   label: string;
@@ -106,6 +108,13 @@ export interface TheoremListEntry {
   hypotheses: string[];
   assertion: string;
   description: string;
+  discriminator: "TheoremListEntry";
+}
+
+export interface HeaderListEntry {
+  headerPath: string;
+  title: string;
+  discriminator: "HeaderListEntry";
 }
 
 export interface SearchParameters {
