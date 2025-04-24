@@ -10,21 +10,21 @@ use crate::{
 };
 use tauri::async_runtime::Mutex;
 
-struct MmpStructuredInfo {
-    constants: Vec<Constant>,
-    variables: Vec<Vec<Variable>>,
-    floating_hypotheses: Vec<FloatingHypohesis>,
-    theorem_label: Option<String>,
-    axiom_label: Option<String>,
-    header: Option<(String, String)>,
-    distinct_vars: Vec<String>,
-    mmj2_steps: Vec<(String, String)>,
-    allow_discouraged: bool,
-    locate_after: Option<LocateAfter>,
-    comments: Vec<Comment>,
+pub struct MmpStructuredInfo {
+    pub constants: Vec<Constant>,
+    pub variables: Vec<Vec<Variable>>,
+    pub floating_hypotheses: Vec<FloatingHypohesis>,
+    pub theorem_label: Option<String>,
+    pub axiom_label: Option<String>,
+    pub header: Option<(String, String)>,
+    pub distinct_vars: Vec<String>,
+    pub mmj2_steps: Vec<(String, String)>,
+    pub allow_discouraged: bool,
+    pub locate_after: Option<LocateAfter>,
+    pub comments: Vec<Comment>,
 }
 
-enum LocateAfter {
+pub enum LocateAfter {
     LocateAfter(String),
     LocateAfterConst(String),
     LocateAfterVar(String),
@@ -41,6 +41,10 @@ pub async fn add_to_database(
 
     let statements = text_to_statements(text)?;
     let mmp_structured_info = statements_to_mmp_structured_info(statements)?;
+
+    if mmp_structured_info.statement_out_of_place() {
+        return Err(Error::StatementOutOfPlaceError);
+    }
 
     let mut app_state = state.lock().await;
     let mm_data = app_state.metamath_data.as_mut().ok_or(Error::NoMmDbError)?;
@@ -64,17 +68,70 @@ pub async fn add_to_database(
     Ok(())
 }
 
+impl MmpStructuredInfo {
+    pub fn statement_out_of_place(&self) -> bool {
+        if self.theorem_label.is_some() {
+            if self.axiom_label.is_some() || !self.constants.is_empty() || self.header.is_some() {
+                return true;
+            }
+        } else if self.axiom_label.is_some() {
+            if !self.constants.is_empty() || self.allow_discouraged || self.header.is_some() {
+                return true;
+            }
+        } else if self.header.is_some() {
+            if !self.floating_hypotheses.is_empty()
+                || !self.constants.is_empty()
+                || !self.variables.is_empty()
+                || self.allow_discouraged
+                || !self.distinct_vars.is_empty()
+                || !self.mmj2_steps.is_empty()
+                || self.locate_after.is_some()
+            {
+                return true;
+            }
+        } else if !self.floating_hypotheses.is_empty() {
+            if self.floating_hypotheses.len() > 1
+                || !self.constants.is_empty()
+                || !self.variables.is_empty()
+                || self.allow_discouraged
+                || !self.distinct_vars.is_empty()
+                || !self.mmj2_steps.is_empty()
+            {
+                return true;
+            }
+        } else if !self.variables.is_empty() {
+            if self.variables.len() > 1
+                || !self.constants.is_empty()
+                || self.allow_discouraged
+                || !self.distinct_vars.is_empty()
+                || !self.mmj2_steps.is_empty()
+            {
+                return true;
+            }
+        } else if !self.constants.is_empty() {
+            if self.allow_discouraged
+                || !self.distinct_vars.is_empty()
+                || !self.mmj2_steps.is_empty()
+            {
+                return true;
+            }
+        } else if self.comments.len() > 0 {
+            if self.allow_discouraged
+                || !self.distinct_vars.is_empty()
+                || !self.mmj2_steps.is_empty()
+            {
+                return true;
+            }
+        }
+
+        false
+    }
+}
+
 fn add_theorem_to_database(
     mm_data: &mut MetamathData,
     mmp_structured_info: MmpStructuredInfo,
 ) -> Result<(), Error> {
-    if mmp_structured_info.axiom_label.is_some()
-        || !mmp_structured_info.constants.is_empty()
-        || mmp_structured_info.header.is_some()
-    {
-        return Err(Error::StatementOutOfPlaceError);
-    }
-
     let mut new_symbols: Vec<&str> = Vec::new();
 
     let thoerem_label = mmp_structured_info
@@ -362,13 +419,6 @@ fn add_axiom_to_database(
     mm_data: &mut MetamathData,
     mmp_structured_info: MmpStructuredInfo,
 ) -> Result<(), Error> {
-    if !mmp_structured_info.constants.is_empty()
-        || mmp_structured_info.allow_discouraged
-        || mmp_structured_info.header.is_some()
-    {
-        return Err(Error::StatementOutOfPlaceError);
-    }
-
     let mut symbols: Vec<&str> = Vec::new();
 
     let axiom_label = mmp_structured_info
@@ -450,17 +500,6 @@ fn add_header_to_database(
     mm_data: &mut MetamathData,
     mmp_structured_info: MmpStructuredInfo,
 ) -> Result<(), Error> {
-    if !mmp_structured_info.floating_hypotheses.is_empty()
-        || !mmp_structured_info.constants.is_empty()
-        || !mmp_structured_info.variables.is_empty()
-        || mmp_structured_info.allow_discouraged
-        || !mmp_structured_info.distinct_vars.is_empty()
-        || !mmp_structured_info.mmj2_steps.is_empty()
-        || mmp_structured_info.locate_after.is_some()
-    {
-        return Err(Error::StatementOutOfPlaceError);
-    }
-
     let (header_path_string, header_title) = mmp_structured_info
         .header
         .ok_or(Error::InternalLogicError)?;
@@ -497,16 +536,6 @@ fn add_floating_hypothesis_to_database(
     mm_data: &mut MetamathData,
     mmp_structured_info: MmpStructuredInfo,
 ) -> Result<(), Error> {
-    if mmp_structured_info.floating_hypotheses.len() > 1
-        || !mmp_structured_info.constants.is_empty()
-        || !mmp_structured_info.variables.is_empty()
-        || mmp_structured_info.allow_discouraged
-        || !mmp_structured_info.distinct_vars.is_empty()
-        || !mmp_structured_info.mmj2_steps.is_empty()
-    {
-        return Err(Error::StatementOutOfPlaceError);
-    }
-
     let flaoting_hypothesis = mmp_structured_info
         .floating_hypotheses
         .into_iter()
@@ -533,15 +562,6 @@ fn add_variables_to_database(
     mm_data: &mut MetamathData,
     mmp_structured_info: MmpStructuredInfo,
 ) -> Result<(), Error> {
-    if mmp_structured_info.variables.len() > 1
-        || !mmp_structured_info.constants.is_empty()
-        || mmp_structured_info.allow_discouraged
-        || !mmp_structured_info.distinct_vars.is_empty()
-        || !mmp_structured_info.mmj2_steps.is_empty()
-    {
-        return Err(Error::StatementOutOfPlaceError);
-    }
-
     let variables = mmp_structured_info
         .variables
         .into_iter()
@@ -577,13 +597,6 @@ fn add_constants_to_database(
     mm_data: &mut MetamathData,
     mmp_structured_info: MmpStructuredInfo,
 ) -> Result<(), Error> {
-    if mmp_structured_info.allow_discouraged
-        || !mmp_structured_info.distinct_vars.is_empty()
-        || !mmp_structured_info.mmj2_steps.is_empty()
-    {
-        return Err(Error::StatementOutOfPlaceError);
-    }
-
     let const_strs = mmp_structured_info
         .constants
         .iter()
@@ -613,13 +626,6 @@ fn add_comment_to_database(
     mm_data: &mut MetamathData,
     mmp_structured_info: MmpStructuredInfo,
 ) -> Result<(), Error> {
-    if mmp_structured_info.allow_discouraged
-        || !mmp_structured_info.distinct_vars.is_empty()
-        || !mmp_structured_info.mmj2_steps.is_empty()
-    {
-        return Err(Error::StatementOutOfPlaceError);
-    }
-
     add_statement(
         &mut mm_data.database_header,
         &mmp_structured_info.locate_after,
@@ -723,7 +729,7 @@ fn add_statement_at_end(header: &mut Header, statement: Statement) {
     last_header.content.push(statement);
 }
 
-fn statements_to_mmp_structured_info(
+pub fn statements_to_mmp_structured_info(
     statements: Vec<Vec<&str>>,
 ) -> Result<MmpStructuredInfo, Error> {
     let mut constants: Vec<Constant> = Vec::new();
@@ -982,7 +988,7 @@ fn statements_to_mmp_structured_info(
     })
 }
 
-fn text_to_statements(text: &str) -> Result<Vec<Vec<&str>>, Error> {
+pub fn text_to_statements(text: &str) -> Result<Vec<Vec<&str>>, Error> {
     let mut statements_vec: Vec<Vec<&str>> = Vec::new();
 
     let mut line_iter = text.lines().peekable();
