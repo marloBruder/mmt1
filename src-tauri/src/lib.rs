@@ -131,6 +131,7 @@ pub enum Error {
     TooFewHeaderTokensError, // Returned if there are less than 2 tokens after $header statement
     DuplicateSymbolError, // Returned if an added symbol (const, var or label) exists in the database already
     // EmptyConstStatementError: Also used when parsing mmp files
+    TooManyConstStatementsError, // Returned if there is more than one const statement
     // EmptyVarStatementError: Also used when parsing mmp files
     // FloatHypStatementFormatError: Also used when parsing mmp files
     InvalidHeaderPathStringError, // Returned if the token after $header is not a valid Headerpath

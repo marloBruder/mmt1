@@ -9,8 +9,7 @@ use crate::{
     AppState, Error,
 };
 use tauri::async_runtime::Mutex;
-
-pub struct MmpStructuredInfo {
+struct MmpStructuredInfo {
     pub constants: Vec<Constant>,
     pub variables: Vec<Vec<Variable>>,
     pub floating_hypotheses: Vec<FloatingHypohesis>,
@@ -277,7 +276,7 @@ fn add_theorem_to_database(
 }
 
 #[derive(Debug)]
-pub struct Mmj2StepProcessed<'a> {
+struct Mmj2StepProcessed<'a> {
     pub is_hypothesis: bool,
     pub step_name: &'a str,
     pub hyps: Vec<usize>,
@@ -773,7 +772,7 @@ pub fn statements_to_mmp_structured_info(
             }
             "$c" => {
                 if !constants.is_empty() {
-                    return Err(Error::StatementOutOfPlaceError);
+                    return Err(Error::TooManyConstStatementsError);
                 }
 
                 for token in token_iter {
