@@ -1,6 +1,8 @@
 <script lang="ts" module>
   import EditorTabComponent from "$lib/components/tabs/EditorTabComponent.svelte";
 
+  let editor: Monaco.editor.IStandaloneCodeEditor;
+
   export class EditorTab extends Tab {
     component = EditorTabComponent;
 
@@ -58,9 +60,11 @@
     }
 
     async unify(): Promise<void> {
-      let resultText = (await invoke("unify", { text: this.monacoModel!.getValue(), cursorPos: 0 })) as string;
+      let resultText = (await invoke("unify", { text: this.monacoModel!.getValue() })) as string;
       if (resultText != this.monacoModel!.getValue()) {
-        this.monacoModel!.setValue(resultText);
+        // this.monacoModel!.setValue(resultText);
+        editor.executeEdits("unifier", [{ /*identifier: "delete" as any,*/ range: new monaco.Range(1, 1, 10000, 1), text: resultText, forceMoveMarkers: true }]);
+        // editor.executeEdits("unifier", [{ /*identifier: "insert" as any,*/ range: new monaco.Range(1, 1, 1, 1), text: resultText, forceMoveMarkers: true }]);
       }
     }
 
@@ -124,7 +128,6 @@
     throw Error("Wrong Tab Type");
   });
 
-  let editor: Monaco.editor.IStandaloneCodeEditor;
   // let monaco: typeof Monaco;
   let editorContainer: HTMLElement;
 

@@ -35,6 +35,9 @@ pub async fn add_to_database(
     state: tauri::State<'_, Mutex<AppState>>,
     text: &str,
 ) -> Result<(), Error> {
+    let mut app_state = state.lock().await;
+    let mm_data = app_state.metamath_data.as_mut().ok_or(Error::NoMmDbError)?;
+
     if !text.is_ascii() {
         return Err(Error::InvalidCharactersError);
     }
@@ -45,9 +48,6 @@ pub async fn add_to_database(
     if mmp_structured_info.statement_out_of_place() {
         return Err(Error::StatementOutOfPlaceError);
     }
-
-    let mut app_state = state.lock().await;
-    let mm_data = app_state.metamath_data.as_mut().ok_or(Error::NoMmDbError)?;
 
     if mmp_structured_info.theorem_label.is_some() {
         add_theorem_to_database(mm_data, mmp_structured_info)?;
@@ -277,12 +277,12 @@ fn add_theorem_to_database(
 }
 
 #[derive(Debug)]
-struct Mmj2StepProcessed<'a> {
-    is_hypothesis: bool,
-    step_name: &'a str,
-    hyps: Vec<usize>,
-    label: &'a str,
-    expression: Vec<u32>,
+pub struct Mmj2StepProcessed<'a> {
+    pub is_hypothesis: bool,
+    pub step_name: &'a str,
+    pub hyps: Vec<usize>,
+    pub label: &'a str,
+    pub expression: Vec<u32>,
 }
 
 /**

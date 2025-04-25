@@ -126,7 +126,7 @@ pub enum Error {
     FileWriteError,
 
     // Parsing mmp file errors
-    WhitespaceBeforeFirstTokenError, // Returned if there is whitepace before the first token
+    WhitespaceBeforeFirstTokenError, // Returned if there is whitepace before the first token on the same line
     MultipleHeaderStatementError,    // Returned if there are mutliple $header statements
     TooFewHeaderTokensError, // Returned if there are less than 2 tokens after $header statement
     DuplicateSymbolError, // Returned if an added symbol (const, var or label) exists in the database already
