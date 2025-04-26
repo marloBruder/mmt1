@@ -18,7 +18,6 @@ use tauri::async_runtime::Mutex;
 
 pub mod export;
 pub mod parse;
-pub mod unify;
 
 #[tauri::command]
 pub async fn turn_into_theorem(
@@ -755,7 +754,6 @@ fn calc_proof_step_from_label(
         .floating_hypohesis_iter()
         .find(|fh| fh.label == label)
     {
-        let label_theorem_hypotheses = calc_all_hypotheses_of_theorem(theorem, metamath_data);
         return Ok(ProofStep {
             label: label.to_string(),
             hypotheses: Vec::new(),
