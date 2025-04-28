@@ -108,6 +108,10 @@ pub async fn unify(state: tauri::State<'_, Mutex<AppState>>, text: &str) -> Resu
         if let Some(MmpStatement::ProofLine(proof_line)) =
             mmp_info_structured_for_unify.statements.get(i)
         {
+            if proof_line.step_name == "" {
+                for theorem in mm_data.database_header.theorem_iter() {}
+            }
+
             previous_proof_lines.push(proof_line);
         }
         res.push_str(statement_str);
@@ -169,7 +173,7 @@ fn statement_strs_to_mmp_info_structured_for_unify<'a>(
     let mut constants: Option<&'a str> = None;
     let mut variables: Vec<&'a str> = Vec::new();
     let mut floating_hypotheses: Vec<&'a str> = Vec::new();
-    let mut statements: Vec<MmpStatement<'a>> = Vec::new();
+    let mut statements: Vec<MmpStatement<'a>> = Vec::with_capacity(statement_strs.len());
 
     for &statement_str in statement_strs {
         let mut token_iter = statement_str.split_ascii_whitespace();

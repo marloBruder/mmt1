@@ -113,6 +113,7 @@ pub enum Error {
     MissingLabelError,          // Returned if a statement is missing its label
     InvalidLabelError,          // Returned if a label is not valid
     TypesettingFormatError,     // Returned if there is an format error in a typesetting comment
+    ExpressionParseError,       // Returned if an expression could not be successfully parsed
 
     LabelAlreadyExistsError,
 

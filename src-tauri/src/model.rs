@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     util::{
-        earley_parser::{Grammar, GrammarRule},
+        earley_parser::{self, Grammar, GrammarRule},
         header_iterators::{
             ConstantIterator, FloatingHypothesisIterator, HeaderIterator, TheoremIterator,
             VariableIterator,
@@ -26,8 +26,21 @@ pub struct MetamathData {
 pub struct OptimizedMetamathData {
     pub variables: HashSet<String>,
     pub floating_hypotheses: Vec<FloatingHypohesis>,
+    pub theorem_data: HashMap<String, OptimizedTheoremData>,
     pub symbol_number_mapping: SymbolNumberMapping,
     pub grammar: Grammar,
+}
+
+#[derive(Debug)]
+pub struct OptimizedTheoremData {
+    pub hypotheses_parsed: Vec<ParseTree>,
+    pub assertion_parsed: ParseTree,
+}
+
+#[derive(Debug, Clone)]
+pub struct ParseTree {
+    pub nodes: Vec<ParseTree>,
+    pub rule: u32,
 }
 
 #[derive(Debug, Default)]
@@ -214,6 +227,24 @@ impl MetamathData {
             .is_none()
     }
 
+    pub fn calc_optimized_theorem_data(&mut self) -> Result<(), Error> {
+        let mut i = 0;
+        for theorem in self.database_header.theorem_iter() {
+            // if i % 100 == 0 {
+            println!("{}", i);
+            // }
+            i += 1;
+            if theorem.assertion.starts_with("|- ") {
+                self.optimized_data.theorem_data.insert(
+                    theorem.label.to_string(),
+                    theorem.calc_optimized_data(self)?,
+                );
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn recalc_optimized_floating_hypotheses_after_one_new(&mut self) -> Result<(), Error> {
         let mut i: usize = 0;
         for floating_hypothesis in self.database_header.floating_hypohesis_iter() {
@@ -248,10 +279,7 @@ impl MetamathData {
         self.optimized_data.symbol_number_mapping =
             SymbolNumberMapping::calc_mapping(&self.database_header);
 
-        self.optimized_data.grammar = Grammar::calc_grammar(
-            &self.database_header,
-            &self.optimized_data.symbol_number_mapping,
-        )?;
+        self.optimized_data.grammar = Grammar::calc_grammar(self)?;
         // let mut i: u32 = 1;
         // while let Some(symbol) = self.optimized_data.symbol_number_mapping.symbols.get(&i) {
         //     println!("{}: {}", i, symbol);
@@ -299,6 +327,46 @@ impl MetamathData {
 //         }
 //     }
 // }
+
+impl ParseTree {
+    pub fn calc_proof(&self, grammar: &Grammar) -> Result<String, Error> {
+        let mut proof = String::new();
+
+        let mut trees = vec![(self, 0)];
+
+        while let Some((tree, next_node_i)) = trees.last_mut() {
+            if let Some(&node_i) = grammar
+                .rules
+                .get(tree.rule as usize)
+                .ok_or(Error::InternalLogicError)?
+                .var_order
+                .get(*next_node_i as usize)
+            {
+                let node = tree
+                    .nodes
+                    .get(node_i as usize)
+                    .ok_or(Error::InternalLogicError)?;
+
+                *next_node_i += 1;
+                trees.push((node, 0));
+            } else {
+                proof.push_str(
+                    &grammar
+                        .rules
+                        .get(tree.rule as usize)
+                        .ok_or(Error::InternalLogicError)?
+                        .label,
+                );
+                proof.push(' ');
+                trees.pop();
+            }
+        }
+
+        proof.pop();
+
+        Ok(proof)
+    }
+}
 
 impl SymbolNumberMapping {
     pub fn calc_mapping(header: &Header) -> SymbolNumberMapping {
@@ -386,6 +454,14 @@ impl SymbolNumberMapping {
         ))
     }
 
+    pub fn expression_to_number_vec_skip_first(&self, expression: &str) -> Result<Vec<u32>, ()> {
+        expression
+            .split_ascii_whitespace()
+            .skip(1)
+            .map(|t| Ok(*self.numbers.get(t).ok_or(())?))
+            .collect::<Result<Vec<u32>, ()>>()
+    }
+
     pub fn is_typecode(&self, number: u32) -> bool {
         return number <= self.typecode_count;
     }
@@ -400,13 +476,12 @@ impl SymbolNumberMapping {
 }
 
 impl Grammar {
-    pub fn calc_grammar(
-        header: &Header,
-        symbol_number_mapping: &SymbolNumberMapping,
-    ) -> Result<Grammar, Error> {
+    pub fn calc_grammar(metamath_data: &MetamathData) -> Result<Grammar, Error> {
         let mut rules = Vec::new();
 
-        for floating_hypothesis in header.floating_hypohesis_iter() {
+        let symbol_number_mapping = &metamath_data.optimized_data.symbol_number_mapping;
+
+        for floating_hypothesis in &metamath_data.optimized_data.floating_hypotheses {
             rules.push(GrammarRule {
                 left_side: *symbol_number_mapping
                     .numbers
@@ -417,10 +492,11 @@ impl Grammar {
                     .get(&floating_hypothesis.variable)
                     .ok_or(Error::InternalLogicError)?],
                 label: floating_hypothesis.label.clone(),
+                var_order: Vec::new(),
             });
         }
 
-        for theorem in header.theorem_iter() {
+        for theorem in metamath_data.database_header.theorem_iter() {
             if theorem.proof == None
                 && theorem
                     .assertion
@@ -435,6 +511,9 @@ impl Grammar {
                     .numbers
                     .get(&format!("${}", assertion_token_iter.next().unwrap()))
                     .ok_or(Error::InternalLogicError)?;
+
+                let mut vars: Vec<u32> = Vec::new();
+
                 let right_side = assertion_token_iter
                     .map(|t| {
                         let mut num = *symbol_number_mapping
@@ -442,6 +521,7 @@ impl Grammar {
                             .get(t)
                             .ok_or(Error::InternalLogicError)?;
                         if symbol_number_mapping.is_variable(num) {
+                            vars.push(num);
                             num = *symbol_number_mapping
                                 .variable_typecodes
                                 .get(&num)
@@ -450,10 +530,28 @@ impl Grammar {
                         Ok(num)
                     })
                     .collect::<Result<Vec<u32>, Error>>()?;
+
+                let mut var_order: Vec<u32> = Vec::new();
+
+                for floating_hypothesis in &metamath_data.optimized_data.floating_hypotheses {
+                    for (i, &var) in vars.iter().enumerate() {
+                        if *symbol_number_mapping
+                            .numbers
+                            .get(&floating_hypothesis.variable)
+                            .ok_or(Error::InternalLogicError)?
+                            == var
+                        {
+                            var_order.push(i as u32);
+                            break;
+                        }
+                    }
+                }
+
                 rules.push(GrammarRule {
                     left_side,
                     right_side,
                     label: theorem.label.clone(),
+                    var_order,
                 });
             }
         }
@@ -481,6 +579,55 @@ impl Theorem {
             assertion: self.assertion.clone(),
             description: self.description.clone(),
         }
+    }
+
+    pub fn calc_optimized_data(
+        &self,
+        metamath_data: &MetamathData,
+    ) -> Result<OptimizedTheoremData, Error> {
+        let hypotheses_parsed = self
+            .hypotheses
+            .iter()
+            .map(|h| {
+                earley_parser::earley_parse(
+                    &metamath_data.optimized_data.grammar,
+                    &metamath_data
+                        .optimized_data
+                        .symbol_number_mapping
+                        .expression_to_number_vec_skip_first(&h.expression)
+                        .or(Err(Error::InternalLogicError))?,
+                    vec![1],
+                    &metamath_data.optimized_data.symbol_number_mapping,
+                )?
+                .ok_or(Error::ExpressionParseError)?
+                .into_iter()
+                .next()
+                .ok_or(Error::InternalLogicError)
+            })
+            .collect::<Result<Vec<ParseTree>, Error>>()?;
+
+        let assertion_parsed = earley_parser::earley_parse(
+            &metamath_data.optimized_data.grammar,
+            &metamath_data
+                .optimized_data
+                .symbol_number_mapping
+                .expression_to_number_vec_skip_first(&self.assertion)
+                .or(Err(Error::InternalLogicError))?,
+            vec![1],
+            &metamath_data.optimized_data.symbol_number_mapping,
+        )?
+        .ok_or(Error::ExpressionParseError)?
+        .into_iter()
+        .next()
+        .ok_or(Error::InternalLogicError)?;
+
+        println!("{:?}", hypotheses_parsed);
+        println!("{:?}", assertion_parsed);
+
+        Ok(OptimizedTheoremData {
+            hypotheses_parsed,
+            assertion_parsed,
+        })
     }
 }
 

@@ -446,6 +446,7 @@ pub async fn parse_mm_file(
     }
 
     metamath_data.recalc_symbol_number_mapping_and_grammar()?;
+    metamath_data.calc_optimized_theorem_data()?;
 
     Ok(())
 }

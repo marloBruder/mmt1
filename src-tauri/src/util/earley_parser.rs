@@ -1,6 +1,9 @@
 use std::cmp::Ordering;
 
-use crate::{model::SymbolNumberMapping, Error};
+use crate::{
+    model::{ParseTree, SymbolNumberMapping},
+    Error,
+};
 
 #[derive(Debug, Default)]
 pub struct Grammar {
@@ -17,6 +20,7 @@ pub struct GrammarRule {
     pub left_side: u32,
     pub right_side: Vec<u32>,
     pub label: String,
+    pub var_order: Vec<u32>,
 }
 
 #[derive(Debug)]
@@ -30,7 +34,7 @@ struct State {
     pub rule_i: i32,
     pub processed_i: u32,
     pub start_i: u32,
-    pub proof: Vec<String>,
+    pub parse_trees: Vec<ParseTree>,
 }
 
 impl StateSet {
@@ -145,7 +149,7 @@ pub fn earley_parse(
     expression: &Vec<u32>,
     match_against: Vec<u32>,
     symbol_number_mapping: &SymbolNumberMapping,
-) -> Result<Option<Vec<String>>, Error> {
+) -> Result<Option<Vec<ParseTree>>, Error> {
     let match_against_len = match_against.len();
 
     let extended_grammar = ExtendedGrammar {
@@ -154,6 +158,7 @@ pub fn earley_parse(
             left_side: 0,
             right_side: match_against,
             label: String::new(),
+            var_order: Vec::new(), // never accessed
         },
     };
 
@@ -162,7 +167,7 @@ pub fn earley_parse(
         rule_i: -1,
         processed_i: 0,
         start_i: 0,
-        proof: Vec::new(),
+        parse_trees: Vec::new(),
     });
 
     for k in 0..(expression.len() as u32 + 1) {
@@ -203,9 +208,9 @@ pub fn earley_parse(
             rule_i: -1,
             processed_i: match_against_len as u32,
             start_i: 0,
-            proof: Vec::new(),
+            parse_trees: Vec::new(),
         })
-        .map(|s| s.proof))
+        .map(|s| s.parse_trees))
 }
 
 fn predictor(
@@ -224,7 +229,7 @@ fn predictor(
                 rule_i: rule_i as i32,
                 processed_i: 0,
                 start_i: k,
-                proof: Vec::new(),
+                parse_trees: Vec::new(),
             };
 
             current_set.insert(new_state);
@@ -252,7 +257,7 @@ fn scanner(
             rule_i: state.rule_i,
             processed_i: state.processed_i + 1,
             start_i: state.start_i,
-            proof: state.proof.clone(),
+            parse_trees: state.parse_trees.clone(),
         };
 
         next_set.insert(new_state);
@@ -275,23 +280,20 @@ fn completer(
     {
         if Some(state.rule(extended_grammar).left_side) == other_state.next_token(extended_grammar)
         {
-            let mut new_proof = other_state.proof.clone();
-            if !state.proof.is_empty() {
-                new_proof.push(state.proof.join(" "));
-                new_proof.last_mut().unwrap().push(' ');
-                new_proof
-                    .last_mut()
-                    .unwrap()
-                    .push_str(&state.rule(extended_grammar).label);
-            } else {
-                new_proof.push(state.rule(extended_grammar).label.clone());
+            let mut new_parse_trees = other_state.parse_trees.clone();
+            if state.rule_i < 0 {
+                return Err(Error::InternalLogicError);
             }
+            new_parse_trees.push(ParseTree {
+                nodes: state.parse_trees.clone(),
+                rule: state.rule_i as u32,
+            });
 
             let new_state = State {
                 rule_i: other_state.rule_i as i32,
                 processed_i: other_state.processed_i + 1,
                 start_i: other_state.start_i,
-                proof: new_proof,
+                parse_trees: new_parse_trees,
             };
 
             // println!("{:?}", new_state.proof);
