@@ -5,7 +5,7 @@ use crate::{
         Comment, Constant, FloatingHypohesis, Header, HeaderPath, Hypothesis, MetamathData,
         Statement, Theorem, Variable,
     },
-    util::earley_parser::earley_parse,
+    util::earley_parser_optimized::earley_parse,
     AppState, Error,
 };
 use tauri::async_runtime::Mutex;

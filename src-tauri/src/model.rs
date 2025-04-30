@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     util::{
-        earley_parser::{self, Grammar, GrammarRule},
+        earley_parser_optimized::{self, Grammar, GrammarRule},
         header_iterators::{
             ConstantIterator, FloatingHypothesisIterator, HeaderIterator, TheoremIterator,
             VariableIterator,
@@ -279,7 +279,7 @@ impl MetamathData {
         self.optimized_data.symbol_number_mapping =
             SymbolNumberMapping::calc_mapping(&self.database_header);
 
-        self.optimized_data.grammar = Grammar::calc_grammar(self)?;
+        Grammar::calc_grammar(self)?;
         // let mut i: u32 = 1;
         // while let Some(symbol) = self.optimized_data.symbol_number_mapping.symbols.get(&i) {
         //     println!("{}: {}", i, symbol);
@@ -476,13 +476,15 @@ impl SymbolNumberMapping {
 }
 
 impl Grammar {
-    pub fn calc_grammar(metamath_data: &MetamathData) -> Result<Grammar, Error> {
-        let mut rules = Vec::new();
+    pub fn calc_grammar(metamath_data: &mut MetamathData) -> Result<(), Error> {
+        let mut grammar = Grammar { rules: Vec::new() };
+
+        let mut i = 0;
 
         let symbol_number_mapping = &metamath_data.optimized_data.symbol_number_mapping;
 
         for floating_hypothesis in &metamath_data.optimized_data.floating_hypotheses {
-            rules.push(GrammarRule {
+            grammar.rules.push(GrammarRule {
                 left_side: *symbol_number_mapping
                     .numbers
                     .get(&format!("${}", floating_hypothesis.typecode))
@@ -547,16 +549,83 @@ impl Grammar {
                     }
                 }
 
-                rules.push(GrammarRule {
+                grammar.rules.push(GrammarRule {
                     left_side,
                     right_side,
                     label: theorem.label.clone(),
                     var_order,
                 });
+            } else if theorem
+                .assertion
+                .split_ascii_whitespace()
+                .next()
+                .ok_or(Error::InternalLogicError)?
+                == "|-"
+            {
+                let hypotheses_parsed = theorem
+                    .hypotheses
+                    .iter()
+                    .map(|h| {
+                        earley_parser_optimized::earley_parse(
+                            &grammar,
+                            &symbol_number_mapping
+                                .expression_to_number_vec_skip_first(&h.expression)
+                                .or(Err(Error::InternalLogicError))?,
+                            vec![1],
+                            symbol_number_mapping,
+                        )?
+                        .ok_or(Error::ExpressionParseError)?
+                        .into_iter()
+                        .next()
+                        .ok_or(Error::InternalLogicError)
+                    })
+                    .collect::<Result<Vec<ParseTree>, Error>>()?;
+
+                let assertion_parsed = earley_parser_optimized::earley_parse(
+                    &grammar,
+                    &symbol_number_mapping
+                        .expression_to_number_vec_skip_first(&theorem.assertion)
+                        .or(Err(Error::InternalLogicError))?,
+                    vec![1],
+                    symbol_number_mapping,
+                )?
+                .ok_or(Error::ExpressionParseError);
+
+                if assertion_parsed.is_err() {
+                    println!("{:?}", theorem.label);
+                }
+
+                let assertion_parsed = assertion_parsed?
+                    .into_iter()
+                    .next()
+                    .ok_or(Error::InternalLogicError)?;
+
+                i += 1;
+                if i % 100 == 0 {
+                    println!("{}:", i);
+                }
+
+                // for hyp in &hypotheses_parsed {
+                // println!("{:?}", hyp.calc_proof(&grammar));
+                // }
+                // println!("{:?}", assertion_parsed.calc_proof(&grammar));
+
+                // println!("{:?}", hypotheses_parsed);
+                // println!("{:?}", assertion_parsed);
+
+                metamath_data.optimized_data.theorem_data.insert(
+                    theorem.label.to_string(),
+                    OptimizedTheoremData {
+                        hypotheses_parsed,
+                        assertion_parsed,
+                    },
+                );
             }
         }
 
-        Ok(Grammar { rules })
+        metamath_data.optimized_data.grammar = grammar;
+
+        Ok(())
     }
 }
 
@@ -589,7 +658,7 @@ impl Theorem {
             .hypotheses
             .iter()
             .map(|h| {
-                earley_parser::earley_parse(
+                earley_parser_optimized::earley_parse(
                     &metamath_data.optimized_data.grammar,
                     &metamath_data
                         .optimized_data
@@ -606,7 +675,7 @@ impl Theorem {
             })
             .collect::<Result<Vec<ParseTree>, Error>>()?;
 
-        let assertion_parsed = earley_parser::earley_parse(
+        let assertion_parsed = earley_parser_optimized::earley_parse(
             &metamath_data.optimized_data.grammar,
             &metamath_data
                 .optimized_data
@@ -621,8 +690,8 @@ impl Theorem {
         .next()
         .ok_or(Error::InternalLogicError)?;
 
-        println!("{:?}", hypotheses_parsed);
-        println!("{:?}", assertion_parsed);
+        // println!("{:?}", hypotheses_parsed);
+        // println!("{:?}", assertion_parsed);
 
         Ok(OptimizedTheoremData {
             hypotheses_parsed,

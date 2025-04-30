@@ -1,4 +1,8 @@
-use std::cmp::Ordering;
+use std::{
+    cmp::Ordering,
+    collections::{BinaryHeap, HashSet},
+    hash::Hash,
+};
 
 use crate::{
     model::{ParseTree, SymbolNumberMapping},
@@ -26,7 +30,9 @@ pub struct GrammarRule {
 #[derive(Debug)]
 struct StateSet {
     unprocessed_states: Vec<State>,
+    unprocessed_states_set: HashSet<StateRaw>,
     processed_states: Vec<State>,
+    processed_states_set: HashSet<StateRaw>,
 }
 
 #[derive(Clone, Debug)]
@@ -37,51 +43,60 @@ struct State {
     pub parse_trees: Vec<ParseTree>,
 }
 
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+struct StateRaw {
+    pub rule_i: i32,
+    pub processed_i: u32,
+    pub start_i: u32,
+}
+
 impl StateSet {
     pub fn new() -> StateSet {
         StateSet {
             unprocessed_states: Vec::new(),
+            unprocessed_states_set: HashSet::new(),
             processed_states: Vec::new(),
+            processed_states_set: HashSet::new(),
         }
     }
 
     pub fn insert(&mut self, state: State) {
-        if self.processed_states.binary_search(&state).is_err() {
-            match self.unprocessed_states.binary_search(&state) {
-                Ok(_pos) => {}
-                Err(pos) => self.unprocessed_states.insert(pos, state),
-            }
+        let state_raw = state.to_raw();
+        if !self.processed_states_set.contains(&state_raw)
+            && !self.unprocessed_states_set.contains(&state_raw)
+        {
+            self.unprocessed_states_set.insert(state_raw);
+            self.unprocessed_states.push(state);
         }
     }
 
     pub fn get_next(&mut self) -> Option<&State> {
         let state = self.unprocessed_states.pop()?;
-        let insert_pos;
-        match self.processed_states.binary_search(&state) {
-            Ok(pos) => insert_pos = pos, // Should theoretically never happen
-            Err(pos) => {
-                self.processed_states.insert(pos, state);
-                insert_pos = pos;
-            }
-        }
-        self.processed_states.get(insert_pos)
+        let state_raw = state.to_raw();
+        self.unprocessed_states_set.remove(&state_raw);
+
+        self.processed_states_set.insert(state_raw);
+        self.processed_states.push(state);
+        self.processed_states.last()
     }
 
     pub fn get_processed(&self, i: usize) -> Option<&State> {
         self.processed_states.get(i)
     }
 
-    pub fn get_processed_binary_search(&mut self, state: &State) -> Option<State> {
-        match self.processed_states.binary_search(state) {
-            Ok(pos) => Some(self.processed_states.swap_remove(pos)),
-            Err(_) => None,
+    pub fn take_processed(&mut self, state: &State) -> Option<State> {
+        for (i, processed_state) in self.processed_states.iter().enumerate() {
+            if state == processed_state {
+                return Some(self.processed_states.swap_remove(i));
+            }
         }
+        None
     }
 }
 
 impl PartialEq for State {
-    // Implement PartialEq in a way that ignores the proof,
-    // as it is just additional information and should not impact which states are considered equal
+    // Implement PartialEq in a way that ignores the parse_trees,
+    // as they are just additional information and should not impact which states are considered equal
     fn eq(&self, other: &Self) -> bool {
         self.rule_i == other.rule_i
             && self.processed_i == other.processed_i
@@ -98,8 +113,8 @@ impl PartialOrd for State {
 }
 
 impl Ord for State {
-    // Implement Ord in a way that ignores the proof,
-    // as it is just additional information and should not impact which states are considered equal
+    // Implement Ord in a way that ignores the parse_trees,
+    // as they are just additional information and should not impact which states are considered equal
     fn cmp(&self, other: &Self) -> Ordering {
         if self.rule_i < other.rule_i {
             return Ordering::Less;
@@ -123,6 +138,14 @@ impl Ord for State {
     }
 }
 
+impl Hash for State {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.rule_i.hash(state);
+        self.processed_i.hash(state);
+        self.start_i.hash(state);
+    }
+}
+
 impl State {
     pub fn next_token(&self, extended_grammar: &ExtendedGrammar) -> Option<u32> {
         extended_grammar
@@ -141,6 +164,14 @@ impl State {
             .rules
             .get(self.rule_i as usize)
             .unwrap_or(&extended_grammar.main_rule)
+    }
+
+    pub fn to_raw(&self) -> StateRaw {
+        StateRaw {
+            rule_i: self.rule_i,
+            processed_i: self.processed_i,
+            start_i: self.start_i,
+        }
     }
 }
 
@@ -192,25 +223,34 @@ pub fn earley_parse(
         }
     }
 
-    // for k in 0..(expression.len() + 1) {
-    //     println!("{}:", k);
-    //     for state in state_sets.get(k).unwrap() {
-    //         println!("{:?}", state)
-    //     }
-    // }
-
     // println!("{:?}", state_sets.get(expression.len()));
 
-    Ok(state_sets
+    let ret = state_sets
         .get_mut(expression.len())
         .ok_or(Error::InternalLogicError)?
-        .get_processed_binary_search(&State {
+        .take_processed(&State {
             rule_i: -1,
             processed_i: match_against_len as u32,
             start_i: 0,
             parse_trees: Vec::new(),
-        })
-        .map(|s| s.parse_trees))
+        });
+
+    if ret.is_none() {
+        for k in 0..(expression.len() + 1) {
+            println!("{}:", k);
+            for state in &state_sets.get(k).unwrap().processed_states {
+                println!(
+                    "{} ::= {:?}",
+                    state.rule(&extended_grammar).left_side,
+                    state.rule(&extended_grammar).right_side
+                );
+                print!("{:?} ", state.rule(&extended_grammar).label);
+                println!("{:?}", state);
+            }
+        }
+    }
+
+    Ok(ret.map(|s| s.parse_trees))
 }
 
 fn predictor(
@@ -258,6 +298,7 @@ fn scanner(
             processed_i: state.processed_i + 1,
             start_i: state.start_i,
             parse_trees: state.parse_trees.clone(),
+            // parse_trees: Vec::new(),
         };
 
         next_set.insert(new_state);
@@ -290,10 +331,11 @@ fn completer(
             });
 
             let new_state = State {
-                rule_i: other_state.rule_i as i32,
+                rule_i: other_state.rule_i,
                 processed_i: other_state.processed_i + 1,
                 start_i: other_state.start_i,
                 parse_trees: new_parse_trees,
+                // parse_trees: Vec::new(),
             };
 
             // println!("{:?}", new_state.proof);
