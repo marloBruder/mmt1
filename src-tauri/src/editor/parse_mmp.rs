@@ -158,6 +158,10 @@ fn add_theorem_to_database(
 
         let label = *prefix_parts.get(2).unwrap();
 
+        if label.is_empty() {
+            return Err(Error::InvalidMmj2StepPrefixError);
+        }
+
         let prefix_step_name = prefix_parts.get(0).unwrap();
 
         let mut hypothesis = false;
