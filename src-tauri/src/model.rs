@@ -37,7 +37,7 @@ pub struct OptimizedTheoremData {
     pub assertion_parsed: ParseTree,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ParseTree {
     pub nodes: Vec<ParseTree>,
     pub rule: u32,
@@ -366,6 +366,51 @@ impl ParseTree {
 
         Ok(proof)
     }
+
+    pub fn is_substitution(&self, other: &ParseTree, grammar: &Grammar) -> Result<bool, Error> {
+        let mut substitutions: HashMap<u32, &ParseTree> = HashMap::new();
+
+        let mut check: Vec<(&ParseTree, &ParseTree)> = vec![(self, other)];
+
+        while let Some((subtree, other_subtree)) = check.pop() {
+            let subtree_rule = grammar
+                .rules
+                .get(subtree.rule as usize)
+                .ok_or(Error::InternalLogicError)?;
+            let other_subtree_rule = grammar
+                .rules
+                .get(other_subtree.rule as usize)
+                .ok_or(Error::InternalLogicError)?;
+
+            if subtree_rule.is_floating_hypothesis {
+                match substitutions.get(&subtree.rule) {
+                    Some(&sub) => {
+                        if sub != other_subtree {
+                            return Ok(false);
+                        }
+                    }
+                    None => {
+                        if subtree_rule.left_side == other_subtree_rule.left_side {
+                            substitutions.insert(subtree.rule, other_subtree);
+                        } else {
+                            return Ok(false);
+                        }
+                    }
+                }
+            } else {
+                if subtree.rule != other_subtree.rule
+                    || subtree.nodes.len() != other_subtree.nodes.len()
+                {
+                    return Ok(false);
+                }
+                for (node, other_node) in subtree.nodes.iter().zip(other_subtree.nodes.iter()) {
+                    check.push((node, other_node));
+                }
+            }
+        }
+
+        Ok(true)
+    }
 }
 
 impl SymbolNumberMapping {
@@ -462,6 +507,25 @@ impl SymbolNumberMapping {
             .collect::<Result<Vec<u32>, ()>>()
     }
 
+    pub fn expression_to_parse_tree(
+        &self,
+        expression: &str,
+        grammar: &Grammar,
+    ) -> Result<ParseTree, Error> {
+        let expression = self
+            .expression_to_number_vec_skip_first(expression)
+            .or(Err(Error::NonSymbolInExpressionError))?;
+
+        let expression_parse_tree =
+            earley_parser_optimized::earley_parse(grammar, &expression, vec![1], self)?
+                .ok_or(Error::ExpressionParseError)?
+                .into_iter()
+                .next()
+                .ok_or(Error::InternalLogicError)?;
+
+        Ok(expression_parse_tree)
+    }
+
     pub fn is_typecode(&self, number: u32) -> bool {
         return number <= self.typecode_count;
     }
@@ -495,6 +559,7 @@ impl Grammar {
                     .ok_or(Error::InternalLogicError)?],
                 label: floating_hypothesis.label.clone(),
                 var_order: Vec::new(),
+                is_floating_hypothesis: true,
             });
         }
 
@@ -554,6 +619,7 @@ impl Grammar {
                     right_side,
                     label: theorem.label.clone(),
                     var_order,
+                    is_floating_hypothesis: false,
                 });
             } else if theorem
                 .assertion
@@ -606,7 +672,7 @@ impl Grammar {
                 }
 
                 // for hyp in &hypotheses_parsed {
-                // println!("{:?}", hyp.calc_proof(&grammar));
+                //     println!("{:?}", hyp.calc_proof(&grammar));
                 // }
                 // println!("{:?}", assertion_parsed.calc_proof(&grammar));
 

@@ -1,8 +1,4 @@
-use std::{
-    cmp::Ordering,
-    collections::{BinaryHeap, HashSet},
-    hash::Hash,
-};
+use std::{cmp::Ordering, hash::Hash};
 
 use crate::{
     model::{ParseTree, SymbolNumberMapping},
@@ -25,6 +21,7 @@ pub struct GrammarRule {
     pub right_side: Vec<u32>,
     pub label: String,
     pub var_order: Vec<u32>,
+    pub is_floating_hypothesis: bool,
 }
 
 #[derive(Debug)]
@@ -36,7 +33,7 @@ struct StateSet {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum State {
+enum State {
     Single(SingleState),
     Combined(CombinedState),
 }
@@ -144,7 +141,7 @@ impl StateSet {
     }
 
     pub fn take_processed(self, state: &SingleState) -> Option<SingleState> {
-        for (i, processed_state) in self.processed_states.into_iter().enumerate() {
+        for processed_state in self.processed_states {
             if let State::Single(processed_single_state) = processed_state {
                 if processed_single_state == *state {
                     return Some(processed_single_state);
@@ -261,6 +258,7 @@ pub fn earley_parse(
             right_side: match_against,
             label: String::new(),
             var_order: Vec::new(), // never accessed
+            is_floating_hypothesis: false,
         },
     };
 

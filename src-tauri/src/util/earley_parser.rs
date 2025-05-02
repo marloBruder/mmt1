@@ -1,8 +1,5 @@
-use std::{
-    cmp::Ordering,
-    collections::{BinaryHeap, HashSet},
-    hash::Hash,
-};
+#![allow(dead_code)]
+use std::{cmp::Ordering, collections::HashSet, hash::Hash};
 
 use crate::{
     model::{ParseTree, SymbolNumberMapping},

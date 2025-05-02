@@ -1,6 +1,6 @@
 use tauri::async_runtime::Mutex;
 
-use crate::{editor::parse_mmp::LocateAfter, AppState, Error};
+use crate::{AppState, Error};
 
 // #[tauri::command]
 // pub async fn unify_and_format(text: &str) -> Result<String, Error> {
@@ -105,16 +105,60 @@ pub async fn unify(state: tauri::State<'_, Mutex<AppState>>, text: &str) -> Resu
     let mut previous_proof_lines: Vec<&ProofLine> = Vec::new();
 
     for (i, &statement_str) in statement_strs.iter().enumerate() {
+        let mut statement_already_added = false;
+
         if let Some(MmpStatement::ProofLine(proof_line)) =
             mmp_info_structured_for_unify.statements.get(i)
         {
-            if proof_line.step_name == "" {
-                for theorem in mm_data.database_header.theorem_iter() {}
+            let parse_tree = mm_data
+                .optimized_data
+                .symbol_number_mapping
+                .expression_to_parse_tree(proof_line.expression, &mm_data.optimized_data.grammar)?;
+
+            if proof_line.step_ref == "" {
+                for theorem in mm_data.database_header.theorem_iter() {
+                    if let Some(theorem_data) =
+                        mm_data.optimized_data.theorem_data.get(&theorem.label)
+                    {
+                        if theorem_data.hypotheses_parsed.is_empty()
+                            && theorem_data
+                                .assertion_parsed
+                                .is_substitution(&parse_tree, &mm_data.optimized_data.grammar)?
+                        {
+                            let mut new_statement_string = format!(
+                                "{}{}:{}:{}",
+                                if proof_line.is_hypothesis { "h" } else { "" },
+                                proof_line.step_name,
+                                proof_line.hypotheses,
+                                theorem.label,
+                            );
+
+                            if new_statement_string.len() < 20 {
+                                new_statement_string.push_str(
+                                    "                    "
+                                        .split_at_checked(20 - new_statement_string.len())
+                                        .ok_or(Error::InternalLogicError)?
+                                        .0,
+                                );
+                            } else {
+                                new_statement_string.push_str("\n                    ");
+                            }
+
+                            new_statement_string.push_str(proof_line.expression.trim_ascii_start());
+                            res.push_str(&new_statement_string);
+                            statement_already_added = true;
+                            break;
+                        }
+                    }
+                }
             }
 
             previous_proof_lines.push(proof_line);
         }
-        res.push_str(statement_str);
+
+        if !statement_already_added {
+            res.push_str(statement_str);
+        }
     }
 
     Ok(res)
