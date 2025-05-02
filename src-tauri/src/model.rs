@@ -367,10 +367,22 @@ impl ParseTree {
         Ok(proof)
     }
 
-    pub fn is_substitution(&self, other: &ParseTree, grammar: &Grammar) -> Result<bool, Error> {
+    pub fn are_substitutions(
+        trees: &Vec<&ParseTree>,
+        others: &Vec<&ParseTree>,
+        grammar: &Grammar,
+    ) -> Result<bool, Error> {
+        if trees.len() != others.len() {
+            return Ok(false);
+        }
+
         let mut substitutions: HashMap<u32, &ParseTree> = HashMap::new();
 
-        let mut check: Vec<(&ParseTree, &ParseTree)> = vec![(self, other)];
+        let mut check: Vec<(&ParseTree, &ParseTree)> = trees
+            .iter()
+            .zip(others.iter())
+            .map(|(t, o)| (*t, *o))
+            .collect();
 
         while let Some((subtree, other_subtree)) = check.pop() {
             let subtree_rule = grammar

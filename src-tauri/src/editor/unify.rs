@@ -1,6 +1,9 @@
 use tauri::async_runtime::Mutex;
 
-use crate::{AppState, Error};
+use crate::{
+    model::{MetamathData, ParseTree},
+    AppState, Error,
+};
 
 // #[tauri::command]
 // pub async fn unify_and_format(text: &str) -> Result<String, Error> {
@@ -30,9 +33,6 @@ use crate::{AppState, Error};
 
 /**
 A collection of all the data needed to unify (and format) an mmp file.
-
-Field `statements` contains the order of the statements and information about the proof steps and comments.
-All other field contain information that is instead needed globally.
 */
 #[derive(Debug)]
 struct MmpInfoStructuredForUnify<'a> {
@@ -43,7 +43,9 @@ struct MmpInfoStructuredForUnify<'a> {
     pub allow_discouraged: bool,
     pub locate_after: Option<LocateAfterRef<'a>>,
     pub distinct_vars: Vec<&'a str>,
-    pub statements: Vec<MmpStatement<'a>>,
+    pub proof_lines: Vec<ProofLine<'a>>,
+    pub comments: Vec<&'a str>,
+    pub statements: Vec<MmpStatement>,
 }
 
 #[derive(Debug)]
@@ -61,7 +63,7 @@ enum LocateAfterRef<'a> {
 }
 
 #[derive(Debug)]
-enum MmpStatement<'a> {
+enum MmpStatement {
     MmpLabel,
     DistinctVar,
     AllowDiscouraged,
@@ -69,8 +71,8 @@ enum MmpStatement<'a> {
     Constant,
     Variable,
     FloatingHypohesis,
-    ProofLine(ProofLine<'a>),
-    Comment(&'a str),
+    ProofLine,
+    Comment,
 }
 
 #[derive(Debug)]
@@ -78,8 +80,10 @@ struct ProofLine<'a> {
     is_hypothesis: bool,
     step_name: &'a str,
     hypotheses: &'a str,
+    hypotheses_parsed: Vec<Option<usize>>, // None if the hypothesis is "?"
     step_ref: &'a str,
     expression: &'a str,
+    parse_tree: ParseTree,
 }
 
 #[tauri::command]
@@ -98,62 +102,87 @@ pub async fn unify(state: tauri::State<'_, Mutex<AppState>>, text: &str) -> Resu
     res.push_str(whitespace_before_first_statement);
 
     let mmp_info_structured_for_unify =
-        statement_strs_to_mmp_info_structured_for_unify(&statement_strs)?;
+        statement_strs_to_mmp_info_structured_for_unify(&statement_strs, &mm_data)?;
 
-    println!("{:?}", mmp_info_structured_for_unify);
+    // println!("{:?}", mmp_info_structured_for_unify);
 
-    let mut previous_proof_lines: Vec<&ProofLine> = Vec::new();
+    let mut proof_line_i = 0;
 
     for (i, &statement_str) in statement_strs.iter().enumerate() {
         let mut statement_already_added = false;
 
-        if let Some(MmpStatement::ProofLine(proof_line)) =
-            mmp_info_structured_for_unify.statements.get(i)
-        {
-            let parse_tree = mm_data
-                .optimized_data
-                .symbol_number_mapping
-                .expression_to_parse_tree(proof_line.expression, &mm_data.optimized_data.grammar)?;
+        if let Some(MmpStatement::ProofLine) = mmp_info_structured_for_unify.statements.get(i) {
+            let proof_line = mmp_info_structured_for_unify
+                .proof_lines
+                .get(proof_line_i)
+                .ok_or(Error::InternalLogicError)?;
+            proof_line_i += 1;
 
             if proof_line.step_ref == "" {
-                for theorem in mm_data.database_header.theorem_iter() {
-                    if let Some(theorem_data) =
-                        mm_data.optimized_data.theorem_data.get(&theorem.label)
-                    {
-                        if theorem_data.hypotheses_parsed.is_empty()
-                            && theorem_data
-                                .assertion_parsed
-                                .is_substitution(&parse_tree, &mm_data.optimized_data.grammar)?
-                        {
-                            let mut new_statement_string = format!(
-                                "{}{}:{}:{}",
-                                if proof_line.is_hypothesis { "h" } else { "" },
-                                proof_line.step_name,
-                                proof_line.hypotheses,
-                                theorem.label,
-                            );
+                let proof_line_parse_trees_res = proof_line
+                    .hypotheses_parsed
+                    .iter()
+                    .map(|hyp| match hyp {
+                        Some(index) => Ok(&mmp_info_structured_for_unify
+                            .proof_lines
+                            .get(*index)
+                            .ok_or(Some(Error::InternalLogicError))?
+                            .parse_tree),
+                        None => Err(None),
+                    })
+                    .collect::<Result<Vec<&ParseTree>, Option<Error>>>();
 
-                            if new_statement_string.len() < 20 {
-                                new_statement_string.push_str(
-                                    "                    "
-                                        .split_at_checked(20 - new_statement_string.len())
-                                        .ok_or(Error::InternalLogicError)?
-                                        .0,
-                                );
-                            } else {
-                                new_statement_string.push_str("\n                    ");
+                match proof_line_parse_trees_res {
+                    // If one of the hyps was "?", do nothing
+                    Err(None) => {}
+                    // Return potential InternalLogicError
+                    Err(Some(err)) => return Err(err),
+                    Ok(mut proof_line_parse_trees) => {
+                        proof_line_parse_trees.push(&proof_line.parse_tree);
+
+                        for theorem in mm_data.database_header.theorem_iter() {
+                            if let Some(theorem_data) =
+                                mm_data.optimized_data.theorem_data.get(&theorem.label)
+                            {
+                                let mut theorem_parse_trees: Vec<&ParseTree> =
+                                    theorem_data.hypotheses_parsed.iter().collect();
+                                theorem_parse_trees.push(&theorem_data.assertion_parsed);
+
+                                if ParseTree::are_substitutions(
+                                    &theorem_parse_trees,
+                                    &proof_line_parse_trees,
+                                    &mm_data.optimized_data.grammar,
+                                )? {
+                                    let mut new_statement_string = format!(
+                                        "{}{}:{}:{}",
+                                        if proof_line.is_hypothesis { "h" } else { "" },
+                                        proof_line.step_name,
+                                        proof_line.hypotheses,
+                                        theorem.label,
+                                    );
+
+                                    if new_statement_string.len() < 20 {
+                                        new_statement_string.push_str(
+                                            "                    "
+                                                .split_at_checked(20 - new_statement_string.len())
+                                                .ok_or(Error::InternalLogicError)?
+                                                .0,
+                                        );
+                                    } else {
+                                        new_statement_string.push_str("\n                    ");
+                                    }
+
+                                    new_statement_string
+                                        .push_str(proof_line.expression.trim_ascii_start());
+                                    res.push_str(&new_statement_string);
+                                    statement_already_added = true;
+                                    break;
+                                }
                             }
-
-                            new_statement_string.push_str(proof_line.expression.trim_ascii_start());
-                            res.push_str(&new_statement_string);
-                            statement_already_added = true;
-                            break;
                         }
                     }
                 }
             }
-
-            previous_proof_lines.push(proof_line);
         }
 
         if !statement_already_added {
@@ -209,6 +238,7 @@ fn text_to_statement_strs(text: &str) -> Result<(&str, Vec<&str>), Error> {
 
 fn statement_strs_to_mmp_info_structured_for_unify<'a>(
     statement_strs: &Vec<&'a str>,
+    mm_data: &MetamathData,
 ) -> Result<MmpInfoStructuredForUnify<'a>, Error> {
     let mut label: Option<MmpLabel<'a>> = None;
     let mut allow_discouraged: bool = false;
@@ -217,7 +247,9 @@ fn statement_strs_to_mmp_info_structured_for_unify<'a>(
     let mut constants: Option<&'a str> = None;
     let mut variables: Vec<&'a str> = Vec::new();
     let mut floating_hypotheses: Vec<&'a str> = Vec::new();
-    let mut statements: Vec<MmpStatement<'a>> = Vec::with_capacity(statement_strs.len());
+    let mut proof_lines: Vec<ProofLine<'a>> = Vec::new();
+    let mut comments: Vec<&'a str> = Vec::new();
+    let mut statements: Vec<MmpStatement> = Vec::with_capacity(statement_strs.len());
 
     for &statement_str in statement_strs {
         let mut token_iter = statement_str.split_ascii_whitespace();
@@ -421,11 +453,12 @@ fn statement_strs_to_mmp_info_structured_for_unify<'a>(
                 statements.push(MmpStatement::LocateAfter);
             }
             t if t.starts_with('*') => {
-                statements.push(MmpStatement::Comment(
+                statements.push(MmpStatement::Comment);
+                comments.push(
                     statement_str
                         .get(1..statement_str.len())
                         .ok_or(Error::InternalLogicError)?,
-                ));
+                );
             }
             t if t.starts_with('$') => return Err(Error::InvalidDollarTokenError),
             step_prefix => {
@@ -452,6 +485,25 @@ fn statement_strs_to_mmp_info_structured_for_unify<'a>(
 
                 let hypotheses = *prefix_parts.get(1).unwrap();
 
+                let mut hypotheses_parsed: Vec<Option<usize>> = Vec::new();
+
+                if !hypotheses.is_empty() {
+                    for hyp in hypotheses.split(',') {
+                        if hyp == "?" {
+                            hypotheses_parsed.push(None);
+                        } else {
+                            hypotheses_parsed.push(Some(
+                                proof_lines
+                                    .iter()
+                                    .enumerate()
+                                    .find(|(_, pl)| pl.step_name == hyp)
+                                    .ok_or(Error::InvalidMmj2StepPrefixError)?
+                                    .0,
+                            ))
+                        }
+                    }
+                }
+
                 let step_ref = *prefix_parts.get(2).unwrap();
 
                 let expression = statement_str
@@ -462,13 +514,21 @@ fn statement_strs_to_mmp_info_structured_for_unify<'a>(
                     return Err(Error::MissingMmj2StepExpressionError);
                 }
 
-                statements.push(MmpStatement::ProofLine(ProofLine {
+                let parse_tree = mm_data
+                    .optimized_data
+                    .symbol_number_mapping
+                    .expression_to_parse_tree(expression, &mm_data.optimized_data.grammar)?;
+
+                statements.push(MmpStatement::ProofLine);
+                proof_lines.push(ProofLine {
                     is_hypothesis,
                     step_name,
                     hypotheses,
+                    hypotheses_parsed,
                     step_ref,
                     expression,
-                }));
+                    parse_tree,
+                });
             }
         }
     }
@@ -481,6 +541,8 @@ fn statement_strs_to_mmp_info_structured_for_unify<'a>(
         constants,
         variables,
         floating_hypotheses,
+        proof_lines,
+        comments,
         statements,
     })
 }
