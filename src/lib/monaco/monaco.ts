@@ -32,10 +32,53 @@ self.MonacoEnvironment = {
   },
 };
 
+interface ColorInformation {
+  information: { typecode: string; variables: string[]; color: string }[];
+}
+
+let test: ColorInformation = {
+  information: [
+    { typecode: "wff", variables: ["ph", "ps", "ch", "th", "ta", "et", "ze", "si", "rh", "mu", "la", "ka"], color: "0000FF" },
+    { typecode: "setvar", variables: ["x", "y", "z", "w", "v", "u", "t"], color: "ff0000" },
+    { typecode: "class", variables: ["A", "B", "C", "D", "P", "Q", "R", "S"], color: "cc33cc" },
+  ],
+};
+
+let colorInformationToKeywords = (colorInformation: ColorInformation): any => {
+  let res: any = {};
+
+  for (let information of colorInformation.information) {
+    res["$" + information.typecode] = information.variables;
+  }
+
+  return res;
+};
+
+let colorInformationToCases = (colorInformation: ColorInformation): any => {
+  let res: any = {};
+
+  for (let information of colorInformation.information) {
+    res["@$" + information.typecode] = "$" + information.typecode;
+  }
+
+  return res;
+};
+
+let colorInformationToRules = (colorInformation: ColorInformation): { token: string; foreground: string }[] => {
+  let res: { token: string; foreground: string }[] = [];
+
+  for (let information of colorInformation.information) {
+    res.push({ token: "$" + information.typecode, foreground: information.color });
+  }
+
+  return res;
+};
+
 monaco.languages.register({ id: "mmp" });
 
-export let setSyntaxHighlighting = () => {
+export let setSyntaxHighlighting = (colorInformation: ColorInformation) => {
   monaco.languages.setMonarchTokensProvider("mmp", {
+    ...colorInformationToKeywords(colorInformation),
     keywords: ["$theorem", "$axiom", "$c", "$v", "$f", "$header", "$locateafter", "$locateaftervar", "$locateafterconst", "$allowdiscouraged", "$d"],
     tokenizer: {
       root: [{ include: "@whitespace" }, { include: "line" }],
@@ -48,10 +91,9 @@ export let setSyntaxHighlighting = () => {
       ],
 
       line: [
-        [/^\S*:\S*:\S*/, "test", "@root"],
+        [/^\S*:\S*:\S*/, "linePrefix", "@root"],
         [/^\$[\w$]+/, { cases: { "@keywords": { token: "keyword", next: "@root" }, "@default": { token: "error", next: "@root" } } }],
-        // [/^\$theorem\s|^\$locateafter\s|^\$locateaftervar\s|^\$locateafterconst|^\$allowdiscouraged|^\$d/, "keyword", "@root"],
-        [/\|\-/, "keyword", "@root"],
+        [/\S+/, { cases: colorInformationToCases(colorInformation) }],
         [/^\S+/, "error", "@root"],
       ],
       // mmj2StepPop: [[/^\S*:\S*:\S*/, "test", "@pop"]],
@@ -64,13 +106,15 @@ export let setSyntaxHighlighting = () => {
     inherit: false,
     rules: [
       { token: "comment", foreground: "777777" },
-      { token: "test", foreground: "6102f9" },
-      { token: "keyword", foreground: "fc8005" },
+      { token: "linePrefix", foreground: "000000" },
+      { token: "keyword", foreground: "000000" }, //"fc8005" },
       { token: "error", foreground: "fc0515" },
+      ...colorInformationToRules(colorInformation),
     ],
   });
 };
 
-setSyntaxHighlighting();
+// setSyntaxHighlighting({ information: [] });
+setSyntaxHighlighting(test);
 
 export default monaco;
