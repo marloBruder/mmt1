@@ -182,6 +182,12 @@ pub async fn unify(state: tauri::State<'_, Mutex<AppState>>, text: &str) -> Resu
                         }
                     }
                 }
+            } else if !proof_line.is_hypothesis {
+                let theorem_data = mm_data
+                    .optimized_data
+                    .theorem_data
+                    .get(proof_line.step_ref)
+                    .ok_or(Error::InvalidMmj2StepPrefixError)?;
             }
         }
 

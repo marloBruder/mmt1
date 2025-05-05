@@ -258,22 +258,29 @@ fn add_theorem_to_database(
 
     let proof = calc_proof(mmj2_steps_processed, mm_data, step_to_be_proven as u32)?;
 
+    let theorem = Theorem {
+        label: thoerem_label,
+        description: mmp_structured_info
+            .comments
+            .into_iter()
+            .next()
+            .map(|c| c.text)
+            .unwrap_or(String::new()),
+        distincts: mmp_structured_info.distinct_vars,
+        assertion,
+        hypotheses,
+        proof,
+    };
+
+    mm_data.optimized_data.theorem_data.insert(
+        theorem.label.to_string(),
+        theorem.calc_optimized_data(&mm_data)?,
+    );
+
     add_statement(
         &mut mm_data.database_header,
         &mmp_structured_info.locate_after,
-        Statement::TheoremStatement(Theorem {
-            label: thoerem_label,
-            description: mmp_structured_info
-                .comments
-                .into_iter()
-                .next()
-                .map(|c| c.text)
-                .unwrap_or(String::new()),
-            distincts: mmp_structured_info.distinct_vars,
-            assertion,
-            hypotheses,
-            proof,
-        }),
+        Statement::TheoremStatement(theorem),
     );
 
     Ok(())

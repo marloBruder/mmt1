@@ -553,26 +553,30 @@ impl SymbolNumberMapping {
 
 impl Grammar {
     pub fn calc_grammar(metamath_data: &mut MetamathData) -> Result<(), Error> {
-        let mut grammar = Grammar { rules: Vec::new() };
+        metamath_data.optimized_data.grammar = Grammar { rules: Vec::new() };
 
         let mut i = 0;
 
         let symbol_number_mapping = &metamath_data.optimized_data.symbol_number_mapping;
 
         for floating_hypothesis in &metamath_data.optimized_data.floating_hypotheses {
-            grammar.rules.push(GrammarRule {
-                left_side: *symbol_number_mapping
-                    .numbers
-                    .get(&format!("${}", floating_hypothesis.typecode))
-                    .ok_or(Error::InternalLogicError)?,
-                right_side: vec![*symbol_number_mapping
-                    .numbers
-                    .get(&floating_hypothesis.variable)
-                    .ok_or(Error::InternalLogicError)?],
-                label: floating_hypothesis.label.clone(),
-                var_order: Vec::new(),
-                is_floating_hypothesis: true,
-            });
+            metamath_data
+                .optimized_data
+                .grammar
+                .rules
+                .push(GrammarRule {
+                    left_side: *symbol_number_mapping
+                        .numbers
+                        .get(&format!("${}", floating_hypothesis.typecode))
+                        .ok_or(Error::InternalLogicError)?,
+                    right_side: vec![*symbol_number_mapping
+                        .numbers
+                        .get(&floating_hypothesis.variable)
+                        .ok_or(Error::InternalLogicError)?],
+                    label: floating_hypothesis.label.clone(),
+                    var_order: Vec::new(),
+                    is_floating_hypothesis: true,
+                });
         }
 
         for theorem in metamath_data.database_header.theorem_iter() {
@@ -626,13 +630,17 @@ impl Grammar {
                     }
                 }
 
-                grammar.rules.push(GrammarRule {
-                    left_side,
-                    right_side,
-                    label: theorem.label.clone(),
-                    var_order,
-                    is_floating_hypothesis: false,
-                });
+                metamath_data
+                    .optimized_data
+                    .grammar
+                    .rules
+                    .push(GrammarRule {
+                        left_side,
+                        right_side,
+                        label: theorem.label.clone(),
+                        var_order,
+                        is_floating_hypothesis: false,
+                    });
             } else if theorem
                 .assertion
                 .split_ascii_whitespace()
@@ -640,68 +648,17 @@ impl Grammar {
                 .ok_or(Error::InternalLogicError)?
                 == "|-"
             {
-                let hypotheses_parsed = theorem
-                    .hypotheses
-                    .iter()
-                    .map(|h| {
-                        earley_parser_optimized::earley_parse(
-                            &grammar,
-                            &symbol_number_mapping
-                                .expression_to_number_vec_skip_first(&h.expression)
-                                .or(Err(Error::InternalLogicError))?,
-                            vec![1],
-                            symbol_number_mapping,
-                        )?
-                        .ok_or(Error::ExpressionParseError)?
-                        .into_iter()
-                        .next()
-                        .ok_or(Error::InternalLogicError)
-                    })
-                    .collect::<Result<Vec<ParseTree>, Error>>()?;
-
-                let assertion_parsed = earley_parser_optimized::earley_parse(
-                    &grammar,
-                    &symbol_number_mapping
-                        .expression_to_number_vec_skip_first(&theorem.assertion)
-                        .or(Err(Error::InternalLogicError))?,
-                    vec![1],
-                    symbol_number_mapping,
-                )?
-                .ok_or(Error::ExpressionParseError);
-
-                if assertion_parsed.is_err() {
-                    println!("{:?}", theorem.label);
-                }
-
-                let assertion_parsed = assertion_parsed?
-                    .into_iter()
-                    .next()
-                    .ok_or(Error::InternalLogicError)?;
-
                 i += 1;
                 if i % 100 == 0 {
                     println!("{}:", i);
                 }
 
-                // for hyp in &hypotheses_parsed {
-                //     println!("{:?}", hyp.calc_proof(&grammar));
-                // }
-                // println!("{:?}", assertion_parsed.calc_proof(&grammar));
-
-                // println!("{:?}", hypotheses_parsed);
-                // println!("{:?}", assertion_parsed);
-
                 metamath_data.optimized_data.theorem_data.insert(
                     theorem.label.to_string(),
-                    OptimizedTheoremData {
-                        hypotheses_parsed,
-                        assertion_parsed,
-                    },
+                    theorem.calc_optimized_data(metamath_data)?,
                 );
             }
         }
-
-        metamath_data.optimized_data.grammar = grammar;
 
         Ok(())
     }
@@ -768,8 +725,10 @@ impl Theorem {
         .next()
         .ok_or(Error::InternalLogicError)?;
 
-        // println!("{:?}", hypotheses_parsed);
-        // println!("{:?}", assertion_parsed);
+        // for hyp in &hypotheses_parsed {
+        //     println!("{:?}", hyp.calc_proof(&grammar));
+        // }
+        // println!("{:?}", assertion_parsed.calc_proof(&grammar));
 
         Ok(OptimizedTheoremData {
             hypotheses_parsed,

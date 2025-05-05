@@ -65,7 +65,7 @@
       let [topHeaderRep, htmlReps]: [HeaderRepresentation, HtmlRepresentation[]] = await invoke("open_metamath_database", { mmFilePath: filePath });
       explorerData.resetExplorerWithFirstHeader(topHeaderRep);
       htmlData.loadLocal(htmlReps);
-      setSyntaxHighlighting();
+      // setSyntaxHighlighting();
     }
   };
 
