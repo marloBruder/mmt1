@@ -35,7 +35,7 @@ use crate::{
 A collection of all the data needed to unify (and format) an mmp file.
 */
 #[derive(Debug)]
-struct MmpInfoStructuredForUnify<'a> {
+pub struct MmpInfoStructuredForUnify<'a> {
     pub constants: Option<&'a str>,
     pub variables: Vec<&'a str>, // Each str may contain mulitple vars
     pub floating_hypotheses: Vec<&'a str>,
@@ -49,21 +49,21 @@ struct MmpInfoStructuredForUnify<'a> {
 }
 
 #[derive(Debug)]
-enum MmpLabel<'a> {
+pub enum MmpLabel<'a> {
     Theorem(&'a str),
     Axiom(&'a str),
     Header { header_pos: &'a str, title: &'a str },
 }
 
 #[derive(Debug)]
-enum LocateAfterRef<'a> {
+pub enum LocateAfterRef<'a> {
     LocateAfter(&'a str),
     LocateAfterConst(&'a str),
     LocateAfterVar(&'a str),
 }
 
 #[derive(Debug)]
-enum MmpStatement {
+pub enum MmpStatement {
     MmpLabel,
     DistinctVar,
     AllowDiscouraged,
@@ -76,14 +76,14 @@ enum MmpStatement {
 }
 
 #[derive(Debug)]
-struct ProofLine<'a> {
-    is_hypothesis: bool,
-    step_name: &'a str,
-    hypotheses: &'a str,
-    hypotheses_parsed: Vec<Option<usize>>, // None if the hypothesis is "?"
-    step_ref: &'a str,
-    expression: &'a str,
-    parse_tree: ParseTree,
+pub struct ProofLine<'a> {
+    pub is_hypothesis: bool,
+    pub step_name: &'a str,
+    pub hypotheses: &'a str,
+    pub hypotheses_parsed: Vec<Option<usize>>, // None if the hypothesis is "?"
+    pub step_ref: &'a str,
+    pub expression: &'a str,
+    pub parse_tree: ParseTree,
 }
 
 #[tauri::command]
@@ -200,7 +200,7 @@ pub async fn unify(state: tauri::State<'_, Mutex<AppState>>, text: &str) -> Resu
 }
 
 // If successful, returns a tuple (a,b) where a is the whitespace before the first line and b is a vec of all the lines
-fn text_to_statement_strs(text: &str) -> Result<(&str, Vec<&str>), Error> {
+pub fn text_to_statement_strs(text: &str) -> Result<(&str, Vec<&str>), Error> {
     let mut statements = Vec::new();
 
     let mut text_i: usize = 0;
@@ -242,7 +242,7 @@ fn text_to_statement_strs(text: &str) -> Result<(&str, Vec<&str>), Error> {
     Ok((whitespace_before_first_statement, statements))
 }
 
-fn statement_strs_to_mmp_info_structured_for_unify<'a>(
+pub fn statement_strs_to_mmp_info_structured_for_unify<'a>(
     statement_strs: &Vec<&'a str>,
     mm_data: &MetamathData,
 ) -> Result<MmpInfoStructuredForUnify<'a>, Error> {

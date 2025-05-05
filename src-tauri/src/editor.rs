@@ -4,6 +4,7 @@ use tauri::async_runtime::Mutex;
 
 use crate::{AppState, Error};
 
+pub mod on_edit;
 pub mod parse_mmp;
 pub mod unify;
 
