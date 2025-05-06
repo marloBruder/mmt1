@@ -14,6 +14,9 @@
 
     textChanged: boolean = $state(false);
 
+    #isSplit: boolean = $state(false);
+    #pageData: TheoremPageData | null = $state(null);
+
     #monacoModel: Monaco.editor.ITextModel | null = null;
     #monacoScrollTop: number = 0;
     #monacoScrollLeft: number = 0;
@@ -26,10 +29,12 @@
     async loadData(): Promise<void> {
       let text = (await invoke("read_file", { relativePath: this.#filePath })) as string;
       this.#monacoModel = monaco.editor.createModel(text, "mmp");
-      this.#monacoModel.onDidChangeContent(() => {
+      this.#monacoModel.onDidChangeContent(async () => {
         this.textChanged = true;
         tabManager.makeOpenTempTabPermanent();
+        await this.onMonacoChange(this.#monacoModel!.getValue());
       });
+      await this.onMonacoChange(this.#monacoModel!.getValue());
     }
 
     unloadData(): void {
@@ -86,9 +91,27 @@
       return false;
     }
 
+    split() {
+      this.#isSplit = !this.#isSplit;
+    }
+
+    splitDisabled(): boolean {
+      return false;
+    }
+
     setMonacoScrollInternal(scrollTop: number, scrollLeft: number) {
       this.#monacoScrollTop = scrollTop;
       this.#monacoScrollLeft = scrollLeft;
+    }
+
+    async onMonacoChange(text: string) {
+      invoke("on_edit", { text })
+        .then((pageData) => {
+          this.#pageData = pageData as TheoremPageData;
+        })
+        .catch(() => {
+          this.#pageData = null;
+        });
     }
 
     get filePath() {
@@ -108,6 +131,14 @@
     get monacoScrollLeft() {
       return this.#monacoScrollLeft;
     }
+
+    get isSplit() {
+      return this.#isSplit;
+    }
+
+    get pageData() {
+      return this.#pageData;
+    }
   }
 </script>
 
@@ -118,6 +149,8 @@
   import { Tab, tabManager } from "$lib/sharedState/tabManager.svelte";
   import { onDestroy, onMount } from "svelte";
   import monaco from "$lib/monaco/monaco";
+  import type { TheoremPageData } from "$lib/sharedState/model.svelte";
+  import TheoremPage from "../util/TheoremPage.svelte";
 
   let { tab }: { tab: Tab } = $props();
 
@@ -286,8 +319,9 @@
   <input id="placeAfter" bind:value={placeAfter} autocomplete="off" />
   <RoundButton onclick={addToDatabase}>Add to database</RoundButton>
 </div> -->
-<div id="editor-area" class="h-full w-full">
-  <!-- <div class="w-8 float-left text-right">
+<div class="h-full w-full flex">
+  <div id="editor-area" class="h-full {editorTab.isSplit ? 'w-1/2' : 'w-full'}">
+    <!-- <div class="w-8 float-left text-right">
     {#each { length: lines } as _, i}
       <div>
         {i}
@@ -298,4 +332,14 @@
     <textarea id="editorTextarea" bind:value={editorTab.text} oninput={textChange} onkeydown={textareaKeyDown} class="w-full resize-none h-96 text-nowrap overflow-x-hidden focus:outline-none" spellcheck="false"></textarea>
     <button class="w-full h-screen cursor-text" onclick={belowTextareaClick} aria-label="below-textrea"></button>
   </div> -->
+  </div>
+  {#if editorTab.isSplit}
+    <div class="w-1/2 h-full">
+      {#if editorTab.pageData != null}
+        <TheoremPage pageData={editorTab.pageData}></TheoremPage>
+      {:else}
+        <div class="p-2">Editor content does not represent valid theorem</div>
+      {/if}
+    </div>
+  {/if}
 </div>

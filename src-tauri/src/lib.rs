@@ -48,6 +48,7 @@ pub fn run() {
             editor::get_subfolder,
             editor::read_file,
             editor::save_file,
+            editor::on_edit::on_edit,
             editor::parse_mmp::add_to_database,
             editor::unify::unify,
             metamath::turn_into_theorem,

@@ -30,7 +30,7 @@ pub async fn on_edit(
 
     for proof_line in &mmp_structured_info_for_unify.proof_lines {
         proof_lines.push(model::ProofLine {
-            indention: 0,
+            indention: 1,
             assertion: util::str_to_space_seperated_string(proof_line.expression),
             hypotheses: proof_line
                 .hypotheses_parsed

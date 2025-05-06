@@ -228,4 +228,10 @@ export abstract class Tab {
   addToDatabaseDisabled(): boolean {
     return true;
   }
+
+  split() {}
+
+  splitDisabled(): boolean {
+    return true;
+  }
 }
