@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     util::{
-        earley_parser_optimized::{self, Grammar, GrammarRule},
+        earley_parser_optimized::{self, EarleyOptimizedData, Grammar, GrammarRule},
         header_iterators::{
             ConstantIterator, FloatingHypothesisIterator, HeaderIterator, TheoremIterator,
             VariableIterator,
@@ -50,6 +50,7 @@ pub struct SymbolNumberMapping {
     pub variable_typecodes: HashMap<u32, u32>,
     pub typecode_count: u32,
     pub variable_count: u32,
+    pub constant_count: u32,
 }
 
 #[derive(Debug)]
@@ -469,6 +470,8 @@ impl SymbolNumberMapping {
             next_i += 1;
         }
 
+        let constant_count = next_i - typecode_count - variable_count - 1;
+
         for fh in header.floating_hypohesis_iter() {
             if let Some(num) = numbers.get(&fh.variable) {
                 let mut typecode_string = "$".to_string();
@@ -483,6 +486,7 @@ impl SymbolNumberMapping {
             variable_typecodes,
             typecode_count,
             variable_count,
+            constant_count,
         }
     }
 
@@ -562,7 +566,10 @@ impl SymbolNumberMapping {
 
 impl Grammar {
     pub fn calc_grammar(metamath_data: &mut MetamathData) -> Result<(), Error> {
-        metamath_data.optimized_data.grammar = Grammar { rules: Vec::new() };
+        metamath_data.optimized_data.grammar = Grammar {
+            rules: Vec::new(),
+            earley_optimized_data: EarleyOptimizedData::default(),
+        };
 
         let mut i = 0;
 
@@ -587,6 +594,11 @@ impl Grammar {
                     is_floating_hypothesis: true,
                 });
         }
+
+        metamath_data
+            .optimized_data
+            .grammar
+            .recalc_earley_optimized_data(symbol_number_mapping)?;
 
         for theorem in metamath_data.database_header.theorem_iter() {
             if theorem.proof == None
@@ -650,6 +662,11 @@ impl Grammar {
                         var_order,
                         is_floating_hypothesis: false,
                     });
+
+                metamath_data
+                    .optimized_data
+                    .grammar
+                    .recalc_earley_optimized_data(symbol_number_mapping)?;
             } else if theorem
                 .assertion
                 .split_ascii_whitespace()
@@ -668,6 +685,68 @@ impl Grammar {
                 );
             }
         }
+
+        Ok(())
+    }
+
+    fn recalc_earley_optimized_data(
+        &mut self,
+        symbol_number_mapping: &SymbolNumberMapping,
+    ) -> Result<(), Error> {
+        let mut completer_rules: Vec<Vec<Vec<usize>>> =
+            vec![
+                vec![Vec::new(); symbol_number_mapping.typecode_count as usize];
+                symbol_number_mapping.typecode_count as usize
+            ];
+
+        let mut combined_states_to_add: Vec<Vec<u32>> =
+            vec![Vec::new(); symbol_number_mapping.typecode_count as usize];
+
+        let mut single_states_to_add: Vec<Vec<Vec<usize>>> = vec![
+            vec![
+                Vec::new();
+                (symbol_number_mapping.variable_count + symbol_number_mapping.constant_count)
+                    as usize
+            ];
+            symbol_number_mapping.typecode_count
+                as usize
+        ];
+
+        for (rule_i, rule) in self.rules.iter().enumerate() {
+            let right_side_first = *rule.right_side.first().ok_or(Error::InternalLogicError)?;
+            if symbol_number_mapping.is_typecode(right_side_first) {
+                completer_rules
+                    .get_mut(rule.left_side as usize - 1)
+                    .ok_or(Error::InternalLogicError)?
+                    .get_mut(right_side_first as usize - 1)
+                    .ok_or(Error::InternalLogicError)?
+                    .push(rule_i);
+
+                if !combined_states_to_add
+                    .get(rule.left_side as usize - 1)
+                    .ok_or(Error::InternalLogicError)?
+                    .contains(&right_side_first)
+                {
+                    combined_states_to_add
+                        .get_mut(rule.left_side as usize - 1)
+                        .ok_or(Error::InternalLogicError)?
+                        .push(right_side_first);
+                }
+            } else {
+                single_states_to_add
+                    .get_mut(rule.left_side as usize - 1)
+                    .ok_or(Error::InternalLogicError)?
+                    .get_mut((right_side_first - symbol_number_mapping.typecode_count - 1) as usize)
+                    .ok_or(Error::InternalLogicError)?
+                    .push(rule_i);
+            }
+        }
+
+        self.earley_optimized_data = EarleyOptimizedData {
+            completer_rules,
+            combined_states_to_add,
+            single_states_to_add,
+        };
 
         Ok(())
     }

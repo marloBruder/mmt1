@@ -8,6 +8,7 @@ use crate::{
 #[derive(Debug, Default)]
 pub struct Grammar {
     pub rules: Vec<GrammarRule>,
+    pub earley_optimized_data: EarleyOptimizedData,
 }
 
 pub struct ExtendedGrammar<'a> {
@@ -24,6 +25,13 @@ pub struct GrammarRule {
     pub is_floating_hypothesis: bool,
 }
 
+#[derive(Debug, Default)]
+pub struct EarleyOptimizedData {
+    pub completer_rules: Vec<Vec<Vec<usize>>>,
+    pub combined_states_to_add: Vec<Vec<u32>>,
+    pub single_states_to_add: Vec<Vec<Vec<usize>>>,
+}
+
 #[derive(Debug)]
 struct StateSet {
     unprocessed_states: Vec<State>,
@@ -32,7 +40,7 @@ struct StateSet {
     // processed_states_set: HashSet<StateRaw>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum State {
     Single(SingleState),
     Combined(CombinedState),
@@ -88,52 +96,20 @@ impl StateSet {
                     .chain(self.processed_states.iter())
                 {
                     if let State::Combined(existing_combined_state) = existing_state {
-                        // println!("existing: {:?}", existing_combined_state);
-                        // println!("combined: {:?}", combined_state);
                         if existing_combined_state == combined_state {
-                            // println!("equal!!!");
                             return;
                         }
                     }
                 }
-                // println!("pushing combined state: {:?}", combined_state);
                 self.unprocessed_states.push(state);
             }
         }
     }
 
-    pub fn get_next(&mut self, extended_grammar: &ExtendedGrammar) -> Option<SingleState> {
+    pub fn get_next(&mut self) -> Option<State> {
         let state = self.unprocessed_states.pop()?;
-        match state {
-            State::Single(single_state) => {
-                self.processed_states
-                    .push(State::Single(single_state.clone()));
-                Some(single_state)
-            }
-            State::Combined(mut combined_state) => {
-                while let Some(rule) = extended_grammar
-                    .grammar
-                    .rules
-                    .get(combined_state.next_grammar_rule_i as usize)
-                {
-                    if rule.left_side == combined_state.typecode {
-                        combined_state.next_grammar_rule_i += 1;
-                        self.unprocessed_states
-                            .push(State::Combined(combined_state));
-                        return Some(SingleState {
-                            rule_i: combined_state.next_grammar_rule_i as i32 - 1,
-                            processed_i: 0,
-                            start_i: combined_state.start_i,
-                            parse_trees: Vec::new(),
-                        });
-                    } else {
-                        combined_state.next_grammar_rule_i += 1;
-                    }
-                }
-                self.processed_states.push(State::Combined(combined_state));
-                self.get_next(extended_grammar)
-            }
-        }
+        self.processed_states.push(state.clone());
+        Some(state)
     }
 
     pub fn get_processed(&self, i: usize) -> Option<&State> {
@@ -262,24 +238,6 @@ pub fn earley_parse(
         },
     };
 
-    let mut completer_rules: Vec<Vec<Vec<usize>>> =
-        vec![
-            vec![Vec::new(); symbol_number_mapping.typecode_count as usize];
-            symbol_number_mapping.typecode_count as usize
-        ];
-
-    for (rule_i, rule) in grammar.rules.iter().enumerate() {
-        let right_side_first = *rule.right_side.first().ok_or(Error::InternalLogicError)?;
-        if symbol_number_mapping.is_typecode(right_side_first) {
-            completer_rules
-                .get_mut(rule.left_side as usize - 1)
-                .ok_or(Error::InternalLogicError)?
-                .get_mut(right_side_first as usize - 1)
-                .ok_or(Error::InternalLogicError)?
-                .push(rule_i);
-        }
-    }
-
     let mut state_sets: Vec<StateSet> = vec![StateSet::new()];
     state_sets
         .get_mut(0)
@@ -293,27 +251,71 @@ pub fn earley_parse(
 
     for k in 0..(expression.len() as u32 + 1) {
         state_sets.push(StateSet::new());
-        while let Some(state) = state_sets
-            .get_mut(k as usize)
-            .unwrap()
-            .get_next(&extended_grammar)
-        {
-            // if state is not finished
-            if let Some(num) = state.next_token(&extended_grammar) {
-                //if the next element of state is a nonterminal
-                if symbol_number_mapping.is_typecode(num) {
-                    predictor(&state, k, &extended_grammar, &mut state_sets)?;
-                } else {
-                    scanner(&state, k, expression, &extended_grammar, &mut state_sets)?;
+        while let Some(state) = state_sets.get_mut(k as usize).unwrap().get_next() {
+            match state {
+                State::Single(state) => {
+                    // if state is not finished
+                    if let Some(num) = state.next_token(&extended_grammar) {
+                        //if the next element of state is a nonterminal
+                        if symbol_number_mapping.is_typecode(num) {
+                            predictor(&state, k, &extended_grammar, &mut state_sets)?;
+                        } else {
+                            scanner(&state, k, expression, &extended_grammar, &mut state_sets)?;
+                        }
+                    } else {
+                        completer(&state, k, &extended_grammar, &mut state_sets)?;
+                    }
                 }
-            } else {
-                completer(
-                    &state,
-                    k,
-                    &extended_grammar,
-                    &mut state_sets,
-                    &completer_rules,
-                )?;
+                State::Combined(combined_state) => {
+                    // simulate predictor
+                    let current_set = state_sets
+                        .get_mut(k as usize)
+                        .ok_or(Error::InternalLogicError)?;
+
+                    for &typecode in grammar
+                        .earley_optimized_data
+                        .combined_states_to_add
+                        .get(combined_state.typecode as usize - 1)
+                        .ok_or(Error::InternalLogicError)?
+                    {
+                        let new_state = State::Combined(CombinedState {
+                            typecode,
+                            start_i: k,
+                            next_grammar_rule_i: 0,
+                        });
+
+                        current_set.insert(new_state);
+                    }
+
+                    //simulate scanner
+                    let next_set = state_sets
+                        .get_mut(k as usize + 1)
+                        .ok_or(Error::InternalLogicError)?;
+
+                    for &rule in grammar
+                        .earley_optimized_data
+                        .single_states_to_add
+                        .get(combined_state.typecode as usize - 1)
+                        .ok_or(Error::InternalLogicError)?
+                        .get(
+                            (*expression
+                                .get(k as usize)
+                                .ok_or(Error::InternalLogicError)?
+                                - symbol_number_mapping.typecode_count
+                                - 1) as usize,
+                        )
+                        .ok_or(Error::InternalLogicError)?
+                    {
+                        let new_state = State::Single(SingleState {
+                            rule_i: rule as i32,
+                            processed_i: 1,
+                            start_i: combined_state.start_i,
+                            parse_trees: Vec::new(),
+                        });
+
+                        next_set.insert(new_state);
+                    }
+                }
             }
         }
     }
@@ -427,7 +429,6 @@ fn completer(
     k: u32,
     extended_grammar: &ExtendedGrammar,
     state_sets: &mut Vec<StateSet>,
-    completer_rules: &Vec<Vec<Vec<usize>>>,
 ) -> Result<(), Error> {
     // println!("complete!");
     let mut i = 0;
@@ -471,7 +472,10 @@ fn completer(
                 let mut new_states = Vec::new();
 
                 if state.rule_i != -1 {
-                    for &rule_i in completer_rules
+                    for &rule_i in extended_grammar
+                        .grammar
+                        .earley_optimized_data
+                        .completer_rules
                         .get(other_combined_state.typecode as usize - 1)
                         .ok_or(Error::InternalLogicError)?
                         .get(state.rule(extended_grammar).left_side as usize - 1)
