@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { TheoremPageData } from "$lib/sharedState/model.svelte";
-  import MetamathExpression from "./MetamathExpression.svelte";
-  import TheoremLink from "./TheoremLink.svelte";
+  import MetamathExpression from "../util/MetamathExpression.svelte";
+  import TheoremLink from "../util/TheoremLink.svelte";
 
   let { pageData }: { pageData: TheoremPageData } = $props();
 

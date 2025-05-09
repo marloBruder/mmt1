@@ -25,7 +25,7 @@ pub struct MetamathData {
 #[derive(Debug, Default)]
 pub struct OptimizedMetamathData {
     pub variables: HashSet<String>,
-    pub floating_hypotheses: Vec<FloatingHypohesis>,
+    pub floating_hypotheses: Vec<FloatingHypothesis>,
     pub theorem_data: HashMap<String, OptimizedTheoremData>,
     pub symbol_number_mapping: SymbolNumberMapping,
     pub grammar: Grammar,
@@ -57,7 +57,7 @@ pub enum Statement {
     CommentStatement(Comment),
     ConstantStatement(Vec<Constant>),
     VariableStatement(Vec<Variable>),
-    FloatingHypohesisStatement(FloatingHypohesis),
+    FloatingHypohesisStatement(FloatingHypothesis),
     TheoremStatement(Theorem),
 }
 
@@ -82,7 +82,7 @@ pub struct Variable {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct FloatingHypohesis {
+pub struct FloatingHypothesis {
     pub label: String,
     pub typecode: String,
     pub variable: String,
@@ -139,12 +139,21 @@ pub struct HtmlRepresentation {
     pub html: String,
 }
 
+pub enum DatabaseElementPageData {
+    Theorem(TheoremPageData),
+    FloatingHypothesis(FloatingHypothesisPageData),
+}
+
 pub struct TheoremPageData {
     pub theorem: Theorem,
     pub theorem_number: u32,
     pub proof_lines: Vec<ProofLine>,
     pub last_theorem_label: Option<String>,
     pub next_theorem_label: Option<String>,
+}
+
+pub struct FloatingHypothesisPageData {
+    pub floating_hypothesis: FloatingHypothesis,
 }
 
 #[derive(Serialize)]
@@ -664,7 +673,7 @@ impl Grammar {
     }
 }
 
-impl FloatingHypohesis {
+impl FloatingHypothesis {
     pub fn to_assertions_string(&self) -> String {
         format!("{} {}", self.typecode, self.variable)
     }
@@ -988,6 +997,20 @@ impl serde::Serialize for TheoremPath {
     }
 }
 
+impl serde::Serialize for DatabaseElementPageData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        match self {
+            Self::Theorem(theorem_page_data) => theorem_page_data.serialize(serializer),
+            Self::FloatingHypothesis(floating_hypothesis_page_data) => {
+                floating_hypothesis_page_data.serialize(serializer)
+            }
+        }
+    }
+}
+
 impl serde::Serialize for TheoremPageData {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -1001,6 +1024,21 @@ impl serde::Serialize for TheoremPageData {
         state.serialize_field("proofLines", &self.proof_lines)?;
         state.serialize_field("lastTheoremLabel", &self.last_theorem_label)?;
         state.serialize_field("nextTheoremLabel", &self.next_theorem_label)?;
+        state.serialize_field("discriminator", "TheoremPageData")?;
+        state.end()
+    }
+}
+
+impl serde::Serialize for FloatingHypothesisPageData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("FloatingHypothesisPageData", 1)?;
+        state.serialize_field("floatingHypothesis", &self.floating_hypothesis)?;
+        state.serialize_field("discriminator", "FloatingHypothesisPageData")?;
         state.end()
     }
 }

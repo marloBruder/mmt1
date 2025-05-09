@@ -11,8 +11,8 @@
     await tabManager.switchToNextTab();
   };
 
-  let splitClick = () => {
-    tabManager.getOpenTab()?.split();
+  let splitClick = async () => {
+    await tabManager.getOpenTab()?.split();
   };
 </script>
 

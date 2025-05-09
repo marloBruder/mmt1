@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{
     model::{
-        Comment, Constant, FloatingHypohesis, Header, HeaderPath, Hypothesis, MetamathData,
+        Comment, Constant, FloatingHypothesis, Header, HeaderPath, Hypothesis, MetamathData,
         Statement, Theorem, Variable,
     },
     util::earley_parser_optimized::earley_parse,
@@ -12,7 +12,7 @@ use tauri::async_runtime::Mutex;
 struct MmpStructuredInfo {
     pub constants: Vec<Constant>,
     pub variables: Vec<Vec<Variable>>,
-    pub floating_hypotheses: Vec<FloatingHypohesis>,
+    pub floating_hypotheses: Vec<FloatingHypothesis>,
     pub theorem_label: Option<String>,
     pub axiom_label: Option<String>,
     pub header: Option<(String, String)>,
@@ -747,7 +747,7 @@ pub fn statements_to_mmp_structured_info(
 ) -> Result<MmpStructuredInfo, Error> {
     let mut constants: Vec<Constant> = Vec::new();
     let mut variables: Vec<Vec<Variable>> = Vec::new();
-    let mut floating_hypotheses: Vec<FloatingHypohesis> = Vec::new();
+    let mut floating_hypotheses: Vec<FloatingHypothesis> = Vec::new();
     let mut theorem_label: Option<String> = None;
     let mut axiom_label: Option<String> = None;
     let mut header: Option<(String, String)> = None;
@@ -828,7 +828,7 @@ pub fn statements_to_mmp_structured_info(
                     .ok_or(Error::FloatHypStatementFormatError)?
                     .to_string();
 
-                floating_hypotheses.push(FloatingHypohesis {
+                floating_hypotheses.push(FloatingHypothesis {
                     label,
                     typecode,
                     variable,

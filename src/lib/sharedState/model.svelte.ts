@@ -80,12 +80,20 @@ export interface HtmlRepresentation {
   html: string;
 }
 
+export type DatabaseElementPageData = TheoremPageData | FloatingHypothesisPageData;
+
 export interface TheoremPageData {
   theorem: Theorem;
   theoremNumber: number;
   proofLines: ProofLine[];
   lastTheoremLabel: string | null;
   nextTheoremLabel: string | null;
+  discriminator: "TheoremPageData";
+}
+
+export interface FloatingHypothesisPageData {
+  floatingHypothesis: FloatingHypothesis;
+  discriminator: "FloatingHypothesisPageData";
 }
 
 export interface ProofLine {

@@ -8,7 +8,7 @@
     component = TheoremTabComponent;
 
     #theoremLabel: string;
-    #pageData: TheoremPageData = $state({ theorem: { label: "", description: "", distincts: [], hypotheses: [], assertion: "", proof: null }, theoremNumber: 0, proofLines: [], lastTheoremLabel: null, nextTheoremLabel: null });
+    #pageData: TheoremPageData = $state({ theorem: { label: "", description: "", distincts: [], hypotheses: [], assertion: "", proof: null }, theoremNumber: 0, proofLines: [], lastTheoremLabel: null, nextTheoremLabel: null, discriminator: "TheoremPageData" });
 
     constructor(theoremLabel: string) {
       super();
@@ -20,7 +20,7 @@
     }
 
     unloadData(): void {
-      this.#pageData = { theorem: { label: "", description: "", distincts: [], hypotheses: [], assertion: "", proof: null }, theoremNumber: 0, proofLines: [], lastTheoremLabel: null, nextTheoremLabel: null };
+      this.#pageData = { theorem: { label: "", description: "", distincts: [], hypotheses: [], assertion: "", proof: null }, theoremNumber: 0, proofLines: [], lastTheoremLabel: null, nextTheoremLabel: null, discriminator: "TheoremPageData" };
     }
 
     name(): string {
@@ -42,9 +42,7 @@
 </script>
 
 <script lang="ts">
-  import MetamathExpression from "$lib/components/util/MetamathExpression.svelte";
-  import TheoremLink from "../util/TheoremLink.svelte";
-  import TheoremPage from "../util/TheoremPage.svelte";
+  import TheoremPage from "../pages/TheoremPage.svelte";
 
   let { tab }: { tab: Tab } = $props();
 

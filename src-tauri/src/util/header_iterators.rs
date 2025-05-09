@@ -1,7 +1,7 @@
 use std::iter::FilterMap;
 
 use crate::model::{
-    Constant, DatabaseElement, FloatingHypohesis, Header, Statement::*, Theorem, Variable,
+    Constant, DatabaseElement, FloatingHypothesis, Header, Statement::*, Theorem, Variable,
 };
 
 pub struct HeaderIterator<'a> {
@@ -158,7 +158,7 @@ impl<'a> Iterator for VariableIterator<'a> {
 pub struct FloatingHypothesisIterator<'a> {
     inner: FilterMap<
         HeaderIterator<'a>,
-        Box<dyn FnMut(DatabaseElement) -> Option<&FloatingHypohesis>>,
+        Box<dyn FnMut(DatabaseElement) -> Option<&FloatingHypothesis>>,
     >,
 }
 
@@ -178,9 +178,9 @@ impl<'a> FloatingHypothesisIterator<'a> {
 }
 
 impl<'a> Iterator for FloatingHypothesisIterator<'a> {
-    type Item = &'a FloatingHypohesis;
+    type Item = &'a FloatingHypothesis;
 
-    fn next(&mut self) -> Option<&'a FloatingHypohesis> {
+    fn next(&mut self) -> Option<&'a FloatingHypothesis> {
         self.inner.next()
     }
 }

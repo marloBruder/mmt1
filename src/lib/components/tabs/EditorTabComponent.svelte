@@ -15,7 +15,7 @@
     textChanged: boolean = $state(false);
 
     #isSplit: boolean = $state(false);
-    #pageData: TheoremPageData | null = $state(null);
+    #pageData: DatabaseElementPageData | null = $state(null);
 
     #monacoModel: Monaco.editor.ITextModel | null = null;
     #monacoScrollTop: number = 0;
@@ -32,9 +32,9 @@
       this.#monacoModel.onDidChangeContent(async () => {
         this.textChanged = true;
         tabManager.makeOpenTempTabPermanent();
-        await this.onMonacoChange(this.#monacoModel!.getValue());
+        await this.onMonacoChange();
       });
-      await this.onMonacoChange(this.#monacoModel!.getValue());
+      await this.onMonacoChange();
     }
 
     unloadData(): void {
@@ -91,8 +91,12 @@
       return false;
     }
 
-    split() {
+    async split() {
       this.#isSplit = !this.#isSplit;
+
+      if (this.#isSplit) {
+        await this.onMonacoChange();
+      }
     }
 
     splitDisabled(): boolean {
@@ -104,10 +108,10 @@
       this.#monacoScrollLeft = scrollLeft;
     }
 
-    async onMonacoChange(text: string) {
-      invoke("on_edit", { text })
+    async onMonacoChange() {
+      invoke("on_edit", { text: this.monacoModel!.getValue() })
         .then((pageData) => {
-          this.#pageData = pageData as TheoremPageData;
+          this.#pageData = pageData as DatabaseElementPageData;
         })
         .catch(() => {
           this.#pageData = null;
@@ -145,12 +149,12 @@
 <script lang="ts">
   import type * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
   import { invoke } from "@tauri-apps/api/core";
-  import RoundButton from "$lib/components/util/RoundButton.svelte";
   import { Tab, tabManager } from "$lib/sharedState/tabManager.svelte";
   import { onDestroy, onMount } from "svelte";
   import monaco from "$lib/monaco/monaco";
-  import type { TheoremPageData } from "$lib/sharedState/model.svelte";
-  import TheoremPage from "../util/TheoremPage.svelte";
+  import type { DatabaseElementPageData } from "$lib/sharedState/model.svelte";
+  import TheoremPage from "../pages/TheoremPage.svelte";
+  import FloatingHypothesisPage from "../pages/FloatingHypothesisPage.svelte";
 
   let { tab }: { tab: Tab } = $props();
 
@@ -336,7 +340,11 @@
   {#if editorTab.isSplit}
     <div class="w-1/2 h-full">
       {#if editorTab.pageData != null}
-        <TheoremPage pageData={editorTab.pageData}></TheoremPage>
+        {#if editorTab.pageData.discriminator == "TheoremPageData"}
+          <TheoremPage pageData={editorTab.pageData}></TheoremPage>
+        {:else if editorTab.pageData.discriminator == "FloatingHypothesisPageData"}
+          <FloatingHypothesisPage pageData={editorTab.pageData}></FloatingHypothesisPage>
+        {/if}
       {:else}
         <div class="p-2">Editor content does not represent valid theorem</div>
       {/if}

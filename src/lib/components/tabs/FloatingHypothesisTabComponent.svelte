@@ -1,14 +1,14 @@
 <script lang="ts" module>
   import { Tab } from "$lib/sharedState/tabManager.svelte";
   import FloatingHypothesisTabComponent from "$lib/components/tabs/FloatingHypothesisTabComponent.svelte";
-  import type { FloatingHypothesis } from "$lib/sharedState/model.svelte";
+  import type { FloatingHypothesisPageData } from "$lib/sharedState/model.svelte";
   import { invoke } from "@tauri-apps/api/core";
 
   export class FloatingHypothesisTab extends Tab {
     component = FloatingHypothesisTabComponent;
 
     #label: string;
-    #floatingHypothesis: FloatingHypothesis = $state({ label: "", typecode: "", variable: "" });
+    #pageData: FloatingHypothesisPageData = $state({ floatingHypothesis: { label: "", typecode: "", variable: "" }, discriminator: "FloatingHypothesisPageData" });
 
     constructor(label: string) {
       super();
@@ -16,11 +16,11 @@
     }
 
     async loadData(): Promise<void> {
-      this.#floatingHypothesis = await invoke("get_floating_hypothesis_local", { label: this.#label });
+      this.#pageData = (await invoke("get_floating_hypothesis_page_data_local", { label: this.#label })) as FloatingHypothesisPageData;
     }
 
     unloadData(): void {
-      this.#floatingHypothesis = { label: "", typecode: "", variable: "" };
+      this.#pageData = { floatingHypothesis: { label: "", typecode: "", variable: "" }, discriminator: "FloatingHypothesisPageData" };
     }
 
     name(): string {
@@ -35,14 +35,14 @@
       return this.#label;
     }
 
-    get floatingHypothesis() {
-      return this.#floatingHypothesis;
+    get pageData() {
+      return this.#pageData;
     }
   }
 </script>
 
 <script lang="ts">
-  import MetamathExpression from "../util/MetamathExpression.svelte";
+  import FloatingHypothesisPage from "../pages/FloatingHypothesisPage.svelte";
 
   let { tab }: { tab: Tab } = $props();
 
@@ -54,12 +54,4 @@
   });
 </script>
 
-<div class="text-center">
-  <div class="py-4">
-    <h1 class="text-3xl">Floating Hypothesis: {floatingHypothesisTab.floatingHypothesis.label}</h1>
-  </div>
-  <div>
-    <h2 class="text-xl">Statement:</h2>
-    <MetamathExpression expression={floatingHypothesisTab.floatingHypothesis.typecode + " " + floatingHypothesisTab.floatingHypothesis.variable}></MetamathExpression>
-  </div>
-</div>
+<FloatingHypothesisPage pageData={floatingHypothesisTab.pageData}></FloatingHypothesisPage>

@@ -229,7 +229,7 @@ export abstract class Tab {
     return true;
   }
 
-  split() {}
+  async split(): Promise<void> {}
 
   splitDisabled(): boolean {
     return true;

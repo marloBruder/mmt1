@@ -4,7 +4,7 @@ use tauri::async_runtime::Mutex;
 
 use crate::{
     model::{
-        Comment, Constant, FloatingHypohesis, Header, HeaderRepresentation, HtmlRepresentation,
+        Comment, Constant, FloatingHypothesis, Header, HeaderRepresentation, HtmlRepresentation,
         Hypothesis, MetamathData, Statement::*, Theorem, Variable,
     },
     AppState, Error,
@@ -342,7 +342,7 @@ pub async fn parse_mm_file(
                 if scope == 0 {
                     curr_header
                         .content
-                        .push(FloatingHypohesisStatement(FloatingHypohesis {
+                        .push(FloatingHypohesisStatement(FloatingHypothesis {
                             label: label.to_string(),
                             typecode: typecode.to_string(),
                             variable: variable.to_string(),
@@ -350,7 +350,7 @@ pub async fn parse_mm_file(
                     metamath_data
                         .optimized_data
                         .floating_hypotheses
-                        .push(FloatingHypohesis {
+                        .push(FloatingHypothesis {
                             label: label.to_string(),
                             typecode: typecode.to_string(),
                             variable: variable.to_string(),
