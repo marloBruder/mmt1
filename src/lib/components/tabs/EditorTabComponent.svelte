@@ -110,8 +110,26 @@
 
     async onMonacoChange() {
       invoke("on_edit", { text: this.monacoModel!.getValue() })
-        .then((pageData) => {
-          this.#pageData = pageData as DatabaseElementPageData;
+        .then((onEditDataUnkown) => {
+          interface OnEditData {
+            pageData: DatabaseElementPageData;
+          }
+
+          let onEditData = onEditDataUnkown as OnEditData;
+
+          this.#pageData = onEditData.pageData;
+          // const markers: Monaco.editor.IMarkerData[] = [
+          //   {
+          //     severity: monaco.MarkerSeverity.Error,
+          //     startLineNumber: 1,
+          //     startColumn: 1,
+          //     endLineNumber: 1,
+          //     endColumn: 5,
+          //     message: "Testing",
+          //   },
+          // ];
+
+          // monaco.editor.setModelMarkers(this.#monacoModel!, "on_edit", markers);
         })
         .catch(() => {
           this.#pageData = null;

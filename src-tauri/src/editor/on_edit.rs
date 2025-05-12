@@ -5,15 +5,20 @@ use crate::{
     },
     util, AppState, Error,
 };
+use serde::Serialize;
 use tauri::async_runtime::Mutex;
 
 use super::unify::{self, MmpInfoStructuredForUnify, MmpLabel};
+
+pub struct OnEditData {
+    pub page_data: DatabaseElementPageData,
+}
 
 #[tauri::command]
 pub async fn on_edit(
     state: tauri::State<'_, Mutex<AppState>>,
     text: &str,
-) -> Result<DatabaseElementPageData, Error> {
+) -> Result<OnEditData, Error> {
     let app_state = state.lock().await;
     let mm_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
@@ -21,6 +26,14 @@ pub async fn on_edit(
     let mmp_info_structured_for_unify =
         unify::statement_strs_to_mmp_info_structured_for_unify(&statement_strs, mm_data)?;
 
+    Ok(OnEditData {
+        page_data: get_database_element_page_data(&mmp_info_structured_for_unify)?,
+    })
+}
+
+fn get_database_element_page_data(
+    mmp_info_structured_for_unify: &MmpInfoStructuredForUnify,
+) -> Result<DatabaseElementPageData, Error> {
     match mmp_info_structured_for_unify.label {
         Some(MmpLabel::Theorem(_)) => get_theorem_page_data(mmp_info_structured_for_unify),
         Some(MmpLabel::Axiom(_)) => get_theorem_page_data(mmp_info_structured_for_unify),
@@ -39,7 +52,7 @@ pub async fn on_edit(
 }
 
 fn get_theorem_page_data(
-    mmp_info_structured_for_unify: MmpInfoStructuredForUnify,
+    mmp_info_structured_for_unify: &MmpInfoStructuredForUnify,
 ) -> Result<DatabaseElementPageData, Error> {
     let axiom = matches!(
         mmp_info_structured_for_unify.label,
@@ -59,7 +72,7 @@ fn get_theorem_page_data(
     let mut assertion = String::new();
     let mut hypotheses: Vec<Hypothesis> = Vec::new();
 
-    for proof_line in mmp_info_structured_for_unify.proof_lines {
+    for proof_line in &mmp_info_structured_for_unify.proof_lines {
         proof_lines.push(model::ProofLine {
             indention: 1,
             assertion: util::str_to_space_seperated_string(proof_line.expression),
@@ -120,7 +133,7 @@ fn get_theorem_page_data(
 }
 
 fn get_floating_hypothesis_page_data(
-    mmp_info_structured_for_unify: MmpInfoStructuredForUnify,
+    mmp_info_structured_for_unify: &MmpInfoStructuredForUnify,
 ) -> Result<DatabaseElementPageData, Error> {
     if mmp_info_structured_for_unify.floating_hypotheses.len() > 1 {
         return Err(Error::StatementOutOfPlaceError);
@@ -159,4 +172,17 @@ fn get_floating_hypothesis_page_data(
             },
         },
     ))
+}
+
+impl Serialize for OnEditData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("OnEditData", 1)?;
+        state.serialize_field("pageData", &self.page_data)?;
+        state.end()
+    }
 }
