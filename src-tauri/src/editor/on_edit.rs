@@ -5,13 +5,22 @@ use crate::{
     },
     util, AppState, Error,
 };
-use serde::Serialize;
+use serde::{ser::SerializeStruct, Serialize};
 use tauri::async_runtime::Mutex;
 
 use super::unify::{self, MmpInfoStructuredForUnify, MmpLabel};
 
 pub struct OnEditData {
-    pub page_data: DatabaseElementPageData,
+    pub page_data: Option<DatabaseElementPageData>,
+    pub errors: Vec<DetailedError>,
+}
+
+pub struct DetailedError {
+    pub error_type: Error,
+    pub start_line_number: u32,
+    pub start_column: u32,
+    pub end_line_number: u32,
+    pub end_column: u32,
 }
 
 #[tauri::command]
@@ -22,13 +31,86 @@ pub async fn on_edit(
     let app_state = state.lock().await;
     let mm_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
-    let (_, statement_strs) = unify::text_to_statement_strs(text)?;
+    let (whitespace_before_first_statement, statement_strs) =
+        match text_to_statement_strs_with_error_info(text)? {
+            Ok(tuple) => tuple,
+            Err(detailed_err) => {
+                return Ok(OnEditData {
+                    page_data: None,
+                    errors: vec![detailed_err],
+                })
+            }
+        };
     let mmp_info_structured_for_unify =
         unify::statement_strs_to_mmp_info_structured_for_unify(&statement_strs, mm_data)?;
 
     Ok(OnEditData {
-        page_data: get_database_element_page_data(&mmp_info_structured_for_unify)?,
+        page_data: Some(get_database_element_page_data(
+            &mmp_info_structured_for_unify,
+        )?),
+        errors: Vec::new(),
     })
+}
+
+// If successful, returns a tuple (a,b) where a is the whitespace before the first line and b is a vec of all the lines
+pub fn text_to_statement_strs_with_error_info(
+    text: &str,
+) -> Result<Result<(&str, Vec<&str>), DetailedError>, Error> {
+    let mut statements = Vec::new();
+
+    let mut text_i: usize = 0;
+    let text_bytes = text.as_bytes();
+
+    let mut line_count: u32 = 1;
+    let mut last_line_length: u32 = 0;
+
+    while text_bytes
+        .get(text_i)
+        .is_some_and(|c| c.is_ascii_whitespace())
+    {
+        last_line_length += 1;
+
+        if text_bytes.get(text_i).is_some_and(|c| *c == b'\n') {
+            line_count += 1;
+            last_line_length = 0;
+        }
+
+        text_i += 1;
+    }
+
+    let whitespace_before_first_statement = text.get(0..text_i).ok_or(Error::InternalLogicError)?;
+
+    if text_i != 0 && text_bytes.get(text_i - 1).is_some_and(|c| *c != b'\n') {
+        return Ok(Err(DetailedError {
+            error_type: Error::WhitespaceBeforeFirstTokenError,
+            start_line_number: line_count,
+            start_column: 1,
+            end_line_number: line_count,
+            end_column: last_line_length + 1,
+        }));
+    }
+
+    let mut statement_start = text_i;
+    text_i += 1;
+
+    while let Some(&char) = text_bytes.get(text_i) {
+        if !char.is_ascii_whitespace() && text_bytes.get(text_i - 1).is_some_and(|c| *c == b'\n') {
+            statements.push(
+                text.get(statement_start..text_i)
+                    .ok_or(Error::InternalLogicError)?,
+            );
+            statement_start = text_i;
+        }
+
+        text_i += 1;
+    }
+
+    statements.push(
+        text.get(statement_start..text_i)
+            .ok_or(Error::InternalLogicError)?,
+    );
+
+    Ok(Ok((whitespace_before_first_statement, statements)))
 }
 
 fn get_database_element_page_data(
@@ -181,8 +263,24 @@ impl Serialize for OnEditData {
     {
         use serde::ser::SerializeStruct;
 
-        let mut state = serializer.serialize_struct("OnEditData", 1)?;
+        let mut state = serializer.serialize_struct("OnEditData", 2)?;
         state.serialize_field("pageData", &self.page_data)?;
+        state.serialize_field("errors", &self.errors)?;
+        state.end()
+    }
+}
+
+impl Serialize for DetailedError {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("DetailedError", 5)?;
+        state.serialize_field("errorType", &self.error_type)?;
+        state.serialize_field("startLineNumber", &self.start_line_number)?;
+        state.serialize_field("startColumn", &self.start_column)?;
+        state.serialize_field("endLineNumber", &self.end_line_number)?;
+        state.serialize_field("endColumn", &self.end_column)?;
         state.end()
     }
 }

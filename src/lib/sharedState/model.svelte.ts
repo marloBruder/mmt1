@@ -139,3 +139,11 @@ export interface FolderRepresentation {
   fileNames: string[];
   subfolderNames: string[];
 }
+
+export interface DetailedError {
+  errorType: string;
+  startLineNumber: number;
+  startColumn: number;
+  endLineNumber: number;
+  endColumn: number;
+}

@@ -109,31 +109,48 @@
     }
 
     async onMonacoChange() {
-      invoke("on_edit", { text: this.monacoModel!.getValue() })
-        .then((onEditDataUnkown) => {
-          interface OnEditData {
-            pageData: DatabaseElementPageData;
+      monaco.editor.removeAllMarkers("on_edit");
+      invoke("on_edit", { text: this.monacoModel!.getValue() }).then((onEditDataUnkown) => {
+        interface OnEditData {
+          pageData: DatabaseElementPageData | null;
+          errors: DetailedError[];
+        }
+
+        let onEditData = onEditDataUnkown as OnEditData;
+
+        this.#pageData = onEditData.pageData;
+        // const markers: Monaco.editor.IMarkerData[] = [
+        //   {
+        //     severity: monaco.MarkerSeverity.Error,
+        //     startLineNumber: 1,
+        //     startColumn: 1,
+        //     endLineNumber: 1,
+        //     endColumn: 5,
+        //     message: "Testing",
+        //   },
+        // ];
+
+        const markers: Monaco.editor.IMarkerData[] = onEditData.errors.map((detailedError) => {
+          let message = "";
+          switch (detailedError.errorType) {
+            case "WhitespaceBeforeFirstTokenError": {
+              message = "Statements can't have trailing whitespace.\n\n(This error only shows before the first statement, because other lines with trailing whitespace continue the previous statement.)";
+              break;
+            }
           }
 
-          let onEditData = onEditDataUnkown as OnEditData;
-
-          this.#pageData = onEditData.pageData;
-          // const markers: Monaco.editor.IMarkerData[] = [
-          //   {
-          //     severity: monaco.MarkerSeverity.Error,
-          //     startLineNumber: 1,
-          //     startColumn: 1,
-          //     endLineNumber: 1,
-          //     endColumn: 5,
-          //     message: "Testing",
-          //   },
-          // ];
-
-          // monaco.editor.setModelMarkers(this.#monacoModel!, "on_edit", markers);
-        })
-        .catch(() => {
-          this.#pageData = null;
+          return {
+            severity: monaco.MarkerSeverity.Error,
+            startLineNumber: detailedError.startLineNumber,
+            startColumn: detailedError.startColumn,
+            endLineNumber: detailedError.endLineNumber,
+            endColumn: detailedError.endColumn,
+            message,
+          };
         });
+
+        monaco.editor.setModelMarkers(this.#monacoModel!, "on_edit", markers);
+      });
     }
 
     get filePath() {
@@ -170,7 +187,7 @@
   import { Tab, tabManager } from "$lib/sharedState/tabManager.svelte";
   import { onDestroy, onMount } from "svelte";
   import monaco from "$lib/monaco/monaco";
-  import type { DatabaseElementPageData } from "$lib/sharedState/model.svelte";
+  import type { DatabaseElementPageData, DetailedError } from "$lib/sharedState/model.svelte";
   import TheoremPage from "../pages/TheoremPage.svelte";
   import FloatingHypothesisPage from "../pages/FloatingHypothesisPage.svelte";
 
