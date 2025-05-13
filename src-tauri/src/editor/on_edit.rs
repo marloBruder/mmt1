@@ -1,14 +1,16 @@
 use crate::{
     model::{
         self, DatabaseElementPageData, FloatingHypothesis, FloatingHypothesisPageData, Hypothesis,
-        Theorem, TheoremPageData,
+        MetamathData, Theorem, TheoremPageData,
     },
     util, AppState, Error,
 };
 use serde::{ser::SerializeStruct, Serialize};
 use tauri::async_runtime::Mutex;
 
-use super::unify::{self, MmpInfoStructuredForUnify, MmpLabel};
+use super::unify::{
+    self, LocateAfterRef, MmpInfoStructuredForUnify, MmpLabel, MmpStatement, ProofLine,
+};
 
 pub struct OnEditData {
     pub page_data: Option<DatabaseElementPageData>,
@@ -31,7 +33,7 @@ pub async fn on_edit(
     let app_state = state.lock().await;
     let mm_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
-    let (whitespace_before_first_statement, statement_strs) =
+    let (line_number_before_first_statement, statement_strs) =
         match text_to_statement_strs_with_error_info(text)? {
             Ok(tuple) => tuple,
             Err(detailed_err) => {
@@ -41,21 +43,26 @@ pub async fn on_edit(
                 })
             }
         };
-    let mmp_info_structured_for_unify =
-        unify::statement_strs_to_mmp_info_structured_for_unify(&statement_strs, mm_data)?;
 
-    Ok(OnEditData {
-        page_data: Some(get_database_element_page_data(
-            &mmp_info_structured_for_unify,
-        )?),
-        errors: Vec::new(),
-    })
+    let (mmp_info_structured_for_unify_option, errors) =
+        statement_strs_to_mmp_info_structured_for_unify_with_error_info(
+            &statement_strs,
+            mm_data,
+            line_number_before_first_statement,
+        )?;
+
+    let page_data = match mmp_info_structured_for_unify_option {
+        Some(info) => Some(get_database_element_page_data(&info)?),
+        None => None,
+    };
+
+    Ok(OnEditData { page_data, errors })
 }
 
-// If successful, returns a tuple (a,b) where a is the whitespace before the first line and b is a vec of all the lines
+// If successful, returns a tuple (a,b) where a is number of lines before the statement and b is a vec of all the lines
 pub fn text_to_statement_strs_with_error_info(
     text: &str,
-) -> Result<Result<(&str, Vec<&str>), DetailedError>, Error> {
+) -> Result<Result<(u32, Vec<&str>), DetailedError>, Error> {
     let mut statements = Vec::new();
 
     let mut text_i: usize = 0;
@@ -77,8 +84,6 @@ pub fn text_to_statement_strs_with_error_info(
 
         text_i += 1;
     }
-
-    let whitespace_before_first_statement = text.get(0..text_i).ok_or(Error::InternalLogicError)?;
 
     if text_i != 0 && text_bytes.get(text_i - 1).is_some_and(|c| *c != b'\n') {
         return Ok(Err(DetailedError {
@@ -110,7 +115,380 @@ pub fn text_to_statement_strs_with_error_info(
             .ok_or(Error::InternalLogicError)?,
     );
 
-    Ok(Ok((whitespace_before_first_statement, statements)))
+    Ok(Ok((line_count, statements)))
+}
+
+pub fn statement_strs_to_mmp_info_structured_for_unify_with_error_info<'a>(
+    statement_strs: &Vec<&'a str>,
+    mm_data: &MetamathData,
+    line_offset: u32,
+) -> Result<(Option<MmpInfoStructuredForUnify<'a>>, Vec<DetailedError>), Error> {
+    let mut label: Option<MmpLabel<'a>> = None;
+    let mut allow_discouraged: bool = false;
+    let mut locate_after: Option<LocateAfterRef<'a>> = None;
+    let mut distinct_vars: Vec<&'a str> = Vec::new();
+    let mut constants: Option<&'a str> = None;
+    let mut variables: Vec<&'a str> = Vec::new();
+    let mut floating_hypotheses: Vec<&'a str> = Vec::new();
+    let mut proof_lines: Vec<ProofLine<'a>> = Vec::new();
+    let mut comments: Vec<&'a str> = Vec::new();
+    let mut statements: Vec<MmpStatement> = Vec::with_capacity(statement_strs.len());
+
+    let mut errors: Vec<DetailedError> = Vec::new();
+    let mut return_info: bool = true;
+    let mut current_line: u32 = line_offset;
+
+    for &statement_str in statement_strs {
+        let mut token_iter = statement_str.split_ascii_whitespace();
+
+        let last_non_whitespace_pos = last_non_whitespace_pos(statement_str);
+
+        match token_iter.next().ok_or(Error::InternalLogicError)? {
+            "$c" => {
+                if constants.is_some() {
+                    return_info = false;
+
+                    errors.push(DetailedError {
+                        error_type: Error::TooManyConstStatementsError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    })
+                }
+
+                constants = Some(
+                    statement_str
+                        .get(3..statement_str.len())
+                        .ok_or(Error::InternalLogicError)?,
+                );
+
+                if token_iter.next().is_none() {
+                    errors.push(DetailedError {
+                        error_type: Error::EmptyConstStatementError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    })
+                }
+
+                statements.push(MmpStatement::Constant);
+            }
+            "$v" => {
+                variables.push(
+                    statement_str
+                        .get(3..statement_str.len())
+                        .ok_or(Error::InternalLogicError)?,
+                );
+
+                if token_iter.next().is_none() {
+                    return Err(Error::EmptyVarStatementError);
+                }
+
+                statements.push(MmpStatement::Variable);
+            }
+            "$f" => {
+                floating_hypotheses.push(
+                    statement_str
+                        .get(3..statement_str.len())
+                        .ok_or(Error::InternalLogicError)?,
+                );
+
+                // token_iter should only have exactly three more token
+                if token_iter.next().is_none()
+                    || token_iter.next().is_none()
+                    || token_iter.next().is_none()
+                    || token_iter.next().is_some()
+                {
+                    return Err(Error::FloatHypStatementFormatError);
+                }
+
+                statements.push(MmpStatement::FloatingHypohesis);
+            }
+            "$theorem" => {
+                if label.is_some() {
+                    return Err(Error::StatementOutOfPlaceError);
+                }
+
+                label = Some(MmpLabel::Theorem(
+                    token_iter.next().ok_or(Error::MissingTheoremLabelError)?,
+                ));
+
+                if token_iter.next().is_some() {
+                    return Err(Error::TooManyTheoremLabelTokensError);
+                }
+
+                statements.push(MmpStatement::MmpLabel);
+            }
+            "$axiom" => {
+                if label.is_some() {
+                    return Err(Error::MultipleAxiomLabelError);
+                }
+
+                label = Some(MmpLabel::Axiom(
+                    token_iter.next().ok_or(Error::MissingAxiomLabelError)?,
+                ));
+
+                if token_iter.next().is_some() {
+                    return Err(Error::TooManyAxiomLabelTokensError);
+                }
+
+                statements.push(MmpStatement::MmpLabel);
+            }
+            "$header" => {
+                if label.is_some() {
+                    return Err(Error::MultipleHeaderStatementError);
+                }
+
+                let header_pos = token_iter.next().ok_or(Error::TooFewHeaderTokensError)?;
+
+                let statement_bytes = statement_str.as_bytes();
+                let mut statement_i: usize = 0;
+                while statement_bytes
+                    .get(statement_i)
+                    .is_some_and(|c| !c.is_ascii_whitespace())
+                {
+                    statement_i += 1;
+                }
+                while statement_bytes
+                    .get(statement_i)
+                    .is_some_and(|c| c.is_ascii_whitespace())
+                {
+                    statement_i += 1;
+                }
+                while statement_bytes
+                    .get(statement_i)
+                    .is_some_and(|c| !c.is_ascii_whitespace())
+                {
+                    statement_i += 1;
+                }
+
+                let title = statement_str
+                    .get((statement_i + 1)..statement_str.len())
+                    .ok_or(Error::TooFewHeaderTokensError)?;
+
+                // make sure there follows at least one token
+                if token_iter.next().is_none() {
+                    return Err(Error::TooFewHeaderTokensError);
+                }
+
+                label = Some(MmpLabel::Header { header_pos, title });
+
+                statements.push(MmpStatement::MmpLabel);
+            }
+            "$d" => {
+                distinct_vars.push(
+                    statement_str
+                        .get(3..statement_str.len())
+                        .ok_or(Error::InternalLogicError)?,
+                );
+
+                // make sure there are at least two more tokens
+                if token_iter.next().is_none() || token_iter.next().is_none() {
+                    return Err(Error::ZeroOrOneSymbolDisjError);
+                }
+
+                statements.push(MmpStatement::DistinctVar);
+            }
+            "$allowdiscouraged" => {
+                if allow_discouraged {
+                    return Err(Error::MultipleAllowDiscouragedError);
+                }
+
+                allow_discouraged = true;
+
+                if token_iter.next().is_some() {
+                    return Err(Error::TokensAfterAllowDiscouragedError);
+                }
+
+                statements.push(MmpStatement::AllowDiscouraged);
+            }
+            "$locateafter" => {
+                if locate_after.is_some() {
+                    return Err(Error::MultipleLocateAfterError);
+                }
+
+                locate_after = Some(LocateAfterRef::LocateAfter(
+                    token_iter
+                        .next()
+                        .ok_or(Error::MissingLocateAfterLabelError)?,
+                ));
+
+                if token_iter.next().is_some() {
+                    return Err(Error::TooManyLocateAfterTokensError);
+                }
+
+                statements.push(MmpStatement::LocateAfter);
+            }
+            "$locateafterconst" => {
+                if locate_after.is_some() {
+                    return Err(Error::MultipleLocateAfterError);
+                }
+
+                locate_after = Some(LocateAfterRef::LocateAfterConst(
+                    token_iter
+                        .next()
+                        .ok_or(Error::MissingLocateAfterLabelError)?,
+                ));
+
+                if token_iter.next().is_some() {
+                    return Err(Error::TooManyLocateAfterTokensError);
+                }
+
+                statements.push(MmpStatement::LocateAfter);
+            }
+            "$locateaftervar" => {
+                if locate_after.is_some() {
+                    return Err(Error::MultipleLocateAfterError);
+                }
+
+                locate_after = Some(LocateAfterRef::LocateAfterVar(
+                    token_iter
+                        .next()
+                        .ok_or(Error::MissingLocateAfterLabelError)?,
+                ));
+
+                if token_iter.next().is_some() {
+                    return Err(Error::TooManyLocateAfterTokensError);
+                }
+
+                statements.push(MmpStatement::LocateAfter);
+            }
+            t if t.starts_with('*') => {
+                statements.push(MmpStatement::Comment);
+                comments.push(
+                    statement_str
+                        .get(1..statement_str.len())
+                        .ok_or(Error::InternalLogicError)?,
+                );
+            }
+            t if t.starts_with('$') => return Err(Error::InvalidDollarTokenError),
+            step_prefix => {
+                let prefix_parts: Vec<&str> = step_prefix.split(':').collect();
+                if prefix_parts.len() != 3 {
+                    return Err(Error::InvalidMmj2StepPrefixError);
+                }
+
+                let prefix_step_name = prefix_parts.get(0).unwrap();
+
+                let mut is_hypothesis = false;
+                let step_name: &str;
+
+                if prefix_step_name.starts_with('h') {
+                    is_hypothesis = true;
+                    step_name = prefix_step_name.split_at(1).1;
+                } else {
+                    step_name = prefix_step_name;
+                }
+
+                if step_name.contains(',') || step_name == "" {
+                    return Err(Error::InvalidMmj2StepPrefixError);
+                }
+
+                let hypotheses = *prefix_parts.get(1).unwrap();
+
+                let mut hypotheses_parsed: Vec<Option<usize>> = Vec::new();
+
+                if !hypotheses.is_empty() {
+                    for hyp in hypotheses.split(',') {
+                        if hyp == "?" {
+                            hypotheses_parsed.push(None);
+                        } else {
+                            hypotheses_parsed.push(Some(
+                                proof_lines
+                                    .iter()
+                                    .enumerate()
+                                    .find(|(_, pl)| pl.step_name == hyp)
+                                    .ok_or(Error::InvalidMmj2StepPrefixError)?
+                                    .0,
+                            ))
+                        }
+                    }
+                }
+
+                let step_ref = *prefix_parts.get(2).unwrap();
+
+                let expression = statement_str
+                    .get(step_prefix.len()..statement_str.len())
+                    .ok_or(Error::InternalLogicError)?;
+
+                if token_iter.next().is_none() {
+                    return Err(Error::MissingMmj2StepExpressionError);
+                }
+
+                let parse_tree = mm_data
+                    .optimized_data
+                    .symbol_number_mapping
+                    .expression_to_parse_tree(expression, &mm_data.optimized_data.grammar)?;
+
+                statements.push(MmpStatement::ProofLine);
+                proof_lines.push(ProofLine {
+                    is_hypothesis,
+                    step_name,
+                    hypotheses,
+                    hypotheses_parsed,
+                    step_ref,
+                    expression,
+                    parse_tree,
+                });
+            }
+        }
+
+        current_line += new_lines_in_str(statement_str);
+    }
+
+    Ok((
+        if return_info {
+            Some(MmpInfoStructuredForUnify {
+                label,
+                allow_discouraged,
+                locate_after,
+                distinct_vars,
+                constants,
+                variables,
+                floating_hypotheses,
+                proof_lines,
+                comments,
+                statements,
+            })
+        } else {
+            None
+        },
+        errors,
+    ))
+}
+
+// Returns (a, b), where a is the line number and b is the column number of the last non-whitespace character
+fn last_non_whitespace_pos(str: &str) -> (u32, u32) {
+    let mut last_non_whitespace_line_number = 1;
+    let mut last_non_whitespace_column_number = 1;
+
+    let mut line_number = 1;
+    let mut column_number = 0;
+
+    for char in str.chars() {
+        column_number += 1;
+
+        if char == '\n' {
+            line_number += 1;
+            column_number = 0;
+        }
+
+        if !char.is_whitespace() {
+            last_non_whitespace_line_number = line_number;
+            last_non_whitespace_column_number = column_number;
+        }
+    }
+
+    (
+        last_non_whitespace_line_number,
+        last_non_whitespace_column_number,
+    )
+}
+
+fn new_lines_in_str(str: &str) -> u32 {
+    str.chars().filter(|c| *c == '\n').count() as u32
 }
 
 fn get_database_element_page_data(

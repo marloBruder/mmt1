@@ -131,21 +131,13 @@
         // ];
 
         const markers: Monaco.editor.IMarkerData[] = onEditData.errors.map((detailedError) => {
-          let message = "";
-          switch (detailedError.errorType) {
-            case "WhitespaceBeforeFirstTokenError": {
-              message = "Statements can't have trailing whitespace.\n\n(This error only shows before the first statement, because other lines with trailing whitespace continue the previous statement.)";
-              break;
-            }
-          }
-
           return {
             severity: monaco.MarkerSeverity.Error,
             startLineNumber: detailedError.startLineNumber,
             startColumn: detailedError.startColumn,
             endLineNumber: detailedError.endLineNumber,
             endColumn: detailedError.endColumn,
-            message,
+            message: getErrorMessage(detailedError.errorType),
           };
         });
 
@@ -190,6 +182,7 @@
   import type { DatabaseElementPageData, DetailedError } from "$lib/sharedState/model.svelte";
   import TheoremPage from "../pages/TheoremPage.svelte";
   import FloatingHypothesisPage from "../pages/FloatingHypothesisPage.svelte";
+  import { getErrorMessage } from "../util/errorMessages.svelte";
 
   let { tab }: { tab: Tab } = $props();
 
