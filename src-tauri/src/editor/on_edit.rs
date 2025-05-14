@@ -183,7 +183,13 @@ pub fn statement_strs_to_mmp_info_structured_for_unify_with_error_info<'a>(
                 );
 
                 if token_iter.next().is_none() {
-                    return Err(Error::EmptyVarStatementError);
+                    errors.push(DetailedError {
+                        error_type: Error::EmptyVarStatementError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    })
                 }
 
                 statements.push(MmpStatement::Variable);
@@ -196,17 +202,46 @@ pub fn statement_strs_to_mmp_info_structured_for_unify_with_error_info<'a>(
                 );
 
                 // token_iter should only have exactly three more token
-                if token_iter.next().is_none()
-                    || token_iter.next().is_none()
-                    || token_iter.next().is_none()
-                    || token_iter.next().is_some()
-                {
-                    return Err(Error::FloatHypStatementFormatError);
+                let first_token = token_iter.next();
+                let second_token = token_iter.next();
+                let third_token = token_iter.next();
+                let fourth_token = token_iter.next();
+
+                if first_token.is_none() {
+                    errors.push(DetailedError {
+                        error_type: Error::FloatHypStatementFormatError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line,
+                        end_column: 3,
+                    })
+                } else if second_token.is_none() || third_token.is_none() {
+                    let second_token_start_pos = nth_token_start_pos(statement_str, 1);
+
+                    errors.push(DetailedError {
+                        error_type: Error::FloatHypStatementFormatError,
+                        start_line_number: current_line + second_token_start_pos.0 - 1,
+                        start_column: second_token_start_pos.1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    })
+                } else if fourth_token.is_some() {
+                    let fifth_token_start_pos = nth_token_start_pos(statement_str, 4);
+
+                    errors.push(DetailedError {
+                        error_type: Error::FloatHypStatementFormatError,
+                        start_line_number: current_line + fifth_token_start_pos.0 - 1,
+                        start_column: fifth_token_start_pos.1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    })
                 }
 
                 statements.push(MmpStatement::FloatingHypohesis);
             }
             "$theorem" => {
+                let third_token_start_pos = nth_token_start_pos(statement_str, 2);
+
                 if label.is_some() {
                     return Err(Error::StatementOutOfPlaceError);
                 }
@@ -216,7 +251,14 @@ pub fn statement_strs_to_mmp_info_structured_for_unify_with_error_info<'a>(
                 ));
 
                 if token_iter.next().is_some() {
-                    return Err(Error::TooManyTheoremLabelTokensError);
+                    // return Err(Error::TooManyTheoremLabelTokensError);
+                    errors.push(DetailedError {
+                        error_type: Error::TooManyTheoremLabelTokensError,
+                        start_line_number: current_line + third_token_start_pos.0 - 1,
+                        start_column: third_token_start_pos.1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    })
                 }
 
                 statements.push(MmpStatement::MmpLabel);
@@ -485,6 +527,39 @@ fn last_non_whitespace_pos(str: &str) -> (u32, u32) {
         last_non_whitespace_line_number,
         last_non_whitespace_column_number,
     )
+}
+
+fn nth_token_start_pos(str: &str, n: u32) -> (u32, u32) {
+    let mut tokens_seen = 0;
+    let mut seeing_token = false;
+
+    let mut line_number = 1;
+    let mut column_number = 0;
+
+    for char in str.chars() {
+        column_number += 1;
+
+        if char == '\n' {
+            line_number += 1;
+            column_number = 0;
+        }
+
+        if char.is_whitespace() {
+            if seeing_token {
+                tokens_seen += 1;
+            }
+
+            seeing_token = false;
+        } else {
+            if tokens_seen == n {
+                break;
+            }
+
+            seeing_token = true;
+        }
+    }
+
+    (line_number, column_number)
 }
 
 fn new_lines_in_str(str: &str) -> u32 {
