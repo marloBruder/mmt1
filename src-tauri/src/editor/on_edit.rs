@@ -164,6 +164,8 @@ pub fn statement_strs_to_mmp_info_structured_for_unify_with_error_info<'a>(
                 );
 
                 if token_iter.next().is_none() {
+                    return_info = false;
+
                     errors.push(DetailedError {
                         error_type: Error::EmptyConstStatementError,
                         start_line_number: current_line,
@@ -183,6 +185,8 @@ pub fn statement_strs_to_mmp_info_structured_for_unify_with_error_info<'a>(
                 );
 
                 if token_iter.next().is_none() {
+                    return_info = false;
+
                     errors.push(DetailedError {
                         error_type: Error::EmptyVarStatementError,
                         start_line_number: current_line,
@@ -208,14 +212,17 @@ pub fn statement_strs_to_mmp_info_structured_for_unify_with_error_info<'a>(
                 let fourth_token = token_iter.next();
 
                 if first_token.is_none() {
+                    return_info = false;
+
                     errors.push(DetailedError {
                         error_type: Error::FloatHypStatementFormatError,
                         start_line_number: current_line,
                         start_column: 1,
                         end_line_number: current_line,
-                        end_column: 3,
+                        end_column: 3, // Length of "$f" + 1
                     })
                 } else if second_token.is_none() || third_token.is_none() {
+                    return_info = false;
                     let second_token_start_pos = nth_token_start_pos(statement_str, 1);
 
                     errors.push(DetailedError {
@@ -226,6 +233,7 @@ pub fn statement_strs_to_mmp_info_structured_for_unify_with_error_info<'a>(
                         end_column: last_non_whitespace_pos.1 + 1,
                     })
                 } else if fourth_token.is_some() {
+                    return_info = false;
                     let fifth_token_start_pos = nth_token_start_pos(statement_str, 4);
 
                     errors.push(DetailedError {
@@ -240,18 +248,36 @@ pub fn statement_strs_to_mmp_info_structured_for_unify_with_error_info<'a>(
                 statements.push(MmpStatement::FloatingHypohesis);
             }
             "$theorem" => {
-                let third_token_start_pos = nth_token_start_pos(statement_str, 2);
-
                 if label.is_some() {
-                    return Err(Error::StatementOutOfPlaceError);
+                    return_info = false;
+
+                    errors.push(DetailedError {
+                        error_type: Error::MultipleMmpLabelsError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
                 }
 
-                label = Some(MmpLabel::Theorem(
-                    token_iter.next().ok_or(Error::MissingTheoremLabelError)?,
-                ));
+                if let Some(theorem_label) = token_iter.next() {
+                    label = Some(MmpLabel::Theorem(theorem_label));
+                } else {
+                    return_info = false;
+
+                    errors.push(DetailedError {
+                        error_type: Error::MissingTheoremLabelError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line,
+                        end_column: 9, // Length of "$theorem" + 1
+                    })
+                }
 
                 if token_iter.next().is_some() {
-                    // return Err(Error::TooManyTheoremLabelTokensError);
+                    return_info = false;
+                    let third_token_start_pos = nth_token_start_pos(statement_str, 2);
+
                     errors.push(DetailedError {
                         error_type: Error::TooManyTheoremLabelTokensError,
                         start_line_number: current_line + third_token_start_pos.0 - 1,
@@ -265,59 +291,118 @@ pub fn statement_strs_to_mmp_info_structured_for_unify_with_error_info<'a>(
             }
             "$axiom" => {
                 if label.is_some() {
-                    return Err(Error::MultipleAxiomLabelError);
+                    return_info = false;
+
+                    errors.push(DetailedError {
+                        error_type: Error::MultipleMmpLabelsError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
                 }
 
-                label = Some(MmpLabel::Axiom(
-                    token_iter.next().ok_or(Error::MissingAxiomLabelError)?,
-                ));
+                if let Some(axiom_label) = token_iter.next() {
+                    label = Some(MmpLabel::Axiom(axiom_label));
+                } else {
+                    return_info = false;
+
+                    errors.push(DetailedError {
+                        error_type: Error::MissingAxiomLabelError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line,
+                        end_column: 9, // Length of "$theorem" + 1
+                    })
+                }
 
                 if token_iter.next().is_some() {
-                    return Err(Error::TooManyAxiomLabelTokensError);
+                    return_info = false;
+                    let third_token_start_pos = nth_token_start_pos(statement_str, 2);
+
+                    errors.push(DetailedError {
+                        error_type: Error::TooManyAxiomLabelTokensError,
+                        start_line_number: current_line + third_token_start_pos.0 - 1,
+                        start_column: third_token_start_pos.1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    })
                 }
 
                 statements.push(MmpStatement::MmpLabel);
             }
             "$header" => {
                 if label.is_some() {
-                    return Err(Error::MultipleHeaderStatementError);
+                    return_info = false;
+
+                    errors.push(DetailedError {
+                        error_type: Error::MultipleMmpLabelsError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
                 }
 
-                let header_pos = token_iter.next().ok_or(Error::TooFewHeaderTokensError)?;
+                if let Some(header_pos) = token_iter.next() {
+                    // make sure there follows at least one token
+                    if token_iter.next().is_some() {
+                        let statement_bytes = statement_str.as_bytes();
+                        let mut statement_i: usize = 0;
+                        while statement_bytes
+                            .get(statement_i)
+                            .is_some_and(|c| !c.is_ascii_whitespace())
+                        {
+                            statement_i += 1;
+                        }
+                        while statement_bytes
+                            .get(statement_i)
+                            .is_some_and(|c| c.is_ascii_whitespace())
+                        {
+                            statement_i += 1;
+                        }
+                        while statement_bytes
+                            .get(statement_i)
+                            .is_some_and(|c| !c.is_ascii_whitespace())
+                        {
+                            statement_i += 1;
+                        }
 
-                let statement_bytes = statement_str.as_bytes();
-                let mut statement_i: usize = 0;
-                while statement_bytes
-                    .get(statement_i)
-                    .is_some_and(|c| !c.is_ascii_whitespace())
-                {
-                    statement_i += 1;
+                        let title = statement_str
+                            .get((statement_i + 1)..statement_str.len())
+                            .ok_or(Error::InternalLogicError)?;
+
+                        label = Some(MmpLabel::Header { header_pos, title });
+
+                        statements.push(MmpStatement::MmpLabel);
+                    } else {
+                        return_info = false;
+
+                        errors.push(DetailedError {
+                            error_type: Error::TooFewHeaderTokensError,
+                            start_line_number: current_line,
+                            start_column: 1,
+                            end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                            end_column: last_non_whitespace_pos.1 + 1,
+                        });
+                        // Make sure label is set to Some(_) so that future label statements will be flagged as errors
+                        // Since return_info is false, the content within Some(_) does not matter
+                        label = Some(MmpLabel::Theorem(""));
+                    }
+                } else {
+                    return_info = false;
+
+                    errors.push(DetailedError {
+                        error_type: Error::TooFewHeaderTokensError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
+                    // Make sure label is set to Some(_) so that future label statements will be flagged as errors
+                    // Since return_info is false, the content within Some(_) does not matter
+                    label = Some(MmpLabel::Theorem(""));
                 }
-                while statement_bytes
-                    .get(statement_i)
-                    .is_some_and(|c| c.is_ascii_whitespace())
-                {
-                    statement_i += 1;
-                }
-                while statement_bytes
-                    .get(statement_i)
-                    .is_some_and(|c| !c.is_ascii_whitespace())
-                {
-                    statement_i += 1;
-                }
-
-                let title = statement_str
-                    .get((statement_i + 1)..statement_str.len())
-                    .ok_or(Error::TooFewHeaderTokensError)?;
-
-                // make sure there follows at least one token
-                if token_iter.next().is_none() {
-                    return Err(Error::TooFewHeaderTokensError);
-                }
-
-                label = Some(MmpLabel::Header { header_pos, title });
-
-                statements.push(MmpStatement::MmpLabel);
             }
             "$d" => {
                 distinct_vars.push(
@@ -328,71 +413,195 @@ pub fn statement_strs_to_mmp_info_structured_for_unify_with_error_info<'a>(
 
                 // make sure there are at least two more tokens
                 if token_iter.next().is_none() || token_iter.next().is_none() {
-                    return Err(Error::ZeroOrOneSymbolDisjError);
+                    return_info = false;
+
+                    errors.push(DetailedError {
+                        error_type: Error::ZeroOrOneSymbolDisjError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
                 }
 
                 statements.push(MmpStatement::DistinctVar);
             }
             "$allowdiscouraged" => {
                 if allow_discouraged {
-                    return Err(Error::MultipleAllowDiscouragedError);
+                    return_info = false;
+
+                    errors.push(DetailedError {
+                        error_type: Error::MultipleAllowDiscouragedError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
                 }
 
                 allow_discouraged = true;
 
                 if token_iter.next().is_some() {
-                    return Err(Error::TokensAfterAllowDiscouragedError);
+                    return_info = false;
+                    let second_token_start_pos = nth_token_start_pos(statement_str, 1);
+
+                    errors.push(DetailedError {
+                        error_type: Error::TokensAfterAllowDiscouragedError,
+                        start_line_number: current_line + second_token_start_pos.0 - 1,
+                        start_column: second_token_start_pos.1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
                 }
 
                 statements.push(MmpStatement::AllowDiscouraged);
             }
             "$locateafter" => {
                 if locate_after.is_some() {
-                    return Err(Error::MultipleLocateAfterError);
+                    return_info = false;
+
+                    errors.push(DetailedError {
+                        error_type: Error::MultipleLocateAfterError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
                 }
 
-                locate_after = Some(LocateAfterRef::LocateAfter(
-                    token_iter
-                        .next()
-                        .ok_or(Error::MissingLocateAfterLabelError)?,
-                ));
+                if let Some(locate_after_label) = token_iter.next() {
+                    locate_after = Some(LocateAfterRef::LocateAfter(locate_after_label));
+                } else {
+                    return_info = false;
+
+                    errors.push(DetailedError {
+                        error_type: Error::TooFewLocateAfterTokensError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
+
+                    // Make sure locate_after is set to Some(_) so that future locate-after statements will be flagged as errors
+                    // Since return_info is false, the content within Some(_) does not matter
+                    locate_after = Some(LocateAfterRef::LocateAfter(""));
+                }
 
                 if token_iter.next().is_some() {
-                    return Err(Error::TooManyLocateAfterTokensError);
+                    return_info = false;
+                    let third_token_start_pos = nth_token_start_pos(statement_str, 2);
+
+                    errors.push(DetailedError {
+                        error_type: Error::TooManyLocateAfterTokensError,
+                        start_line_number: current_line + third_token_start_pos.0 - 1,
+                        start_column: third_token_start_pos.1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
+
+                    // Make sure locate_after is set to Some(_) so that future locate-after statements will be flagged as errors
+                    // Since return_info is false, the content within Some(_) does not matter
+                    locate_after = Some(LocateAfterRef::LocateAfter(""));
                 }
 
                 statements.push(MmpStatement::LocateAfter);
             }
             "$locateafterconst" => {
                 if locate_after.is_some() {
-                    return Err(Error::MultipleLocateAfterError);
+                    return_info = false;
+
+                    errors.push(DetailedError {
+                        error_type: Error::MultipleLocateAfterError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
                 }
 
-                locate_after = Some(LocateAfterRef::LocateAfterConst(
-                    token_iter
-                        .next()
-                        .ok_or(Error::MissingLocateAfterLabelError)?,
-                ));
+                if let Some(locate_after_constant) = token_iter.next() {
+                    locate_after = Some(LocateAfterRef::LocateAfterConst(locate_after_constant));
+                } else {
+                    return_info = false;
+
+                    errors.push(DetailedError {
+                        error_type: Error::TooFewLocateAfterConstTokensError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
+
+                    // Make sure locate_after is set to Some(_) so that future locate-after statements will be flagged as errors
+                    // Since return_info is false, the content within Some(_) does not matter
+                    locate_after = Some(LocateAfterRef::LocateAfter(""));
+                }
 
                 if token_iter.next().is_some() {
-                    return Err(Error::TooManyLocateAfterTokensError);
+                    return_info = false;
+                    let third_token_start_pos = nth_token_start_pos(statement_str, 2);
+
+                    errors.push(DetailedError {
+                        error_type: Error::TooManyLocateAfterConstTokensError,
+                        start_line_number: current_line + third_token_start_pos.0 - 1,
+                        start_column: third_token_start_pos.1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
+
+                    // Make sure locate_after is set to Some(_) so that future locate-after statements will be flagged as errors
+                    // Since return_info is false, the content within Some(_) does not matter
+                    locate_after = Some(LocateAfterRef::LocateAfter(""));
                 }
 
                 statements.push(MmpStatement::LocateAfter);
             }
             "$locateaftervar" => {
                 if locate_after.is_some() {
-                    return Err(Error::MultipleLocateAfterError);
+                    return_info = false;
+
+                    errors.push(DetailedError {
+                        error_type: Error::MultipleLocateAfterError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
                 }
 
-                locate_after = Some(LocateAfterRef::LocateAfterVar(
-                    token_iter
-                        .next()
-                        .ok_or(Error::MissingLocateAfterLabelError)?,
-                ));
+                if let Some(locate_after_variable) = token_iter.next() {
+                    locate_after = Some(LocateAfterRef::LocateAfterConst(locate_after_variable));
+                } else {
+                    return_info = false;
+
+                    errors.push(DetailedError {
+                        error_type: Error::TooFewLocateAfterVarTokensError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
+
+                    // Make sure locate_after is set to Some(_) so that future locate-after statements will be flagged as errors
+                    // Since return_info is false, the content within Some(_) does not matter
+                    locate_after = Some(LocateAfterRef::LocateAfter(""));
+                }
 
                 if token_iter.next().is_some() {
-                    return Err(Error::TooManyLocateAfterTokensError);
+                    return_info = false;
+                    let third_token_start_pos = nth_token_start_pos(statement_str, 2);
+
+                    errors.push(DetailedError {
+                        error_type: Error::TooManyLocateAfterVarTokensError,
+                        start_line_number: current_line + third_token_start_pos.0 - 1,
+                        start_column: third_token_start_pos.1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
+
+                    // Make sure locate_after is set to Some(_) so that future locate-after statements will be flagged as errors
+                    // Since return_info is false, the content within Some(_) does not matter
+                    locate_after = Some(LocateAfterRef::LocateAfter(""));
                 }
 
                 statements.push(MmpStatement::LocateAfter);

@@ -129,7 +129,6 @@ pub enum Error {
 
     // Parsing mmp file errors
     WhitespaceBeforeFirstTokenError, // Returned if there is whitepace before the first token on the same line
-    MultipleHeaderStatementError,    // Returned if there are mutliple $header statements
     TooFewHeaderTokensError, // Returned if there are less than 2 tokens after $header statement
     DuplicateSymbolError, // Returned if an added symbol (const, var or label) exists in the database already
     // EmptyConstStatementError: Also used when parsing mmp files
@@ -137,10 +136,9 @@ pub enum Error {
     // EmptyVarStatementError: Also used when parsing mmp files
     // FloatHypStatementFormatError: Also used when parsing mmp files
     InvalidHeaderPathStringError, // Returned if the token after $header is not a valid Headerpath
-    MultipleTheoremLabelError,    // Returned if there are more than one $theorem statements
+    MultipleMmpLabelsError, // Returned if there are more than one $theorem, $axiom or $header statements
     MissingTheoremLabelError, // Returned if there is a $theorem statement without a follow up token
     TooManyTheoremLabelTokensError, // Returned if there is a $theorem statement with too many follow up tokens
-    MultipleAxiomLabelError,        // Returned if there are more than one $axiom statements
     MissingAxiomLabelError, // Returned if there is a $axiom statement without a follow up token
     TooManyAxiomLabelTokensError, // Returned if there is a $axiom statement with too many follow up tokens
     InvalidMmj2StepPrefixError, // Returned if there is an invalid mmj2 step prefix, such as "x:x:x:x" or "x:x"
@@ -157,9 +155,13 @@ pub enum Error {
     MultipleAllowDiscouragedError,  // Returned if there are multiple $allowdiscouraged statements
     TokensAfterAllowDiscouragedError, // Returned if there are tokens after $allowdiscouraged
     MultipleLocateAfterError, // Returned if there are multiple $locateafter(-var/-const) statements
-    MissingLocateAfterLabelError, // Returned if there is a $locateafter statement without a follow up token
+    TooFewLocateAfterTokensError, // Returned if there is a $locateafter statement without a follow up token
     TooManyLocateAfterTokensError, // Returned if there is a $locateafter statement with too many follow up tokens
-    MissingMmj2StepExpressionError, // Returned if a mmj2 step is missing it's expression
+    TooFewLocateAfterConstTokensError, // Returned if there is a $locateafterconst statement without a follow up token
+    TooManyLocateAfterConstTokensError, // Returned if there is a $locateafterconst statement with too many follow up tokens
+    TooFewLocateAfterVarTokensError, // Returned if there is a $locateaftervar statement without a follow up token
+    TooManyLocateAfterVarTokensError, // Returned if there is a $locateaftervar statement with too many follow up tokens
+    MissingMmj2StepExpressionError,   // Returned if a mmj2 step is missing it's expression
     InvalidDollarTokenError, // Returned if there is a statement that starts with $ not followed by a vaild statement type
     StatementOutOfPlaceError, // Returned if there is a statement out of place, for example if there is a $v and a $c statement
 }

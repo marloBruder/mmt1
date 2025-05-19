@@ -764,7 +764,7 @@ pub fn statements_to_mmp_structured_info(
         match token_iter.next().ok_or(Error::InternalLogicError)? {
             "$header" => {
                 if header.is_some() {
-                    return Err(Error::MultipleHeaderStatementError);
+                    return Err(Error::MultipleMmpLabelsError);
                 }
 
                 let pos = token_iter
@@ -840,7 +840,7 @@ pub fn statements_to_mmp_structured_info(
             }
             "$theorem" => {
                 if theorem_label.is_some() {
-                    return Err(Error::MultipleTheoremLabelError);
+                    return Err(Error::MultipleMmpLabelsError);
                 }
 
                 theorem_label = Some(
@@ -856,7 +856,7 @@ pub fn statements_to_mmp_structured_info(
             }
             "$axiom" => {
                 if axiom_label.is_some() {
-                    return Err(Error::MultipleAxiomLabelError);
+                    return Err(Error::MultipleMmpLabelsError);
                 }
 
                 axiom_label = Some(
@@ -901,7 +901,7 @@ pub fn statements_to_mmp_structured_info(
                 locate_after = Some(LocateAfter::LocateAfter(
                     token_iter
                         .next()
-                        .ok_or(Error::MissingLocateAfterLabelError)?
+                        .ok_or(Error::TooFewLocateAfterTokensError)?
                         .to_string(),
                 ));
                 if token_iter.next().is_some() {
@@ -916,7 +916,7 @@ pub fn statements_to_mmp_structured_info(
                 locate_after = Some(LocateAfter::LocateAfterConst(
                     token_iter
                         .next()
-                        .ok_or(Error::MissingLocateAfterLabelError)?
+                        .ok_or(Error::TooFewLocateAfterConstTokensError)?
                         .to_string(),
                 ));
                 if token_iter.next().is_some() {
@@ -931,7 +931,7 @@ pub fn statements_to_mmp_structured_info(
                 locate_after = Some(LocateAfter::LocateAfterVar(
                     token_iter
                         .next()
-                        .ok_or(Error::MissingLocateAfterLabelError)?
+                        .ok_or(Error::TooFewLocateAfterVarTokensError)?
                         .to_string(),
                 ));
                 if token_iter.next().is_some() {

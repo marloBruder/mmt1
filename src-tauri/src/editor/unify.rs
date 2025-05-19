@@ -311,7 +311,7 @@ pub fn statement_strs_to_mmp_info_structured_for_unify<'a>(
             }
             "$theorem" => {
                 if label.is_some() {
-                    return Err(Error::StatementOutOfPlaceError);
+                    return Err(Error::MultipleMmpLabelsError);
                 }
 
                 label = Some(MmpLabel::Theorem(
@@ -326,7 +326,7 @@ pub fn statement_strs_to_mmp_info_structured_for_unify<'a>(
             }
             "$axiom" => {
                 if label.is_some() {
-                    return Err(Error::MultipleAxiomLabelError);
+                    return Err(Error::MultipleMmpLabelsError);
                 }
 
                 label = Some(MmpLabel::Axiom(
@@ -341,7 +341,7 @@ pub fn statement_strs_to_mmp_info_structured_for_unify<'a>(
             }
             "$header" => {
                 if label.is_some() {
-                    return Err(Error::MultipleHeaderStatementError);
+                    return Err(Error::MultipleMmpLabelsError);
                 }
 
                 let header_pos = token_iter.next().ok_or(Error::TooFewHeaderTokensError)?;
@@ -415,7 +415,7 @@ pub fn statement_strs_to_mmp_info_structured_for_unify<'a>(
                 locate_after = Some(LocateAfterRef::LocateAfter(
                     token_iter
                         .next()
-                        .ok_or(Error::MissingLocateAfterLabelError)?,
+                        .ok_or(Error::TooFewLocateAfterTokensError)?,
                 ));
 
                 if token_iter.next().is_some() {
@@ -432,11 +432,11 @@ pub fn statement_strs_to_mmp_info_structured_for_unify<'a>(
                 locate_after = Some(LocateAfterRef::LocateAfterConst(
                     token_iter
                         .next()
-                        .ok_or(Error::MissingLocateAfterLabelError)?,
+                        .ok_or(Error::TooFewLocateAfterConstTokensError)?,
                 ));
 
                 if token_iter.next().is_some() {
-                    return Err(Error::TooManyLocateAfterTokensError);
+                    return Err(Error::TooManyLocateAfterConstTokensError);
                 }
 
                 statements.push(MmpStatement::LocateAfter);
@@ -449,11 +449,11 @@ pub fn statement_strs_to_mmp_info_structured_for_unify<'a>(
                 locate_after = Some(LocateAfterRef::LocateAfterVar(
                     token_iter
                         .next()
-                        .ok_or(Error::MissingLocateAfterLabelError)?,
+                        .ok_or(Error::TooFewLocateAfterVarTokensError)?,
                 ));
 
                 if token_iter.next().is_some() {
-                    return Err(Error::TooManyLocateAfterTokensError);
+                    return Err(Error::TooManyLocateAfterVarTokensError);
                 }
 
                 statements.push(MmpStatement::LocateAfter);
