@@ -225,6 +225,10 @@ pub fn earley_parse(
     match_against: Vec<u32>,
     symbol_number_mapping: &SymbolNumberMapping,
 ) -> Result<Option<Vec<ParseTree>>, Error> {
+    if expression.is_empty() {
+        return Ok(None);
+    }
+
     let match_against_len = match_against.len();
 
     let extended_grammar = ExtendedGrammar {
@@ -288,32 +292,34 @@ pub fn earley_parse(
                     }
 
                     //simulate scanner
-                    let next_set = state_sets
-                        .get_mut(k as usize + 1)
-                        .ok_or(Error::InternalLogicError)?;
+                    if k < expression.len() as u32 {
+                        let next_set = state_sets
+                            .get_mut(k as usize + 1)
+                            .ok_or(Error::InternalLogicError)?;
 
-                    for &rule in grammar
-                        .earley_optimized_data
-                        .single_states_to_add
-                        .get(combined_state.typecode as usize - 1)
-                        .ok_or(Error::InternalLogicError)?
-                        .get(
-                            (*expression
-                                .get(k as usize)
-                                .ok_or(Error::InternalLogicError)?
-                                - symbol_number_mapping.typecode_count
-                                - 1) as usize,
-                        )
-                        .ok_or(Error::InternalLogicError)?
-                    {
-                        let new_state = State::Single(SingleState {
-                            rule_i: rule as i32,
-                            processed_i: 1,
-                            start_i: combined_state.start_i,
-                            parse_trees: Vec::new(),
-                        });
+                        for &rule in grammar
+                            .earley_optimized_data
+                            .single_states_to_add
+                            .get(combined_state.typecode as usize - 1)
+                            .ok_or(Error::InternalLogicError)?
+                            .get(
+                                (*expression
+                                    .get(k as usize)
+                                    .ok_or(Error::InternalLogicError)?
+                                    - symbol_number_mapping.typecode_count
+                                    - 1) as usize,
+                            )
+                            .ok_or(Error::InternalLogicError)?
+                        {
+                            let new_state = State::Single(SingleState {
+                                rule_i: rule as i32,
+                                processed_i: 1,
+                                start_i: combined_state.start_i,
+                                parse_trees: Vec::new(),
+                            });
 
-                        next_set.insert(new_state);
+                            next_set.insert(new_state);
+                        }
                     }
                 }
             }
@@ -333,22 +339,23 @@ pub fn earley_parse(
             parse_trees: Vec::new(),
         });
 
-    if ret.is_none() {
-        for k in 0..(expression.len()) {
-            println!("{}:", k);
-            for state in &state_sets.get(k).unwrap().processed_states {
-                if let State::Single(single_state) = state {
-                    println!(
-                        "{} ::= {:?}",
-                        single_state.rule(&extended_grammar).left_side,
-                        single_state.rule(&extended_grammar).right_side
-                    );
-                    print!("{:?} ", single_state.rule(&extended_grammar).label);
-                }
-                println!("{:?}", state);
-            }
-        }
-    }
+    // if ret.is_none() {
+    //     println!("\n\nEarley parser for: {:?}", expression);
+    //     for k in 0..(expression.len()) {
+    //         println!("{}:", k);
+    //         for state in &state_sets.get(k).unwrap().processed_states {
+    //             if let State::Single(single_state) = state {
+    //                 println!(
+    //                     "{} ::= {:?}",
+    //                     single_state.rule(&extended_grammar).left_side,
+    //                     single_state.rule(&extended_grammar).right_side
+    //                 );
+    //                 print!("{:?} ", single_state.rule(&extended_grammar).label);
+    //             }
+    //             println!("{:?}", state);
+    //         }
+    //     }
+    // }
 
     Ok(ret.map(|s| s.parse_trees))
     //.map(|s| s.parse_trees))

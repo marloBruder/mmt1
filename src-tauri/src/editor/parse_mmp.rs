@@ -140,7 +140,7 @@ fn add_theorem_to_database(
     new_symbols.push(&thoerem_label);
 
     if mmp_structured_info.mmj2_steps.is_empty() {
-        return Err(Error::MissingMmj2StepsError);
+        return Err(Error::MissingMmpStepsError);
     }
 
     let mut hypotheses: Vec<Hypothesis> = Vec::new();
@@ -153,13 +153,13 @@ fn add_theorem_to_database(
     for (i, (prefix, expression)) in mmp_structured_info.mmj2_steps.iter().enumerate() {
         let prefix_parts: Vec<&str> = prefix.split(':').collect();
         if prefix_parts.len() != 3 {
-            return Err(Error::InvalidMmj2StepPrefixError);
+            return Err(Error::InvalidMmpStepPrefixFormatError);
         }
 
         let label = *prefix_parts.get(2).unwrap();
 
         if label.is_empty() {
-            return Err(Error::InvalidMmj2StepPrefixError);
+            return Err(Error::MissingMmpStepRefError);
         }
 
         let prefix_step_name = prefix_parts.get(0).unwrap();
@@ -185,7 +185,7 @@ fn add_theorem_to_database(
         }
 
         if step_name.contains(',') || step_name == "" {
-            return Err(Error::InvalidMmj2StepPrefixError);
+            return Err(Error::InvalidMmpStepNameError);
         }
 
         if mmj2_steps_processed
@@ -221,7 +221,7 @@ fn add_theorem_to_database(
             }
 
             if hyp_strs.len() != hyps.len() {
-                return Err(Error::InvalidMmj2StepPrefixError);
+                return Err(Error::HypNameDoesntExistError);
             }
         }
 
@@ -365,7 +365,7 @@ fn calc_proof(
                     match_against_expression,
                     &mm_data.optimized_data.symbol_number_mapping,
                 )?
-                .ok_or(Error::Mmj2StepParseError)?
+                .ok_or(Error::MmpStepParseError)?
                 .iter()
                 .map(|pt| pt.calc_proof(&mm_data.optimized_data.grammar))
                 .collect::<Result<Vec<String>, Error>>()?;
@@ -441,7 +441,7 @@ fn add_axiom_to_database(
     symbols.push(&axiom_label);
 
     if mmp_structured_info.mmj2_steps.is_empty() {
-        return Err(Error::MissingMmj2StepsError);
+        return Err(Error::MissingMmpStepsError);
     }
 
     let mut hypotheses: Vec<Hypothesis> = Vec::new();
@@ -459,7 +459,7 @@ fn add_axiom_to_database(
                 || prefix_parts.get(2).unwrap().len() == 0
                 || expression.len() == 0
             {
-                return Err(Error::InvalidMmj2StepPrefixError);
+                return Err(Error::InvalidMmpStepForAxiomError);
             }
             hypotheses.push(Hypothesis {
                 label: prefix_parts.get(2).unwrap().to_string(),
@@ -471,7 +471,7 @@ fn add_axiom_to_database(
                 || prefix_parts.get(1).unwrap().len() != 0
                 || prefix_parts.get(2).unwrap().len() != 0
             {
-                return Err(Error::InvalidMmj2StepPrefixError);
+                return Err(Error::InvalidMmpStepForAxiomError);
             }
             assertion = expression;
         }
@@ -972,7 +972,7 @@ pub fn statements_to_mmp_structured_info(
                 });
                 expression.pop();
                 if expression.len() == 0 {
-                    return Err(Error::MissingMmj2StepExpressionError);
+                    return Err(Error::MissingMmpStepExpressionError);
                 }
                 mmj2_steps.push((t.to_string(), expression));
             }

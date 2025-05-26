@@ -524,12 +524,21 @@ impl SymbolNumberMapping {
         ))
     }
 
-    pub fn expression_to_number_vec_skip_first(&self, expression: &str) -> Result<Vec<u32>, ()> {
+    pub fn expression_to_number_vec_skip_first(&self, expression: &str) -> Result<Vec<u32>, Error> {
+        if expression.split_ascii_whitespace().next().is_none() {
+            return Err(Error::MissingExpressionError);
+        }
+
         expression
             .split_ascii_whitespace()
             .skip(1)
-            .map(|t| Ok(*self.numbers.get(t).ok_or(())?))
-            .collect::<Result<Vec<u32>, ()>>()
+            .map(|t| {
+                Ok(*self
+                    .numbers
+                    .get(t)
+                    .ok_or(Error::NonSymbolInExpressionError)?)
+            })
+            .collect::<Result<Vec<u32>, Error>>()
     }
 
     pub fn expression_to_parse_tree(
@@ -537,9 +546,7 @@ impl SymbolNumberMapping {
         expression: &str,
         grammar: &Grammar,
     ) -> Result<ParseTree, Error> {
-        let expression = self
-            .expression_to_number_vec_skip_first(expression)
-            .or(Err(Error::NonSymbolInExpressionError))?;
+        let expression = self.expression_to_number_vec_skip_first(expression)?;
 
         let expression_parse_tree =
             earley_parser_optimized::earley_parse(grammar, &expression, vec![1], self)?

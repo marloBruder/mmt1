@@ -132,7 +132,7 @@
 
         const markers: Monaco.editor.IMarkerData[] = onEditData.errors.map((detailedError) => {
           return {
-            severity: monaco.MarkerSeverity.Error,
+            severity: getErrorSeverity(detailedError.errorType),
             startLineNumber: detailedError.startLineNumber,
             startColumn: detailedError.startColumn,
             endLineNumber: detailedError.endLineNumber,
@@ -182,7 +182,7 @@
   import type { DatabaseElementPageData, DetailedError } from "$lib/sharedState/model.svelte";
   import TheoremPage from "../pages/TheoremPage.svelte";
   import FloatingHypothesisPage from "../pages/FloatingHypothesisPage.svelte";
-  import { getErrorMessage } from "../util/errorMessages.svelte";
+  import { getErrorMessage, getErrorSeverity } from "../util/errorMessages.svelte";
 
   let { tab }: { tab: Tab } = $props();
 

@@ -141,16 +141,20 @@ pub enum Error {
     TooManyTheoremLabelTokensError, // Returned if there is a $theorem statement with too many follow up tokens
     MissingAxiomLabelError, // Returned if there is a $axiom statement without a follow up token
     TooManyAxiomLabelTokensError, // Returned if there is a $axiom statement with too many follow up tokens
-    InvalidMmj2StepPrefixError, // Returned if there is an invalid mmj2 step prefix, such as "x:x:x:x" or "x:x"
-    MissingMmj2StepsError,      // Returned if there are no mmj2 steps when adding theorem/axiom
-    MissingQedStepError,        // Returned if there is no qed step, but a $thereom statement
-    DuplicateStepNameError,     // Returned if there is a duplicate step name
-    TheoremLabelNotFoundError,  // Returned if a theorem label in a mmj2 step prefix does not exist
-    Mmj2StepMissingHypError,    // Returned if an mmj2 step has too few hyps
-    HypothesisWithHypsError,    // Returned if an mmj2 hypothesis step has hypothesis itself
-    InactiveMathSymbolError,    // Returned if an expression contains a symbol that is notr active
-    VariableWithoutTypecode,    // Returned if there is a variable used without typecode
-    Mmj2StepParseError, // Returend if there the earley parser does not return the proof of an expression
+    InvalidMmpStepPrefixFormatError, // Returned if there is an invalid mmp step prefix, such as "x:x:x:x" or "x:x"
+    InvalidMmpStepNameError, // Returned if there is an invalid mmp step name, such as "", or one containing ","
+    HypNameDoesntExistError, // Returned if there is an mmp step with an hypothesis name not belonging to any previous step
+    MissingMmpStepRefError,  // Returned if there is an mmp step with an empty ref
+    InvalidMmpStepForAxiomError, // Returned when adding an axiom and the mmp steps do not follow the required format
+    MissingMmpStepsError,        // Returned if there are no mmp steps when adding theorem/axiom
+    MissingQedStepError,         // Returned if there is no qed step, but a $thereom statement
+    DuplicateStepNameError,      // Returned if there is a duplicate step name
+    TheoremLabelNotFoundError,   // Returned if a theorem label in a mmp step prefix does not exist
+    MmpStepMissingHypError,      // Returned if an mmp step has too few hyps
+    HypothesisWithHypsError,     // Returned if an mmp hypothesis step has hypothesis itself
+    InactiveMathSymbolError,     // Returned if an expression contains a symbol that is notr active
+    VariableWithoutTypecode,     // Returned if there is a variable used without typecode
+    MmpStepParseError, // Returend if there the earley parser does not return the proof of an expression
     VarSubedWithDifferentStrsError, //Returned if the same variable has been substituted with different Strings
     MultipleAllowDiscouragedError,  // Returned if there are multiple $allowdiscouraged statements
     TokensAfterAllowDiscouragedError, // Returned if there are tokens after $allowdiscouraged
@@ -161,9 +165,11 @@ pub enum Error {
     TooManyLocateAfterConstTokensError, // Returned if there is a $locateafterconst statement with too many follow up tokens
     TooFewLocateAfterVarTokensError, // Returned if there is a $locateaftervar statement without a follow up token
     TooManyLocateAfterVarTokensError, // Returned if there is a $locateaftervar statement with too many follow up tokens
-    MissingMmj2StepExpressionError,   // Returned if a mmj2 step is missing it's expression
+    MissingMmpStepExpressionError,    // Returned if a mmp step is missing it's expression
     InvalidDollarTokenError, // Returned if there is a statement that starts with $ not followed by a vaild statement type
     StatementOutOfPlaceError, // Returned if there is a statement out of place, for example if there is a $v and a $c statement
+
+    MissingExpressionError, // Returned when converting str to number vec and skipping the first, but the str is empty
 }
 
 impl fmt::Display for Error {

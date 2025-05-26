@@ -183,11 +183,11 @@ pub async fn unify(state: tauri::State<'_, Mutex<AppState>>, text: &str) -> Resu
                     }
                 }
             } else if !proof_line.is_hypothesis {
-                let theorem_data = mm_data
-                    .optimized_data
-                    .theorem_data
-                    .get(proof_line.step_ref)
-                    .ok_or(Error::InvalidMmj2StepPrefixError)?;
+                // let theorem_data = mm_data
+                //     .optimized_data
+                //     .theorem_data
+                //     .get(proof_line.step_ref)
+                //     .ok_or(Error::InvalidMmj2StepPrefixError)?;
             }
         }
 
@@ -470,7 +470,7 @@ pub fn statement_strs_to_mmp_info_structured_for_unify<'a>(
             step_prefix => {
                 let prefix_parts: Vec<&str> = step_prefix.split(':').collect();
                 if prefix_parts.len() != 3 {
-                    return Err(Error::InvalidMmj2StepPrefixError);
+                    return Err(Error::InvalidMmpStepPrefixFormatError);
                 }
 
                 let prefix_step_name = prefix_parts.get(0).unwrap();
@@ -486,7 +486,7 @@ pub fn statement_strs_to_mmp_info_structured_for_unify<'a>(
                 }
 
                 if step_name.contains(',') || step_name == "" {
-                    return Err(Error::InvalidMmj2StepPrefixError);
+                    return Err(Error::InvalidMmpStepNameError);
                 }
 
                 let hypotheses = *prefix_parts.get(1).unwrap();
@@ -503,7 +503,7 @@ pub fn statement_strs_to_mmp_info_structured_for_unify<'a>(
                                     .iter()
                                     .enumerate()
                                     .find(|(_, pl)| pl.step_name == hyp)
-                                    .ok_or(Error::InvalidMmj2StepPrefixError)?
+                                    .ok_or(Error::HypNameDoesntExistError)?
                                     .0,
                             ))
                         }
@@ -517,7 +517,7 @@ pub fn statement_strs_to_mmp_info_structured_for_unify<'a>(
                     .ok_or(Error::InternalLogicError)?;
 
                 if token_iter.next().is_none() {
-                    return Err(Error::MissingMmj2StepExpressionError);
+                    return Err(Error::MissingMmpStepExpressionError);
                 }
 
                 let parse_tree = mm_data

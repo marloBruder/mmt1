@@ -1,3 +1,5 @@
+import monaco from "$lib/monaco/monaco";
+
 export function getErrorMessage(errorType: string): string {
   switch (errorType) {
     case "WhitespaceBeforeFirstTokenError": {
@@ -49,7 +51,39 @@ export function getErrorMessage(errorType: string): string {
     case "TooManyLocateAfterConstTokensError": {
       return "$locateafterconst statements must be followed by exactly one token: The constant which statement the content of the mmp file should be located after.";
     }
+    case "InvalidDollarTokenError": {
+      return "Invalid keyword. Step names may not start with '$'.";
+    }
+    case "InvalidMmpStepPrefixFormatError": {
+      return "Each step prefix must be of the format [h]name:hyps:ref, where the h at the beginning indicates that the step is a hypothesis, name is the name of the step, hyps is a comma seperated list of hypotheses names and ref is either the name of the theorem being applied if the step is not a hypothesis or the name of the hypothesis otherwise.";
+    }
+    case "InvalidMmpStepNameError": {
+      return "Step names cannot be empty or contain commas.";
+    }
+    case "HypNameDoesntExistError": {
+      return "This is not the name of a previous step.";
+    }
+    case "MissingMmpStepExpressionError": {
+      return "Missing Expression.";
+    }
+    case "NonSymbolInExpressionError": {
+      return "Not a valid symbol.";
+    }
+    case "ExpressionParseError": {
+      return "Expression could not be successfully parsed. Are you perhaps missing a parenthesis?";
+    }
   }
 
   return "You should not be seeing this error message";
+}
+
+export function getErrorSeverity(errorType: string): monaco.MarkerSeverity {
+  switch (errorType) {
+    case "MissingMmpStepExpressionError":
+    case "NonSymbolInExpressionError":
+    case "ExpressionParseError":
+      return monaco.MarkerSeverity.Warning;
+    default:
+      return monaco.MarkerSeverity.Error;
+  }
 }

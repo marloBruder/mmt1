@@ -1,16 +1,14 @@
 use crate::{
     model::{
         self, DatabaseElementPageData, FloatingHypothesis, FloatingHypothesisPageData, Hypothesis,
-        MetamathData, Theorem, TheoremPageData,
+        MetamathData, ParseTree, SymbolNumberMapping, Theorem, TheoremPageData,
     },
     util, AppState, Error,
 };
 use serde::{ser::SerializeStruct, Serialize};
 use tauri::async_runtime::Mutex;
 
-use super::unify::{
-    self, LocateAfterRef, MmpInfoStructuredForUnify, MmpLabel, MmpStatement, ProofLine,
-};
+use super::unify::{LocateAfterRef, MmpInfoStructuredForUnify, MmpLabel, MmpStatement, ProofLine};
 
 pub struct OnEditData {
     pub page_data: Option<DatabaseElementPageData>,
@@ -614,75 +612,159 @@ pub fn statement_strs_to_mmp_info_structured_for_unify_with_error_info<'a>(
                         .ok_or(Error::InternalLogicError)?,
                 );
             }
-            t if t.starts_with('$') => return Err(Error::InvalidDollarTokenError),
+            t if t.starts_with('$') => {
+                let first_token_end_pos = nth_token_end_pos(statement_str, 0);
+
+                errors.push(DetailedError {
+                    error_type: Error::InvalidDollarTokenError,
+                    start_line_number: current_line,
+                    start_column: 1,
+                    end_line_number: current_line,
+                    end_column: first_token_end_pos.1 + 1,
+                });
+            }
             step_prefix => {
                 let prefix_parts: Vec<&str> = step_prefix.split(':').collect();
                 if prefix_parts.len() != 3 {
-                    return Err(Error::InvalidMmj2StepPrefixError);
-                }
+                    return_info = false;
+                    let first_token_end_pos = nth_token_end_pos(statement_str, 0);
 
-                let prefix_step_name = prefix_parts.get(0).unwrap();
-
-                let mut is_hypothesis = false;
-                let step_name: &str;
-
-                if prefix_step_name.starts_with('h') {
-                    is_hypothesis = true;
-                    step_name = prefix_step_name.split_at(1).1;
+                    errors.push(DetailedError {
+                        error_type: Error::InvalidMmpStepPrefixFormatError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + first_token_end_pos.0 - 1,
+                        end_column: first_token_end_pos.1 + 1,
+                    });
                 } else {
-                    step_name = prefix_step_name;
-                }
+                    let prefix_step_name = prefix_parts.get(0).unwrap();
 
-                if step_name.contains(',') || step_name == "" {
-                    return Err(Error::InvalidMmj2StepPrefixError);
-                }
+                    let mut is_hypothesis = false;
+                    let step_name: &str;
 
-                let hypotheses = *prefix_parts.get(1).unwrap();
+                    if prefix_step_name.starts_with('h') {
+                        is_hypothesis = true;
+                        step_name = prefix_step_name.split_at(1).1;
+                    } else {
+                        step_name = prefix_step_name;
+                    }
 
-                let mut hypotheses_parsed: Vec<Option<usize>> = Vec::new();
+                    if step_name.contains(',') || step_name == "" {
+                        return_info = false;
 
-                if !hypotheses.is_empty() {
-                    for hyp in hypotheses.split(',') {
-                        if hyp == "?" {
-                            hypotheses_parsed.push(None);
-                        } else {
-                            hypotheses_parsed.push(Some(
-                                proof_lines
+                        errors.push(DetailedError {
+                            error_type: Error::InvalidMmpStepNameError,
+                            start_line_number: current_line,
+                            start_column: 1 + is_hypothesis as u32,
+                            end_line_number: current_line,
+                            end_column: is_hypothesis as u32 + step_name.len() as u32 + 1,
+                        });
+                    }
+
+                    let hypotheses = *prefix_parts.get(1).unwrap();
+
+                    let mut hypotheses_parsed: Vec<Option<usize>> = Vec::new();
+
+                    if !hypotheses.is_empty() {
+                        let mut start_column =
+                            1 + is_hypothesis as u32 + step_name.len() as u32 + 1;
+                        for hyp in hypotheses.split(',') {
+                            if hyp == "?" {
+                                hypotheses_parsed.push(None);
+                            } else {
+                                match proof_lines
                                     .iter()
                                     .enumerate()
                                     .find(|(_, pl)| pl.step_name == hyp)
-                                    .ok_or(Error::InvalidMmj2StepPrefixError)?
-                                    .0,
-                            ))
+                                {
+                                    Some((i, _)) => hypotheses_parsed.push(Some(i)),
+                                    None => {
+                                        return_info = false;
+
+                                        errors.push(DetailedError {
+                                            error_type: Error::HypNameDoesntExistError,
+                                            start_line_number: current_line,
+                                            start_column: start_column,
+                                            end_line_number: current_line,
+                                            end_column: start_column + hyp.len() as u32,
+                                        });
+                                    }
+                                }
+                            }
+                            start_column += hyp.len() as u32 + 1;
                         }
                     }
+
+                    let step_ref = *prefix_parts.get(2).unwrap();
+
+                    let expression = statement_str
+                        .get(step_prefix.len()..statement_str.len())
+                        .ok_or(Error::InternalLogicError)?;
+
+                    // if token_iter.next().is_none() {
+                    //     errors.push(DetailedError {
+                    //         error_type: Error::MissingMmpStepExpressionError,
+                    //         start_line_number: current_line,
+                    //         start_column: last_non_whitespace_pos.1,
+                    //         end_line_number: current_line,
+                    //         end_column: last_non_whitespace_pos.1 + 1,
+                    //     });
+                    // }
+
+                    // This will be overritten if expression is convertable to a parse tree
+                    let mut parse_tree = ParseTree {
+                        rule: 0,
+                        nodes: Vec::new(),
+                    };
+
+                    match mm_data
+                        .optimized_data
+                        .symbol_number_mapping
+                        .expression_to_parse_tree(expression, &mm_data.optimized_data.grammar)
+                    {
+                        Ok(pt) => parse_tree = pt,
+                        Err(Error::MissingExpressionError) => {
+                            errors.push(DetailedError {
+                                error_type: Error::MissingMmpStepExpressionError,
+                                start_line_number: current_line,
+                                start_column: last_non_whitespace_pos.1 + 1,
+                                end_line_number: current_line,
+                                end_column: last_non_whitespace_pos.1 + 2,
+                            });
+                        }
+                        Err(Error::NonSymbolInExpressionError) => {
+                            errors.append(&mut calc_non_symbol_in_expression_errors(
+                                expression,
+                                &mm_data.optimized_data.symbol_number_mapping,
+                                current_line,
+                                step_prefix.len() as u32,
+                            ));
+                        }
+                        Err(Error::ExpressionParseError) => {
+                            errors.push(DetailedError {
+                                error_type: Error::ExpressionParseError,
+                                start_line_number: current_line,
+                                start_column: last_non_whitespace_pos.1 + 1,
+                                end_line_number: current_line,
+                                end_column: last_non_whitespace_pos.1 + 2,
+                            });
+                        }
+                        Err(_) => {
+                            return Err(Error::InternalLogicError);
+                        }
+                    };
+
+                    statements.push(MmpStatement::ProofLine);
+                    proof_lines.push(ProofLine {
+                        is_hypothesis,
+                        step_name,
+                        hypotheses,
+                        hypotheses_parsed,
+                        step_ref,
+                        expression,
+                        parse_tree,
+                    });
                 }
-
-                let step_ref = *prefix_parts.get(2).unwrap();
-
-                let expression = statement_str
-                    .get(step_prefix.len()..statement_str.len())
-                    .ok_or(Error::InternalLogicError)?;
-
-                if token_iter.next().is_none() {
-                    return Err(Error::MissingMmj2StepExpressionError);
-                }
-
-                let parse_tree = mm_data
-                    .optimized_data
-                    .symbol_number_mapping
-                    .expression_to_parse_tree(expression, &mm_data.optimized_data.grammar)?;
-
-                statements.push(MmpStatement::ProofLine);
-                proof_lines.push(ProofLine {
-                    is_hypothesis,
-                    step_name,
-                    hypotheses,
-                    hypotheses_parsed,
-                    step_ref,
-                    expression,
-                    parse_tree,
-                });
             }
         }
 
@@ -771,8 +853,96 @@ fn nth_token_start_pos(str: &str, n: u32) -> (u32, u32) {
     (line_number, column_number)
 }
 
+fn nth_token_end_pos(str: &str, n: u32) -> (u32, u32) {
+    let mut tokens_seen = 0;
+    let mut seeing_token = false;
+
+    let mut line_number = 1;
+    let mut column_number = 0;
+
+    for char in str.chars() {
+        column_number += 1;
+
+        if char.is_whitespace() {
+            if tokens_seen == n {
+                column_number -= 1;
+                break;
+            }
+
+            if seeing_token {
+                tokens_seen += 1;
+            }
+
+            seeing_token = false;
+        } else {
+            seeing_token = true;
+        }
+
+        if char == '\n' {
+            line_number += 1;
+            column_number = 0;
+        }
+    }
+
+    (line_number, column_number)
+}
+
 fn new_lines_in_str(str: &str) -> u32 {
     str.chars().filter(|c| *c == '\n').count() as u32
+}
+
+fn calc_non_symbol_in_expression_errors(
+    expression: &str,
+    symbol_number_mapping: &SymbolNumberMapping,
+    first_line: u32,
+    first_line_offset: u32,
+) -> Vec<DetailedError> {
+    let mut errors = Vec::new();
+
+    let mut line = first_line;
+    let mut column = first_line_offset;
+
+    let mut current_token_start_column = column;
+
+    let mut current_token = String::new();
+
+    let mut seeing_token = false;
+
+    for char in expression.chars() {
+        column += 1;
+
+        if char == '\n' {
+            line += 1;
+            column = 0;
+        }
+
+        if char.is_ascii_whitespace() {
+            if seeing_token {
+                if current_token.starts_with('$')
+                    || symbol_number_mapping.numbers.get(&current_token).is_none()
+                {
+                    errors.push(DetailedError {
+                        error_type: Error::NonSymbolInExpressionError,
+                        start_line_number: line,
+                        start_column: current_token_start_column,
+                        end_line_number: line,
+                        end_column: column,
+                    });
+                }
+
+                current_token = String::new();
+            }
+            seeing_token = false;
+        } else {
+            if !seeing_token {
+                current_token_start_column = column;
+            }
+            seeing_token = true;
+            current_token.push(char)
+        }
+    }
+
+    errors
 }
 
 fn get_database_element_page_data(
