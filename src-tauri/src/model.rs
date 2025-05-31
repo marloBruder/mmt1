@@ -3,7 +3,9 @@ use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    metamath::export::{write_text_wrapped, write_text_wrapped_no_whitespace},
     util::{
+        self,
         earley_parser_optimized::{self, EarleyOptimizedData, Grammar, GrammarRule},
         header_iterators::{
             ConstantIterator, FloatingHypothesisIterator, HeaderIterator, TheoremIterator,
@@ -308,35 +310,149 @@ impl MetamathData {
     }
 }
 
-// impl Statement {
-//     pub fn is_variable(&self) -> bool {
-//         match self {
-//             VariableStatement(_) => true,
-//             _ => false,
-//         }
-//     }
+impl Statement {
+    pub fn write_mm_string(&self, target: &mut String) {
+        match self {
+            Self::CommentStatement(comment) => {
+                target.push_str("$(");
+                write_text_wrapped(target, &comment.text, "   ");
+                write_text_wrapped(target, "$)", "   ");
+            }
+            Self::ConstantStatement(constants) => {
+                target.push_str("$c");
+                for constant in constants {
+                    write_text_wrapped(target, &constant.symbol, "   ");
+                }
+                write_text_wrapped(target, "$.", "   ");
+            }
+            Self::VariableStatement(variables) => {
+                target.push_str("$v");
+                for variable in variables {
+                    write_text_wrapped(target, &variable.symbol, "   ");
+                }
+                write_text_wrapped(target, "$.", "   ");
+            }
+            Self::FloatingHypohesisStatement(floating_hypothesis) => {
+                target.push_str(&floating_hypothesis.label);
+                write_text_wrapped(target, "$f", "   ");
+                write_text_wrapped(target, &floating_hypothesis.typecode, "   ");
+                write_text_wrapped(target, &floating_hypothesis.variable, "   ");
+                write_text_wrapped(target, "$.", "   ");
+            }
+            Self::TheoremStatement(theorem) => {
+                let scoped = !(theorem.distincts.is_empty() && theorem.hypotheses.is_empty());
+                let scoped_offset = if scoped { 2 } else { 0 };
 
-//     pub fn is_costant(&self) -> bool {
-//         match self {
-//             ConstantStatement(_) => true,
-//             _ => false,
-//         }
-//     }
+                if scoped {
+                    target.push_str("  ${\n");
+                }
 
-//     pub fn is_floating_hypothesis(&self) -> bool {
-//         match self {
-//             FloatingHypohesisStatement(_) => true,
-//             _ => false,
-//         }
-//     }
+                for dist_vars in &theorem.distincts {
+                    target.push_str("    $d");
+                    write_text_wrapped(target, dist_vars, "       ");
+                    write_text_wrapped(target, "$.", "       ");
+                    target.push('\n');
+                }
 
-//     pub fn is_theorem(&self) -> bool {
-//         match self {
-//             TheoremStatement(_) => true,
-//             _ => false,
-//         }
-//     }
-// }
+                for hyp in &theorem.hypotheses {
+                    target.push_str("    ");
+                    target.push_str(&hyp.label);
+                    write_text_wrapped(target, "$e", "       ");
+                    write_text_wrapped(target, &hyp.expression, "       ");
+                    write_text_wrapped(target, "$.", "       ");
+                    target.push('\n');
+                }
+
+                if !theorem.description.is_empty() {
+                    target.push_str(util::spaces(scoped_offset + 2));
+                    target.push_str("$(");
+                    write_text_wrapped(
+                        target,
+                        &theorem.description,
+                        util::spaces(scoped_offset + 5),
+                    );
+                    write_text_wrapped(target, "$)", util::spaces(scoped_offset + 5));
+                    target.push('\n');
+                }
+
+                target.push_str(util::spaces(scoped_offset + 2));
+                target.push_str(&theorem.label);
+                match &theorem.proof {
+                    None => {
+                        write_text_wrapped(target, "$a", util::spaces(scoped_offset + 4));
+                        write_text_wrapped(
+                            target,
+                            &theorem.assertion,
+                            util::spaces(scoped_offset + 4),
+                        );
+                        write_text_wrapped(target, "$.", util::spaces(scoped_offset + 4));
+                        target.push('\n');
+                    }
+                    Some(proof) => {
+                        write_text_wrapped(target, "$p", util::spaces(scoped_offset + 4));
+                        write_text_wrapped(
+                            target,
+                            &theorem.assertion,
+                            util::spaces(scoped_offset + 4),
+                        );
+                        write_text_wrapped(target, "$=", util::spaces(scoped_offset + 4));
+                        target.push('\n');
+                        target.push_str(util::spaces(scoped_offset + 3));
+                        if proof.starts_with('(') {
+                            // should always be the case
+                            if let Some((labels, steps)) = proof.split_once(')') {
+                                target.push_str(" (");
+                                write_text_wrapped(target, labels, util::spaces(scoped_offset + 4));
+                                write_text_wrapped(target, ")", util::spaces(scoped_offset + 4));
+                                write_text_wrapped_no_whitespace(
+                                    target,
+                                    steps,
+                                    util::spaces(scoped_offset + 4),
+                                );
+                            }
+                        } else {
+                            write_text_wrapped(target, proof, util::spaces(scoped_offset + 4));
+                        }
+                        write_text_wrapped(target, "$.", util::spaces(scoped_offset + 4));
+                        target.push('\n');
+                    }
+                }
+
+                if scoped {
+                    target.push_str("  $}");
+                }
+            }
+        }
+    }
+
+    //     pub fn is_variable(&self) -> bool {
+    //         match self {
+    //             VariableStatement(_) => true,
+    //             _ => false,
+    //         }
+    //     }
+
+    //     pub fn is_costant(&self) -> bool {
+    //         match self {
+    //             ConstantStatement(_) => true,
+    //             _ => false,
+    //         }
+    //     }
+
+    //     pub fn is_floating_hypothesis(&self) -> bool {
+    //         match self {
+    //             FloatingHypohesisStatement(_) => true,
+    //             _ => false,
+    //         }
+    //     }
+
+    //     pub fn is_theorem(&self) -> bool {
+    //         match self {
+    //             TheoremStatement(_) => true,
+    //             _ => false,
+    //         }
+    //     }
+}
 
 impl ParseTree {
     pub fn calc_proof(&self, grammar: &Grammar) -> Result<String, Error> {

@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+};
 
 use crate::{
     model::{
@@ -278,6 +281,7 @@ fn add_theorem_to_database(
     );
 
     add_statement(
+        &mm_data.database_path,
         &mut mm_data.database_header,
         &mmp_structured_info.locate_after,
         Statement::TheoremStatement(theorem),
@@ -489,6 +493,7 @@ fn add_axiom_to_database(
     }
 
     add_statement(
+        &mm_data.database_path,
         &mut mm_data.database_header,
         &mmp_structured_info.locate_after,
         Statement::TheoremStatement(Theorem {
@@ -560,6 +565,7 @@ fn add_floating_hypothesis_to_database(
     }
 
     add_statement(
+        &mm_data.database_path,
         &mut mm_data.database_header,
         &mmp_structured_info.locate_after,
         Statement::FloatingHypohesisStatement(flaoting_hypothesis),
@@ -596,6 +602,7 @@ fn add_variables_to_database(
     }
 
     add_statement(
+        &mm_data.database_path,
         &mut mm_data.database_header,
         &mmp_structured_info.locate_after,
         Statement::VariableStatement(variables),
@@ -625,6 +632,7 @@ fn add_constants_to_database(
     }
 
     add_statement(
+        &mm_data.database_path,
         &mut mm_data.database_header,
         &mmp_structured_info.locate_after,
         Statement::ConstantStatement(mmp_structured_info.constants),
@@ -640,6 +648,7 @@ fn add_comment_to_database(
     mmp_structured_info: MmpStructuredInfo,
 ) -> Result<(), Error> {
     add_statement(
+        &mm_data.database_path,
         &mut mm_data.database_header,
         &mmp_structured_info.locate_after,
         Statement::CommentStatement(
@@ -667,20 +676,28 @@ fn all_different_strs(strs: &Vec<&str>) -> bool {
 }
 
 fn add_statement(
+    file_path: &str,
     header: &mut Header,
     locate_after: &Option<LocateAfter>,
     statement: Statement,
 ) -> Option<Statement> {
     match locate_after {
         Some(loc_after) => add_statement_locate_after(header, loc_after, statement),
-        None => {
-            add_statement_at_end(header, statement);
-            None
-        }
+        None => add_statement_at_end(file_path, header, statement),
     }
 }
 
 fn add_statement_locate_after(
+    header: &mut Header,
+    locate_after: &LocateAfter,
+    statement: Statement,
+) -> Option<Statement> {
+    let statement = add_statement_locate_after_memory(header, locate_after, statement);
+
+    statement
+}
+
+fn add_statement_locate_after_memory(
     header: &mut Header,
     locate_after: &LocateAfter,
     mut statement: Statement,
@@ -722,19 +739,31 @@ fn add_statement_locate_after(
     }
 
     for subheader in &mut header.subheaders {
-        statement = match add_statement_locate_after(subheader, locate_after, statement) {
+        statement = match add_statement_locate_after_memory(subheader, locate_after, statement) {
             Some(s) => s,
-            None => {
-                return None;
-            }
+            None => return None,
         };
     }
 
     Some(statement)
 }
 
-fn add_statement_at_end(header: &mut Header, statement: Statement) {
+fn add_statement_at_end(
+    file_path: &str,
+    header: &mut Header,
+    statement: Statement,
+) -> Option<Statement> {
+    let successful = add_statement_at_end_file(file_path, &statement);
+    if !successful {
+        return Some(statement);
+    }
+    add_statement_at_end_memory(header, statement);
+    None
+}
+
+fn add_statement_at_end_memory(header: &mut Header, statement: Statement) {
     let mut last_header = header;
+
     while last_header.subheaders.len() > 0 {
         last_header = last_header.subheaders.last_mut().unwrap();
     }
@@ -742,7 +771,38 @@ fn add_statement_at_end(header: &mut Header, statement: Statement) {
     last_header.content.push(statement);
 }
 
-pub fn statements_to_mmp_structured_info(
+fn add_statement_at_end_file(file_path: &str, statement: &Statement) -> bool {
+    let mut file_content = match fs::read_to_string(file_path) {
+        Ok(fc) => fc,
+        Err(_) => return false,
+    };
+
+    loop {
+        match file_content.pop() {
+            Some(c) if c.is_whitespace() => {}
+            Some(c) => {
+                file_content.push(c);
+                break;
+            }
+            None => break,
+        }
+    }
+
+    if !file_content.is_empty() {
+        file_content.push_str("\n\n");
+    }
+
+    statement.write_mm_string(&mut file_content);
+
+    match fs::write(file_path, file_content) {
+        Ok(_) => {}
+        Err(_) => return false,
+    }
+
+    true
+}
+
+fn statements_to_mmp_structured_info(
     statements: Vec<Vec<&str>>,
 ) -> Result<MmpStructuredInfo, Error> {
     let mut constants: Vec<Constant> = Vec::new();

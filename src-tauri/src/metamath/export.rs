@@ -141,7 +141,7 @@ fn calc_database_string(metamath_data: &MetamathData) -> String {
     res
 }
 
-fn write_text_wrapped(target: &mut String, text: &str, line_prefix: &str) {
+pub fn write_text_wrapped(target: &mut String, text: &str, line_prefix: &str) {
     let line_legth = 80;
     let mut curr_line_length = last_line_length(&target) as usize;
 
@@ -157,6 +157,10 @@ fn write_text_wrapped(target: &mut String, text: &str, line_prefix: &str) {
             curr_line_length = line_prefix.len() + token.len();
         }
     }
+}
+
+pub fn write_text_wrapped_no_whitespace(target: &mut String, text: &str, line_prefix: &str) {
+    //TODO: implement function
 }
 
 fn last_line_length(text: &str) -> u32 {

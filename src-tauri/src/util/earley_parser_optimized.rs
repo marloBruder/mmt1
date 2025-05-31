@@ -58,7 +58,6 @@ struct SingleState {
 struct CombinedState {
     pub typecode: u32,
     pub start_i: u32,
-    pub next_grammar_rule_i: u32,
 }
 
 // #[derive(Debug)]
@@ -285,7 +284,6 @@ pub fn earley_parse(
                         let new_state = State::Combined(CombinedState {
                             typecode,
                             start_i: k,
-                            next_grammar_rule_i: 0,
                         });
 
                         current_set.insert(new_state);
@@ -390,7 +388,6 @@ fn predictor(
             .next_token(extended_grammar)
             .ok_or(Error::InternalLogicError)?,
         start_i: k,
-        next_grammar_rule_i: 0,
     });
 
     let current_set = state_sets

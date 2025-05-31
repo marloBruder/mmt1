@@ -15,3 +15,9 @@ pub fn str_to_space_seperated_string(str: &str) -> String {
         })
         .1;
 }
+
+pub fn spaces(num: u32) -> &'static str {
+    "                                                                                "
+        .split_at(num as usize)
+        .0
+}
