@@ -64,77 +64,10 @@ fn calc_database_string(metamath_data: &MetamathData) -> String {
                 res.push('\n');
                 res.push_str("$)\n\n");
             }
-            DatabaseElement::Statement(statement) => match statement {
-                CommentStatement(comment) => {
-                    res.push_str("$(");
-                    write_text_wrapped(&mut res, &comment.text, "  ");
-                    write_text_wrapped(&mut res, "$)", "  ");
-                    res.push_str("\n\n");
-                }
-                ConstantStatement(constants) => {
-                    res.push_str("$c ");
-                    for constant in constants {
-                        res.push_str(&constant.symbol);
-                        res.push(' ');
-                    }
-                    res.push_str("$.\n\n");
-                }
-                VariableStatement(variables) => {
-                    res.push_str("$v ");
-                    for variable in variables {
-                        res.push_str(&variable.symbol);
-                        res.push(' ');
-                    }
-                    res.push_str("$.\n\n");
-                }
-                FloatingHypohesisStatement(floating_hypothesis) => {
-                    res.push_str(&floating_hypothesis.label);
-                    res.push_str(" $f ");
-                    res.push_str(&floating_hypothesis.typecode);
-                    res.push(' ');
-                    res.push_str(&floating_hypothesis.variable);
-                    res.push_str(" $.\n\n");
-                }
-                TheoremStatement(theorem) => {
-                    res.push_str("${\n");
-                    for dist_vars in &theorem.distincts {
-                        res.push_str("  $d ");
-                        res.push_str(dist_vars);
-                        res.push_str(" $.\n")
-                    }
-                    for hyp in &theorem.hypotheses {
-                        res.push_str("  ");
-                        res.push_str(&hyp.label);
-                        res.push_str(" $e ");
-                        res.push_str(&hyp.expression);
-                        res.push_str(" $.\n");
-                    }
-                    res.push_str("  $(");
-                    write_text_wrapped(&mut res, &theorem.description, "    ");
-                    write_text_wrapped(&mut res, "$)", "    ");
-                    res.push('\n');
-
-                    res.push_str("  ");
-                    res.push_str(&theorem.label);
-                    match &theorem.proof {
-                        None => {
-                            write_text_wrapped(&mut res, "$a", "    ");
-                            write_text_wrapped(&mut res, &theorem.assertion, "    ");
-                            write_text_wrapped(&mut res, "$.", "    ");
-                            res.push('\n');
-                        }
-                        Some(proof) => {
-                            write_text_wrapped(&mut res, "$p", "    ");
-                            write_text_wrapped(&mut res, &theorem.assertion, "    ");
-                            write_text_wrapped(&mut res, "$=", "    ");
-                            write_text_wrapped(&mut res, proof, "    ");
-                            write_text_wrapped(&mut res, "$.", "    ");
-                            res.push('\n');
-                        }
-                    }
-                    res.push_str("$}\n\n");
-                }
-            },
+            DatabaseElement::Statement(statement) => {
+                statement.write_mm_string(&mut res);
+                res.push_str("\n\n");
+            }
         }
     }
 
@@ -142,11 +75,11 @@ fn calc_database_string(metamath_data: &MetamathData) -> String {
 }
 
 pub fn write_text_wrapped(target: &mut String, text: &str, line_prefix: &str) {
-    let line_legth = 80;
-    let mut curr_line_length = last_line_length(&target) as usize;
+    let max_line_length = 80;
+    let mut curr_line_length = last_line_length(&target);
 
     for token in text.split_ascii_whitespace() {
-        if curr_line_length + 1 + token.len() < line_legth {
+        if curr_line_length + 1 + token.len() < max_line_length {
             target.push(' ');
             target.push_str(token);
             curr_line_length += 1 + token.len();
@@ -160,10 +93,23 @@ pub fn write_text_wrapped(target: &mut String, text: &str, line_prefix: &str) {
 }
 
 pub fn write_text_wrapped_no_whitespace(target: &mut String, text: &str, line_prefix: &str) {
-    //TODO: implement function
+    let max_line_length = 80;
+    let mut curr_line_length = last_line_length(&target);
+
+    for char in text.chars() {
+        if !char.is_ascii_whitespace() {
+            if curr_line_length >= max_line_length - 1 {
+                target.push('\n');
+                target.push_str(line_prefix);
+                curr_line_length = line_prefix.len();
+            }
+            target.push(char);
+            curr_line_length += 1;
+        }
+    }
 }
 
-fn last_line_length(text: &str) -> u32 {
+fn last_line_length(text: &str) -> usize {
     let mut len = 0;
     let mut index = text.len() - 1;
 

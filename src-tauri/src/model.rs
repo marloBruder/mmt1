@@ -319,20 +319,21 @@ impl Statement {
                 write_text_wrapped(target, "$)", "   ");
             }
             Self::ConstantStatement(constants) => {
-                target.push_str("$c");
+                target.push_str("  $c");
                 for constant in constants {
                     write_text_wrapped(target, &constant.symbol, "   ");
                 }
                 write_text_wrapped(target, "$.", "   ");
             }
             Self::VariableStatement(variables) => {
-                target.push_str("$v");
+                target.push_str("  $v");
                 for variable in variables {
                     write_text_wrapped(target, &variable.symbol, "   ");
                 }
                 write_text_wrapped(target, "$.", "   ");
             }
             Self::FloatingHypohesisStatement(floating_hypothesis) => {
+                target.push_str("  ");
                 target.push_str(&floating_hypothesis.label);
                 write_text_wrapped(target, "$f", "   ");
                 write_text_wrapped(target, &floating_hypothesis.typecode, "   ");
@@ -386,7 +387,6 @@ impl Statement {
                             util::spaces(scoped_offset + 4),
                         );
                         write_text_wrapped(target, "$.", util::spaces(scoped_offset + 4));
-                        target.push('\n');
                     }
                     Some(proof) => {
                         write_text_wrapped(target, "$p", util::spaces(scoped_offset + 4));
@@ -401,9 +401,9 @@ impl Statement {
                         if proof.starts_with('(') {
                             // should always be the case
                             if let Some((labels, steps)) = proof.split_once(')') {
-                                target.push_str(" (");
                                 write_text_wrapped(target, labels, util::spaces(scoped_offset + 4));
                                 write_text_wrapped(target, ")", util::spaces(scoped_offset + 4));
+                                target.push(' ');
                                 write_text_wrapped_no_whitespace(
                                     target,
                                     steps,
@@ -414,12 +414,11 @@ impl Statement {
                             write_text_wrapped(target, proof, util::spaces(scoped_offset + 4));
                         }
                         write_text_wrapped(target, "$.", util::spaces(scoped_offset + 4));
-                        target.push('\n');
                     }
                 }
 
                 if scoped {
-                    target.push_str("  $}");
+                    target.push_str("\n  $}");
                 }
             }
         }
