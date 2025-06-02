@@ -143,6 +143,9 @@ pub async fn parse_mm_file(
                         }
 
                         metamath_data.html_representations = html_representations.clone();
+                        curr_header.content.push(CommentStatement(Comment {
+                            text: comment.clone(),
+                        }));
                     } else {
                         let mut depth = -1;
                         let mut curr_heading = "";

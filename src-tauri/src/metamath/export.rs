@@ -3,7 +3,7 @@ use std::fs;
 use tauri::async_runtime::Mutex;
 
 use crate::{
-    model::{DatabaseElement, MetamathData, Statement::*},
+    model::{DatabaseElement, MetamathData},
     AppState, Error,
 };
 
