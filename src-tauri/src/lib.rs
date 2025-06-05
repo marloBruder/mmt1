@@ -59,7 +59,7 @@ pub fn run() {
             metamath::export::new_database,
             metamath::export::save_database,
             metamath::export::export_database,
-            metamath::parse::open_metamath_database,
+            metamath::mm_parser::open_metamath_database,
             local_state::comment::get_comment_local,
             local_state::constant::get_constants_local,
             local_state::variable::get_variables_local,
@@ -95,6 +95,8 @@ pub enum Error {
 
     // Importing Database Errors
     ClosedUnopenedScopeError, // Returned if there is a "$}" statement in the outermost scope
+    UnclosedCommentError,     // Returned if a comment was not closed
+    UnclosedHeaderError,      // Returned if a header title was not closed
     ConstStatementScopeError, // Returned if a constant statement is found outside outermost scope
     EmptyConstStatementError, // Returned if a constant statement has no symbols
     TwiceDeclaredConstError,  // Returned if a constant has been declared twice
@@ -165,7 +167,8 @@ pub enum Error {
     TooManyLocateAfterConstTokensError, // Returned if there is a $locateafterconst statement with too many follow up tokens
     TooFewLocateAfterVarTokensError, // Returned if there is a $locateaftervar statement without a follow up token
     TooManyLocateAfterVarTokensError, // Returned if there is a $locateaftervar statement with too many follow up tokens
-    MissingMmpStepExpressionError,    // Returned if a mmp step is missing it's expression
+    InvalidLocateAfterError, // Returned if locateafter statement is not a real place in database
+    MissingMmpStepExpressionError, // Returned if a mmp step is missing it's expression
     InvalidDollarTokenError, // Returned if there is a statement that starts with $ not followed by a vaild statement type
     StatementOutOfPlaceError, // Returned if there is a statement out of place, for example if there is a $v and a $c statement
 

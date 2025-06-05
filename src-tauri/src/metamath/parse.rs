@@ -10,25 +10,25 @@ use crate::{
     AppState, Error,
 };
 
-#[tauri::command]
-pub async fn open_metamath_database(
-    state: tauri::State<'_, Mutex<AppState>>,
-    mm_file_path: &str,
-) -> Result<(HeaderRepresentation, Vec<HtmlRepresentation>), Error> {
-    let mut metamath_data: MetamathData = Default::default();
+// #[tauri::command]
+// pub async fn open_metamath_database(
+//     state: tauri::State<'_, Mutex<AppState>>,
+//     mm_file_path: &str,
+// ) -> Result<(HeaderRepresentation, Vec<HtmlRepresentation>), Error> {
+//     let mut metamath_data: MetamathData = Default::default();
 
-    parse_mm_file(mm_file_path, &mut metamath_data).await?;
+//     parse_mm_file(mm_file_path, &mut metamath_data).await?;
 
-    let mut app_state = state.lock().await;
+//     let mut app_state = state.lock().await;
 
-    let header_rep = metamath_data.database_header.to_representation();
+//     let header_rep = metamath_data.database_header.to_representation();
 
-    let html_reps = metamath_data.html_representations.clone();
+//     let html_reps = metamath_data.html_representations.clone();
 
-    app_state.metamath_data = Some(metamath_data);
+//     app_state.metamath_data = Some(metamath_data);
 
-    Ok((header_rep, html_reps))
-}
+//     Ok((header_rep, html_reps))
+// }
 
 pub async fn parse_mm_file(
     mm_file_path: &str,
