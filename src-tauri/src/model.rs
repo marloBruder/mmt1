@@ -3,13 +3,14 @@ use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    editor::unify::LocateAfterRef,
     metamath::export::{write_text_wrapped, write_text_wrapped_no_whitespace},
     util::{
         self,
         earley_parser_optimized::{self, EarleyOptimizedData, Grammar, GrammarRule},
         header_iterators::{
-            ConstantIterator, FloatingHypothesisIterator, HeaderIterator, TheoremIterator,
-            VariableIterator,
+            ConstantIterator, FloatingHypothesisIterator, HeaderIterator,
+            HeaderLocateAfterIterator, TheoremIterator, VariableIterator,
         },
     },
     Error,
@@ -1083,6 +1084,13 @@ impl Header {
 
     pub fn theorem_iter(&self) -> TheoremIterator {
         TheoremIterator::new(self)
+    }
+
+    pub fn locate_after_iter<'a, 'b>(
+        &'a self,
+        locate_after: LocateAfterRef<'b>,
+    ) -> HeaderLocateAfterIterator<'a, 'b> {
+        HeaderLocateAfterIterator::new(self, locate_after)
     }
 }
 

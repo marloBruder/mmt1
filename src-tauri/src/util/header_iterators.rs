@@ -1,7 +1,12 @@
 use std::iter::FilterMap;
 
-use crate::model::{
-    Constant, DatabaseElement, FloatingHypothesis, Header, Statement::*, Theorem, Variable,
+use crate::{
+    editor::unify::LocateAfterRef,
+    model::{
+        Constant, DatabaseElement, FloatingHypothesis, Header,
+        Statement::{self, *},
+        Theorem, Variable,
+    },
 };
 
 pub struct HeaderIterator<'a> {
@@ -209,5 +214,76 @@ impl<'a> Iterator for TheoremIterator<'a> {
 
     fn next(&mut self) -> Option<&'a Theorem> {
         self.inner.next()
+    }
+}
+
+pub struct HeaderLocateAfterIterator<'a, 'b> {
+    inner: HeaderIterator<'a>,
+    locate_after: LocateAfterRef<'b>,
+    found: bool,
+}
+
+impl<'a, 'b> HeaderLocateAfterIterator<'a, 'b> {
+    pub fn new(
+        top_header: &'a Header,
+        locate_after: LocateAfterRef<'b>,
+    ) -> HeaderLocateAfterIterator<'a, 'b> {
+        HeaderLocateAfterIterator {
+            inner: top_header.iter(),
+            locate_after,
+            found: false,
+        }
+    }
+}
+
+impl<'a, 'b> Iterator for HeaderLocateAfterIterator<'a, 'b> {
+    type Item = DatabaseElement<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.found {
+            return None;
+        }
+
+        let next_element = self.inner.next()?;
+
+        match (&next_element, &self.locate_after) {
+            (DatabaseElement::Header(_header, _), _) if false => {}
+            (DatabaseElement::Statement(statement), la) => match (statement, la) {
+                (Statement::CommentStatement(_comment), _) if false => {}
+                (
+                    Statement::ConstantStatement(constants),
+                    LocateAfterRef::LocateAfterConst(la_const),
+                ) => {
+                    if constants.iter().any(|c| c.symbol == *la_const) {
+                        self.found = true;
+                    }
+                }
+                (
+                    Statement::VariableStatement(variables),
+                    LocateAfterRef::LocateAfterVar(la_var),
+                ) => {
+                    if variables.iter().any(|v| v.symbol == *la_var) {
+                        self.found = true;
+                    }
+                }
+                (
+                    Statement::FloatingHypohesisStatement(floating_hypothesis),
+                    LocateAfterRef::LocateAfter(la_label),
+                ) => {
+                    if floating_hypothesis.label == *la_label {
+                        self.found = true;
+                    }
+                }
+                (Statement::TheoremStatement(theorem), LocateAfterRef::LocateAfter(la_label)) => {
+                    if theorem.label == *la_label {
+                        self.found = true;
+                    }
+                }
+                (_, _) => {}
+            },
+            (_, _) => {}
+        }
+
+        Some(next_element)
     }
 }
