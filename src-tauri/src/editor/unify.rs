@@ -55,7 +55,7 @@ pub enum MmpLabel<'a> {
     Header { header_pos: &'a str, title: &'a str },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum LocateAfterRef<'a> {
     LocateAfter(&'a str),
     LocateAfterConst(&'a str),

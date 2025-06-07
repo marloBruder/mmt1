@@ -173,6 +173,8 @@ pub enum Error {
     StatementOutOfPlaceError, // Returned if there is a statement out of place, for example if there is a $v and a $c statement
 
     MissingExpressionError, // Returned when converting str to number vec and skipping the first, but the str is empty
+
+    AddingToInnerScopeError,
 }
 
 impl fmt::Display for Error {

@@ -4,15 +4,18 @@ use std::{
 };
 
 use crate::{
+    metamath::mm_parser::{MmParser, StatementProcessed},
     model::{
-        Comment, Constant, FloatingHypothesis, Header, HeaderPath, Hypothesis, MetamathData,
-        Statement, Theorem, Variable,
+        Comment, Constant, DatabaseElement, FloatingHypothesis, Header, HeaderPath, Hypothesis,
+        MetamathData, Statement, Theorem, Variable,
     },
     util::earley_parser_optimized::earley_parse,
     AppState, Error,
 };
 use tauri::async_runtime::Mutex;
-struct MmpStructuredInfo {
+
+use super::unify::LocateAfterRef;
+struct MmpStructuredInfo<'a> {
     pub constants: Vec<Constant>,
     pub variables: Vec<Vec<Variable>>,
     pub floating_hypotheses: Vec<FloatingHypothesis>,
@@ -22,15 +25,15 @@ struct MmpStructuredInfo {
     pub distinct_vars: Vec<String>,
     pub mmj2_steps: Vec<(String, String)>,
     pub allow_discouraged: bool,
-    pub locate_after: Option<LocateAfter>,
+    pub locate_after: Option<LocateAfterRef<'a>>,
     pub comments: Vec<Comment>,
 }
 
-pub enum LocateAfter {
-    LocateAfter(String),
-    LocateAfterConst(String),
-    LocateAfterVar(String),
-}
+// pub enum LocateAfter {
+//     LocateAfter(String),
+//     LocateAfterConst(String),
+//     LocateAfterVar(String),
+// }
 
 #[tauri::command]
 pub async fn add_to_database(
@@ -70,7 +73,7 @@ pub async fn add_to_database(
     Ok(())
 }
 
-impl MmpStructuredInfo {
+impl<'a> MmpStructuredInfo<'a> {
     pub fn statement_out_of_place(&self) -> bool {
         if self.theorem_label.is_some() {
             if self.axiom_label.is_some() || !self.constants.is_empty() || self.header.is_some() {
@@ -285,7 +288,7 @@ fn add_theorem_to_database(
         &mut mm_data.database_header,
         &mmp_structured_info.locate_after,
         Statement::TheoremStatement(theorem),
-    );
+    )?;
 
     Ok(())
 }
@@ -509,7 +512,7 @@ fn add_axiom_to_database(
             hypotheses,
             proof: None,
         }),
-    );
+    )?;
 
     Ok(())
 }
@@ -569,7 +572,7 @@ fn add_floating_hypothesis_to_database(
         &mut mm_data.database_header,
         &mmp_structured_info.locate_after,
         Statement::FloatingHypohesisStatement(flaoting_hypothesis),
-    );
+    )?;
 
     mm_data.recalc_optimized_floating_hypotheses_after_one_new()?;
     mm_data.recalc_symbol_number_mapping_and_grammar()?;
@@ -606,7 +609,7 @@ fn add_variables_to_database(
         &mut mm_data.database_header,
         &mmp_structured_info.locate_after,
         Statement::VariableStatement(variables),
-    );
+    )?;
 
     mm_data.recalc_symbol_number_mapping_and_grammar()?;
 
@@ -636,7 +639,7 @@ fn add_constants_to_database(
         &mut mm_data.database_header,
         &mmp_structured_info.locate_after,
         Statement::ConstantStatement(mmp_structured_info.constants),
-    );
+    )?;
 
     mm_data.recalc_symbol_number_mapping_and_grammar()?;
 
@@ -658,7 +661,7 @@ fn add_comment_to_database(
                 .next()
                 .ok_or(Error::InternalLogicError)?,
         ),
-    );
+    )?;
 
     Ok(())
 }
@@ -678,33 +681,36 @@ fn all_different_strs(strs: &Vec<&str>) -> bool {
 fn add_statement(
     file_path: &str,
     header: &mut Header,
-    locate_after: &Option<LocateAfter>,
+    locate_after: &Option<LocateAfterRef>,
     statement: Statement,
-) -> Option<Statement> {
+) -> Result<(), Error> {
     match locate_after {
-        Some(loc_after) => add_statement_locate_after(header, loc_after, statement),
+        Some(loc_after) => add_statement_locate_after(file_path, header, loc_after, statement),
         None => add_statement_at_end(file_path, header, statement),
     }
 }
 
 fn add_statement_locate_after(
+    file_path: &str,
     header: &mut Header,
-    locate_after: &LocateAfter,
+    locate_after: &LocateAfterRef,
     statement: Statement,
-) -> Option<Statement> {
-    let statement = add_statement_locate_after_memory(header, locate_after, statement);
-
-    statement
+) -> Result<(), Error> {
+    add_statement_locate_after_file(file_path, header, locate_after, &statement)?;
+    match add_statement_locate_after_memory(header, locate_after, statement) {
+        None => Ok(()),
+        Some(_) => Err(Error::InvalidLocateAfterError),
+    }
 }
 
 fn add_statement_locate_after_memory(
     header: &mut Header,
-    locate_after: &LocateAfter,
+    locate_after: &LocateAfterRef,
     mut statement: Statement,
 ) -> Option<Statement> {
     for i in 0..header.content.len() {
         match locate_after {
-            LocateAfter::LocateAfterConst(s) => {
+            LocateAfterRef::LocateAfterConst(s) => {
                 if let Some(Statement::ConstantStatement(constants)) = header.content.get(i) {
                     if constants.iter().find(|c| c.symbol == *s).is_some() {
                         header.content.insert(i + 1, statement);
@@ -712,7 +718,7 @@ fn add_statement_locate_after_memory(
                     }
                 }
             }
-            LocateAfter::LocateAfterVar(s) => {
+            LocateAfterRef::LocateAfterVar(s) => {
                 if let Some(Statement::VariableStatement(variables)) = header.content.get(i) {
                     if variables.iter().find(|c| c.symbol == *s).is_some() {
                         header.content.insert(i + 1, statement);
@@ -720,7 +726,7 @@ fn add_statement_locate_after_memory(
                     }
                 }
             }
-            LocateAfter::LocateAfter(s) => {
+            LocateAfterRef::LocateAfter(s) => {
                 if let Some(Statement::TheoremStatement(theorem)) = header.content.get(i) {
                     if theorem.label == *s {
                         header.content.insert(i + 1, statement);
@@ -748,17 +754,107 @@ fn add_statement_locate_after_memory(
     Some(statement)
 }
 
+fn add_statement_locate_after_file(
+    file_path: &str,
+    header: &Header,
+    locate_after: &LocateAfterRef,
+    statement: &Statement,
+) -> Result<(), Error> {
+    let mut mm_parser = MmParser::new(file_path)?;
+    let header_iter = header.locate_after_iter(*locate_after);
+
+    for database_element in header_iter {
+        match database_element {
+            DatabaseElement::Header(_, _) => loop {
+                if let Some(StatementProcessed::HeaderStatement) =
+                    mm_parser.process_next_statement()?
+                {
+                    break;
+                }
+            },
+            DatabaseElement::Statement(statement) => match statement {
+                Statement::CommentStatement(_) => loop {
+                    if let Some(StatementProcessed::CommentStatement) =
+                        mm_parser.process_next_statement()?
+                    {
+                        if mm_parser.get_scope() == 0 {
+                            break;
+                        }
+                    }
+                },
+                Statement::ConstantStatement(_) => loop {
+                    if let Some(StatementProcessed::ConstantStatement) =
+                        mm_parser.process_next_statement()?
+                    {
+                        break;
+                    }
+                },
+                Statement::VariableStatement(_) => loop {
+                    if let Some(StatementProcessed::VariableStatement) =
+                        mm_parser.process_next_statement()?
+                    {
+                        if mm_parser.get_scope() == 0 {
+                            break;
+                        }
+                    }
+                },
+                Statement::FloatingHypohesisStatement(_) => loop {
+                    if let Some(StatementProcessed::FloatingHypothesisStatement) =
+                        mm_parser.process_next_statement()?
+                    {
+                        if mm_parser.get_scope() == 0 {
+                            break;
+                        }
+                    }
+                },
+                Statement::TheoremStatement(_) => loop {
+                    if let Some(StatementProcessed::TheoremStatement) =
+                        mm_parser.process_next_statement()?
+                    {
+                        break;
+                    }
+                },
+            },
+        }
+    }
+
+    while mm_parser.get_scope() != 0 {
+        match mm_parser.process_next_statement()? {
+            Some(StatementProcessed::ClosingScopeStatement)
+            | Some(StatementProcessed::OpeningScopeStatement)
+            | Some(StatementProcessed::VariableStatement)
+            | Some(StatementProcessed::FloatingHypothesisStatement)
+            | Some(StatementProcessed::DistinctVariableStatement)
+            | Some(StatementProcessed::EssentialHypothesisStatement)
+            | Some(StatementProcessed::CommentStatement) => {}
+            Some(StatementProcessed::TheoremStatement)
+            | Some(StatementProcessed::HeaderStatement) => {
+                return Err(Error::AddingToInnerScopeError)
+            }
+            // Should never happen
+            Some(StatementProcessed::ConstantStatement) | None => {}
+        }
+    }
+
+    let (mut file_content, next_token_i) = mm_parser.consume_early_and_return_file_content();
+
+    file_content.insert_str(next_token_i, "\n\n");
+
+    statement.insert_mm_string(&mut file_content, next_token_i + 2);
+
+    fs::write(file_path, &file_content).or(Err(Error::FileWriteError))?;
+
+    Ok(())
+}
+
 fn add_statement_at_end(
     file_path: &str,
     header: &mut Header,
     statement: Statement,
-) -> Option<Statement> {
-    let successful = add_statement_at_end_file(file_path, &statement);
-    if !successful {
-        return Some(statement);
-    }
+) -> Result<(), Error> {
+    add_statement_at_end_file(file_path, &statement)?;
     add_statement_at_end_memory(header, statement);
-    None
+    Ok(())
 }
 
 fn add_statement_at_end_memory(header: &mut Header, statement: Statement) {
@@ -771,11 +867,8 @@ fn add_statement_at_end_memory(header: &mut Header, statement: Statement) {
     last_header.content.push(statement);
 }
 
-fn add_statement_at_end_file(file_path: &str, statement: &Statement) -> bool {
-    let mut file_content = match fs::read_to_string(file_path) {
-        Ok(fc) => fc,
-        Err(_) => return false,
-    };
+fn add_statement_at_end_file(file_path: &str, statement: &Statement) -> Result<(), Error> {
+    let mut file_content = fs::read_to_string(file_path).or(Err(Error::FileReadError))?;
 
     loop {
         match file_content.pop() {
@@ -794,12 +887,9 @@ fn add_statement_at_end_file(file_path: &str, statement: &Statement) -> bool {
 
     statement.write_mm_string(&mut file_content);
 
-    match fs::write(file_path, file_content) {
-        Ok(_) => {}
-        Err(_) => return false,
-    }
+    fs::write(file_path, file_content).or(Err(Error::FileWriteError))?;
 
-    true
+    Ok(())
 }
 
 fn statements_to_mmp_structured_info(
@@ -814,7 +904,7 @@ fn statements_to_mmp_structured_info(
     let mut distinct_vars: Vec<String> = Vec::new();
     let mut mmj2_steps: Vec<(String, String)> = Vec::new();
     let mut allow_discouraged: bool = false;
-    let mut locate_after: Option<LocateAfter> = None;
+    let mut locate_after: Option<LocateAfterRef> = None;
     let mut comments: Vec<Comment> = Vec::new();
 
     for tokens in statements {
@@ -958,11 +1048,10 @@ fn statements_to_mmp_structured_info(
                     return Err(Error::MultipleLocateAfterError);
                 }
 
-                locate_after = Some(LocateAfter::LocateAfter(
+                locate_after = Some(LocateAfterRef::LocateAfter(
                     token_iter
                         .next()
-                        .ok_or(Error::TooFewLocateAfterTokensError)?
-                        .to_string(),
+                        .ok_or(Error::TooFewLocateAfterTokensError)?,
                 ));
                 if token_iter.next().is_some() {
                     return Err(Error::TooManyLocateAfterTokensError);
@@ -973,11 +1062,10 @@ fn statements_to_mmp_structured_info(
                     return Err(Error::MultipleLocateAfterError);
                 }
 
-                locate_after = Some(LocateAfter::LocateAfterConst(
+                locate_after = Some(LocateAfterRef::LocateAfterConst(
                     token_iter
                         .next()
-                        .ok_or(Error::TooFewLocateAfterConstTokensError)?
-                        .to_string(),
+                        .ok_or(Error::TooFewLocateAfterConstTokensError)?,
                 ));
                 if token_iter.next().is_some() {
                     return Err(Error::TooManyLocateAfterTokensError);
@@ -988,11 +1076,10 @@ fn statements_to_mmp_structured_info(
                     return Err(Error::MultipleLocateAfterError);
                 }
 
-                locate_after = Some(LocateAfter::LocateAfterVar(
+                locate_after = Some(LocateAfterRef::LocateAfterVar(
                     token_iter
                         .next()
-                        .ok_or(Error::TooFewLocateAfterVarTokensError)?
-                        .to_string(),
+                        .ok_or(Error::TooFewLocateAfterVarTokensError)?,
                 ));
                 if token_iter.next().is_some() {
                     return Err(Error::TooManyLocateAfterTokensError);

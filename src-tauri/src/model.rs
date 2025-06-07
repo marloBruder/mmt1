@@ -425,6 +425,14 @@ impl Statement {
         }
     }
 
+    pub fn insert_mm_string(&self, target: &mut String, insert_pos: usize) {
+        let mut mm_string = String::new();
+
+        self.write_mm_string(&mut mm_string);
+
+        target.insert_str(insert_pos, &mm_string);
+    }
+
     //     pub fn is_variable(&self) -> bool {
     //         match self {
     //             VariableStatement(_) => true,

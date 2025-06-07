@@ -186,6 +186,10 @@ impl MmParser {
         Ok(metamath_data)
     }
 
+    pub fn consume_early_and_return_file_content(self) -> (String, usize) {
+        (self.file_content, self.next_token_i)
+    }
+
     pub fn process_all_statements_and_consume(mut self) -> Result<MetamathData, Error> {
         self.process_all_statements()?;
 
@@ -783,6 +787,10 @@ impl MmParser {
 
         res.pop();
         Ok(res)
+    }
+
+    pub fn get_scope(&self) -> usize {
+        return self.scope;
     }
 }
 
