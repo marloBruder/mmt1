@@ -45,6 +45,7 @@ pub struct MmParser {
     prev_variables: HashSet<String>,
     prev_float_hyps: Vec<FloatingHypothesis>,
     next_label: Option<String>,
+    next_description: Option<String>,
 }
 
 pub enum StatementProcessed {
@@ -84,6 +85,7 @@ impl MmParser {
             prev_variables: HashSet::new(),
             prev_float_hyps: Vec::new(),
             next_label: None,
+            next_description: None,
         })
     }
 
@@ -94,9 +96,14 @@ impl MmParser {
     }
 
     pub fn process_next_statement(&mut self) -> Result<Option<StatementProcessed>, Error> {
+        let mut comment_processed = false;
+
         if let Some(token) = self.advance_next_token() {
-            Ok(Some(match token {
-                "$(" => self.process_comment_statement()?,
+            let statement_processed = match token {
+                "$(" => {
+                    comment_processed = true;
+                    self.process_comment_statement()?
+                }
                 "${" => self.process_opening_scope_statement(),
                 "$}" => self.process_closing_scope_statement()?,
                 "$c" => self.process_constant_statement()?,
@@ -130,7 +137,13 @@ impl MmParser {
                         return Err(Error::TokenOutsideStatementError);
                     }
                 }
-            }))
+            };
+
+            if !comment_processed {
+                self.next_description = None;
+            }
+
+            Ok(Some(statement_processed))
         } else {
             Ok(None)
         }
@@ -239,9 +252,12 @@ impl MmParser {
             }
         }
 
-        self.curr_header()?
-            .content
-            .push(Statement::CommentStatement(Comment { text: comment }));
+        self.next_description = Some(comment.clone());
+        if self.scope == 0 {
+            self.curr_header()?
+                .content
+                .push(Statement::CommentStatement(Comment { text: comment }));
+        }
         Ok(StatementProcessed::CommentStatement)
     }
 
@@ -385,6 +401,7 @@ impl MmParser {
                 content: Vec::new(),
                 subheaders: Vec::new(),
             });
+            self.next_description = None;
             self.curr_header_path = next_header_path;
             Ok(())
         } else {
@@ -710,17 +727,14 @@ impl MmParser {
             .clone();
         self.next_label = None;
 
-        let description = if let Some(Statement::CommentStatement(_)) =
-            self.curr_header()?.content.last()
-        {
-            if let Some(Statement::CommentStatement(comment)) = self.curr_header()?.content.pop() {
-                comment.text
-            } else {
-                // Can't happen
-                String::new()
+        let description = match self.next_description.clone() {
+            Some(d) => {
+                if self.scope == 0 {
+                    self.curr_header()?.content.pop();
+                }
+                d
             }
-        } else {
-            String::new()
+            None => String::new(),
         };
 
         let distincts = self.active_dists.clone().into_iter().flatten().collect();
