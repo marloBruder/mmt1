@@ -108,7 +108,19 @@ export interface TheoremListData {
   pageAmount: number;
 }
 
-export type ListEntry = TheoremListEntry | HeaderListEntry;
+export type ListEntry = HeaderListEntry | CommentListEntry | TheoremListEntry;
+
+export interface HeaderListEntry {
+  headerPath: string;
+  title: string;
+  discriminator: "HeaderListEntry";
+}
+
+export interface CommentListEntry {
+  commentPath: string;
+  text: string;
+  discriminator: "CommentListEntry";
+}
 
 export interface TheoremListEntry {
   label: string;
@@ -117,12 +129,6 @@ export interface TheoremListEntry {
   assertion: string;
   description: string;
   discriminator: "TheoremListEntry";
-}
-
-export interface HeaderListEntry {
-  headerPath: string;
-  title: string;
-  discriminator: "HeaderListEntry";
 }
 
 export interface SearchParameters {

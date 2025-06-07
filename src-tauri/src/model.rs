@@ -29,6 +29,7 @@ pub struct MetamathData {
 pub struct OptimizedMetamathData {
     pub variables: HashSet<String>,
     pub floating_hypotheses: Vec<FloatingHypothesis>,
+    pub theorem_amount: u32,
     pub theorem_data: HashMap<String, OptimizedTheoremData>,
     pub symbol_number_mapping: SymbolNumberMapping,
     pub grammar: Grammar,
@@ -174,8 +175,19 @@ pub struct TheoremListData {
 }
 
 pub enum ListEntry {
-    Theorem(TheoremListEntry),
     Header(HeaderListEntry),
+    Comment(CommentListEntry),
+    Theorem(TheoremListEntry),
+}
+
+pub struct HeaderListEntry {
+    pub header_path: String,
+    pub title: String,
+}
+
+pub struct CommentListEntry {
+    pub comment_path: String,
+    pub text: String,
 }
 
 pub struct TheoremListEntry {
@@ -184,11 +196,6 @@ pub struct TheoremListEntry {
     pub hypotheses: Vec<String>,
     pub assertion: String,
     pub description: String,
-}
-
-pub struct HeaderListEntry {
-    pub header_path: String,
-    pub title: String,
 }
 
 impl MetamathData {
@@ -1282,6 +1289,20 @@ impl serde::Serialize for ListEntry {
         use serde::ser::SerializeStruct;
 
         match *self {
+            Self::Header(ref header_list_entry) => {
+                let mut state = serializer.serialize_struct("HeaderListEntry", 2)?;
+                state.serialize_field("headerPath", &header_list_entry.header_path)?;
+                state.serialize_field("title", &header_list_entry.title)?;
+                state.serialize_field("discriminator", "HeaderListEntry")?;
+                state.end()
+            }
+            Self::Comment(ref comment_list_entry) => {
+                let mut state = serializer.serialize_struct("CommentListEntry", 2)?;
+                state.serialize_field("commentPath", &comment_list_entry.comment_path)?;
+                state.serialize_field("text", &comment_list_entry.text)?;
+                state.serialize_field("discriminator", "CommentListEntry")?;
+                state.end()
+            }
             Self::Theorem(ref theorem_list_entry) => {
                 let mut state = serializer.serialize_struct("TheoremListEntry", 5)?;
                 state.serialize_field("label", &theorem_list_entry.label)?;
@@ -1290,13 +1311,6 @@ impl serde::Serialize for ListEntry {
                 state.serialize_field("assertion", &theorem_list_entry.assertion)?;
                 state.serialize_field("description", &theorem_list_entry.description)?;
                 state.serialize_field("discriminator", "TheoremListEntry")?;
-                state.end()
-            }
-            Self::Header(ref header_list_entry) => {
-                let mut state = serializer.serialize_struct("HeaderListEntry", 2)?;
-                state.serialize_field("headerPath", &header_list_entry.header_path)?;
-                state.serialize_field("title", &header_list_entry.title)?;
-                state.serialize_field("discriminator", "HeaderListEntry")?;
                 state.end()
             }
         }

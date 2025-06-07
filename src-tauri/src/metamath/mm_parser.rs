@@ -46,6 +46,7 @@ pub struct MmParser {
     prev_float_hyps: Vec<FloatingHypothesis>,
     next_label: Option<String>,
     next_description: Option<String>,
+    theorem_amount: u32,
 }
 
 pub enum StatementProcessed {
@@ -86,6 +87,7 @@ impl MmParser {
             prev_float_hyps: Vec::new(),
             next_label: None,
             next_description: None,
+            theorem_amount: 0,
         })
     }
 
@@ -177,6 +179,7 @@ impl MmParser {
                     .into_iter()
                     .next()
                     .ok_or(Error::InternalLogicError)?,
+                theorem_amount: self.theorem_amount,
                 ..Default::default()
             },
         };
@@ -764,6 +767,7 @@ impl MmParser {
                 assertion,
                 proof,
             }));
+        self.theorem_amount += 1;
 
         Ok(StatementProcessed::TheoremStatement)
     }

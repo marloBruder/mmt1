@@ -3,7 +3,8 @@ use tauri::async_runtime::Mutex;
 use crate::{
     metamath,
     model::{
-        DatabaseElement, HeaderListEntry, HeaderPath, Hypothesis, ListEntry, MetamathData,
+        CommentListEntry, DatabaseElement, HeaderListEntry, HeaderPath, Hypothesis, ListEntry,
+        MetamathData,
         Statement::{self, *},
         Theorem, TheoremListData, TheoremPageData, TheoremPath,
     },
@@ -99,35 +100,39 @@ pub async fn get_theorem_list_local(
 
     let mut theorem_amount: u32 = 0;
     let mut curr_header_path: HeaderPath = HeaderPath { path: Vec::new() };
+    let mut curr_header_comment_amount: u32 = 0;
     let mut list: Vec<ListEntry> = Vec::new();
 
     metamath_data
         .database_header
         .iter()
         .try_for_each(|database_element| {
+            if theorem_amount >= (page + 1) * 100 {
+                return Ok(());
+            }
+
             match database_element {
                 DatabaseElement::Header(header, depth) => {
-                    // Calc next header path (only if there are still theorems ahead)
-                    if theorem_amount < (page + 1) * 100 {
-                        if depth > curr_header_path.path.len() as u32 {
-                            curr_header_path.path.push(0);
-                        } else if depth == curr_header_path.path.len() as u32 {
-                            *curr_header_path
-                                .path
-                                .last_mut()
-                                .ok_or(Error::InternalLogicError)? += 1;
-                        } else if depth < curr_header_path.path.len() as u32 {
-                            while depth < curr_header_path.path.len() as u32 {
-                                curr_header_path.path.pop();
-                            }
-                            *curr_header_path
-                                .path
-                                .last_mut()
-                                .ok_or(Error::InternalLogicError)? += 1;
+                    if depth > curr_header_path.path.len() as u32 {
+                        curr_header_path.path.push(0);
+                    } else if depth == curr_header_path.path.len() as u32 {
+                        *curr_header_path
+                            .path
+                            .last_mut()
+                            .ok_or(Error::InternalLogicError)? += 1;
+                    } else if depth < curr_header_path.path.len() as u32 {
+                        while depth < curr_header_path.path.len() as u32 {
+                            curr_header_path.path.pop();
                         }
+                        *curr_header_path
+                            .path
+                            .last_mut()
+                            .ok_or(Error::InternalLogicError)? += 1;
                     }
 
-                    if page * 100 <= theorem_amount && theorem_amount < (page + 1) * 100 {
+                    curr_header_comment_amount = 0;
+
+                    if page * 100 <= theorem_amount {
                         list.push(ListEntry::Header(HeaderListEntry {
                             header_path: curr_header_path.to_string(),
                             title: header.title.clone(),
@@ -135,10 +140,23 @@ pub async fn get_theorem_list_local(
                     }
                 }
                 DatabaseElement::Statement(statement) => match statement {
+                    Statement::CommentStatement(comment) => {
+                        curr_header_comment_amount += 1;
+                        if page * 100 <= theorem_amount {
+                            list.push(ListEntry::Comment(CommentListEntry {
+                                comment_path: format!(
+                                    "{}#{}",
+                                    curr_header_path.to_string(),
+                                    curr_header_comment_amount
+                                ),
+                                text: comment.text.clone(),
+                            }));
+                        }
+                    }
                     Statement::TheoremStatement(theorem) => {
-                        if page * 100 <= theorem_amount && theorem_amount < (page + 1) * 100 {
+                        if page * 100 <= theorem_amount {
                             list.push(ListEntry::Theorem(
-                                theorem.to_theorem_list_entry((theorem_amount as u32) + 1),
+                                theorem.to_theorem_list_entry((theorem_amount + 1) as u32),
                             ));
                         }
                         theorem_amount += 1;
@@ -149,7 +167,8 @@ pub async fn get_theorem_list_local(
             Ok::<(), Error>(())
         })?;
 
-    let page_amount = ((((theorem_amount as i32) - 1) / 100) + 1) as u32;
+    let page_amount =
+        ((((metamath_data.optimized_data.theorem_amount as i32) - 1) / 100) + 1) as u32;
 
     Ok(TheoremListData { list, page_amount })
 }

@@ -31,6 +31,15 @@
       <div class="text-2xl p-4">
         {theoremListEntry.headerPath + " " + theoremListEntry.title}
       </div>
+    {:else if theoremListEntry.discriminator === "CommentListEntry"}
+      <div>
+        <div class="text-xl">
+          Comment {theoremListEntry.commentPath}
+        </div>
+        <div>
+          {theoremListEntry.text}
+        </div>
+      </div>
     {/if}
   </div>
 {/each}
