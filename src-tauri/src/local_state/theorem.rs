@@ -3,11 +3,12 @@ use tauri::async_runtime::Mutex;
 use crate::{
     metamath,
     model::{
-        CommentListEntry, DatabaseElement, HeaderListEntry, HeaderPath, Hypothesis, ListEntry,
-        MetamathData,
+        CommentListEntry, ConstantListEntry, DatabaseElement, FloatingHypothesisListEntry,
+        HeaderListEntry, HeaderPath, Hypothesis, ListEntry, MetamathData,
         Statement::{self, *},
-        Theorem, TheoremListData, TheoremPageData, TheoremPath,
+        Theorem, TheoremListData, TheoremPageData, TheoremPath, VariableListEntry,
     },
+    util::StrIterToSpaceSeperatedString,
     AppState, Error,
 };
 
@@ -153,6 +154,35 @@ pub async fn get_theorem_list_local(
                             }));
                         }
                     }
+                    Statement::ConstantStatement(constants) => {
+                        if page * 100 <= theorem_amount {
+                            list.push(ListEntry::Constant(ConstantListEntry {
+                                constants: constants
+                                    .iter()
+                                    .map(|c| &*c.symbol)
+                                    .fold_to_space_seperated_string(),
+                            }));
+                        }
+                    }
+                    Statement::VariableStatement(variables) => {
+                        if page * 100 <= theorem_amount {
+                            list.push(ListEntry::Variable(VariableListEntry {
+                                variables: variables
+                                    .iter()
+                                    .map(|v| &*v.symbol)
+                                    .fold_to_space_seperated_string(),
+                            }));
+                        }
+                    }
+                    Statement::FloatingHypohesisStatement(floating_hypothesis) => {
+                        if page * 100 <= theorem_amount {
+                            list.push(ListEntry::FloatingHypohesis(FloatingHypothesisListEntry {
+                                label: floating_hypothesis.label.clone(),
+                                typecode: floating_hypothesis.typecode.clone(),
+                                variable: floating_hypothesis.variable.clone(),
+                            }));
+                        }
+                    }
                     Statement::TheoremStatement(theorem) => {
                         if page * 100 <= theorem_amount {
                             list.push(ListEntry::Theorem(
@@ -161,7 +191,6 @@ pub async fn get_theorem_list_local(
                         }
                         theorem_amount += 1;
                     }
-                    _ => {}
                 },
             };
             Ok::<(), Error>(())

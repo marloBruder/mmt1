@@ -108,7 +108,7 @@ export interface TheoremListData {
   pageAmount: number;
 }
 
-export type ListEntry = HeaderListEntry | CommentListEntry | TheoremListEntry;
+export type ListEntry = HeaderListEntry | CommentListEntry | ConstantListEntry | VariableListEntry | FloatingHypothesisListEntry | TheoremListEntry;
 
 export interface HeaderListEntry {
   headerPath: string;
@@ -120,6 +120,23 @@ export interface CommentListEntry {
   commentPath: string;
   text: string;
   discriminator: "CommentListEntry";
+}
+
+export interface ConstantListEntry {
+  constants: string;
+  discriminator: "ConstantListEntry";
+}
+
+export interface VariableListEntry {
+  variables: string;
+  discriminator: "VariableListEntry";
+}
+
+export interface FloatingHypothesisListEntry {
+  label: string;
+  typecode: string;
+  variable: string;
+  discriminator: "FloatingHypothesisListEntry";
 }
 
 export interface TheoremListEntry {

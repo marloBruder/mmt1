@@ -177,6 +177,9 @@ pub struct TheoremListData {
 pub enum ListEntry {
     Header(HeaderListEntry),
     Comment(CommentListEntry),
+    Constant(ConstantListEntry),
+    Variable(VariableListEntry),
+    FloatingHypohesis(FloatingHypothesisListEntry),
     Theorem(TheoremListEntry),
 }
 
@@ -188,6 +191,20 @@ pub struct HeaderListEntry {
 pub struct CommentListEntry {
     pub comment_path: String,
     pub text: String,
+}
+
+pub struct ConstantListEntry {
+    pub constants: String,
+}
+
+pub struct VariableListEntry {
+    pub variables: String,
+}
+
+pub struct FloatingHypothesisListEntry {
+    pub label: String,
+    pub typecode: String,
+    pub variable: String,
 }
 
 pub struct TheoremListEntry {
@@ -1301,6 +1318,26 @@ impl serde::Serialize for ListEntry {
                 state.serialize_field("commentPath", &comment_list_entry.comment_path)?;
                 state.serialize_field("text", &comment_list_entry.text)?;
                 state.serialize_field("discriminator", "CommentListEntry")?;
+                state.end()
+            }
+            Self::Constant(ref constant_list_entry) => {
+                let mut state = serializer.serialize_struct("ConstantListEntry", 1)?;
+                state.serialize_field("constants", &constant_list_entry.constants)?;
+                state.serialize_field("discriminator", "ConstantListEntry")?;
+                state.end()
+            }
+            Self::Variable(ref variable_list_entry) => {
+                let mut state = serializer.serialize_struct("VariableListEntry", 1)?;
+                state.serialize_field("variables", &variable_list_entry.variables)?;
+                state.serialize_field("discriminator", "VariableListEntry")?;
+                state.end()
+            }
+            Self::FloatingHypohesis(ref floating_hypothesis_list_entry) => {
+                let mut state = serializer.serialize_struct("FloatingHypothesisListEntry", 3)?;
+                state.serialize_field("label", &floating_hypothesis_list_entry.label)?;
+                state.serialize_field("typecode", &floating_hypothesis_list_entry.typecode)?;
+                state.serialize_field("variable", &floating_hypothesis_list_entry.variable)?;
+                state.serialize_field("discriminator", "FloatingHypothesisListEntry")?;
                 state.end()
             }
             Self::Theorem(ref theorem_list_entry) => {
