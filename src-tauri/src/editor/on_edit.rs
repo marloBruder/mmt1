@@ -1,4 +1,5 @@
 use crate::{
+    metamath::mmp_parser::{self, MmpParserStage1},
     model::{
         self, DatabaseElementPageData, FloatingHypothesis, FloatingHypothesisPageData, Hypothesis,
         MetamathData, ParseTree, SymbolNumberMapping, Theorem, TheoremPageData,
@@ -31,89 +32,47 @@ pub async fn on_edit(
     let app_state = state.lock().await;
     let mm_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
-    let (line_number_before_first_statement, statement_strs) =
-        match text_to_statement_strs_with_error_info(text)? {
-            Ok(tuple) => tuple,
-            Err(detailed_err) => {
-                return Ok(OnEditData {
-                    page_data: None,
-                    errors: vec![detailed_err],
-                })
-            }
-        };
+    let stage_0 = mmp_parser::new(text);
 
-    let (mmp_info_structured_for_unify_option, errors) =
-        statement_strs_to_mmp_info_structured_for_unify_with_error_info(
-            &statement_strs,
-            mm_data,
-            line_number_before_first_statement,
-        )?;
-
-    let page_data = match mmp_info_structured_for_unify_option {
-        Some(info) => Some(get_database_element_page_data(&info)?),
-        None => None,
+    let stage_1_success = match stage_0.next_stage()? {
+        MmpParserStage1::Success(success) => success,
+        MmpParserStage1::Fail(fail) => {
+            return Ok(OnEditData {
+                page_data: None,
+                errors: vec![fail.error],
+            })
+        }
     };
 
-    Ok(OnEditData { page_data, errors })
-}
+    // let (line_number_before_first_statement, statement_strs) =
+    //     match text_to_statement_strs_with_error_info(text)? {
+    //         Ok(tuple) => tuple,
+    //         Err(detailed_err) => {
+    //             return Ok(OnEditData {
+    //                 page_data: None,
+    //                 errors: vec![detailed_err],
+    //             })
+    //         }
+    //     };
 
-// If successful, returns a tuple (a,b) where a is number of lines before the statement and b is a vec of all the lines
-pub fn text_to_statement_strs_with_error_info(
-    text: &str,
-) -> Result<Result<(u32, Vec<&str>), DetailedError>, Error> {
-    let mut statements = Vec::new();
+    // let (mmp_info_structured_for_unify_option, errors) =
+    //     statement_strs_to_mmp_info_structured_for_unify_with_error_info(
+    //         &statement_strs,
+    //         mm_data,
+    //         line_number_before_first_statement,
+    //     )?;
 
-    let mut text_i: usize = 0;
-    let text_bytes = text.as_bytes();
+    // let page_data = match mmp_info_structured_for_unify_option {
+    //     Some(info) => Some(get_database_element_page_data(&info)?),
+    //     None => None,
+    // };
 
-    let mut line_count: u32 = 1;
-    let mut last_line_length: u32 = 0;
+    // Ok(OnEditData { page_data, errors })
 
-    while text_bytes
-        .get(text_i)
-        .is_some_and(|c| c.is_ascii_whitespace())
-    {
-        last_line_length += 1;
-
-        if text_bytes.get(text_i).is_some_and(|c| *c == b'\n') {
-            line_count += 1;
-            last_line_length = 0;
-        }
-
-        text_i += 1;
-    }
-
-    if text_i != 0 && text_bytes.get(text_i - 1).is_some_and(|c| *c != b'\n') {
-        return Ok(Err(DetailedError {
-            error_type: Error::WhitespaceBeforeFirstTokenError,
-            start_line_number: line_count,
-            start_column: 1,
-            end_line_number: line_count,
-            end_column: last_line_length + 1,
-        }));
-    }
-
-    let mut statement_start = text_i;
-    text_i += 1;
-
-    while let Some(&char) = text_bytes.get(text_i) {
-        if !char.is_ascii_whitespace() && text_bytes.get(text_i - 1).is_some_and(|c| *c == b'\n') {
-            statements.push(
-                text.get(statement_start..text_i)
-                    .ok_or(Error::InternalLogicError)?,
-            );
-            statement_start = text_i;
-        }
-
-        text_i += 1;
-    }
-
-    statements.push(
-        text.get(statement_start..text_i)
-            .ok_or(Error::InternalLogicError)?,
-    );
-
-    Ok(Ok((line_count, statements)))
+    Ok(OnEditData {
+        page_data: None,
+        errors: Vec::new(),
+    })
 }
 
 pub fn statement_strs_to_mmp_info_structured_for_unify_with_error_info<'a>(

@@ -18,6 +18,7 @@ use tauri::async_runtime::Mutex;
 
 pub mod export;
 pub mod mm_parser;
+pub mod mmp_parser;
 
 #[tauri::command]
 pub async fn turn_into_theorem(
