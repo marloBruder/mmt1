@@ -1,5 +1,5 @@
 use crate::{
-    metamath::mmp_parser::{self, MmpParserStage1},
+    metamath::mmp_parser::{self, MmpParserStage1, MmpParserStage2},
     model::{
         self, DatabaseElementPageData, FloatingHypothesis, FloatingHypothesisPageData, Hypothesis,
         MetamathData, ParseTree, SymbolNumberMapping, Theorem, TheoremPageData,
@@ -40,7 +40,17 @@ pub async fn on_edit(
             return Ok(OnEditData {
                 page_data: None,
                 errors: vec![fail.error],
-            })
+            });
+        }
+    };
+
+    let stage_2_success = match stage_1_success.next_stage()? {
+        MmpParserStage2::Success(success) => success,
+        MmpParserStage2::Fail(fail) => {
+            return Ok(OnEditData {
+                page_data: None,
+                errors: fail.errors,
+            });
         }
     };
 

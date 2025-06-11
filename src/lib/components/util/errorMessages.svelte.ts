@@ -17,19 +17,29 @@ export function getErrorMessage(errorType: string): string {
     case "FloatHypStatementFormatError": {
       return "$f statements must be followed by exactly 3 tokens: The label, the typecode and the variable.";
     }
+    case "InvalidLabelError": {
+      return "Not a valid label. A label token consists of any combination of letters, digits and the characters hyphen, underscore and period.";
+    }
     case "MultipleMmpLabelsError": {
       return "There can be at most one $theorem, $axiom or $header statement per mmp file.";
     }
-    case "MissingTheoremLabelError":
-    case "TooManyTheoremLabelTokensError": {
-      return "$theorem statements must be followed by exactly one token: The label of the theorem.";
+    case "TooFewHeaderTokensError": {
+      return "$header statements must be followed by the header path and the header title.\n\nExample: $header 3.1.2 Test header";
+    }
+    case "MissingCommentPathError":
+    case "TooManyCommentPathTokensError": {
+      return "$comment statements must only be followed by exactly one token: The path of the comment.\n\nExample: $comment 3.4.2#5 (The fifth comment under header 3.4.2)";
+    }
+    case "InvalidCommentPathFormatError": {
+      return "$comment statements must be followed by the path of the comment.\n\nExample: $comment 3.4.2#5 (The fifth comment under header 3.4.2)";
     }
     case "MissingAxiomLabelError":
     case "TooManyAxiomLabelTokensError": {
       return "$axiom statements must only be followed by exactly one token: The label of the axiom.";
     }
-    case "TooFewHeaderTokensError": {
-      return "$header statements must be followed by the header path and the header title.\n\nExample: $header 3.1.2 Test header";
+    case "MissingTheoremLabelError":
+    case "TooManyTheoremLabelTokensError": {
+      return "$theorem statements must be followed by exactly one token: The label of the theorem.";
     }
     case "ZeroOrOneSymbolDisjError": {
       return "$d statements must be followed by at least 2 variables.";
@@ -58,13 +68,22 @@ export function getErrorMessage(errorType: string): string {
       return "Each step prefix must be of the format [h]name:hyps:ref, where the h at the beginning indicates that the step is a hypothesis, name is the name of the step, hyps is a comma seperated list of hypotheses names and ref is either the name of the theorem being applied if the step is not a hypothesis or the name of the hypothesis otherwise.";
     }
     case "InvalidMmpStepNameError": {
-      return "Step names cannot be empty or contain commas.";
+      return "Step names cannot be empty and must be alphanumeric.";
+    }
+    case "InvalidMmpStepNameStartsWithHError": {
+      return "Step names cannot start with 'h'.";
+    }
+    case "DuplicateStepNameError": {
+      return "Duplicate step name";
     }
     case "HypNameDoesntExistError": {
       return "This is not the name of a previous step.";
     }
+    case "DuplicateHypLabelsError": {
+      return "Duplicate hypothesis label.";
+    }
     case "MissingMmpStepExpressionError": {
-      return "Missing Expression.";
+      return "Missing expression.";
     }
     case "NonSymbolInExpressionError": {
       return "Not a valid symbol.";
@@ -74,7 +93,7 @@ export function getErrorMessage(errorType: string): string {
     }
   }
 
-  return "You should not be seeing this error message";
+  return "You should not be seeing this error message. Please post a Github issue with your editor content.";
 }
 
 export function getErrorSeverity(errorType: string): monaco.MarkerSeverity {

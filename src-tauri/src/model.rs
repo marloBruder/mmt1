@@ -1127,22 +1127,22 @@ impl Header {
 }
 
 impl HeaderPath {
-    pub fn from_str(str: &str) -> Result<HeaderPath, ()> {
+    pub fn from_str(str: &str) -> Option<HeaderPath> {
         if str.contains('+') {
-            return Err(());
+            return None;
         }
 
-        Ok(HeaderPath {
+        Some(HeaderPath {
             path: str
                 .split('.')
                 .map(|s| {
-                    let i = s.parse::<usize>().or(Err(()))?;
+                    let i = s.parse::<usize>().ok()?;
                     if i == 0 {
-                        return Err(());
+                        return None;
                     }
-                    Ok(i - 1)
+                    Some(i - 1)
                 })
-                .collect::<Result<Vec<usize>, ()>>()?,
+                .collect::<Option<Vec<usize>>>()?,
         })
     }
 

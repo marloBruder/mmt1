@@ -131,26 +131,32 @@ pub enum Error {
 
     // Parsing mmp file errors
     WhitespaceBeforeFirstTokenError, // Returned if there is whitepace before the first token on the same line
-    TooFewHeaderTokensError, // Returned if there are less than 2 tokens after $header statement
     DuplicateSymbolError, // Returned if an added symbol (const, var or label) exists in the database already
     // EmptyConstStatementError: Also used when parsing mmp files
     TooManyConstStatementsError, // Returned if there is more than one const statement
     // EmptyVarStatementError: Also used when parsing mmp files
     // FloatHypStatementFormatError: Also used when parsing mmp files
-    InvalidHeaderPathStringError, // Returned if the token after $header is not a valid Headerpath
     MultipleMmpLabelsError, // Returned if there are more than one $theorem, $axiom or $header statements
-    MissingTheoremLabelError, // Returned if there is a $theorem statement without a follow up token
-    TooManyTheoremLabelTokensError, // Returned if there is a $theorem statement with too many follow up tokens
+    TooFewHeaderTokensError, // Returned if there are less than 2 tokens after $header statement
+    InvalidHeaderPathFormatError, // Returned if the token after $header does not have the format of a valid Headerpath
+    InvalidHeaderPathError, // Returned if the token after $header does not resolve to a valid Headerpath
+    MissingCommentPathError, // Returned if there is a $comment statement without a follow up token
+    TooManyCommentPathTokensError, // Returned if there is a $comment statement with too many follow up tokens
+    InvalidCommentPathFormatError, // Returned if the token after $header does not have the format of a valid Headerpath
     MissingAxiomLabelError, // Returned if there is a $axiom statement without a follow up token
     TooManyAxiomLabelTokensError, // Returned if there is a $axiom statement with too many follow up tokens
+    MissingTheoremLabelError, // Returned if there is a $theorem statement without a follow up token
+    TooManyTheoremLabelTokensError, // Returned if there is a $theorem statement with too many follow up tokens
     InvalidMmpStepPrefixFormatError, // Returned if there is an invalid mmp step prefix, such as "x:x:x:x" or "x:x"
-    InvalidMmpStepNameError, // Returned if there is an invalid mmp step name, such as "", or one containing ","
+    InvalidMmpStepNameError, // Returned if there is an invalid mmp step name, such as "", or not alphanumeric
+    InvalidMmpStepNameStartsWithHError,
     HypNameDoesntExistError, // Returned if there is an mmp step with an hypothesis name not belonging to any previous step
     MissingMmpStepRefError,  // Returned if there is an mmp step with an empty ref
     InvalidMmpStepForAxiomError, // Returned when adding an axiom and the mmp steps do not follow the required format
     MissingMmpStepsError,        // Returned if there are no mmp steps when adding theorem/axiom
     MissingQedStepError,         // Returned if there is no qed step, but a $thereom statement
     DuplicateStepNameError,      // Returned if there is a duplicate step name
+    DuplicateHypLabelsError,     // Returned if there are two hypotheses with the same label
     TheoremLabelNotFoundError,   // Returned if a theorem label in a mmp step prefix does not exist
     MmpStepMissingHypError,      // Returned if an mmp step has too few hyps
     HypothesisWithHypsError,     // Returned if an mmp hypothesis step has hypothesis itself

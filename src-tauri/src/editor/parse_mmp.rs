@@ -526,13 +526,13 @@ fn add_header_to_database(
         .ok_or(Error::InternalLogicError)?;
 
     let mut header_path =
-        HeaderPath::from_str(&header_path_string).or(Err(Error::InvalidHeaderPathStringError))?;
+        HeaderPath::from_str(&header_path_string).ok_or(Error::InvalidHeaderPathFormatError)?;
 
     let last_header_index = header_path.path.pop().ok_or(Error::InternalLogicError)?;
 
     let header = header_path
         .resolve_mut(&mut mm_data.database_header)
-        .ok_or(Error::InvalidHeaderPathStringError)?;
+        .ok_or(Error::InvalidHeaderPathError)?;
 
     if last_header_index < header.subheaders.len() {
         header
@@ -547,7 +547,7 @@ fn add_header_to_database(
             subheaders: Vec::new(),
         });
     } else if last_header_index > header.subheaders.len() {
-        return Err(Error::InvalidHeaderPathStringError);
+        return Err(Error::InvalidHeaderPathError);
     }
 
     Ok(())
