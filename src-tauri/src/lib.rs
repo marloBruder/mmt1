@@ -130,6 +130,7 @@ pub enum Error {
     FileWriteError,
 
     // Parsing mmp file errors
+    NonAsciiSymbolError, // Returned if there is a non ascii symbol in the text
     WhitespaceBeforeFirstTokenError, // Returned if there is whitepace before the first token on the same line
     DuplicateSymbolError, // Returned if an added symbol (const, var or label) exists in the database already
     // EmptyConstStatementError: Also used when parsing mmp files
@@ -149,7 +150,7 @@ pub enum Error {
     TooManyTheoremLabelTokensError, // Returned if there is a $theorem statement with too many follow up tokens
     InvalidMmpStepPrefixFormatError, // Returned if there is an invalid mmp step prefix, such as "x:x:x:x" or "x:x"
     InvalidMmpStepNameError, // Returned if there is an invalid mmp step name, such as "", or not alphanumeric
-    InvalidMmpStepNameStartsWithHError,
+    InvalidMmpStepNameStartsWithHError, // Returned if there is a mmp step name that is invalid because it starts with h
     HypNameDoesntExistError, // Returned if there is an mmp step with an hypothesis name not belonging to any previous step
     MissingMmpStepRefError,  // Returned if there is an mmp step with an empty ref
     InvalidMmpStepForAxiomError, // Returned when adding an axiom and the mmp steps do not follow the required format

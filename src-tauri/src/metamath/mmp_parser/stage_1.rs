@@ -3,6 +3,20 @@ use crate::{editor::on_edit::DetailedError, Error};
 use super::{MmpParserStage0, MmpParserStage1, MmpParserStage1Fail, MmpParserStage1Success};
 
 pub fn stage_1(stage_0: MmpParserStage0) -> Result<MmpParserStage1, Error> {
+    if !stage_0.text.is_ascii() {
+        let text_end_pos = text_end_pos(stage_0.text);
+
+        return Ok(MmpParserStage1::Fail(MmpParserStage1Fail {
+            error: DetailedError {
+                error_type: Error::NonAsciiSymbolError,
+                start_line_number: 1,
+                start_column: 1,
+                end_line_number: text_end_pos.0,
+                end_column: text_end_pos.1 + 1,
+            },
+        }));
+    }
+
     let mut statements = Vec::new();
 
     let mut text_i: usize = 0;
@@ -65,4 +79,20 @@ pub fn stage_1(stage_0: MmpParserStage0) -> Result<MmpParserStage1, Error> {
         number_of_lines_before_first_statement,
         statements,
     }))
+}
+
+fn text_end_pos(text: &str) -> (u32, u32) {
+    let mut column = 0;
+    let mut line = 1;
+
+    for char in text.chars() {
+        if char == '\n' {
+            line += 1;
+            column = 0;
+        } else {
+            column += 1;
+        }
+    }
+
+    (line, column)
 }

@@ -2,6 +2,9 @@ import monaco from "$lib/monaco/monaco";
 
 export function getErrorMessage(errorType: string): string {
   switch (errorType) {
+    case "NonAsciiSymbolError": {
+      return ".mmp files may only contain ASCII tokens.";
+    }
     case "WhitespaceBeforeFirstTokenError": {
       return "Statements can't have trailing whitespace.\n\n(This error only shows before the first statement, because other lines with trailing whitespace continue the previous statement.)";
     }
