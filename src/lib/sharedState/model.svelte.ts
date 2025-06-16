@@ -80,7 +80,20 @@ export interface HtmlRepresentation {
   html: string;
 }
 
-export type DatabaseElementPageData = TheoremPageData | FloatingHypothesisPageData;
+export type DatabaseElementPageData = FloatingHypothesisPageData | TheoremPageData;
+
+export interface ConstantsPageData {
+  constants: Constant[];
+}
+
+export interface VariablesPageData {
+  variables: [Variable, string][];
+}
+
+export interface FloatingHypothesisPageData {
+  floatingHypothesis: FloatingHypothesis;
+  discriminator: "FloatingHypothesisPageData";
+}
 
 export interface TheoremPageData {
   theorem: Theorem;
@@ -89,11 +102,6 @@ export interface TheoremPageData {
   lastTheoremLabel: string | null;
   nextTheoremLabel: string | null;
   discriminator: "TheoremPageData";
-}
-
-export interface FloatingHypothesisPageData {
-  floatingHypothesis: FloatingHypothesis;
-  discriminator: "FloatingHypothesisPageData";
 }
 
 export interface ProofLine {

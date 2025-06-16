@@ -145,8 +145,28 @@ pub struct HtmlRepresentation {
 }
 
 pub enum DatabaseElementPageData {
-    Theorem(TheoremPageData),
     FloatingHypothesis(FloatingHypothesisPageData),
+    Theorem(TheoremPageData),
+}
+
+#[derive(Serialize)]
+pub struct HeaderPageData {
+    pub title: String,
+    pub description: String,
+}
+
+#[derive(Serialize)]
+pub struct ConstantsPageData {
+    pub constants: Vec<Constant>,
+}
+
+#[derive(Serialize)]
+pub struct VariablesPageData {
+    pub variables: Vec<(Variable, String)>,
+}
+
+pub struct FloatingHypothesisPageData {
+    pub floating_hypothesis: FloatingHypothesis,
 }
 
 pub struct TheoremPageData {
@@ -155,10 +175,6 @@ pub struct TheoremPageData {
     pub proof_lines: Vec<ProofLine>,
     pub last_theorem_label: Option<String>,
     pub next_theorem_label: Option<String>,
-}
-
-pub struct FloatingHypothesisPageData {
-    pub floating_hypothesis: FloatingHypothesis,
 }
 
 #[derive(Serialize)]
