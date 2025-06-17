@@ -3,14 +3,15 @@ use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    editor::unify::LocateAfterRef,
     metamath::export::{write_text_wrapped, write_text_wrapped_no_whitespace},
+    metamath::mmp_parser::LocateAfterRef,
     util::{
         self,
         earley_parser_optimized::{self, EarleyOptimizedData, Grammar, GrammarRule},
         header_iterators::{
             ConstantIterator, FloatingHypothesisIterator, HeaderIterator,
-            HeaderLocateAfterIterator, TheoremIterator, VariableIterator,
+            HeaderLocateAfterIterator, TheoremIterator, TheoremLocateAfterIterator,
+            VariableIterator,
         },
     },
     Error,
@@ -1136,9 +1137,16 @@ impl Header {
 
     pub fn locate_after_iter<'a, 'b>(
         &'a self,
-        locate_after: LocateAfterRef<'b>,
+        locate_after: Option<LocateAfterRef<'b>>,
     ) -> HeaderLocateAfterIterator<'a, 'b> {
         HeaderLocateAfterIterator::new(self, locate_after)
+    }
+
+    pub fn theorem_locate_after_iter<'a, 'b>(
+        &'a self,
+        locate_after: Option<LocateAfterRef<'b>>,
+    ) -> TheoremLocateAfterIterator<'a, 'b> {
+        TheoremLocateAfterIterator::new(self, locate_after)
     }
 }
 

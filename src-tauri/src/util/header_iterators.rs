@@ -1,7 +1,7 @@
 use std::iter::FilterMap;
 
 use crate::{
-    editor::unify::LocateAfterRef,
+    metamath::mmp_parser::LocateAfterRef,
     model::{
         Constant, DatabaseElement, FloatingHypothesis, Header,
         Statement::{self, *},
@@ -219,14 +219,14 @@ impl<'a> Iterator for TheoremIterator<'a> {
 
 pub struct HeaderLocateAfterIterator<'a, 'b> {
     inner: HeaderIterator<'a>,
-    locate_after: LocateAfterRef<'b>,
+    locate_after: Option<LocateAfterRef<'b>>,
     found: bool,
 }
 
 impl<'a, 'b> HeaderLocateAfterIterator<'a, 'b> {
     pub fn new(
         top_header: &'a Header,
-        locate_after: LocateAfterRef<'b>,
+        locate_after: Option<LocateAfterRef<'b>>,
     ) -> HeaderLocateAfterIterator<'a, 'b> {
         HeaderLocateAfterIterator {
             inner: top_header.iter(),
@@ -247,8 +247,8 @@ impl<'a, 'b> Iterator for HeaderLocateAfterIterator<'a, 'b> {
         let next_element = self.inner.next()?;
 
         match (&next_element, &self.locate_after) {
-            (DatabaseElement::Header(_header, _), _) if false => {}
-            (DatabaseElement::Statement(statement), la) => match (statement, la) {
+            (DatabaseElement::Header(_header, _), Some(_la)) if false => {}
+            (DatabaseElement::Statement(statement), Some(la)) => match (statement, la) {
                 (Statement::CommentStatement(_comment), _) if false => {}
                 (
                     Statement::ConstantStatement(constants),
@@ -285,5 +285,40 @@ impl<'a, 'b> Iterator for HeaderLocateAfterIterator<'a, 'b> {
         }
 
         Some(next_element)
+    }
+}
+
+pub struct TheoremLocateAfterIterator<'a, 'b> {
+    inner: FilterMap<
+        HeaderLocateAfterIterator<'a, 'b>,
+        Box<dyn FnMut(DatabaseElement) -> Option<&Theorem>>,
+    >,
+}
+
+impl<'a, 'b> TheoremLocateAfterIterator<'a, 'b> {
+    pub fn new(
+        top_header: &'a Header,
+        locate_after: Option<LocateAfterRef<'b>>,
+    ) -> TheoremLocateAfterIterator<'a, 'b> {
+        TheoremLocateAfterIterator {
+            inner: top_header
+                .locate_after_iter(locate_after)
+                .filter_map(Box::new(|e| {
+                    if let DatabaseElement::Statement(s) = e {
+                        if let TheoremStatement(theorem) = s {
+                            return Some(theorem);
+                        }
+                    }
+                    None
+                })),
+        }
+    }
+}
+
+impl<'a, 'b> Iterator for TheoremLocateAfterIterator<'a, 'b> {
+    type Item = &'a Theorem;
+
+    fn next(&mut self) -> Option<&'a Theorem> {
+        self.inner.next()
     }
 }
