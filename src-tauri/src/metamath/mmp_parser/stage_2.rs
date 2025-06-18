@@ -129,8 +129,8 @@ pub fn stage_2(stage_1: MmpParserStage1Success) -> Result<MmpParserStage2, Error
                     });
                 }
 
-                if let Some(header_pos) = token_iter.next() {
-                    if HeaderPath::from_str(header_pos).is_none() {
+                if let Some(header_path) = token_iter.next() {
+                    if HeaderPath::from_str(header_path).is_none() {
                         let second_token_start_pos = nth_token_start_pos(statement_str, 1);
                         let second_token_end_pos = nth_token_end_pos(statement_str, 1);
 
@@ -168,7 +168,7 @@ pub fn stage_2(stage_1: MmpParserStage1Success) -> Result<MmpParserStage2, Error
 
                         let title = &statement_str[(statement_i + 1)..statement_str.len()];
 
-                        label = Some(MmpLabel::Header { header_pos, title });
+                        label = Some(MmpLabel::Header { header_path, title });
 
                         statements.push(MmpStatement::MmpLabel);
                     } else {
@@ -207,10 +207,10 @@ pub fn stage_2(stage_1: MmpParserStage1Success) -> Result<MmpParserStage2, Error
                     });
                 }
 
-                if let Some(comment_pos) = token_iter.next() {
-                    if let Some((header_path, comment_num)) = comment_pos.split_once('#') {
+                if let Some(comment_path) = token_iter.next() {
+                    if let Some((header_path, comment_num)) = comment_path.split_once('#') {
                         if HeaderPath::from_str(header_path).is_none()
-                            || comment_num.parse::<u32>().is_err()
+                            || comment_num.parse::<usize>().is_err()
                             || comment_num.contains('+')
                         {
                             let second_token_start_pos = nth_token_start_pos(statement_str, 1);
@@ -237,7 +237,7 @@ pub fn stage_2(stage_1: MmpParserStage1Success) -> Result<MmpParserStage2, Error
                         });
                     }
 
-                    label = Some(MmpLabel::Comment(comment_pos));
+                    label = Some(MmpLabel::Comment(comment_path));
                 } else {
                     errors.push(DetailedError {
                         error_type: Error::MissingCommentPathError,
@@ -516,7 +516,7 @@ pub fn stage_2(stage_1: MmpParserStage1Success) -> Result<MmpParserStage2, Error
                 }
 
                 if let Some(locate_after_variable) = token_iter.next() {
-                    locate_after = Some(LocateAfterRef::LocateAfterConst(locate_after_variable));
+                    locate_after = Some(LocateAfterRef::LocateAfterVar(locate_after_variable));
                 } else {
                     errors.push(DetailedError {
                         error_type: Error::TooFewLocateAfterVarTokensError,
@@ -774,7 +774,7 @@ pub fn stage_2(stage_1: MmpParserStage1Success) -> Result<MmpParserStage2, Error
 }
 
 // Returns (a, b), where a is the line number and b is the column number of the last non-whitespace character
-fn last_non_whitespace_pos(str: &str) -> (u32, u32) {
+pub fn last_non_whitespace_pos(str: &str) -> (u32, u32) {
     let mut last_non_whitespace_line_number = 1;
     let mut last_non_whitespace_column_number = 1;
 
@@ -801,7 +801,7 @@ fn last_non_whitespace_pos(str: &str) -> (u32, u32) {
     )
 }
 
-fn nth_token_start_pos(str: &str, n: u32) -> (u32, u32) {
+pub fn nth_token_start_pos(str: &str, n: u32) -> (u32, u32) {
     let mut tokens_seen = 0;
     let mut seeing_token = false;
 
@@ -834,7 +834,7 @@ fn nth_token_start_pos(str: &str, n: u32) -> (u32, u32) {
     (line_number, column_number)
 }
 
-fn nth_token_end_pos(str: &str, n: u32) -> (u32, u32) {
+pub fn nth_token_end_pos(str: &str, n: u32) -> (u32, u32) {
     let mut tokens_seen = 0;
     let mut seeing_token = false;
 
@@ -868,7 +868,7 @@ fn nth_token_end_pos(str: &str, n: u32) -> (u32, u32) {
     (line_number, column_number)
 }
 
-fn new_lines_in_str(str: &str) -> u32 {
+pub fn new_lines_in_str(str: &str) -> u32 {
     str.chars().filter(|c| *c == '\n').count() as u32
 }
 

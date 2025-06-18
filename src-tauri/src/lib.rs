@@ -77,7 +77,7 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Error {
     DatabaseExistsError,
     CreateDatabaseError,
@@ -142,11 +142,12 @@ pub enum Error {
     MultipleMmpLabelsError, // Returned if there are more than one $theorem, $axiom or $header statements
     TooFewHeaderTokensError, // Returned if there are less than 2 tokens after $header statement
     InvalidHeaderPathFormatError, // Returned if the token after $header does not have the format of a valid Headerpath
-    InvalidHeaderPathError, // Returned if the token after $header does not resolve to a valid Headerpath
+    InvalidHeaderPathError, // Returned if the token after $header is not a valid new header path in the database
     MissingCommentPathError, // Returned if there is a $comment statement without a follow up token
     TooManyCommentPathTokensError, // Returned if there is a $comment statement with too many follow up tokens
-    InvalidCommentPathFormatError, // Returned if the token after $header does not have the format of a valid Headerpath
-    MissingAxiomLabelError, // Returned if there is a $axiom statement without a follow up token
+    InvalidCommentPathFormatError, // Returned if the token after $comment does not have the format of a valid comment path
+    InvalidCommentPathError, // Returned if the token after $comment is not a valid new comment path in the database
+    MissingAxiomLabelError,  // Returned if there is a $axiom statement without a follow up token
     TooManyAxiomLabelTokensError, // Returned if there is a $axiom statement with too many follow up tokens
     MissingTheoremLabelError, // Returned if there is a $theorem statement without a follow up token
     TooManyTheoremLabelTokensError, // Returned if there is a $theorem statement with too many follow up tokens
@@ -155,6 +156,7 @@ pub enum Error {
     InvalidMmpStepNameStartsWithHError, // Returned if there is a mmp step name that is invalid because it starts with h
     HypNameDoesntExistError, // Returned if there is an mmp step with an hypothesis name not belonging to any previous step
     MissingMmpStepRefError,  // Returned if there is an mmp step with an empty ref
+    MmpStepRefNotALabelError, // Returned if there is an mmp step which ref is not a valid label
     InvalidMmpStepForAxiomError, // Returned when adding an axiom and the mmp steps do not follow the required format
     MissingMmpStepsError,        // Returned if there are no mmp steps when adding theorem/axiom
     MissingQedStepError,         // Returned if there is no qed step, but a $thereom statement
@@ -180,6 +182,13 @@ pub enum Error {
     MissingMmpStepExpressionError, // Returned if a mmp step is missing it's expression
     InvalidDollarTokenError, // Returned if there is a statement that starts with $ not followed by a vaild statement type
     StatementOutOfPlaceError, // Returned if there is a statement out of place, for example if there is a $v and a $c statement
+    ConstStatementOutOfPlaceError, // Returned if there is a constant statement when there shouldn't be
+    VarStatementOutOfPlaceError, // Returned if there is a variable statement when there shouldn't be
+    FloatHypStatementsOutOfPlaceError, // Returned if there is a floating hypothesis when there shouldn't be
+    AllowDiscouragedOutOfPlaceError, // Returned if there is an allow discouraged statement when there shouldn't be
+    DistinctVarOutOfPlaceError, // Returned if there is a distinct variable statement when there shouldn't be
+    LocateAfterOutOfPlaceError, // Returned if there is a locate after statement when there shouldn't be
+    ProofLinesOutOfPlaceError,  // Returned if there are proof lines when there shouldn't be
 
     MissingExpressionError, // Returned when converting str to number vec and skipping the first, but the str is empty
 

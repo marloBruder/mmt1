@@ -761,7 +761,10 @@ fn add_statement_locate_after_file(
     statement: &Statement,
 ) -> Result<(), Error> {
     let mut mm_parser = MmParser::new(file_path)?;
-    let header_iter = header.locate_after_iter(*locate_after);
+    // REAL CODE:
+    // let header_iter = header.locate_after_iter(*locate_after);
+    // TEMP CODE: (can't use locate_after_iter rn)
+    let header_iter = header.iter();
 
     for database_element in header_iter {
         match database_element {
