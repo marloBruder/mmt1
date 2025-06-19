@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
@@ -28,7 +28,6 @@ pub struct MetamathData {
 
 #[derive(Debug, Default)]
 pub struct OptimizedMetamathData {
-    pub variables: HashSet<String>,
     pub floating_hypotheses: Vec<FloatingHypothesis>,
     pub theorem_amount: u32,
     pub theorem_data: HashMap<String, OptimizedTheoremData>,
@@ -279,6 +278,14 @@ impl MetamathData {
                 DatabaseElement::Header(_, _) => false,
             })
             .is_none()
+    }
+
+    pub fn is_variable(&self, str: &str) -> bool {
+        self.optimized_data
+            .symbol_number_mapping
+            .numbers
+            .get(str)
+            .is_some_and(|&n| self.optimized_data.symbol_number_mapping.is_variable(n))
     }
 
     pub fn calc_optimized_theorem_data(&mut self) -> Result<(), Error> {

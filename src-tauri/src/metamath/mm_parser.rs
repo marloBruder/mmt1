@@ -169,11 +169,6 @@ impl MmParser {
             database_header: self.database_header,
             html_representations: self.html_representations,
             optimized_data: OptimizedMetamathData {
-                variables: self
-                    .active_vars
-                    .into_iter()
-                    .next()
-                    .ok_or(Error::InternalLogicError)?,
                 floating_hypotheses: self
                     .active_float_hyps
                     .into_iter()

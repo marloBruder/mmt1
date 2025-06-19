@@ -656,7 +656,7 @@ fn calc_step_application<'a>(
             .statement
             .as_str();
 
-        if tokens.len() == 2 && tokens[0] != "|-" && is_variable(&tokens[1], metamath_data) {
+        if tokens.len() == 2 && tokens[0] != "|-" && metamath_data.is_variable(tokens[1]) {
             if tokens[0] != stack_str.split_whitespace().next().unwrap() {
                 return Err(Error::InvalidProofError);
             }
@@ -705,10 +705,6 @@ fn statement_as_string_without_typecode(statement: &str) -> String {
 
     res.pop();
     res
-}
-
-fn is_variable(symbol: &str, metamath_data: &MetamathData) -> bool {
-    metamath_data.optimized_data.variables.contains(symbol)
 }
 
 fn calc_proof_steps_and_numbers_uncompressed(
@@ -963,7 +959,7 @@ fn get_variables_from_statement<'a>(
 ) -> Vec<&'a str> {
     let mut vars = Vec::new();
     for token in statement.split_whitespace() {
-        if !vars.contains(&token) && is_variable(token, metamath_data) {
+        if !vars.contains(&token) && metamath_data.is_variable(token) {
             vars.push(token);
         }
     }
