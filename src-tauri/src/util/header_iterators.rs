@@ -323,66 +323,172 @@ impl<'a, 'b> Iterator for TheoremLocateAfterIterator<'a, 'b> {
     }
 }
 
-pub struct MathSymbolLocateAfterIterator<'a, 'b> {
+// pub struct MathSymbolLocateAfterIterator<'a, 'b> {
+//     inner: FilterMap<
+//         HeaderLocateAfterIterator<'a, 'b>,
+//         Box<dyn FnMut(DatabaseElement) -> Option<Vec<&str>>>,
+//     >,
+//     curr_math_symbol_vec: Option<Vec<&'a str>>,
+//     next_symbol_i: usize,
+// }
+
+// impl<'a, 'b> MathSymbolLocateAfterIterator<'a, 'b> {
+//     pub fn new(
+//         top_header: &'a Header,
+//         locate_after: Option<LocateAfterRef<'b>>,
+//     ) -> MathSymbolLocateAfterIterator<'a, 'b> {
+//         MathSymbolLocateAfterIterator {
+//             inner: top_header
+//                 .locate_after_iter(locate_after)
+//                 .filter_map(Box::new(|e| {
+//                     if let DatabaseElement::Statement(s) = e {
+//                         if let ConstantStatement(constants) = s {
+//                             return Some(constants.iter().map(|c| &*c.symbol).collect());
+//                         } else if let VariableStatement(variables) = s {
+//                             return Some(variables.iter().map(|v| &*v.symbol).collect());
+//                         }
+//                     }
+//                     None
+//                 })),
+//             curr_math_symbol_vec: None,
+//             next_symbol_i: 0,
+//         }
+//     }
+// }
+
+// impl<'a, 'b> Iterator for MathSymbolLocateAfterIterator<'a, 'b> {
+//     type Item = &'a str;
+
+//     fn next(&mut self) -> Option<&'a str> {
+//         if self.curr_math_symbol_vec.is_none() {
+//             self.curr_math_symbol_vec = Some(self.inner.next()?);
+//         }
+
+//         if self.next_symbol_i < self.curr_math_symbol_vec.as_ref().unwrap().len() {
+//             self.next_symbol_i += 1;
+//             return self
+//                 .curr_math_symbol_vec
+//                 .as_ref()
+//                 .unwrap()
+//                 .get(self.next_symbol_i - 1)
+//                 .map(|s| *s);
+//         }
+
+//         self.next_symbol_i = 0;
+//         self.curr_math_symbol_vec = Some(self.inner.next()?);
+//         while self.curr_math_symbol_vec.as_ref().unwrap().is_empty() {
+//             self.curr_math_symbol_vec = Some(self.inner.next()?);
+//         }
+//         self.curr_math_symbol_vec
+//             .as_ref()
+//             .unwrap()
+//             .get(0)
+//             .map(|s| *s)
+//     }
+// }
+
+pub struct ConstantLocateAfterIterator<'a, 'b> {
     inner: FilterMap<
         HeaderLocateAfterIterator<'a, 'b>,
-        Box<dyn FnMut(DatabaseElement) -> Option<Vec<&str>>>,
+        Box<dyn FnMut(DatabaseElement) -> Option<&Vec<Constant>>>,
     >,
-    curr_math_symbol_vec: Option<Vec<&'a str>>,
-    next_symbol_i: usize,
+    curr_const_vec: Option<&'a Vec<Constant>>,
+    next_const_i: usize,
 }
 
-impl<'a, 'b> MathSymbolLocateAfterIterator<'a, 'b> {
+impl<'a, 'b> ConstantLocateAfterIterator<'a, 'b> {
     pub fn new(
         top_header: &'a Header,
         locate_after: Option<LocateAfterRef<'b>>,
-    ) -> MathSymbolLocateAfterIterator<'a, 'b> {
-        MathSymbolLocateAfterIterator {
+    ) -> ConstantLocateAfterIterator<'a, 'b> {
+        ConstantLocateAfterIterator {
             inner: top_header
                 .locate_after_iter(locate_after)
                 .filter_map(Box::new(|e| {
                     if let DatabaseElement::Statement(s) = e {
                         if let ConstantStatement(constants) = s {
-                            return Some(constants.iter().map(|c| &*c.symbol).collect());
-                        } else if let VariableStatement(variables) = s {
-                            return Some(variables.iter().map(|v| &*v.symbol).collect());
+                            return Some(constants);
                         }
                     }
                     None
                 })),
-            curr_math_symbol_vec: None,
-            next_symbol_i: 0,
+            curr_const_vec: None,
+            next_const_i: 0,
         }
     }
 }
 
-impl<'a, 'b> Iterator for MathSymbolLocateAfterIterator<'a, 'b> {
-    type Item = &'a str;
+impl<'a, 'b> Iterator for ConstantLocateAfterIterator<'a, 'b> {
+    type Item = &'a Constant;
 
-    fn next(&mut self) -> Option<&'a str> {
-        if self.curr_math_symbol_vec.is_none() {
-            self.curr_math_symbol_vec = Some(self.inner.next()?);
+    fn next(&mut self) -> Option<&'a Constant> {
+        if self.curr_const_vec.is_none() {
+            self.curr_const_vec = Some(self.inner.next()?);
         }
 
-        if self.next_symbol_i < self.curr_math_symbol_vec.as_ref().unwrap().len() {
-            self.next_symbol_i += 1;
-            return self
-                .curr_math_symbol_vec
-                .as_ref()
-                .unwrap()
-                .get(self.next_symbol_i - 1)
-                .map(|s| *s);
+        if self.next_const_i < self.curr_const_vec.unwrap().len() {
+            self.next_const_i += 1;
+            return self.curr_const_vec.unwrap().get(self.next_const_i - 1);
         }
 
-        self.next_symbol_i = 0;
-        self.curr_math_symbol_vec = Some(self.inner.next()?);
-        while self.curr_math_symbol_vec.as_ref().unwrap().is_empty() {
-            self.curr_math_symbol_vec = Some(self.inner.next()?);
+        self.next_const_i = 0;
+        self.curr_const_vec = Some(self.inner.next()?);
+        while self.curr_const_vec.unwrap().is_empty() {
+            self.curr_const_vec = Some(self.inner.next()?);
         }
-        self.curr_math_symbol_vec
-            .as_ref()
-            .unwrap()
-            .get(0)
-            .map(|s| *s)
+        self.curr_const_vec.unwrap().get(0)
+    }
+}
+
+pub struct VariableLocateAfterIterator<'a, 'b> {
+    inner: FilterMap<
+        HeaderLocateAfterIterator<'a, 'b>,
+        Box<dyn FnMut(DatabaseElement) -> Option<&Vec<Variable>>>,
+    >,
+    curr_var_vec: Option<&'a Vec<Variable>>,
+    next_var_i: usize,
+}
+
+impl<'a, 'b> VariableLocateAfterIterator<'a, 'b> {
+    pub fn new(
+        top_header: &'a Header,
+        locate_after: Option<LocateAfterRef<'b>>,
+    ) -> VariableLocateAfterIterator<'a, 'b> {
+        VariableLocateAfterIterator {
+            inner: top_header
+                .locate_after_iter(locate_after)
+                .filter_map(Box::new(|e| {
+                    if let DatabaseElement::Statement(s) = e {
+                        if let VariableStatement(variables) = s {
+                            return Some(variables);
+                        }
+                    }
+                    None
+                })),
+            curr_var_vec: None,
+            next_var_i: 0,
+        }
+    }
+}
+
+impl<'a, 'b> Iterator for VariableLocateAfterIterator<'a, 'b> {
+    type Item = &'a Variable;
+
+    fn next(&mut self) -> Option<&'a Variable> {
+        if self.curr_var_vec.is_none() {
+            self.curr_var_vec = Some(self.inner.next()?);
+        }
+
+        if self.next_var_i < self.curr_var_vec.unwrap().len() {
+            self.next_var_i += 1;
+            return self.curr_var_vec.unwrap().get(self.next_var_i - 1);
+        }
+
+        self.next_var_i = 0;
+        self.curr_var_vec = Some(self.inner.next()?);
+        while self.curr_var_vec.unwrap().is_empty() {
+            self.curr_var_vec = Some(self.inner.next()?);
+        }
+        self.curr_var_vec.unwrap().get(0)
     }
 }

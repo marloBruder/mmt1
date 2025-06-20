@@ -11,9 +11,9 @@ use crate::{
         self,
         earley_parser_optimized::{self, EarleyOptimizedData, Grammar, GrammarRule},
         header_iterators::{
-            ConstantIterator, FloatingHypothesisIterator, HeaderIterator,
-            HeaderLocateAfterIterator, MathSymbolLocateAfterIterator, TheoremIterator,
-            TheoremLocateAfterIterator, VariableIterator,
+            ConstantIterator, ConstantLocateAfterIterator, FloatingHypothesisIterator,
+            HeaderIterator, HeaderLocateAfterIterator, TheoremIterator, TheoremLocateAfterIterator,
+            VariableIterator, VariableLocateAfterIterator,
         },
     },
     Error,
@@ -234,52 +234,49 @@ pub struct TheoremListEntry {
 }
 
 impl MetamathData {
-    pub fn valid_new_symbols(&self, symbols: &Vec<&str>) -> bool {
-        self.database_header
-            .iter()
-            .find(|c| match c {
-                DatabaseElement::Statement(s) => match s {
-                    Statement::CommentStatement(_) => false,
-                    Statement::ConstantStatement(consts) => {
-                        for c in consts {
-                            for symbol in symbols {
-                                if &c.symbol == symbol {
-                                    return true;
-                                }
-                            }
-                        }
-                        false
-                    }
-                    Statement::VariableStatement(vars) => {
-                        for v in vars {
-                            for symbol in symbols {
-                                if &v.symbol == symbol {
-                                    return true;
-                                }
-                            }
-                        }
-                        false
-                    }
-                    Statement::FloatingHypohesisStatement(fh) => {
+    pub fn symbols_not_already_taken(&self, symbols: &Vec<&str>) -> bool {
+        self.database_header.iter().all(|c| match c {
+            DatabaseElement::Statement(s) => match s {
+                Statement::CommentStatement(_) => true,
+                Statement::ConstantStatement(consts) => {
+                    for c in consts {
                         for symbol in symbols {
-                            if &fh.label == symbol {
-                                return true;
+                            if &c.symbol == symbol {
+                                return false;
                             }
                         }
-                        false
                     }
-                    Statement::TheoremStatement(t) => {
+                    true
+                }
+                Statement::VariableStatement(vars) => {
+                    for v in vars {
                         for symbol in symbols {
-                            if &t.label == symbol {
-                                return true;
+                            if &v.symbol == symbol {
+                                return false;
                             }
                         }
-                        false
                     }
-                },
-                DatabaseElement::Header(_, _) => false,
-            })
-            .is_none()
+                    true
+                }
+                Statement::FloatingHypohesisStatement(fh) => {
+                    for symbol in symbols {
+                        if &fh.label == symbol {
+                            return false;
+                        }
+                    }
+                    true
+                }
+                Statement::TheoremStatement(t) => {
+                    for symbol in symbols {
+                        if &t.label == symbol {
+                            return false;
+                        }
+                    }
+                    true
+                }
+            },
+            DatabaseElement::Header(_, _) => true,
+        })
     }
 
     pub fn is_variable(&self, str: &str) -> bool {
@@ -1151,6 +1148,20 @@ impl Header {
         HeaderLocateAfterIterator::new(self, locate_after)
     }
 
+    pub fn constant_locate_after_iter<'a, 'b>(
+        &'a self,
+        locate_after: Option<LocateAfterRef<'b>>,
+    ) -> ConstantLocateAfterIterator<'a, 'b> {
+        ConstantLocateAfterIterator::new(self, locate_after)
+    }
+
+    pub fn variable_locate_after_iter<'a, 'b>(
+        &'a self,
+        locate_after: Option<LocateAfterRef<'b>>,
+    ) -> VariableLocateAfterIterator<'a, 'b> {
+        VariableLocateAfterIterator::new(self, locate_after)
+    }
+
     pub fn theorem_locate_after_iter<'a, 'b>(
         &'a self,
         locate_after: Option<LocateAfterRef<'b>>,
@@ -1158,12 +1169,12 @@ impl Header {
         TheoremLocateAfterIterator::new(self, locate_after)
     }
 
-    pub fn math_symbol_locate_after_iter<'a, 'b>(
-        &'a self,
-        locate_after: Option<LocateAfterRef<'b>>,
-    ) -> MathSymbolLocateAfterIterator<'a, 'b> {
-        MathSymbolLocateAfterIterator::new(self, locate_after)
-    }
+    // pub fn math_symbol_locate_after_iter<'a, 'b>(
+    //     &'a self,
+    //     locate_after: Option<LocateAfterRef<'b>>,
+    // ) -> MathSymbolLocateAfterIterator<'a, 'b> {
+    //     MathSymbolLocateAfterIterator::new(self, locate_after)
+    // }
 }
 
 impl HeaderPath {
