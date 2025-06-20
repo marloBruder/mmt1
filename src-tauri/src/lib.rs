@@ -120,8 +120,6 @@ pub enum Error {
     TypesettingFormatError,     // Returned if there is an format error in a typesetting comment
     ExpressionParseError,       // Returned if an expression could not be successfully parsed
 
-    LabelAlreadyExistsError,
-
     InternalLogicError,
     InvaildArgumentError,
     InvalidDatabaseDataError,
@@ -139,6 +137,11 @@ pub enum Error {
     TooManyConstStatementsError, // Returned if there is more than one const statement
     // EmptyVarStatementError: Also used when parsing mmp files
     // FloatHypStatementFormatError: Also used when parsing mmp files
+    LabelAlreadyExistsError, // Returned if there is a floating hypothesis which label already exists
+    SymbolAlreadyExistsError, // Returned if you are adding a constant/variable which symbol already exists as a label or math symbol
+    InvalidMathSymbolError, // Returned if there is a symbol being declared that is not a valid math symbol
+    TwiceDeclaredMathSymbolError, // Returned if a symbol is declared twice in the same $c/$v statement
+    TypecodeNotAConstantError, // Returned if there is a floating hypothesis with a typecode that is not a constant
     MultipleMmpLabelsError, // Returned if there are more than one $theorem, $axiom or $header statements
     TooFewHeaderTokensError, // Returned if there are less than 2 tokens after $header statement
     InvalidHeaderPathFormatError, // Returned if the token after $header does not have the format of a valid Headerpath

@@ -8,7 +8,7 @@ use crate::{
         HtmlRepresentation, Hypothesis, MetamathData, OptimizedMetamathData, Statement, Theorem,
         Variable,
     },
-    AppState, Error,
+    util, AppState, Error,
 };
 
 #[tauri::command]
@@ -461,7 +461,7 @@ impl MmParser {
                 "$(" => self.advance_until_end_of_comment_without_return()?,
                 "$." => break,
                 const_symbol => {
-                    if !is_valid_math_symbol(const_symbol) {
+                    if !util::is_valid_math_symbol(const_symbol) {
                         return Err(Error::InvalidSymbolError);
                     }
 
@@ -502,7 +502,7 @@ impl MmParser {
                 "$(" => self.advance_until_end_of_comment_without_return()?,
                 "$." => break,
                 var_symbol => {
-                    if !is_valid_math_symbol(var_symbol) {
+                    if !util::is_valid_math_symbol(var_symbol) {
                         return Err(Error::InvalidSymbolError);
                     }
 
@@ -791,9 +791,4 @@ impl MmParser {
     pub fn get_scope(&self) -> usize {
         return self.scope;
     }
-}
-
-fn is_valid_math_symbol(symbol: &str) -> bool {
-    // range of printable non-whitespace ascii characters excluding '$'
-    symbol.bytes().all(|b| matches!(b, 33..=35 | 37..=126))
 }

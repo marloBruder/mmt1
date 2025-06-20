@@ -254,7 +254,7 @@ fn add_theorem_to_database(
         return Err(Error::MissingQedStepError);
     }
 
-    if !mm_data.valid_new_symbols(&new_symbols) {
+    if !mm_data.symbols_not_already_taken(&new_symbols) {
         return Err(Error::DuplicateSymbolError);
     }
 
@@ -487,7 +487,7 @@ fn add_axiom_to_database(
         symbols.push(&hypothesis.label)
     }
 
-    if !mm_data.valid_new_symbols(&symbols) {
+    if !mm_data.symbols_not_already_taken(&symbols) {
         return Err(Error::DuplicateSymbolError);
     }
 
@@ -563,7 +563,7 @@ fn add_floating_hypothesis_to_database(
         .next()
         .ok_or(Error::InternalLogicError)?;
 
-    if !mm_data.valid_new_symbols(&vec![&*flaoting_hypothesis.label]) {
+    if !mm_data.symbols_not_already_taken(&vec![&*flaoting_hypothesis.label]) {
         return Err(Error::DuplicateSymbolError);
     }
 
@@ -592,16 +592,12 @@ fn add_variables_to_database(
 
     let var_strs = variables.iter().map(|v| &*v.symbol).collect();
 
-    if !mm_data.valid_new_symbols(&var_strs) {
+    if !mm_data.symbols_not_already_taken(&var_strs) {
         return Err(Error::DuplicateSymbolError);
     }
 
     if !all_different_strs(&var_strs) {
         return Err(Error::DuplicateSymbolError);
-    }
-
-    for var in &variables {
-        mm_data.optimized_data.variables.insert(var.symbol.clone());
     }
 
     add_statement(
@@ -626,7 +622,7 @@ fn add_constants_to_database(
         .map(|c| &*c.symbol)
         .collect();
 
-    if !mm_data.valid_new_symbols(&const_strs) {
+    if !mm_data.symbols_not_already_taken(&const_strs) {
         return Err(Error::DuplicateSymbolError);
     }
 

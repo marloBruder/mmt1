@@ -603,7 +603,8 @@ pub fn stage_2(stage_1: MmpParserStage1Success) -> Result<MmpParserStage2, Error
                     prefix_step_name
                 };
 
-                if !is_valid_step_name(step_name) || step_name == "" {
+                if !is_valid_step_name(step_name) {
+                    // || step_name == "" {
                     errors.push(DetailedError {
                         error_type: Error::InvalidMmpStepNameError,
                         start_line_number: current_line,
@@ -613,15 +614,15 @@ pub fn stage_2(stage_1: MmpParserStage1Success) -> Result<MmpParserStage2, Error
                     });
                 }
 
-                if proof_lines.iter().any(|pl| pl.step_name == step_name) {
-                    errors.push(DetailedError {
-                        error_type: Error::DuplicateStepNameError,
-                        start_line_number: current_line,
-                        start_column: 1 + is_hypothesis as u32,
-                        end_line_number: current_line,
-                        end_column: is_hypothesis as u32 + step_name.len() as u32 + 1,
-                    });
-                }
+                // if proof_lines.iter().any(|pl| pl.step_name == step_name) {
+                //     errors.push(DetailedError {
+                //         error_type: Error::DuplicateStepNameError,
+                //         start_line_number: current_line,
+                //         start_column: 1 + is_hypothesis as u32,
+                //         end_line_number: current_line,
+                //         end_column: is_hypothesis as u32 + step_name.len() as u32 + 1,
+                //     });
+                // }
 
                 let hypotheses = if prefix_parts.len() == 3 {
                     *prefix_parts.get(1).ok_or(Error::InternalLogicError)?
@@ -629,34 +630,34 @@ pub fn stage_2(stage_1: MmpParserStage1Success) -> Result<MmpParserStage2, Error
                     ""
                 };
 
-                let mut hypotheses_parsed: Vec<Option<usize>> = Vec::new();
+                // let mut hypotheses_parsed: Vec<Option<usize>> = Vec::new();
 
-                if !hypotheses.is_empty() {
-                    let mut start_column = 1 + prefix_step_name.len() as u32 + 1;
-                    for hyp in hypotheses.split(',') {
-                        if hyp == "?" {
-                            hypotheses_parsed.push(None);
-                        } else {
-                            match proof_lines
-                                .iter()
-                                .enumerate()
-                                .find(|(_, pl)| pl.step_name == hyp)
-                            {
-                                Some((i, _)) => hypotheses_parsed.push(Some(i)),
-                                None => {
-                                    errors.push(DetailedError {
-                                        error_type: Error::HypNameDoesntExistError,
-                                        start_line_number: current_line,
-                                        start_column: start_column,
-                                        end_line_number: current_line,
-                                        end_column: start_column + hyp.len() as u32,
-                                    });
-                                }
-                            }
-                        }
-                        start_column += hyp.len() as u32 + 1;
-                    }
-                }
+                // if !hypotheses.is_empty() {
+                //     let mut start_column = 1 + prefix_step_name.len() as u32 + 1;
+                //     for hyp in hypotheses.split(',') {
+                //         if hyp == "?" {
+                //             hypotheses_parsed.push(None);
+                //         } else {
+                //             match proof_lines
+                //                 .iter()
+                //                 .enumerate()
+                //                 .find(|(_, pl)| pl.step_name == hyp)
+                //             {
+                //                 Some((i, _)) => hypotheses_parsed.push(Some(i)),
+                //                 None => {
+                //                     errors.push(DetailedError {
+                //                         error_type: Error::HypNameDoesntExistError,
+                //                         start_line_number: current_line,
+                //                         start_column: start_column,
+                //                         end_line_number: current_line,
+                //                         end_column: start_column + hyp.len() as u32,
+                //                     });
+                //                 }
+                //             }
+                //         }
+                //         start_column += hyp.len() as u32 + 1;
+                //     }
+                // }
 
                 let step_ref = if prefix_parts.len() == 3 {
                     *prefix_parts.get(2).ok_or(Error::InternalLogicError)?
@@ -666,23 +667,23 @@ pub fn stage_2(stage_1: MmpParserStage1Success) -> Result<MmpParserStage2, Error
                     ""
                 };
 
-                if is_hypothesis
-                    && step_ref != ""
-                    && proof_lines
-                        .iter()
-                        .any(|pl| pl.is_hypothesis && pl.step_ref == step_ref)
-                {
-                    let start_column =
-                        1 + prefix_step_name.len() as u32 + 1 + (prefix_parts.len() == 3) as u32;
+                // if is_hypothesis
+                //     && step_ref != ""
+                //     && proof_lines
+                //         .iter()
+                //         .any(|pl| pl.is_hypothesis && pl.step_ref == step_ref)
+                // {
+                //     let start_column =
+                //         1 + prefix_step_name.len() as u32 + 1 + (prefix_parts.len() == 3) as u32;
 
-                    errors.push(DetailedError {
-                        error_type: Error::DuplicateHypLabelsError,
-                        start_line_number: current_line,
-                        start_column: start_column,
-                        end_line_number: current_line,
-                        end_column: start_column + step_ref.len() as u32,
-                    });
-                }
+                //     errors.push(DetailedError {
+                //         error_type: Error::DuplicateHypLabelsError,
+                //         start_line_number: current_line,
+                //         start_column: start_column,
+                //         end_line_number: current_line,
+                //         end_column: start_column + step_ref.len() as u32,
+                //     });
+                // }
 
                 let expression = &statement_str[step_prefix.len()..statement_str.len()];
 
@@ -692,7 +693,6 @@ pub fn stage_2(stage_1: MmpParserStage1Success) -> Result<MmpParserStage2, Error
                     is_hypothesis,
                     step_name,
                     hypotheses,
-                    hypotheses_parsed,
                     step_ref,
                     expression,
                 });

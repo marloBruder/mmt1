@@ -86,7 +86,7 @@ pub struct ProofLine<'a> {
     pub is_hypothesis: bool,
     pub step_name: &'a str,
     pub hypotheses: &'a str,
-    pub hypotheses_parsed: Vec<Option<usize>>, // None if the hypothesis is "?"
+    // pub hypotheses_parsed: Vec<Option<usize>>, // None if the hypothesis is "?"
     pub step_ref: &'a str,
     pub expression: &'a str,
 }
@@ -130,6 +130,7 @@ pub enum MmpParserStage3Success<'a> {
     Variables(Vec<Variable>),
     FloatingHypohesis(FloatingHypothesis),
     Theorem(MmpParserStage3Theorem<'a>),
+    Empty,
 }
 
 pub struct MmpParserStage3Header {
@@ -147,13 +148,13 @@ pub struct MmpParserStage3Comment {
 
 pub struct MmpParserStage3Theorem<'a> {
     pub is_axiom: bool,
-    pub allow_discouraged: bool,
+    // pub allow_discouraged: bool,
     pub label: &'a str,
-    pub temp_vars: Vec<Variable>,
-    pub temp_floating_hypotheses: Vec<FloatingHypothesis>,
-    pub distinct_vars: Vec<&'a str>,
-    pub proof_lines: Vec<ProofLineParsed<'a>>,
-    pub locate_after: Option<LocateAfterRef<'a>>,
+    // pub temp_vars: Vec<Variable>,
+    // pub temp_floating_hypotheses: Vec<FloatingHypothesis>,
+    // pub distinct_vars: Vec<&'a str>,
+    // pub proof_lines: Vec<ProofLineParsed<'a>>,
+    // pub locate_after: Option<LocateAfterRef<'a>>,
 }
 
 #[derive(Debug)]

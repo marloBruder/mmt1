@@ -48,7 +48,12 @@ where
 impl<I, T> ForEachWhile<I> for T where T: Iterator<Item = I> {}
 
 pub fn is_valid_label(label: &str) -> bool {
-    return label
+    label
         .chars()
-        .all(|c| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '.'));
+        .all(|c| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '.'))
+}
+
+pub fn is_valid_math_symbol(symbol: &str) -> bool {
+    // range of printable non-whitespace ascii characters excluding '$'
+    symbol.bytes().all(|b| matches!(b, 33..=35 | 37..=126))
 }

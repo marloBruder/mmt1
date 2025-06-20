@@ -1,13 +1,13 @@
 use crate::{
     editor::on_edit::DetailedError,
-    model::{Comment, HeaderPath, MetamathData, Statement},
+    model::{Comment, Constant, FloatingHypothesis, HeaderPath, MetamathData, Statement, Variable},
     util, Error,
 };
 
 use super::{
     stage_2, MmpLabel, MmpParserStage1Success, MmpParserStage2Success, MmpParserStage3,
     MmpParserStage3Comment, MmpParserStage3Fail, MmpParserStage3Header, MmpParserStage3Success,
-    MmpStatement,
+    MmpParserStage3Theorem, MmpStatement,
 };
 
 pub fn stage_3<'a>(
@@ -22,15 +22,11 @@ pub fn stage_3<'a>(
         Some(MmpLabel::Comment(comment_path)) => {
             stage_3_comment(stage_1, stage_2, mm_data, comment_path)
         }
-        // Some(MmpLabel::Axiom(axiom_label)) => {
-        //     stage_3_theorem(stage_1, stage_2, axiom_label, true, mm_data)
-        // }
-        // Some(MmpLabel::Theorem(theorem_label)) => {
-        //     stage_3_theorem(stage_1, stage_2, theorem_label, false, mm_data)
-        // }
-        _ => Ok(MmpParserStage3::Fail(MmpParserStage3Fail {
-            errors: Vec::new(),
-        })),
+        Some(MmpLabel::Axiom(axiom_label)) => stage_3_theorem(stage_1, stage_2, axiom_label, true),
+        Some(MmpLabel::Theorem(theorem_label)) => {
+            stage_3_theorem(stage_1, stage_2, theorem_label, false)
+        }
+        None => stage_3_no_label(stage_1, stage_2, mm_data),
     }
 }
 
@@ -257,24 +253,500 @@ fn stage_3_comment<'a>(
     })
 }
 
-// fn stage_3_theorem<'a>(
-//     stage_1: &MmpParserStage1Success<'a>,
-//     stage_2: &MmpParserStage2Success<'a>,
-//     label: &'a str,
-//     is_axiom: bool,
-//     mm_data: &MetamathData,
-// ) -> Result<MmpParserStage3<'a>, Error> {
-//     let mut errors: Vec<Error> = Vec::new();
+fn stage_3_theorem<'a>(
+    stage_1: &MmpParserStage1Success<'a>,
+    stage_2: &MmpParserStage2Success<'a>,
+    label: &'a str,
+    is_axiom: bool,
+) -> Result<MmpParserStage3<'a>, Error> {
+    let mut errors: Vec<DetailedError> = Vec::new();
 
-//     if stage_2.proof_lines.iter().any(|pl| {
-//         !pl.is_hypothesis
-//             && mm_data
-//                 .database_header
-//                 .theorem_locate_after_iter(stage_2.locate_after)
-//                 .all(|t| t.label != pl.step_ref)
-//     }) {
-//         errors.push(Error::MmpStepRefNotALabelError);
-//     }
+    if stage_2.constants.is_some() {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::ConstStatementOutOfPlaceError,
+            MmpStatement::Constant,
+        ));
+    }
 
-//     Ok(MmpParserStage3::Fail(MmpParserStage3Fail { errors }))
-// }
+    // let mut statement_i = 0;
+    // let mut line_number = stage_1.number_of_lines_before_first_statement;
+
+    // for proof_line in &stage_2.proof_lines {
+    //     while stage_2
+    //         .statements
+    //         .get(statement_i)
+    //         .is_some_and(|s| !matches!(s, MmpStatement::ProofLine))
+    //     {
+    //         line_number += stage_2::new_lines_in_str(
+    //             stage_1
+    //                 .statements
+    //                 .get(statement_i)
+    //                 .ok_or(Error::InternalLogicError)?,
+    //         );
+    //         statement_i += 1;
+    //     }
+
+    //     if !proof_line.is_hypothesis
+    //         && mm_data
+    //             .database_header
+    //             .theorem_locate_after_iter(stage_2.locate_after)
+    //             .all(|t| t.label != proof_line.step_ref)
+    //     {
+    //         let start_column = 1
+    //             + proof_line.advanced_unification as u32
+    //             + proof_line.step_name.len() as u32
+    //             + 1
+    //             + proof_line.hypotheses.len() as u32
+    //             + 1;
+    //         let end_column = start_column + proof_line.step_ref.len() as u32;
+
+    //         errors.push(DetailedError {
+    //             error_type: Error::MmpStepRefNotALabelError,
+    //             start_line_number: line_number,
+    //             start_column,
+    //             end_line_number: line_number,
+    //             end_column,
+    //         });
+    //     }
+
+    //     line_number += stage_2::new_lines_in_str(
+    //         stage_1
+    //             .statements
+    //             .get(statement_i)
+    //             .ok_or(Error::InternalLogicError)?,
+    //     );
+    //     statement_i += 1;
+    // }
+
+    Ok(if errors.is_empty() {
+        MmpParserStage3::Success(MmpParserStage3Success::Theorem(MmpParserStage3Theorem {
+            is_axiom,
+            label,
+        }))
+    } else {
+        MmpParserStage3::Fail(MmpParserStage3Fail { errors })
+    })
+}
+
+fn stage_3_no_label<'a>(
+    stage_1: &MmpParserStage1Success<'a>,
+    stage_2: &MmpParserStage2Success<'a>,
+    mm_data: &MetamathData,
+) -> Result<MmpParserStage3<'a>, Error> {
+    if !stage_2.floating_hypotheses.is_empty() {
+        stage_3_floating_hypothesis(stage_1, stage_2, mm_data)
+    } else if !stage_2.variables.is_empty() {
+        stage_3_variables(stage_1, stage_2, mm_data)
+    } else if stage_2.constants.is_some() {
+        stage_3_constants(stage_1, stage_2, mm_data)
+    } else {
+        Ok(MmpParserStage3::Success(MmpParserStage3Success::Empty))
+    }
+}
+
+fn stage_3_floating_hypothesis<'a>(
+    stage_1: &MmpParserStage1Success<'a>,
+    stage_2: &MmpParserStage2Success<'a>,
+    mm_data: &MetamathData,
+) -> Result<MmpParserStage3<'a>, Error> {
+    let mut errors: Vec<DetailedError> = Vec::new();
+
+    if stage_2.floating_hypotheses.len() > 1 {
+        let mut float_hyp_errors = calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::ConstStatementOutOfPlaceError,
+            MmpStatement::Constant,
+        );
+        // The first flaoting hypothesis should not be marked as an error
+        float_hyp_errors.swap_remove(0);
+        errors.append(&mut float_hyp_errors);
+    }
+    if stage_2.constants.is_some() {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::ConstStatementOutOfPlaceError,
+            MmpStatement::Constant,
+        ));
+    }
+    if !stage_2.variables.is_empty() {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::VarStatementOutOfPlaceError,
+            MmpStatement::Variable,
+        ));
+    }
+    if stage_2.allow_discouraged {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::AllowDiscouragedOutOfPlaceError,
+            MmpStatement::AllowDiscouraged,
+        ));
+    }
+    if !stage_2.distinct_vars.is_empty() {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::DistinctVarOutOfPlaceError,
+            MmpStatement::DistinctVar,
+        ));
+    }
+    if !stage_2.proof_lines.is_empty() {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::ProofLinesOutOfPlaceError,
+            MmpStatement::ProofLine,
+        ));
+    }
+
+    let float_hyp_str = *stage_2
+        .floating_hypotheses
+        .get(0)
+        .ok_or(Error::InternalLogicError)?;
+
+    let mut flaot_hyp_iter = float_hyp_str.split_ascii_whitespace();
+
+    let label = flaot_hyp_iter
+        .next()
+        .ok_or(Error::InternalLogicError)?
+        .to_string();
+    let typecode = flaot_hyp_iter
+        .next()
+        .ok_or(Error::InternalLogicError)?
+        .to_string();
+    let variable = flaot_hyp_iter
+        .next()
+        .ok_or(Error::InternalLogicError)?
+        .to_string();
+
+    let Some((statement_str, line_number)) = calc_statement_str_and_line_number(
+        stage_1.number_of_lines_before_first_statement,
+        &stage_1.statements,
+        &stage_2.statements,
+        MmpStatement::FloatingHypohesis,
+    ) else {
+        return Err(Error::InternalLogicError);
+    };
+
+    if !util::is_valid_label(&label) {
+        let second_token_start_pos = stage_2::nth_token_start_pos(statement_str, 1);
+        let second_token_end_pos = stage_2::nth_token_end_pos(statement_str, 1);
+
+        errors.push(DetailedError {
+            error_type: Error::InvalidLabelError,
+            start_line_number: line_number + second_token_start_pos.0 - 1,
+            start_column: second_token_start_pos.1,
+            end_line_number: line_number + second_token_end_pos.0 - 1,
+            end_column: second_token_end_pos.1 + 1,
+        });
+    }
+
+    if !mm_data.symbols_not_already_taken(&vec![&label]) {
+        let second_token_start_pos = stage_2::nth_token_start_pos(statement_str, 1);
+        let second_token_end_pos = stage_2::nth_token_end_pos(statement_str, 1);
+
+        errors.push(DetailedError {
+            error_type: Error::LabelAlreadyExistsError,
+            start_line_number: line_number + second_token_start_pos.0 - 1,
+            start_column: second_token_start_pos.1,
+            end_line_number: line_number + second_token_end_pos.0 - 1,
+            end_column: second_token_end_pos.1 + 1,
+        });
+    }
+
+    if mm_data
+        .database_header
+        .constant_locate_after_iter(stage_2.locate_after)
+        .all(|c| c.symbol != typecode)
+    {
+        let third_token_start_pos = stage_2::nth_token_start_pos(statement_str, 2);
+        let third_token_end_pos = stage_2::nth_token_end_pos(statement_str, 2);
+
+        errors.push(DetailedError {
+            error_type: Error::TypecodeNotAConstantError,
+            start_line_number: line_number + third_token_start_pos.0 - 1,
+            start_column: third_token_start_pos.1,
+            end_line_number: line_number + third_token_end_pos.0 - 1,
+            end_column: third_token_end_pos.1 + 1,
+        });
+    }
+
+    if mm_data
+        .database_header
+        .variable_locate_after_iter(stage_2.locate_after)
+        .all(|v| v.symbol != variable)
+    {
+        let fourth_token_start_pos = stage_2::nth_token_start_pos(statement_str, 3);
+        let fourth_token_end_pos = stage_2::nth_token_end_pos(statement_str, 3);
+
+        errors.push(DetailedError {
+            error_type: Error::TypecodeNotAConstantError,
+            start_line_number: line_number + fourth_token_start_pos.0 - 1,
+            start_column: fourth_token_start_pos.1,
+            end_line_number: line_number + fourth_token_end_pos.0 - 1,
+            end_column: fourth_token_end_pos.1 + 1,
+        });
+    }
+
+    Ok(if errors.is_empty() {
+        MmpParserStage3::Success(MmpParserStage3Success::FloatingHypohesis(
+            FloatingHypothesis {
+                label,
+                typecode,
+                variable,
+            },
+        ))
+    } else {
+        MmpParserStage3::Fail(MmpParserStage3Fail { errors })
+    })
+}
+
+fn calc_statement_str_and_line_number<'a>(
+    number_of_lines_before_first_statement: u32,
+    statement_strs: &Vec<&'a str>,
+    statements: &Vec<MmpStatement>,
+    searched_for_statement_type: MmpStatement,
+) -> Option<(&'a str, u32)> {
+    let mut line_number = number_of_lines_before_first_statement;
+
+    for (&statement_str, statement_type) in statement_strs.iter().zip(statements) {
+        if *statement_type == searched_for_statement_type {
+            return Some((statement_str, line_number));
+        }
+
+        line_number += stage_2::new_lines_in_str(statement_str);
+    }
+
+    None
+}
+
+fn stage_3_variables<'a>(
+    stage_1: &MmpParserStage1Success<'a>,
+    stage_2: &MmpParserStage2Success<'a>,
+    mm_data: &MetamathData,
+) -> Result<MmpParserStage3<'a>, Error> {
+    let mut errors: Vec<DetailedError> = Vec::new();
+
+    if stage_2.variables.len() > 1 {
+        let mut variable_errors = calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::VarStatementOutOfPlaceError,
+            MmpStatement::Variable,
+        );
+        // The first flaoting hypothesis should not be marked as an error
+        variable_errors.swap_remove(0);
+        errors.append(&mut variable_errors);
+    }
+    if stage_2.constants.is_some() {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::ConstStatementOutOfPlaceError,
+            MmpStatement::Constant,
+        ));
+    }
+    if stage_2.allow_discouraged {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::AllowDiscouragedOutOfPlaceError,
+            MmpStatement::AllowDiscouraged,
+        ));
+    }
+    if !stage_2.distinct_vars.is_empty() {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::DistinctVarOutOfPlaceError,
+            MmpStatement::DistinctVar,
+        ));
+    }
+    if !stage_2.proof_lines.is_empty() {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::ProofLinesOutOfPlaceError,
+            MmpStatement::ProofLine,
+        ));
+    }
+
+    let variables_str = *stage_2.variables.get(0).ok_or(Error::InternalLogicError)?;
+
+    let Some((_, start_line_number)) = calc_statement_str_and_line_number(
+        stage_1.number_of_lines_before_first_statement,
+        &stage_1.statements,
+        &stage_2.statements,
+        MmpStatement::Variable,
+    ) else {
+        return Err(Error::InternalLogicError);
+    };
+
+    errors.append(&mut calc_non_new_math_symbol_errors(
+        variables_str,
+        start_line_number,
+        2, // "$v".len()
+        mm_data,
+    ));
+
+    let variables: Vec<Variable> = variables_str
+        .split_ascii_whitespace()
+        .map(|s| Variable {
+            symbol: s.to_string(),
+        })
+        .collect();
+
+    Ok(if errors.is_empty() {
+        MmpParserStage3::Success(MmpParserStage3Success::Variables(variables))
+    } else {
+        MmpParserStage3::Fail(MmpParserStage3Fail { errors })
+    })
+}
+
+fn calc_non_new_math_symbol_errors(
+    math_symbols_str: &str,
+    start_line: u32,
+    start_column: u32,
+    mm_data: &MetamathData,
+) -> Vec<DetailedError> {
+    let mut errors: Vec<DetailedError> = Vec::new();
+
+    let mut line = start_line;
+    let mut column = start_column;
+
+    let mut current_token_start_column = column;
+
+    let mut current_token = String::new();
+    let mut tokens_seen: Vec<String> = Vec::new();
+
+    let mut seeing_token = false;
+
+    for char in math_symbols_str.chars() {
+        column += 1;
+
+        if char == '\n' {
+            line += 1;
+            column = 0;
+        }
+
+        if char.is_ascii_whitespace() {
+            if seeing_token {
+                // if current_token.starts_with('$')
+                //     || symbol_number_mapping.numbers.get(&current_token).is_none()
+                // if mm_data
+                //     .database_header
+                //     .math_symbol_locate_after_iter(locate_after)
+                //     .all(|symbol| symbol != current_token)
+                if !mm_data.symbols_not_already_taken(&vec![&current_token]) {
+                    errors.push(DetailedError {
+                        error_type: Error::SymbolAlreadyExistsError,
+                        start_line_number: line,
+                        start_column: current_token_start_column,
+                        end_line_number: line,
+                        end_column: column,
+                    });
+                }
+                if !util::is_valid_math_symbol(&current_token) {
+                    errors.push(DetailedError {
+                        error_type: Error::InvalidMathSymbolError,
+                        start_line_number: line,
+                        start_column: current_token_start_column,
+                        end_line_number: line,
+                        end_column: column,
+                    });
+                }
+                if tokens_seen.iter().any(|s| *s == current_token) {
+                    errors.push(DetailedError {
+                        error_type: Error::TwiceDeclaredMathSymbolError,
+                        start_line_number: line,
+                        start_column: current_token_start_column,
+                        end_line_number: line,
+                        end_column: column,
+                    });
+                }
+
+                tokens_seen.push(current_token);
+                current_token = String::new();
+            }
+            seeing_token = false;
+        } else {
+            if !seeing_token {
+                current_token_start_column = column;
+            }
+            seeing_token = true;
+            current_token.push(char)
+        }
+    }
+
+    errors
+}
+
+fn stage_3_constants<'a>(
+    stage_1: &MmpParserStage1Success<'a>,
+    stage_2: &MmpParserStage2Success<'a>,
+    mm_data: &MetamathData,
+) -> Result<MmpParserStage3<'a>, Error> {
+    let mut errors: Vec<DetailedError> = Vec::new();
+
+    if stage_2.allow_discouraged {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::AllowDiscouragedOutOfPlaceError,
+            MmpStatement::AllowDiscouraged,
+        ));
+    }
+    if !stage_2.distinct_vars.is_empty() {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::DistinctVarOutOfPlaceError,
+            MmpStatement::DistinctVar,
+        ));
+    }
+    if !stage_2.proof_lines.is_empty() {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::ProofLinesOutOfPlaceError,
+            MmpStatement::ProofLine,
+        ));
+    }
+
+    let constants_str = stage_2.constants.ok_or(Error::InternalLogicError)?;
+
+    let Some((_, start_line_number)) = calc_statement_str_and_line_number(
+        stage_1.number_of_lines_before_first_statement,
+        &stage_1.statements,
+        &stage_2.statements,
+        MmpStatement::Constant,
+    ) else {
+        return Err(Error::InternalLogicError);
+    };
+
+    errors.append(&mut calc_non_new_math_symbol_errors(
+        constants_str,
+        start_line_number,
+        2, // "$c".len()
+        mm_data,
+    ));
+
+    let constants: Vec<Constant> = constants_str
+        .split_ascii_whitespace()
+        .map(|s| Constant {
+            symbol: s.to_string(),
+        })
+        .collect();
+
+    Ok(if errors.is_empty() {
+        MmpParserStage3::Success(MmpParserStage3Success::Constants(constants))
+    } else {
+        MmpParserStage3::Fail(MmpParserStage3Fail { errors })
+    })
+}
