@@ -20,7 +20,7 @@ pub struct MmpParserStage0<'a> {
 }
 
 impl<'a> MmpParserStage0<'a> {
-    pub fn next_stage(self) -> Result<MmpParserStage1<'a>, Error> {
+    pub fn next_stage(&self) -> Result<MmpParserStage1<'a>, Error> {
         stage_1::stage_1(self)
     }
 }
@@ -40,7 +40,7 @@ pub struct MmpParserStage1Fail {
 }
 
 impl<'a> MmpParserStage1Success<'a> {
-    pub fn next_stage(self) -> Result<MmpParserStage2<'a>, Error> {
+    pub fn next_stage(&self) -> Result<MmpParserStage2<'a>, Error> {
         stage_2::stage_2(self)
     }
 }
@@ -155,6 +155,7 @@ pub struct MmpParserStage3Theorem<'a> {
     // pub distinct_vars: Vec<&'a str>,
     // pub proof_lines: Vec<ProofLineParsed<'a>>,
     // pub locate_after: Option<LocateAfterRef<'a>>,
+    pub description: &'a str,
 }
 
 #[derive(Debug)]
@@ -170,5 +171,5 @@ pub struct ProofLineParsed<'a> {
 }
 
 pub struct MmpParserStage3Fail {
-    errors: Vec<DetailedError>,
+    pub errors: Vec<DetailedError>,
 }

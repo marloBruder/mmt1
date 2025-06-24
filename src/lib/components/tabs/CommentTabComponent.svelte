@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import type { Comment, HeaderPath } from "$lib/sharedState/model.svelte";
+  import type { Comment, CommentPageData, HeaderPath } from "$lib/sharedState/model.svelte";
   import CommentTabComponent from "$lib/components/tabs/CommentTabComponent.svelte";
 
   export class CommentTab extends Tab {
@@ -47,6 +47,7 @@
   import { Tab } from "$lib/sharedState/tabManager.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { util } from "$lib/sharedState/util.svelte";
+  import CommentPage from "../pages/CommentPage.svelte";
 
   let { tab }: { tab: Tab } = $props();
 
@@ -56,13 +57,12 @@
     }
     throw Error("Wrong Tab Type!");
   });
+
+  let pageData: CommentPageData = $derived({
+    comment: commentTab.comment,
+    commentPath: util.headerPathToStringRep(commentTab.headerPath) + "#" + (commentTab.commentNum + 1),
+    discriminator: "CommentPageData",
+  });
 </script>
 
-<div class="text-center">
-  <div class="py-4">
-    <h1 class="text-3xl">{"Comment " + util.headerPathToStringRep(commentTab.headerPath) + "#" + (commentTab.commentNum + 1)}</h1>
-  </div>
-  <div>
-    <p>{commentTab.comment.text}</p>
-  </div>
-</div>
+<CommentPage {pageData}></CommentPage>

@@ -6,7 +6,7 @@
     component = ConstantsTabComponent;
 
     #anyConstant: string;
-    #pageData: ConstantsPageData = $state({ constants: [] });
+    #pageData: ConstantsPageData = $state({ constants: [], discriminator: "ConstantsPageData" });
     #moreThanOneConstant: boolean = $state(false);
 
     constructor(anyConstant: string) {
@@ -22,7 +22,7 @@
     }
 
     unloadData(): void {
-      this.#pageData = { constants: [] };
+      this.#pageData = { constants: [], discriminator: "ConstantsPageData" };
     }
 
     name(): string {
@@ -52,7 +52,7 @@
 <script lang="ts">
   import { Tab } from "$lib/sharedState/tabManager.svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import MetamathExpression from "../util/MetamathExpression.svelte";
+  import ConstantsPage from "../pages/ConstantsPage.svelte";
 
   let { tab }: { tab: Tab } = $props();
 
@@ -64,32 +64,4 @@
   });
 </script>
 
-<div class="text-center">
-  <div class="py-4">
-    <h1 class="text-3xl">
-      {#if constantsTab.moreThanOneConstant}
-        Constants:
-      {:else}
-        Constant:
-      {/if}
-    </h1>
-  </div>
-  <div class="flex flex-col items-center">
-    <table>
-      <thead>
-        <tr>
-          <td class="p-2 border-b border-r border-black">ASCII</td>
-          <td class="p-2 border-b border-l border-black">HTML</td>
-        </tr>
-      </thead>
-      <tbody>
-        {#each constantsTab.pageData.constants as constant}
-          <tr>
-            <td class="border-r border-black">{constant.symbol}</td>
-            <td class="border-l border-black"><MetamathExpression expression={constant.symbol}></MetamathExpression></td>
-          </tr>
-        {/each}
-      </tbody>
-    </table>
-  </div>
-</div>
+<ConstantsPage pageData={constantsTab.pageData}></ConstantsPage>

@@ -65,7 +65,7 @@ export function getErrorMessage(errorType: string): string {
       return "$locateafterconst statements must be followed by exactly one token: The constant which statement the content of the mmp file should be located after.";
     }
     case "InvalidDollarTokenError": {
-      return "Invalid keyword. Step names may not start with '$'.";
+      return "Invalid keyword. Step names may not start with or constain with '$'.";
     }
     case "InvalidMmpStepPrefixFormatError": {
       return "Each step prefix must be of the format [h]name:hyps:ref, where the h at the beginning indicates that the step is a hypothesis, name is the name of the step, hyps is a comma seperated list of hypotheses names and ref is either the name of the theorem being applied if the step is not a hypothesis or the name of the hypothesis otherwise.";
@@ -93,6 +93,58 @@ export function getErrorMessage(errorType: string): string {
     }
     case "ExpressionParseError": {
       return "Expression could not be successfully parsed. Are you perhaps missing a parenthesis?";
+    }
+    case "ConstStatementOutOfPlaceError": {
+      return "$c statement should not be here. $c statements are only allowed when describing a constant statement and can not appear alongside $header, $comment, $axiom, $theorem, $v or $f statements.";
+    }
+    case "VarStatementOutOfPlaceError": {
+      return "$v statement should not be here. $v statements are only allowed when describing a variable statement or when adding a temporary variable to an axiom or theorem. $v statements cannot appear alongside $header or $comment statements. Multiple $v statements are only allowed when there is an $axiom or a $theorem statement.";
+    }
+    case "FloatHypStatementOutOfPlaceError": {
+      return "$f statement should not be here. $f statements are only allowed when describing a floating hypothesis or when adding a temporary floating hypothesis to an axiom or theorem. $f statements cannot appear alongside $header or $comment statements. Multiple $f statements are only allowed when there is an $axiom or a $theorem statement.";
+    }
+    case "AllowDiscouragedOutOfPlaceError": {
+      return "$allowdiscouraged statement should not be here. $allowdiscouraged may only appear alongside a $theorem statement.";
+    }
+    case "LocateAfterOutOfPlaceError": {
+      return "Locate after statement should not be here. Locate after statements may not appear alongside $comment or $header statements, as their location in the database is determined by their respective comment or header path.";
+    }
+    case "DistinctVarOutOfPlaceError": {
+      return "$d statement should not be here. $d statements may only appear alongside a $theorem or $axiom statement.";
+    }
+    case "ProofLinesOutOfPlaceError": {
+      return "Proof line should not be here. Proof lines may only appear alongside a $theorem or $axiom statement.";
+    }
+    case "InvalidHeaderPathFormatError": {
+      return "Not a valid header path. Header paths must be a list of dot seperated numbers.\n\nExample: 1.2.3";
+    }
+    case "InvalidHeaderPathFormatError": {
+      return "Not a valid comment path. Comment paths must be a (possibly empty) list of dot seperated numbers, followed by a # and the comment number.\n\nExamples: #2 or 1.2.3#4";
+    }
+    case "InvalidHeaderPathError": {
+      return "Not a valid new header path. Either the parent header does not exist or it does not have enough subheaders.\n\nExample: To add header 1.2.3, parent header 1.2 must exist and must already have two subheaders to add the subheader number 3.";
+    }
+    case "InvalidCommentPathError": {
+      return "Not a valid new comment path. Either the parent header does not exist or it does not have enough comments.\n\nExample: To add comment 1.2.3#4, parent header 1.2.3 must exist and must already have three comments to add comment #4.";
+    }
+    case "LabelAlreadyExistsError":
+    case "SymbolAlreadyExistsError": {
+      return "This token already exists as a label or math symbol.";
+    }
+    case "TypecodeNotAConstantError": {
+      return "Not an active constant. A variable's typecode must always be an active constant.";
+    }
+    case "ExpectedActiveVariableError": {
+      return "Not an active variable. Floating hypotheses can only declare the typecode of active variables.";
+    }
+    case "VariableTypecodeAlreadyDeclaredError": {
+      return "The typecode of this variable has already been declared in a different floating hypothesis.";
+    }
+    case "InvalidMathSymbolError": {
+      return "Not a valid math symbol. A math symbol token may consist of any combination of the 93 printable standard ascii characters other than space or $.";
+    }
+    case "TwiceDeclaredMathSymbolError": {
+      return "Can't declare the same symbol twice.";
     }
   }
 

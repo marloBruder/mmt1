@@ -1,8 +1,11 @@
 use crate::{
-    metamath::mmp_parser::{self, MmpParserStage1, MmpParserStage2},
+    metamath::mmp_parser::{
+        self, MmpParserStage1, MmpParserStage2, MmpParserStage3, MmpParserStage3Success,
+    },
     model::{
-        self, DatabaseElementPageData, FloatingHypothesis, FloatingHypothesisPageData, Hypothesis,
-        MetamathData, ParseTree, SymbolNumberMapping, Theorem, TheoremPageData,
+        self, CommentPageData, ConstantsPageData, DatabaseElementPageData, FloatingHypothesis,
+        FloatingHypothesisPageData, HeaderPageData, Hypothesis, MetamathData, ParseTree,
+        SymbolNumberMapping, Theorem, TheoremPageData, VariablesPageData,
     },
     util, AppState, Error,
 };
@@ -54,6 +57,132 @@ pub async fn on_edit(
         }
     };
 
+    let stage_3_success = match stage_2_success.next_stage(&stage_1_success, mm_data)? {
+        MmpParserStage3::Success(success) => success,
+        MmpParserStage3::Fail(fail) => {
+            return Ok(OnEditData {
+                page_data: None,
+                errors: fail.errors,
+            })
+        }
+    };
+
+    let stage_3_theorem = match stage_3_success {
+        MmpParserStage3Success::Empty => {
+            return Ok(OnEditData {
+                page_data: Some(DatabaseElementPageData::Empty),
+                errors: Vec::new(),
+            })
+        }
+        MmpParserStage3Success::Header(mut stage_3_header) => {
+            stage_3_header
+                .parent_header_path
+                .path
+                .push(stage_3_header.header_i);
+            return Ok(OnEditData {
+                page_data: Some(DatabaseElementPageData::Header(HeaderPageData {
+                    header_path: stage_3_header.parent_header_path.to_string(),
+                    description: stage_3_header.description,
+                    title: stage_3_header.title,
+                })),
+                errors: Vec::new(),
+            });
+        }
+        MmpParserStage3Success::Comment(stage_3_comment) => {
+            return Ok(OnEditData {
+                page_data: Some(DatabaseElementPageData::Comment(CommentPageData {
+                    comment_path: format!(
+                        "{}#{}",
+                        stage_3_comment.parent_header_path.to_string(),
+                        stage_3_comment.comment_i
+                    ),
+                    comment: stage_3_comment.comment,
+                })),
+                errors: Vec::new(),
+            })
+        }
+        MmpParserStage3Success::Constants(constants) => {
+            return Ok(OnEditData {
+                page_data: Some(DatabaseElementPageData::Constants(ConstantsPageData {
+                    constants,
+                })),
+                errors: Vec::new(),
+            })
+        }
+        MmpParserStage3Success::Variables(variables) => {
+            return Ok(OnEditData {
+                page_data: Some(DatabaseElementPageData::Variables(VariablesPageData {
+                    variables: variables.into_iter().map(|v| (v, String::new())).collect(),
+                })),
+                errors: Vec::new(),
+            })
+        }
+        MmpParserStage3Success::FloatingHypohesis(floating_hypothesis) => {
+            return Ok(OnEditData {
+                page_data: Some(DatabaseElementPageData::FloatingHypothesis(
+                    FloatingHypothesisPageData {
+                        floating_hypothesis,
+                    },
+                )),
+                errors: Vec::new(),
+            })
+        }
+        MmpParserStage3Success::Theorem(stage_3_theorem) => stage_3_theorem,
+    };
+
+    Ok(OnEditData {
+        page_data: Some(DatabaseElementPageData::Theorem(TheoremPageData {
+            theorem: Theorem {
+                label: stage_3_theorem.label.to_string(),
+                description: stage_3_theorem.description.to_string(),
+                distincts: stage_2_success
+                    .distinct_vars
+                    .iter()
+                    .map(|s| util::str_to_space_seperated_string(s))
+                    .collect(),
+                hypotheses: stage_2_success
+                    .proof_lines
+                    .iter()
+                    .filter(|pl| pl.is_hypothesis)
+                    .map(|pl| Hypothesis {
+                        label: pl.step_ref.to_string(),
+                        expression: util::str_to_space_seperated_string(pl.expression),
+                    })
+                    .collect(),
+                assertion: stage_2_success
+                    .proof_lines
+                    .iter()
+                    .find(|pl| pl.step_name == "qed")
+                    .map(|pl| util::str_to_space_seperated_string(pl.expression))
+                    .unwrap_or(String::new()),
+                proof: if stage_3_theorem.is_axiom {
+                    None
+                } else {
+                    Some("Proof not yet complete".to_string())
+                },
+            },
+            theorem_number: 0,
+            proof_lines: stage_2_success
+                .proof_lines
+                .iter()
+                .map(|pl| model::ProofLine {
+                    step_name: pl.step_name.to_string(),
+                    hypotheses: if pl.hypotheses.len() != 0 {
+                        pl.hypotheses.split(',').map(|s| s.to_string()).collect()
+                    } else {
+                        Vec::new()
+                    },
+                    reference: pl.step_ref.to_string(),
+                    assertion: util::str_to_space_seperated_string(pl.expression),
+                    indention: 0,
+                })
+                .collect(),
+            last_theorem_label: None,
+            next_theorem_label: None,
+        })),
+        errors: Vec::new(),
+    })
+
     // let (line_number_before_first_statement, statement_strs) =
     //     match text_to_statement_strs_with_error_info(text)? {
     //         Ok(tuple) => tuple,
@@ -78,11 +207,6 @@ pub async fn on_edit(
     // };
 
     // Ok(OnEditData { page_data, errors })
-
-    Ok(OnEditData {
-        page_data: None,
-        errors: Vec::new(),
-    })
 }
 
 pub fn statement_strs_to_mmp_info_structured_for_unify_with_error_info<'a>(
@@ -956,19 +1080,19 @@ fn get_theorem_page_data(
     let mut hypotheses: Vec<Hypothesis> = Vec::new();
 
     for proof_line in &mmp_info_structured_for_unify.proof_lines {
-        proof_lines.push(model::ProofLine {
-            indention: 1,
-            assertion: util::str_to_space_seperated_string(proof_line.expression),
-            hypotheses: proof_line
-                .hypotheses_parsed
-                .iter()
-                .map(|hyp| match hyp {
-                    Some(num) => *num as i32 + 1,
-                    None => 0,
-                })
-                .collect(),
-            reference: proof_line.step_ref.to_string(),
-        });
+        // proof_lines.push(model::ProofLine {
+        //     indention: 1,
+        //     assertion: util::str_to_space_seperated_string(proof_line.expression),
+        //     hypotheses: proof_line
+        //         .hypotheses_parsed
+        //         .iter()
+        //         .map(|hyp| match hyp {
+        //             Some(num) => *num as i32 + 1,
+        //             None => 0,
+        //         })
+        //         .collect(),
+        //     reference: proof_line.step_ref.to_string(),
+        // });
 
         if proof_line.step_name == "qed" {
             assertion = util::str_to_space_seperated_string(proof_line.expression);

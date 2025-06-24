@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{editor::on_edit::DetailedError, model::HeaderPath, util, Error};
 
-pub fn stage_2(stage_1: MmpParserStage1Success) -> Result<MmpParserStage2, Error> {
+pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStage2<'a>, Error> {
     let mut label: Option<MmpLabel> = None;
     let mut allow_discouraged: bool = false;
     let mut locate_after: Option<LocateAfterRef> = None;
@@ -38,7 +38,7 @@ pub fn stage_2(stage_1: MmpParserStage1Success) -> Result<MmpParserStage2, Error
                 }
 
                 if token_iter.next().is_some() {
-                    constants = Some(&statement_str[3..statement_str.len()]);
+                    constants = Some(&statement_str[2..statement_str.len()]);
                 } else {
                     errors.push(DetailedError {
                         error_type: Error::EmptyConstStatementError,
@@ -53,7 +53,7 @@ pub fn stage_2(stage_1: MmpParserStage1Success) -> Result<MmpParserStage2, Error
             }
             "$v" => {
                 if token_iter.next().is_some() {
-                    variables.push(&statement_str[3..statement_str.len()]);
+                    variables.push(&statement_str[2..statement_str.len()]);
                 } else {
                     errors.push(DetailedError {
                         error_type: Error::EmptyVarStatementError,
@@ -382,7 +382,7 @@ pub fn stage_2(stage_1: MmpParserStage1Success) -> Result<MmpParserStage2, Error
                         end_column: last_non_whitespace_pos.1 + 1,
                     });
                 } else {
-                    distinct_vars.push(&statement_str[3..statement_str.len()]);
+                    distinct_vars.push(&statement_str[2..statement_str.len()]);
                 }
 
                 statements.push(MmpStatement::DistinctVar);

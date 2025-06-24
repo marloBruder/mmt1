@@ -131,7 +131,7 @@ fn calc_header_and_comment_statement_out_of_place_errors(
         errors.append(&mut calc_statement_out_of_place_errors(
             stage_1,
             stage_2,
-            Error::FloatHypStatementsOutOfPlaceError,
+            Error::FloatHypStatementOutOfPlaceError,
             MmpStatement::FloatingHypohesis,
         ));
     }
@@ -320,10 +320,13 @@ fn stage_3_theorem<'a>(
     //     statement_i += 1;
     // }
 
+    let description = stage_2.comments.first().map(|s| *s).unwrap_or("");
+
     Ok(if errors.is_empty() {
         MmpParserStage3::Success(MmpParserStage3Success::Theorem(MmpParserStage3Theorem {
             is_axiom,
             label,
+            description,
         }))
     } else {
         MmpParserStage3::Fail(MmpParserStage3Fail { errors })
@@ -357,7 +360,7 @@ fn stage_3_floating_hypothesis<'a>(
         let mut float_hyp_errors = calc_statement_out_of_place_errors(
             stage_1,
             stage_2,
-            Error::ConstStatementOutOfPlaceError,
+            Error::FloatHypStatementOutOfPlaceError,
             MmpStatement::Constant,
         );
         // The first flaoting hypothesis should not be marked as an error
@@ -447,7 +450,12 @@ fn stage_3_floating_hypothesis<'a>(
         });
     }
 
-    if !mm_data.symbols_not_already_taken(&vec![&label]) {
+    if !mm_data.symbols_not_already_taken(&vec![&label])
+        && !mm_data
+            .database_header
+            .floating_hypohesis_iter()
+            .any(|fh| fh.label == label)
+    {
         let second_token_start_pos = stage_2::nth_token_start_pos(statement_str, 1);
         let second_token_end_pos = stage_2::nth_token_end_pos(statement_str, 1);
 
@@ -486,7 +494,24 @@ fn stage_3_floating_hypothesis<'a>(
         let fourth_token_end_pos = stage_2::nth_token_end_pos(statement_str, 3);
 
         errors.push(DetailedError {
-            error_type: Error::TypecodeNotAConstantError,
+            error_type: Error::ExpectedActiveVariableError,
+            start_line_number: line_number + fourth_token_start_pos.0 - 1,
+            start_column: fourth_token_start_pos.1,
+            end_line_number: line_number + fourth_token_end_pos.0 - 1,
+            end_column: fourth_token_end_pos.1 + 1,
+        });
+    }
+
+    if mm_data
+        .database_header
+        .floating_hypohesis_iter()
+        .any(|fh| fh.variable == variable && fh.label != label)
+    {
+        let fourth_token_start_pos = stage_2::nth_token_start_pos(statement_str, 3);
+        let fourth_token_end_pos = stage_2::nth_token_end_pos(statement_str, 3);
+
+        errors.push(DetailedError {
+            error_type: Error::VariableTypecodeAlreadyDeclaredError,
             start_line_number: line_number + fourth_token_start_pos.0 - 1,
             start_column: fourth_token_start_pos.1,
             end_line_number: line_number + fourth_token_end_pos.0 - 1,

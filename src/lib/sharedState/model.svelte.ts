@@ -80,14 +80,33 @@ export interface HtmlRepresentation {
   html: string;
 }
 
-export type DatabaseElementPageData = FloatingHypothesisPageData | TheoremPageData;
+export type DatabaseElementPageData = EmptyPageData | HeaderPageData | CommentPageData | ConstantsPageData | VariablesPageData | FloatingHypothesisPageData | TheoremPageData;
+
+export interface EmptyPageData {
+  discriminator: "EmptyPageData";
+}
+
+export interface HeaderPageData {
+  headerPath: string;
+  title: string;
+  description: string;
+  discriminator: "HeaderPageData";
+}
+
+export interface CommentPageData {
+  commentPath: string;
+  comment: Comment;
+  discriminator: "CommentPageData";
+}
 
 export interface ConstantsPageData {
   constants: Constant[];
+  discriminator: "ConstantsPageData";
 }
 
 export interface VariablesPageData {
   variables: [Variable, string][];
+  discriminator: "VariablesPageData";
 }
 
 export interface FloatingHypothesisPageData {
@@ -105,7 +124,8 @@ export interface TheoremPageData {
 }
 
 export interface ProofLine {
-  hypotheses: number[];
+  stepName: string;
+  hypotheses: string[];
   reference: string;
   indention: number;
   assertion: string;

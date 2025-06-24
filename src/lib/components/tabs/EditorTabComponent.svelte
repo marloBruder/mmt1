@@ -183,6 +183,10 @@
   import TheoremPage from "../pages/TheoremPage.svelte";
   import FloatingHypothesisPage from "../pages/FloatingHypothesisPage.svelte";
   import { getErrorMessage, getErrorSeverity } from "../util/errorMessages.svelte";
+  import VariablesPage from "../pages/VariablesPage.svelte";
+  import ConstantsPage from "../pages/ConstantsPage.svelte";
+  import CommentPage from "../pages/CommentPage.svelte";
+  import HeaderPage from "../pages/HeaderPage.svelte";
 
   let { tab }: { tab: Tab } = $props();
 
@@ -368,13 +372,23 @@
   {#if editorTab.isSplit}
     <div class="w-1/2 h-full">
       {#if editorTab.pageData != null}
-        {#if editorTab.pageData.discriminator == "TheoremPageData"}
-          <TheoremPage pageData={editorTab.pageData}></TheoremPage>
+        {#if editorTab.pageData.discriminator == "EmptyPageData"}
+          <div class="p-2">Nothing to see yet.</div>
+        {:else if editorTab.pageData.discriminator == "HeaderPageData"}
+          <HeaderPage pageData={editorTab.pageData}></HeaderPage>
+        {:else if editorTab.pageData.discriminator == "CommentPageData"}
+          <CommentPage pageData={editorTab.pageData}></CommentPage>
+        {:else if editorTab.pageData.discriminator == "ConstantsPageData"}
+          <ConstantsPage pageData={editorTab.pageData}></ConstantsPage>
+        {:else if editorTab.pageData.discriminator == "VariablesPageData"}
+          <VariablesPage pageData={editorTab.pageData}></VariablesPage>
         {:else if editorTab.pageData.discriminator == "FloatingHypothesisPageData"}
           <FloatingHypothesisPage pageData={editorTab.pageData}></FloatingHypothesisPage>
+        {:else if editorTab.pageData.discriminator == "TheoremPageData"}
+          <TheoremPage pageData={editorTab.pageData}></TheoremPage>
         {/if}
       {:else}
-        <div class="p-2">Editor content does not represent valid theorem</div>
+        <div class="p-2">Resolve most errors to show the unicode preview.</div>
       {/if}
     </div>
   {/if}

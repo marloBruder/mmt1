@@ -147,22 +147,30 @@ pub struct HtmlRepresentation {
 }
 
 pub enum DatabaseElementPageData {
+    Empty,
+    Header(HeaderPageData),
+    Comment(CommentPageData),
+    Constants(ConstantsPageData),
+    Variables(VariablesPageData),
     FloatingHypothesis(FloatingHypothesisPageData),
     Theorem(TheoremPageData),
 }
 
-#[derive(Serialize)]
 pub struct HeaderPageData {
+    pub header_path: String,
     pub title: String,
     pub description: String,
 }
 
-#[derive(Serialize)]
+pub struct CommentPageData {
+    pub comment_path: String,
+    pub comment: Comment,
+}
+
 pub struct ConstantsPageData {
     pub constants: Vec<Constant>,
 }
 
-#[derive(Serialize)]
 pub struct VariablesPageData {
     pub variables: Vec<(Variable, String)>,
 }
@@ -179,9 +187,9 @@ pub struct TheoremPageData {
     pub next_theorem_label: Option<String>,
 }
 
-#[derive(Serialize)]
 pub struct ProofLine {
-    pub hypotheses: Vec<i32>,
+    pub step_name: String,
+    pub hypotheses: Vec<String>,
     pub reference: String,
     pub indention: i32,
     pub assertion: String,
@@ -1183,6 +1191,10 @@ impl HeaderPath {
             return None;
         }
 
+        if str == "" {
+            return Some(HeaderPath { path: Vec::new() });
+        }
+
         Some(HeaderPath {
             path: str
                 .split('.')
@@ -1294,12 +1306,96 @@ impl serde::Serialize for DatabaseElementPageData {
     where
         S: serde::ser::Serializer,
     {
+        use serde::ser::SerializeStruct;
+
         match self {
-            Self::Theorem(theorem_page_data) => theorem_page_data.serialize(serializer),
+            Self::Empty => {
+                let mut state = serializer.serialize_struct("EmptyPageData", 1)?;
+                state.serialize_field("discriminator", "EmptyPageData")?;
+                state.end()
+            }
+            Self::Header(header_page_data) => header_page_data.serialize(serializer),
+            Self::Comment(comments_page_data) => comments_page_data.serialize(serializer),
+            Self::Constants(constants_page_data) => constants_page_data.serialize(serializer),
+            Self::Variables(variables_page_data) => variables_page_data.serialize(serializer),
             Self::FloatingHypothesis(floating_hypothesis_page_data) => {
                 floating_hypothesis_page_data.serialize(serializer)
             }
+            Self::Theorem(theorem_page_data) => theorem_page_data.serialize(serializer),
         }
+    }
+}
+
+impl serde::Serialize for HeaderPageData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("HeaderPageData", 3)?;
+        state.serialize_field("headerPath", &self.header_path)?;
+        state.serialize_field("title", &self.title)?;
+        state.serialize_field("description", &self.description)?;
+        state.serialize_field("discriminator", "HeaderPageData")?;
+        state.end()
+    }
+}
+
+impl serde::Serialize for CommentPageData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("CommentPageData", 2)?;
+        state.serialize_field("commentPath", &self.comment_path)?;
+        state.serialize_field("comment", &self.comment)?;
+        state.serialize_field("discriminator", "CommentPageData")?;
+        state.end()
+    }
+}
+
+impl serde::Serialize for ConstantsPageData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("ConstantsPageData", 1)?;
+        state.serialize_field("constants", &self.constants)?;
+        state.serialize_field("discriminator", "ConstantsPageData")?;
+        state.end()
+    }
+}
+
+impl serde::Serialize for VariablesPageData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("VariablesPageData", 1)?;
+        state.serialize_field("variables", &self.variables)?;
+        state.serialize_field("discriminator", "VariablesPageData")?;
+        state.end()
+    }
+}
+
+impl serde::Serialize for FloatingHypothesisPageData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("FloatingHypothesisPageData", 1)?;
+        state.serialize_field("floatingHypothesis", &self.floating_hypothesis)?;
+        state.serialize_field("discriminator", "FloatingHypothesisPageData")?;
+        state.end()
     }
 }
 
@@ -1321,16 +1417,19 @@ impl serde::Serialize for TheoremPageData {
     }
 }
 
-impl serde::Serialize for FloatingHypothesisPageData {
+impl serde::Serialize for ProofLine {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::ser::Serializer,
     {
         use serde::ser::SerializeStruct;
 
-        let mut state = serializer.serialize_struct("FloatingHypothesisPageData", 1)?;
-        state.serialize_field("floatingHypothesis", &self.floating_hypothesis)?;
-        state.serialize_field("discriminator", "FloatingHypothesisPageData")?;
+        let mut state = serializer.serialize_struct("ProofLine", 5)?;
+        state.serialize_field("stepName", &self.step_name)?;
+        state.serialize_field("hypotheses", &self.hypotheses)?;
+        state.serialize_field("reference", &self.reference)?;
+        state.serialize_field("assertion", &self.assertion)?;
+        state.serialize_field("indention", &self.indention)?;
         state.end()
     }
 }

@@ -142,6 +142,8 @@ pub enum Error {
     InvalidMathSymbolError, // Returned if there is a symbol being declared that is not a valid math symbol
     TwiceDeclaredMathSymbolError, // Returned if a symbol is declared twice in the same $c/$v statement
     TypecodeNotAConstantError, // Returned if there is a floating hypothesis with a typecode that is not a constant
+    ExpectedActiveVariableError, // Returned if there is a floating hypothesis declaring the typecode of a symbol that is not an active variable
+    VariableTypecodeAlreadyDeclaredError, // Returned if there is a floating hypothesis declaring the typcode of a variable which typecode is already declared
     MultipleMmpLabelsError, // Returned if there are more than one $theorem, $axiom or $header statements
     TooFewHeaderTokensError, // Returned if there are less than 2 tokens after $header statement
     InvalidHeaderPathFormatError, // Returned if the token after $header does not have the format of a valid Headerpath
@@ -187,7 +189,7 @@ pub enum Error {
     StatementOutOfPlaceError, // Returned if there is a statement out of place, for example if there is a $v and a $c statement
     ConstStatementOutOfPlaceError, // Returned if there is a constant statement when there shouldn't be
     VarStatementOutOfPlaceError, // Returned if there is a variable statement when there shouldn't be
-    FloatHypStatementsOutOfPlaceError, // Returned if there is a floating hypothesis when there shouldn't be
+    FloatHypStatementOutOfPlaceError, // Returned if there is a floating hypothesis when there shouldn't be
     AllowDiscouragedOutOfPlaceError, // Returned if there is an allow discouraged statement when there shouldn't be
     DistinctVarOutOfPlaceError, // Returned if there is a distinct variable statement when there shouldn't be
     LocateAfterOutOfPlaceError, // Returned if there is a locate after statement when there shouldn't be

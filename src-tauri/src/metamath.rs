@@ -547,7 +547,8 @@ pub fn calc_theorem_page_data(
             if step.display_step_number == -1 {
                 hypotheses_nums.reverse();
                 proof_lines.push(ProofLine {
-                    hypotheses: hypotheses_nums,
+                    step_name: (proof_lines.len() + 1).to_string(),
+                    hypotheses: hypotheses_nums.iter().map(|&i| i.to_string()).collect(),
                     reference: step.label.clone(),
                     indention: 1,
                     assertion: stack[stack.len() - 1].statement.clone(),
@@ -599,9 +600,13 @@ fn calc_indention(proof_lines: &mut Vec<ProofLine>) -> Result<(), Error> {
     let mut trees: Vec<Tree> = Vec::new();
     for (i, proof_line) in proof_lines.iter().enumerate() {
         let mut nodes: Vec<Tree> = Vec::new();
-        for &hypothesis in &proof_line.hypotheses {
+        for hypothesis in &proof_line.hypotheses {
             for tree_i in 0..trees.len() {
-                if trees[tree_i].label == hypothesis {
+                if trees[tree_i].label
+                    == hypothesis
+                        .parse::<i32>()
+                        .or(Err(Error::InternalLogicError))?
+                {
                     nodes.push(trees.remove(tree_i));
                     break;
                 }

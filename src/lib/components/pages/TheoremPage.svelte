@@ -89,12 +89,12 @@
           </tr>
         </thead>
         <tbody>
-          {#each pageData.proofLines as proofLine, index}
+          {#each pageData.proofLines as proofLine}
             <tr>
-              <td class="border border-gray-600 py-1 px-2">{index + 1}</td>
+              <td class="border border-gray-600 py-1 px-2">{proofLine.stepName}</td>
               <td class="border border-gray-600 py-1 px-2">
                 {#each proofLine.hypotheses as hypothesis, index}
-                  {(hypothesis != 0 ? hypothesis : "?") + (index != proofLine.hypotheses.length - 1 ? ", " : "")}
+                  {hypothesis + (index != proofLine.hypotheses.length - 1 ? ", " : "")}
                 {/each}
               </td>
               <td class="border border-gray-600 py-1 px-2">

@@ -2,7 +2,7 @@ use crate::{editor::on_edit::DetailedError, Error};
 
 use super::{MmpParserStage0, MmpParserStage1, MmpParserStage1Fail, MmpParserStage1Success};
 
-pub fn stage_1(stage_0: MmpParserStage0) -> Result<MmpParserStage1, Error> {
+pub fn stage_1<'a>(stage_0: &MmpParserStage0<'a>) -> Result<MmpParserStage1<'a>, Error> {
     if !stage_0.text.is_ascii() {
         let text_end_pos = text_end_pos(stage_0.text);
 
@@ -39,7 +39,10 @@ pub fn stage_1(stage_0: MmpParserStage0) -> Result<MmpParserStage1, Error> {
         text_i += 1;
     }
 
-    if text_i != 0 && text_bytes.get(text_i - 1).is_some_and(|c| *c != b'\n') {
+    if text_i != 0
+        && text_i != text_bytes.len()
+        && text_bytes.get(text_i - 1).is_some_and(|c| *c != b'\n')
+    {
         return Ok(MmpParserStage1::Fail(MmpParserStage1Fail {
             error: DetailedError {
                 error_type: Error::WhitespaceBeforeFirstTokenError,
@@ -68,12 +71,14 @@ pub fn stage_1(stage_0: MmpParserStage0) -> Result<MmpParserStage1, Error> {
         text_i += 1;
     }
 
-    statements.push(
-        stage_0
-            .text
-            .get(statement_start..text_i)
-            .ok_or(Error::InternalLogicError)?,
-    );
+    if statement_start < text_bytes.len() {
+        statements.push(
+            stage_0
+                .text
+                .get(statement_start..text_i)
+                .ok_or(Error::InternalLogicError)?,
+        );
+    }
 
     Ok(MmpParserStage1::Success(MmpParserStage1Success {
         number_of_lines_before_first_statement,
