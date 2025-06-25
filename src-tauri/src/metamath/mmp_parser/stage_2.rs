@@ -14,7 +14,7 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
     let mut floating_hypotheses: Vec<&str> = Vec::new();
     let mut proof_lines: Vec<ProofLine> = Vec::new();
     let mut comments: Vec<&str> = Vec::new();
-    let mut statements: Vec<MmpStatement> = Vec::with_capacity(stage_1.statements.len());
+    let mut statements: Vec<(MmpStatement, u32)> = Vec::with_capacity(stage_1.statements.len());
 
     let mut errors: Vec<DetailedError> = Vec::new();
 
@@ -49,7 +49,7 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
                     });
                 }
 
-                statements.push(MmpStatement::Constant);
+                statements.push((MmpStatement::Constant, current_line));
             }
             "$v" => {
                 if token_iter.next().is_some() {
@@ -64,7 +64,7 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
                     });
                 }
 
-                statements.push(MmpStatement::Variable);
+                statements.push((MmpStatement::Variable, current_line));
             }
             "$f" => {
                 // token_iter should only have exactly three more token
@@ -116,7 +116,7 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
                     floating_hypotheses.push(&statement_str[3..statement_str.len()]);
                 }
 
-                statements.push(MmpStatement::FloatingHypohesis);
+                statements.push((MmpStatement::FloatingHypohesis, current_line));
             }
             "$header" => {
                 if label.is_some() {
@@ -170,7 +170,7 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
 
                         label = Some(MmpLabel::Header { header_path, title });
 
-                        statements.push(MmpStatement::MmpLabel);
+                        statements.push((MmpStatement::MmpLabel, current_line));
                     } else {
                         errors.push(DetailedError {
                             error_type: Error::TooFewHeaderTokensError,
@@ -263,7 +263,7 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
                     });
                 }
 
-                statements.push(MmpStatement::MmpLabel);
+                statements.push((MmpStatement::MmpLabel, current_line));
             }
             "$axiom" => {
                 if label.is_some() {
@@ -316,7 +316,7 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
                     });
                 }
 
-                statements.push(MmpStatement::MmpLabel);
+                statements.push((MmpStatement::MmpLabel, current_line));
             }
             "$theorem" => {
                 if label.is_some() {
@@ -369,7 +369,7 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
                     });
                 }
 
-                statements.push(MmpStatement::MmpLabel);
+                statements.push((MmpStatement::MmpLabel, current_line));
             }
             "$d" => {
                 // make sure there are at least two more tokens
@@ -385,7 +385,7 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
                     distinct_vars.push(&statement_str[2..statement_str.len()]);
                 }
 
-                statements.push(MmpStatement::DistinctVar);
+                statements.push((MmpStatement::DistinctVar, current_line));
             }
             "$allowdiscouraged" => {
                 if allow_discouraged {
@@ -412,7 +412,7 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
                     });
                 }
 
-                statements.push(MmpStatement::AllowDiscouraged);
+                statements.push((MmpStatement::AllowDiscouraged, current_line));
             }
             "$locateafter" => {
                 if locate_after.is_some() {
@@ -457,7 +457,7 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
                     locate_after = Some(LocateAfterRef::LocateAfter(""));
                 }
 
-                statements.push(MmpStatement::LocateAfter);
+                statements.push((MmpStatement::LocateAfter, current_line));
             }
             "$locateafterconst" => {
                 if locate_after.is_some() {
@@ -502,7 +502,7 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
                     locate_after = Some(LocateAfterRef::LocateAfter(""));
                 }
 
-                statements.push(MmpStatement::LocateAfter);
+                statements.push((MmpStatement::LocateAfter, current_line));
             }
             "$locateaftervar" => {
                 if locate_after.is_some() {
@@ -547,10 +547,10 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
                     locate_after = Some(LocateAfterRef::LocateAfter(""));
                 }
 
-                statements.push(MmpStatement::LocateAfter);
+                statements.push((MmpStatement::LocateAfter, current_line));
             }
             t if t.starts_with('*') => {
-                statements.push(MmpStatement::Comment);
+                statements.push((MmpStatement::Comment, current_line));
                 comments.push(&statement_str[1..statement_str.len()]);
             }
             t if t.starts_with('$') => {
@@ -687,7 +687,7 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
 
                 let expression = &statement_str[step_prefix.len()..statement_str.len()];
 
-                statements.push(MmpStatement::ProofLine);
+                statements.push((MmpStatement::ProofLine, current_line));
                 proof_lines.push(ProofLine {
                     advanced_unification,
                     is_hypothesis,

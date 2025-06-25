@@ -1,6 +1,7 @@
 use crate::{
     metamath::mmp_parser::{
-        self, MmpParserStage1, MmpParserStage2, MmpParserStage3, MmpParserStage3Success,
+        self, MmpParserStage1, MmpParserStage2, MmpParserStage2Success, MmpParserStage3,
+        MmpParserStage3Success, MmpParserStage3Theorem, MmpParserStage4,
     },
     model::{
         self, CommentPageData, ConstantsPageData, DatabaseElementPageData, FloatingHypothesis,
@@ -130,56 +131,19 @@ pub async fn on_edit(
         MmpParserStage3Success::Theorem(stage_3_theorem) => stage_3_theorem,
     };
 
-    Ok(OnEditData {
-        page_data: Some(DatabaseElementPageData::Theorem(TheoremPageData {
-            theorem: Theorem {
-                label: stage_3_theorem.label.to_string(),
-                description: stage_3_theorem.description.to_string(),
-                distincts: stage_2_success
-                    .distinct_vars
-                    .iter()
-                    .map(|s| util::str_to_space_seperated_string(s))
-                    .collect(),
-                hypotheses: stage_2_success
-                    .proof_lines
-                    .iter()
-                    .filter(|pl| pl.is_hypothesis)
-                    .map(|pl| Hypothesis {
-                        label: pl.step_ref.to_string(),
-                        expression: util::str_to_space_seperated_string(pl.expression),
-                    })
-                    .collect(),
-                assertion: stage_2_success
-                    .proof_lines
-                    .iter()
-                    .find(|pl| pl.step_name == "qed")
-                    .map(|pl| util::str_to_space_seperated_string(pl.expression))
-                    .unwrap_or(String::new()),
-                proof: if stage_3_theorem.is_axiom {
-                    None
-                } else {
-                    Some("Proof not yet complete".to_string())
-                },
-            },
-            theorem_number: 0,
-            proof_lines: stage_2_success
-                .proof_lines
-                .iter()
-                .map(|pl| model::ProofLine {
-                    step_name: pl.step_name.to_string(),
-                    hypotheses: if pl.hypotheses.len() != 0 {
-                        pl.hypotheses.split(',').map(|s| s.to_string()).collect()
-                    } else {
-                        Vec::new()
-                    },
-                    reference: pl.step_ref.to_string(),
-                    assertion: util::str_to_space_seperated_string(pl.expression),
-                    indention: 0,
+    let stage_4_success =
+        match stage_3_theorem.next_stage(&stage_1_success, &stage_2_success, mm_data)? {
+            MmpParserStage4::Success(success) => success,
+            MmpParserStage4::Fail(fail) => {
+                return Ok(OnEditData {
+                    page_data: calc_theorem_page_data(&stage_2_success, &stage_3_theorem),
+                    errors: fail.errors,
                 })
-                .collect(),
-            last_theorem_label: None,
-            next_theorem_label: None,
-        })),
+            }
+        };
+
+    Ok(OnEditData {
+        page_data: calc_theorem_page_data(&stage_2_success, &stage_3_theorem),
         errors: Vec::new(),
     })
 
@@ -207,6 +171,65 @@ pub async fn on_edit(
     // };
 
     // Ok(OnEditData { page_data, errors })
+}
+
+pub fn calc_theorem_page_data(
+    stage_2_success: &MmpParserStage2Success,
+    stage_3_theorem: &MmpParserStage3Theorem,
+) -> Option<DatabaseElementPageData> {
+    Some(DatabaseElementPageData::Theorem(TheoremPageData {
+        theorem: Theorem {
+            label: stage_3_theorem.label.to_string(),
+            description: stage_2_success
+                .comments
+                .first()
+                .map(|s| s.to_string())
+                .unwrap_or(String::new()),
+            distincts: stage_2_success
+                .distinct_vars
+                .iter()
+                .map(|s| util::str_to_space_seperated_string(s))
+                .collect(),
+            hypotheses: stage_2_success
+                .proof_lines
+                .iter()
+                .filter(|pl| pl.is_hypothesis)
+                .map(|pl| Hypothesis {
+                    label: pl.step_ref.to_string(),
+                    expression: util::str_to_space_seperated_string(pl.expression),
+                })
+                .collect(),
+            assertion: stage_2_success
+                .proof_lines
+                .iter()
+                .find(|pl| pl.step_name == "qed")
+                .map(|pl| util::str_to_space_seperated_string(pl.expression))
+                .unwrap_or(String::new()),
+            proof: if stage_3_theorem.is_axiom {
+                None
+            } else {
+                Some("Proof not yet complete".to_string())
+            },
+        },
+        theorem_number: 0,
+        proof_lines: stage_2_success
+            .proof_lines
+            .iter()
+            .map(|pl| model::ProofLine {
+                step_name: pl.step_name.to_string(),
+                hypotheses: if pl.hypotheses.len() != 0 {
+                    pl.hypotheses.split(',').map(|s| s.to_string()).collect()
+                } else {
+                    Vec::new()
+                },
+                reference: pl.step_ref.to_string(),
+                assertion: util::str_to_space_seperated_string(pl.expression),
+                indention: 0,
+            })
+            .collect(),
+        last_theorem_label: None,
+        next_theorem_label: None,
+    }))
 }
 
 pub fn statement_strs_to_mmp_info_structured_for_unify_with_error_info<'a>(

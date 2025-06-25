@@ -84,22 +84,20 @@ fn calc_statement_out_of_place_errors(
 ) -> Vec<DetailedError> {
     let mut errors: Vec<DetailedError> = Vec::new();
 
-    let mut line_number = stage_1.number_of_lines_before_first_statement;
-
-    for (&statement_str, statement_type) in stage_1.statements.iter().zip(&stage_2.statements) {
+    for (&statement_str, (statement_type, line_number)) in
+        stage_1.statements.iter().zip(&stage_2.statements)
+    {
         if *statement_type == out_of_place_statement_type {
             let last_non_whitespace_pos = stage_2::last_non_whitespace_pos(statement_str);
 
             errors.push(DetailedError {
                 error_type,
-                start_line_number: line_number,
+                start_line_number: *line_number,
                 start_column: 1,
-                end_line_number: line_number + last_non_whitespace_pos.0 - 1,
+                end_line_number: *line_number + last_non_whitespace_pos.0 - 1,
                 end_column: last_non_whitespace_pos.1 + 1,
             });
         }
-
-        line_number += stage_2::new_lines_in_str(statement_str);
     }
 
     errors
@@ -176,23 +174,21 @@ fn calc_label_error(
     stage_2: &MmpParserStage2Success,
     error_type: Error,
 ) -> Result<DetailedError, Error> {
-    let mut line_number = stage_1.number_of_lines_before_first_statement;
-
-    for (&statement_str, statement_type) in stage_1.statements.iter().zip(&stage_2.statements) {
+    for (&statement_str, (statement_type, line_number)) in
+        stage_1.statements.iter().zip(&stage_2.statements)
+    {
         if *statement_type == MmpStatement::MmpLabel {
             let first_token_start_pos = stage_2::nth_token_start_pos(statement_str, 1);
             let first_token_end_pos = stage_2::nth_token_end_pos(statement_str, 1);
 
             return Ok(DetailedError {
                 error_type,
-                start_line_number: line_number + first_token_start_pos.0 - 1,
+                start_line_number: *line_number + first_token_start_pos.0 - 1,
                 start_column: first_token_start_pos.1,
-                end_line_number: line_number + first_token_end_pos.0 - 1,
+                end_line_number: *line_number + first_token_end_pos.0 - 1,
                 end_column: first_token_end_pos.1 + 1,
             });
         }
-
-        line_number += stage_2::new_lines_in_str(statement_str);
     }
 
     Err(Error::InternalLogicError)
@@ -320,13 +316,10 @@ fn stage_3_theorem<'a>(
     //     statement_i += 1;
     // }
 
-    let description = stage_2.comments.first().map(|s| *s).unwrap_or("");
-
     Ok(if errors.is_empty() {
         MmpParserStage3::Success(MmpParserStage3Success::Theorem(MmpParserStage3Theorem {
             is_axiom,
             label,
-            description,
         }))
     } else {
         MmpParserStage3::Fail(MmpParserStage3Fail { errors })
@@ -429,7 +422,6 @@ fn stage_3_floating_hypothesis<'a>(
         .to_string();
 
     let Some((statement_str, line_number)) = calc_statement_str_and_line_number(
-        stage_1.number_of_lines_before_first_statement,
         &stage_1.statements,
         &stage_2.statements,
         MmpStatement::FloatingHypohesis,
@@ -533,22 +525,15 @@ fn stage_3_floating_hypothesis<'a>(
 }
 
 fn calc_statement_str_and_line_number<'a>(
-    number_of_lines_before_first_statement: u32,
     statement_strs: &Vec<&'a str>,
-    statements: &Vec<MmpStatement>,
+    statements: &Vec<(MmpStatement, u32)>,
     searched_for_statement_type: MmpStatement,
 ) -> Option<(&'a str, u32)> {
-    let mut line_number = number_of_lines_before_first_statement;
-
-    for (&statement_str, statement_type) in statement_strs.iter().zip(statements) {
-        if *statement_type == searched_for_statement_type {
-            return Some((statement_str, line_number));
-        }
-
-        line_number += stage_2::new_lines_in_str(statement_str);
-    }
-
-    None
+    statement_strs
+        .iter()
+        .zip(statements.iter())
+        .find(|(_, (st, _))| *st == searched_for_statement_type)
+        .map(|(s, (_, ln))| (*s, *ln))
 }
 
 fn stage_3_variables<'a>(
@@ -605,7 +590,6 @@ fn stage_3_variables<'a>(
     let variables_str = *stage_2.variables.get(0).ok_or(Error::InternalLogicError)?;
 
     let Some((_, start_line_number)) = calc_statement_str_and_line_number(
-        stage_1.number_of_lines_before_first_statement,
         &stage_1.statements,
         &stage_2.statements,
         MmpStatement::Variable,
@@ -747,7 +731,6 @@ fn stage_3_constants<'a>(
     let constants_str = stage_2.constants.ok_or(Error::InternalLogicError)?;
 
     let Some((_, start_line_number)) = calc_statement_str_and_line_number(
-        stage_1.number_of_lines_before_first_statement,
         &stage_1.statements,
         &stage_2.statements,
         MmpStatement::Constant,

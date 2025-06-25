@@ -33,9 +33,9 @@ export function getErrorMessage(errorType: string): string {
     case "TooManyCommentPathTokensError": {
       return "$comment statements must only be followed by exactly one token: The path of the comment.\n\nExample: $comment 3.4.2#5 (The fifth comment under header 3.4.2)";
     }
-    case "InvalidCommentPathFormatError": {
-      return "$comment statements must be followed by the path of the comment.\n\nExample: $comment 3.4.2#5 (The fifth comment under header 3.4.2)";
-    }
+    // case "InvalidCommentPathFormatError": {
+    //   return "$comment statements must be followed by the path of the comment.\n\nExample: $comment 3.4.2#5 (The fifth comment under header 3.4.2)";
+    // }
     case "MissingAxiomLabelError":
     case "TooManyAxiomLabelTokensError": {
       return "$axiom statements must only be followed by exactly one token: The label of the axiom.";
@@ -80,7 +80,7 @@ export function getErrorMessage(errorType: string): string {
       return "Duplicate step name";
     }
     case "HypNameDoesntExistError": {
-      return "This is not the name of a previous step.";
+      return "Not the name of a previous step.";
     }
     case "DuplicateHypLabelsError": {
       return "Duplicate hypothesis label.";
@@ -118,8 +118,8 @@ export function getErrorMessage(errorType: string): string {
     case "InvalidHeaderPathFormatError": {
       return "Not a valid header path. Header paths must be a list of dot seperated numbers.\n\nExample: 1.2.3";
     }
-    case "InvalidHeaderPathFormatError": {
-      return "Not a valid comment path. Comment paths must be a (possibly empty) list of dot seperated numbers, followed by a # and the comment number.\n\nExamples: #2 or 1.2.3#4";
+    case "InvalidCommentPathFormatError": {
+      return "Not a valid comment path. Comment paths must be a (possibly empty) list of dot seperated numbers, followed by a # and then the comment number.\n\nExamples: #2 or 1.2.3#4";
     }
     case "InvalidHeaderPathError": {
       return "Not a valid new header path. Either the parent header does not exist or it does not have enough subheaders.\n\nExample: To add header 1.2.3, parent header 1.2 must exist and must already have two subheaders to add the subheader number 3.";
@@ -145,6 +145,9 @@ export function getErrorMessage(errorType: string): string {
     }
     case "TwiceDeclaredMathSymbolError": {
       return "Can't declare the same symbol twice.";
+    }
+    case "MmpStepRefNotALabelError": {
+      return "Not the label of a previous theorem or axiom.";
     }
   }
 

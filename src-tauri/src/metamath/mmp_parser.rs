@@ -1,15 +1,13 @@
 use crate::{
     editor::on_edit::DetailedError,
-    model::{
-        Comment, Constant, FloatingHypothesis, Header, HeaderPath, MetamathData, ParseTree,
-        Variable,
-    },
+    model::{Comment, Constant, FloatingHypothesis, HeaderPath, MetamathData, ParseTree, Variable},
     Error,
 };
 
 mod stage_1;
 mod stage_2;
 mod stage_3;
+mod stage_4;
 
 pub fn new(text: &str) -> MmpParserStage0 {
     MmpParserStage0 { text }
@@ -60,7 +58,7 @@ pub struct MmpParserStage2Success<'a> {
     pub distinct_vars: Vec<&'a str>,
     pub proof_lines: Vec<ProofLine<'a>>,
     pub comments: Vec<&'a str>,
-    pub statements: Vec<MmpStatement>,
+    pub statements: Vec<(MmpStatement, u32)>,
 }
 
 pub enum MmpLabel<'a> {
@@ -155,21 +153,39 @@ pub struct MmpParserStage3Theorem<'a> {
     // pub distinct_vars: Vec<&'a str>,
     // pub proof_lines: Vec<ProofLineParsed<'a>>,
     // pub locate_after: Option<LocateAfterRef<'a>>,
-    pub description: &'a str,
-}
-
-#[derive(Debug)]
-pub struct ProofLineParsed<'a> {
-    pub advanced_unification: bool,
-    pub is_hypothesis: bool,
-    pub step_name: &'a str,
-    pub hypotheses: &'a str,
-    pub hypotheses_parsed: Vec<Option<usize>>, // None if the hypothesis is "?"
-    pub step_ref: &'a str,
-    pub expression: &'a str,
-    pub parse_tree: ParseTree,
+    // pub description: &'a str,
 }
 
 pub struct MmpParserStage3Fail {
+    pub errors: Vec<DetailedError>,
+}
+
+impl<'a> MmpParserStage3Theorem<'a> {
+    pub fn next_stage(
+        &self,
+        stage_1: &MmpParserStage1Success,
+        stage_2: &MmpParserStage2Success,
+        mm_data: &MetamathData,
+    ) -> Result<MmpParserStage4, Error> {
+        stage_4::stage_4(stage_1, stage_2, self, mm_data)
+    }
+}
+
+pub enum MmpParserStage4 {
+    Success(MmpParserStage4Success),
+    Fail(MmpParserStage4Fail),
+}
+
+pub struct MmpParserStage4Success {
+    pub proof_lines_parsed: Vec<ProofLineParsed>,
+}
+
+#[derive(Debug)]
+pub struct ProofLineParsed {
+    pub hypotheses_parsed: Vec<Option<usize>>, // None if the hypothesis is "?"
+    pub parse_tree: Option<ParseTree>,
+}
+
+pub struct MmpParserStage4Fail {
     pub errors: Vec<DetailedError>,
 }
