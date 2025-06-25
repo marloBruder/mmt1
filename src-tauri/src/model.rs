@@ -191,7 +191,7 @@ pub struct ProofLine {
     pub step_name: String,
     pub hypotheses: Vec<String>,
     pub reference: String,
-    pub indention: i32,
+    pub indention: u32,
     pub assertion: String,
 }
 

@@ -215,7 +215,8 @@ pub fn calc_theorem_page_data(
         proof_lines: stage_2_success
             .proof_lines
             .iter()
-            .map(|pl| model::ProofLine {
+            .zip(stage_3_theorem.indention.iter())
+            .map(|(pl, &indention)| model::ProofLine {
                 step_name: pl.step_name.to_string(),
                 hypotheses: if pl.hypotheses.len() != 0 {
                     pl.hypotheses.split(',').map(|s| s.to_string()).collect()
@@ -224,7 +225,7 @@ pub fn calc_theorem_page_data(
                 },
                 reference: pl.step_ref.to_string(),
                 assertion: util::str_to_space_seperated_string(pl.expression),
-                indention: 0,
+                indention,
             })
             .collect(),
         last_theorem_label: None,

@@ -13,7 +13,7 @@ use super::{
 pub fn stage_4(
     stage_1: &MmpParserStage1Success,
     stage_2: &MmpParserStage2Success,
-    stage_3: &MmpParserStage3Theorem,
+    _stage_3: &MmpParserStage3Theorem,
     mm_data: &MetamathData,
 ) -> Result<MmpParserStage4, Error> {
     let mut errors: Vec<DetailedError> = Vec::new();

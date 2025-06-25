@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     editor::on_edit::DetailedError,
     model::{Comment, Constant, FloatingHypothesis, HeaderPath, MetamathData, Statement, Variable},
@@ -7,7 +9,7 @@ use crate::{
 use super::{
     stage_2, MmpLabel, MmpParserStage1Success, MmpParserStage2Success, MmpParserStage3,
     MmpParserStage3Comment, MmpParserStage3Fail, MmpParserStage3Header, MmpParserStage3Success,
-    MmpParserStage3Theorem, MmpStatement,
+    MmpParserStage3Theorem, MmpStatement, ProofLine,
 };
 
 pub fn stage_3<'a>(
@@ -266,64 +268,76 @@ fn stage_3_theorem<'a>(
         ));
     }
 
-    // let mut statement_i = 0;
-    // let mut line_number = stage_1.number_of_lines_before_first_statement;
-
-    // for proof_line in &stage_2.proof_lines {
-    //     while stage_2
-    //         .statements
-    //         .get(statement_i)
-    //         .is_some_and(|s| !matches!(s, MmpStatement::ProofLine))
-    //     {
-    //         line_number += stage_2::new_lines_in_str(
-    //             stage_1
-    //                 .statements
-    //                 .get(statement_i)
-    //                 .ok_or(Error::InternalLogicError)?,
-    //         );
-    //         statement_i += 1;
-    //     }
-
-    //     if !proof_line.is_hypothesis
-    //         && mm_data
-    //             .database_header
-    //             .theorem_locate_after_iter(stage_2.locate_after)
-    //             .all(|t| t.label != proof_line.step_ref)
-    //     {
-    //         let start_column = 1
-    //             + proof_line.advanced_unification as u32
-    //             + proof_line.step_name.len() as u32
-    //             + 1
-    //             + proof_line.hypotheses.len() as u32
-    //             + 1;
-    //         let end_column = start_column + proof_line.step_ref.len() as u32;
-
-    //         errors.push(DetailedError {
-    //             error_type: Error::MmpStepRefNotALabelError,
-    //             start_line_number: line_number,
-    //             start_column,
-    //             end_line_number: line_number,
-    //             end_column,
-    //         });
-    //     }
-
-    //     line_number += stage_2::new_lines_in_str(
-    //         stage_1
-    //             .statements
-    //             .get(statement_i)
-    //             .ok_or(Error::InternalLogicError)?,
-    //     );
-    //     statement_i += 1;
-    // }
+    let indention = calc_indention(&stage_2.proof_lines)?;
 
     Ok(if errors.is_empty() {
         MmpParserStage3::Success(MmpParserStage3Success::Theorem(MmpParserStage3Theorem {
             is_axiom,
             label,
+            indention,
         }))
     } else {
         MmpParserStage3::Fail(MmpParserStage3Fail { errors })
     })
+}
+
+struct Tree<'a> {
+    pub label: &'a str,
+    pub nodes: Vec<Tree<'a>>,
+}
+
+fn calc_indention(proof_lines: &Vec<ProofLine>) -> Result<Vec<u32>, Error> {
+    // calc tree rep
+    let mut trees: Vec<Tree> = Vec::new();
+    for proof_line in proof_lines {
+        let mut nodes: Vec<Tree> = Vec::new();
+
+        if proof_line.hypotheses != "" {
+            for hypothesis in proof_line.hypotheses.split(',') {
+                for (tree_i, tree) in trees.iter().enumerate() {
+                    if tree.label == hypothesis {
+                        nodes.push(trees.remove(tree_i));
+                        break;
+                    }
+                }
+            }
+        }
+
+        trees.push(Tree {
+            label: proof_line.step_name,
+            nodes,
+        })
+    }
+
+    // calc indentions based on trees
+    let mut indentions: HashMap<&str, u32> = HashMap::new();
+    let mut current_indention = 1;
+    let mut next_level: Vec<&Tree> = trees.iter().collect();
+    let mut current_level: Vec<&Tree>;
+
+    while next_level.len() != 0 {
+        current_level = next_level;
+        next_level = Vec::new();
+
+        for tree in current_level {
+            indentions.insert(tree.label, current_indention);
+            next_level.extend(tree.nodes.iter());
+        }
+
+        current_indention += 1;
+    }
+
+    let mut indentions_vec: Vec<u32> = Vec::new();
+
+    for proof_line in proof_lines {
+        indentions_vec.push(
+            *indentions
+                .get(proof_line.step_name)
+                .ok_or(Error::InternalLogicError)?,
+        );
+    }
+
+    Ok(indentions_vec)
 }
 
 fn stage_3_no_label<'a>(
