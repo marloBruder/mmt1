@@ -118,6 +118,9 @@ export interface TheoremPageData {
   theorem: Theorem;
   theoremNumber: number;
   proofLines: ProofLine[];
+  previewErrors: [boolean, boolean, boolean, boolean][] | null;
+  previewConfirmations: boolean[] | null;
+  previewConfirmationsRecursive: boolean[] | null;
   lastTheoremLabel: string | null;
   nextTheoremLabel: string | null;
   discriminator: "TheoremPageData";

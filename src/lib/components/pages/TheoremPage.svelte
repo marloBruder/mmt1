@@ -15,6 +15,22 @@
     }
     return false;
   };
+
+  let proofLineBackground = (i: number): string => {
+    if (pageData.previewConfirmationsRecursive) {
+      if (pageData.previewConfirmationsRecursive[i]) {
+        return "bg-green-300";
+      }
+    }
+
+    if (pageData.previewConfirmations) {
+      if (pageData.previewConfirmations[i]) {
+        return "bg-green-200";
+      }
+    }
+
+    return "";
+  };
 </script>
 
 <div class="text-center pb-4 flex">
@@ -89,22 +105,22 @@
           </tr>
         </thead>
         <tbody>
-          {#each pageData.proofLines as proofLine}
-            <tr>
-              <td class="border border-gray-600 py-1 px-2">{proofLine.stepName}</td>
-              <td class="border border-gray-600 py-1 px-2">
+          {#each pageData.proofLines as proofLine, i}
+            <tr class={proofLineBackground(i)}>
+              <td class={"border border-gray-600 py-1 px-2 " + (pageData.previewErrors ? (pageData.previewErrors[i][0] ? " bg-red-300 " : "") : "")}>{proofLine.stepName}</td>
+              <td class={"border border-gray-600 py-1 px-2 " + (pageData.previewErrors ? (pageData.previewErrors[i][1] ? " bg-red-300 " : "") : "")}>
                 {#each proofLine.hypotheses as hypothesis, index}
                   {hypothesis + (index != proofLine.hypotheses.length - 1 ? ", " : "")}
                 {/each}
               </td>
-              <td class="border border-gray-600 py-1 px-2">
+              <td class={"border border-gray-600 py-1 px-2 " + (pageData.previewErrors ? (pageData.previewErrors[i][2] ? " bg-red-300 " : "") : "")}>
                 {#if !isHypothesisName(proofLine.reference)}
                   <TheoremLink label={proofLine.reference}></TheoremLink>
                 {:else}
                   {proofLine.reference}
                 {/if}
               </td>
-              <td class="border border-gray-600 py-1 pr-2">
+              <td class={"border border-gray-600 py-1 pr-2" + (pageData.previewErrors ? (pageData.previewErrors[i][3] ? " bg-red-300 " : "") : "")}>
                 <span class="text-xs text-gray-600">
                   {#each { length: proofLine.indention - 1 } as _}
                     {". "}

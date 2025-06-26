@@ -481,6 +481,9 @@ pub fn calc_theorem_page_data(
             theorem: theorem.clone(),
             theorem_number,
             proof_lines: Vec::new(),
+            preview_errors: None,
+            preview_confirmations: None,
+            preview_confirmations_recursive: None,
             last_theorem_label,
             next_theorem_label,
         });
@@ -584,6 +587,9 @@ pub fn calc_theorem_page_data(
         theorem: theorem.clone(),
         theorem_number,
         proof_lines,
+        preview_errors: None,
+        preview_confirmations: None,
+        preview_confirmations_recursive: None,
         last_theorem_label,
         next_theorem_label,
     })

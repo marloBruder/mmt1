@@ -136,14 +136,26 @@ pub async fn on_edit(
             MmpParserStage4::Success(success) => success,
             MmpParserStage4::Fail(fail) => {
                 return Ok(OnEditData {
-                    page_data: calc_theorem_page_data(&stage_2_success, &stage_3_theorem),
+                    page_data: calc_theorem_page_data(
+                        &stage_2_success,
+                        &stage_3_theorem,
+                        fail.preview_errors,
+                        fail.preview_confirmations,
+                        fail.preview_confirmations_recursive,
+                    ),
                     errors: fail.errors,
                 })
             }
         };
 
     Ok(OnEditData {
-        page_data: calc_theorem_page_data(&stage_2_success, &stage_3_theorem),
+        page_data: calc_theorem_page_data(
+            &stage_2_success,
+            &stage_3_theorem,
+            stage_4_success.preview_errors,
+            stage_4_success.preview_confirmations,
+            stage_4_success.preview_confirmations_recursive,
+        ),
         errors: Vec::new(),
     })
 
@@ -176,6 +188,9 @@ pub async fn on_edit(
 pub fn calc_theorem_page_data(
     stage_2_success: &MmpParserStage2Success,
     stage_3_theorem: &MmpParserStage3Theorem,
+    preview_errors: Vec<(bool, bool, bool, bool)>,
+    preview_confirmations: Vec<bool>,
+    preview_confirmations_recursive: Vec<bool>,
 ) -> Option<DatabaseElementPageData> {
     Some(DatabaseElementPageData::Theorem(TheoremPageData {
         theorem: Theorem {
@@ -228,6 +243,9 @@ pub fn calc_theorem_page_data(
                 indention,
             })
             .collect(),
+        preview_errors: Some(preview_errors),
+        preview_confirmations: Some(preview_confirmations),
+        preview_confirmations_recursive: Some(preview_confirmations_recursive),
         last_theorem_label: None,
         next_theorem_label: None,
     }))
@@ -1158,6 +1176,9 @@ fn get_theorem_page_data(
         theorem,
         theorem_number: 0,
         proof_lines,
+        preview_errors: None,
+        preview_confirmations: None,
+        preview_confirmations_recursive: None,
         last_theorem_label: None,
         next_theorem_label: None,
     }))

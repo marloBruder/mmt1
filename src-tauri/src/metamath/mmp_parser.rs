@@ -179,6 +179,9 @@ pub enum MmpParserStage4 {
 
 pub struct MmpParserStage4Success {
     pub proof_lines_parsed: Vec<ProofLineParsed>,
+    pub preview_errors: Vec<(bool, bool, bool, bool)>,
+    pub preview_confirmations: Vec<bool>,
+    pub preview_confirmations_recursive: Vec<bool>,
 }
 
 #[derive(Debug)]
@@ -189,4 +192,7 @@ pub struct ProofLineParsed {
 
 pub struct MmpParserStage4Fail {
     pub errors: Vec<DetailedError>,
+    pub preview_errors: Vec<(bool, bool, bool, bool)>,
+    pub preview_confirmations: Vec<bool>,
+    pub preview_confirmations_recursive: Vec<bool>,
 }

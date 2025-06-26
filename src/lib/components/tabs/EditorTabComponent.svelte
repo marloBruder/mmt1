@@ -355,7 +355,7 @@
   <input id="placeAfter" bind:value={placeAfter} autocomplete="off" />
   <RoundButton onclick={addToDatabase}>Add to database</RoundButton>
 </div> -->
-<div class="h-full w-full flex">
+<div class="h-full w-full flex overflow-hidden">
   <div id="editor-area" class="h-full {editorTab.isSplit ? 'w-1/2' : 'w-full'}">
     <!-- <div class="w-8 float-left text-right">
     {#each { length: lines } as _, i}
@@ -370,7 +370,7 @@
   </div> -->
   </div>
   {#if editorTab.isSplit}
-    <div class="w-1/2 h-full">
+    <div class="w-1/2 h-full overflow-auto">
       {#if editorTab.pageData != null}
         {#if editorTab.pageData.discriminator == "EmptyPageData"}
           <div class="p-2">Nothing to see yet.</div>

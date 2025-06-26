@@ -1,7 +1,7 @@
 use crate::{
     editor::on_edit::DetailedError,
     metamath::mmp_parser::MmpStatement,
-    model::{MetamathData, SymbolNumberMapping},
+    model::{MetamathData, ParseTree, SymbolNumberMapping, Theorem},
     Error,
 };
 
@@ -17,6 +17,9 @@ pub fn stage_4(
     mm_data: &MetamathData,
 ) -> Result<MmpParserStage4, Error> {
     let mut errors: Vec<DetailedError> = Vec::new();
+    let mut preview_errors: Vec<(bool, bool, bool, bool)> = Vec::new();
+    let mut preview_confirmations: Vec<bool> = Vec::new();
+    let mut preview_confirmations_recursive: Vec<bool> = Vec::new();
 
     let mut proof_lines_parsed: Vec<ProofLineParsed> = Vec::new();
 
@@ -41,6 +44,8 @@ pub fn stage_4(
             .ok_or(Error::InternalLogicError)?
             .len() as u32;
 
+        let mut preview_error = (false, false, false, false);
+
         // Check duplicate step names
         if stage_2
             .proof_lines
@@ -60,6 +65,8 @@ pub fn stage_4(
                     + proof_line.is_hypothesis as u32
                     + proof_line.step_name.len() as u32,
             });
+
+            preview_error.0 = true;
         }
 
         // Calculate hypotheses_parsed
@@ -78,8 +85,8 @@ pub fn stage_4(
                     match stage_2
                         .proof_lines
                         .iter()
-                        .enumerate()
                         .take(i)
+                        .enumerate()
                         .find(|(_, pl)| pl.step_name == hyp)
                     {
                         Some((i, _)) => hypotheses_parsed.push(Some(i)),
@@ -91,6 +98,8 @@ pub fn stage_4(
                                 end_line_number: line_number,
                                 end_column: start_column + hyp.len() as u32,
                             });
+
+                            preview_error.1 = true;
                         }
                     }
                 }
@@ -114,23 +123,31 @@ pub fn stage_4(
                 end_line_number: line_number,
                 end_column: step_prefix_len + 1,
             });
+
+            preview_error.2 = true;
         }
 
-        // Check if non-hypothesis refs are valid labels
-        if !proof_line.is_hypothesis
-            && proof_line.step_ref != ""
-            && !mm_data
+        // Check if non-empty and non-hypothesis refs are valid theorem labels and save the theorem
+        let mut theorem: Option<&Theorem> = None;
+
+        if !proof_line.is_hypothesis && proof_line.step_ref != "" {
+            if let Some(theorem_ref) = mm_data
                 .database_header
                 .theorem_locate_after_iter(stage_2.locate_after)
-                .any(|t| t.label == proof_line.step_ref)
-        {
-            errors.push(DetailedError {
-                error_type: Error::MmpStepRefNotALabelError,
-                start_line_number: line_number,
-                start_column: step_prefix_len - proof_line.step_ref.len() as u32 + 1,
-                end_line_number: line_number,
-                end_column: step_prefix_len + 1,
-            });
+                .find(|t| t.label == proof_line.step_ref)
+            {
+                theorem = Some(theorem_ref);
+            } else {
+                errors.push(DetailedError {
+                    error_type: Error::MmpStepRefNotALabelError,
+                    start_line_number: line_number,
+                    start_column: step_prefix_len - proof_line.step_ref.len() as u32 + 1,
+                    end_line_number: line_number,
+                    end_column: step_prefix_len + 1,
+                });
+
+                preview_error.2 = true;
+            }
         }
 
         // Calculate parse_tree
@@ -152,6 +169,8 @@ pub fn stage_4(
                     end_line_number: line_number,
                     end_column: last_non_whitespace_pos.1 + 2,
                 });
+
+                preview_error.3 = true;
             }
             Err(Error::NonSymbolInExpressionError) => {
                 errors.append(&mut calc_non_symbol_in_expression_errors(
@@ -161,6 +180,8 @@ pub fn stage_4(
                     // step_prefix.len() as u32,
                     step_prefix_len,
                 ));
+
+                preview_error.3 = true;
             }
             Err(Error::ExpressionParseError) => {
                 let last_non_whitespace_pos = stage_2::last_non_whitespace_pos(statement_str);
@@ -172,9 +193,76 @@ pub fn stage_4(
                     end_line_number: line_number,
                     end_column: last_non_whitespace_pos.1 + 2,
                 });
+
+                preview_error.3 = true;
             }
             Err(_) => {
                 return Err(Error::InternalLogicError);
+            }
+        }
+
+        //calc previw_confirmation
+        let mut preview_confirmation = false;
+        let mut preview_confirmation_recursive = false;
+
+        if !preview_error.0 && !preview_error.1 && !preview_error.2 && !preview_error.3 {
+            if let Some(theorem_ref) = theorem {
+                // map hypotheses_parsed to the parse trees of the hypotheses
+                // if a hypothesis-parsed is "?" (hyp == None), return Err(None)
+                // If a hypothesis does not have a parse tree, also return Err(None)
+                let proof_line_parse_trees_res = hypotheses_parsed
+                    .iter()
+                    .map(|hyp| match hyp {
+                        Some(index) => Ok(proof_lines_parsed
+                            .get(*index)
+                            .ok_or(Some(Error::InternalLogicError))?
+                            .parse_tree
+                            .as_ref()
+                            .ok_or(None)?),
+                        None => Err(None),
+                    })
+                    .collect::<Result<Vec<&ParseTree>, Option<Error>>>();
+
+                match proof_line_parse_trees_res {
+                    // If one of the hyps was "?" or if it pointed to a proof_line_parsed without a parse tree, do nothing
+                    Err(None) => {}
+                    // Return potential InternalLogicError
+                    Err(Some(err)) => return Err(err),
+                    Ok(mut proof_line_parse_trees) => {
+                        if let Some(parse_tree_ref) = parse_tree.as_ref() {
+                            proof_line_parse_trees.push(parse_tree_ref);
+
+                            if let Some(optimized_theorem_data) =
+                                mm_data.optimized_data.theorem_data.get(&theorem_ref.label)
+                            {
+                                let mut theorem_parse_trees: Vec<&ParseTree> =
+                                    optimized_theorem_data.hypotheses_parsed.iter().collect();
+                                theorem_parse_trees.push(&optimized_theorem_data.assertion_parsed);
+
+                                if ParseTree::are_substitutions(
+                                    &theorem_parse_trees,
+                                    &proof_line_parse_trees,
+                                    &mm_data.optimized_data.grammar,
+                                )? {
+                                    preview_confirmation = true;
+
+                                    if hypotheses_parsed.iter().all(|hyp| {
+                                        hyp.is_some_and(|index| {
+                                            preview_confirmations_recursive
+                                                .get(index)
+                                                .is_some_and(|&pre_con_rec| pre_con_rec)
+                                        })
+                                    }) {
+                                        preview_confirmation_recursive = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if proof_line.is_hypothesis {
+                preview_confirmation = true;
+                preview_confirmation_recursive = true;
             }
         }
 
@@ -182,12 +270,25 @@ pub fn stage_4(
             hypotheses_parsed,
             parse_tree,
         });
+        preview_errors.push(preview_error);
+        preview_confirmations.push(preview_confirmation);
+        preview_confirmations_recursive.push(preview_confirmation_recursive);
     }
 
     Ok(if errors.is_empty() {
-        MmpParserStage4::Success(MmpParserStage4Success { proof_lines_parsed })
+        MmpParserStage4::Success(MmpParserStage4Success {
+            proof_lines_parsed,
+            preview_errors,
+            preview_confirmations,
+            preview_confirmations_recursive,
+        })
     } else {
-        MmpParserStage4::Fail(MmpParserStage4Fail { errors })
+        MmpParserStage4::Fail(MmpParserStage4Fail {
+            errors,
+            preview_errors,
+            preview_confirmations,
+            preview_confirmations_recursive,
+        })
     })
 }
 
