@@ -14,5 +14,5 @@
 </script>
 
 <div>
-  <button class="w-full text-left pl-2 hover:bg-gray-200" onclick={explorerClick} ondblclick={explorerDblClick}>{fileName}</button>
+  <button class="w-full text-left pl-2 custom-bg-hover-color" onclick={explorerClick} ondblclick={explorerDblClick}>{fileName}</button>
 </div>

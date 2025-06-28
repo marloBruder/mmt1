@@ -10,3 +10,27 @@
 .math {
   font-family: XITSMath-Regular;
 }
+
+.custom-bg-color {
+  background-color: #241b2f;
+}
+
+.custom-bg-bg-color {
+  background-color: #171520;
+}
+
+.custom-bg-input-color {
+  background-color: #262335;
+}
+
+.custom-bg-hover-color:hover {
+  background-color: #332a3d;
+}
+
+.custom-bg-active-color {
+  background-color: #4b3d5b;
+}
+
+.custom-border-bg-color {
+  border-color: #171520;
+}

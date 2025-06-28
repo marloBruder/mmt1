@@ -21,12 +21,18 @@
 </script>
 
 <div>
-  <button id={buttonID} {onclick} {onfocusout} class={"px-1 rounded " + (open ? "bg-gray-200 " : "")}>
+  <button id={buttonID} {onclick} {onfocusout} class="px-1 rounded">
     {title}
   </button>
   {#if open}
-    <div id={dropdownID} class="fixed bg-white border border-black p-2 z-50">
+    <div id={dropdownID} class="fixed custom-bg-dropdown-color border border-black rounded-lg p-2 z-50">
       {@render children()}
     </div>
   {/if}
 </div>
+
+<style>
+  .custom-bg-dropdown-color {
+    background-color: #463465;
+  }
+</style>

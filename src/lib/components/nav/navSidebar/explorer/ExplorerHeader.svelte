@@ -94,7 +94,7 @@
   };
 </script>
 
-<div class="relative h-6 hover:bg-gray-200">
+<div class="relative h-6 custom-bg-hover-color">
   <button class="h-full w-full text-left absolute" onclick={toggleOpen}>
     <div class="h-6 w-6 div float-left">
       {#if header.content !== null}

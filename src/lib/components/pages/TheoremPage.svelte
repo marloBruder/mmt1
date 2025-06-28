@@ -19,13 +19,15 @@
   let proofLineBackground = (i: number): string => {
     if (pageData.previewConfirmationsRecursive) {
       if (pageData.previewConfirmationsRecursive[i]) {
-        return "bg-green-300";
+        return "custom-confirmation-recursive-color";
+        // return "bg-green-300";
       }
     }
 
     if (pageData.previewConfirmations) {
       if (pageData.previewConfirmations[i]) {
-        return "bg-green-200";
+        return "custom-confirmation-color";
+        // return "bg-green-200";
       }
     }
 
@@ -107,20 +109,20 @@
         <tbody>
           {#each pageData.proofLines as proofLine, i}
             <tr class={proofLineBackground(i)}>
-              <td class={"border border-gray-600 py-1 px-2 " + (pageData.previewErrors ? (pageData.previewErrors[i][0] ? " bg-red-300 " : "") : "")}>{proofLine.stepName}</td>
-              <td class={"border border-gray-600 py-1 px-2 " + (pageData.previewErrors ? (pageData.previewErrors[i][1] ? " bg-red-300 " : "") : "")}>
+              <td class={"border border-gray-600 py-1 px-2 " + (pageData.previewErrors ? (pageData.previewErrors[i][0] ? " bg-red-400 " : "") : "")}>{proofLine.stepName}</td>
+              <td class={"border border-gray-600 py-1 px-2 " + (pageData.previewErrors ? (pageData.previewErrors[i][1] ? " bg-red-400 " : "") : "")}>
                 {#each proofLine.hypotheses as hypothesis, index}
                   {hypothesis + (index != proofLine.hypotheses.length - 1 ? ", " : "")}
                 {/each}
               </td>
-              <td class={"border border-gray-600 py-1 px-2 " + (pageData.previewErrors ? (pageData.previewErrors[i][2] ? " bg-red-300 " : "") : "")}>
+              <td class={"border border-gray-600 py-1 px-2 " + (pageData.previewErrors ? (pageData.previewErrors[i][2] ? " bg-red-400 " : "") : "")}>
                 {#if !isHypothesisName(proofLine.reference)}
                   <TheoremLink label={proofLine.reference}></TheoremLink>
                 {:else}
                   {proofLine.reference}
                 {/if}
               </td>
-              <td class={"border border-gray-600 py-1 pr-2" + (pageData.previewErrors ? (pageData.previewErrors[i][3] ? " bg-red-300 " : "") : "")}>
+              <td class={"border border-gray-600 py-1 pr-2" + (pageData.previewErrors ? (pageData.previewErrors[i][3] ? " bg-red-400 " : "") : "")}>
                 <span class="text-xs text-gray-600">
                   {#each { length: proofLine.indention - 1 } as _}
                     {". "}
@@ -136,3 +138,12 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .custom-confirmation-recursive-color {
+    background-color: #005030;
+  }
+  .custom-confirmation-color {
+    background-color: #003d30;
+  }
+</style>

@@ -19,15 +19,15 @@
     <table>
       <thead>
         <tr>
-          <td class="p-2 border-b border-r border-black">ASCII</td>
-          <td class="p-2 border-b border-l border-black">HTML</td>
+          <td class="p-2 border-b border-r border-gray-300">ASCII</td>
+          <td class="p-2 border-b border-l border-gray-300">HTML</td>
         </tr>
       </thead>
       <tbody>
         {#each pageData.constants as constant}
           <tr>
-            <td class="border-r border-black">{constant.symbol}</td>
-            <td class="border-l border-black"><MetamathExpression expression={constant.symbol}></MetamathExpression></td>
+            <td class="border-r border-gray-300">{constant.symbol}</td>
+            <td class="border-l border-gray-300"><MetamathExpression expression={constant.symbol}></MetamathExpression></td>
           </tr>
         {/each}
       </tbody>

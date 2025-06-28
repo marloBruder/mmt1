@@ -15,7 +15,7 @@
   <div>
     <label for="search-input">Label:</label>
     <br />
-    <input id="search-input" class="border border-black rounded" bind:value={searchParameters.label} autocomplete="off" />
+    <input id="search-input" class="border border-gray-300 rounded custom-bg-input-color" bind:value={searchParameters.label} autocomplete="off" />
   </div>
   <div class="pt-2">
     <RoundButton onclick={searchClick}>Search</RoundButton>

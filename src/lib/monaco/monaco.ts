@@ -38,7 +38,7 @@ interface ColorInformation {
 
 let test: ColorInformation = {
   information: [
-    { typecode: "wff", variables: ["ph", "ps", "ch", "th", "ta", "et", "ze", "si", "rh", "mu", "la", "ka"], color: "0000FF" },
+    { typecode: "wff", variables: ["ph", "ps", "ch", "th", "ta", "et", "ze", "si", "rh", "mu", "la", "ka"], color: "337DFF" },
     { typecode: "setvar", variables: ["x", "y", "z", "w", "v", "u", "t"], color: "ff0000" },
     { typecode: "class", variables: ["A", "B", "C", "D", "P", "Q", "R", "S"], color: "cc33cc" },
   ],
@@ -59,6 +59,7 @@ let colorInformationToCases = (colorInformation: ColorInformation): any => {
 
   for (let information of colorInformation.information) {
     res["@$" + information.typecode] = "$" + information.typecode;
+    // res["@default"] = "token";
   }
 
   return res;
@@ -101,13 +102,16 @@ export let setSyntaxHighlighting = (colorInformation: ColorInformation) => {
   });
 
   monaco.editor.defineTheme("mmp-theme", {
-    colors: {},
-    base: "vs",
+    colors: {
+      "editor.background": "#262335",
+      "editor.foreground": "#FFFFFF",
+    },
+    base: "vs-dark",
     inherit: false,
     rules: [
       { token: "comment", foreground: "777777" },
-      { token: "linePrefix", foreground: "000000" },
-      { token: "keyword", foreground: "000000" }, //"fc8005" },
+      { token: "linePrefix", foreground: "FFFFFF" },
+      { token: "keyword", foreground: "d4922f" }, //"fc8005" },
       { token: "error", foreground: "fc0515" },
       ...colorInformationToRules(colorInformation),
     ],

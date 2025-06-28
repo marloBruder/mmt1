@@ -37,7 +37,7 @@
   <div class="h-full w-12 float-left">
     <NavSidebarButtons {activeTab} {tabInfo} onClick={onNavButtonClick} />
   </div>
-  <div class="h-full ml-12 border-l border-gray-400 overflow-y-auto overflow-x-hidden">
+  <div class="h-full ml-12 border-l-2 custom-border-bg-color overflow-y-auto overflow-x-hidden">
     <TabComponent></TabComponent>
   </div>
 </div>

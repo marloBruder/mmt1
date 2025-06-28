@@ -33,7 +33,7 @@
   </div>
   <div class="p-2">
     Quick Search:
-    <input bind:value={filter} oninput={quickSearchInput} class="border border-black rounded" />
+    <input bind:value={filter} oninput={quickSearchInput} class="custom-bg-input-color border border-gray-300 rounded" />
   </div>
   <!-- <div class="pl-1 py-2">Explorer:</div> -->
   {#if filter === ""}
