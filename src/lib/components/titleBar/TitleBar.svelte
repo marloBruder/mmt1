@@ -12,6 +12,7 @@
   import MinimizeIcon from "$lib/icons/titleBar/MinimizeIcon.svelte";
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { setSyntaxHighlighting } from "$lib/monaco/monaco";
+  import UnMaximizeIcon from "$lib/icons/titleBar/UnMaximizeIcon.svelte";
 
   const appWindow = getCurrentWindow();
 
@@ -80,6 +81,12 @@
   let onAddToDatabaseClick = () => {
     tabManager.getOpenTab()!.addToDatabase();
   };
+
+  let isMaximized = $state(false);
+
+  appWindow.onResized(async () => {
+    isMaximized = await appWindow.isMaximized();
+  });
 </script>
 
 <div class="h-8 w-screen flex justify-between" data-tauri-drag-region>
@@ -106,7 +113,13 @@
   </div>
   <div class="flex">
     <button class="mx-3" onclick={minimizeClick}><MinimizeIcon /></button>
-    <button class="mx-3" onclick={maximizeClick}><MaximizeIcon /></button>
+    <button class="mx-3" onclick={maximizeClick}>
+      {#if isMaximized}
+        <UnMaximizeIcon />
+      {:else}
+        <MaximizeIcon />
+      {/if}
+    </button>
     <button class="mx-3" onclick={closeClick}><CloseIcon /></button>
   </div>
 </div>
