@@ -3,7 +3,7 @@
   import TitleBarDropdown from "./TitleBarDropdown.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { open, save } from "@tauri-apps/plugin-dialog";
-  import type { FolderRepresentation, HeaderRepresentation, HtmlRepresentation } from "$lib/sharedState/model.svelte";
+  import type { ColorInformation, FolderRepresentation, HeaderRepresentation, HtmlRepresentation } from "$lib/sharedState/model.svelte";
   import { explorerData } from "$lib/sharedState/explorerData.svelte";
   import { htmlData } from "$lib/sharedState/htmlData.svelte";
   import { fileExplorerData } from "$lib/sharedState/fileExplorerData.svelte";
@@ -63,10 +63,10 @@
     const filePath = await open({ multiple: false, directory: false, filters: [{ name: "Metamath Database", extensions: ["mm"] }] });
 
     if (filePath) {
-      let [topHeaderRep, htmlReps]: [HeaderRepresentation, HtmlRepresentation[]] = await invoke("open_metamath_database", { mmFilePath: filePath });
+      let [topHeaderRep, htmlReps, colorInformation]: [HeaderRepresentation, HtmlRepresentation[], ColorInformation[]] = await invoke("open_metamath_database", { mmFilePath: filePath });
       explorerData.resetExplorerWithFirstHeader(topHeaderRep);
       htmlData.loadLocal(htmlReps);
-      // setSyntaxHighlighting();
+      setSyntaxHighlighting(colorInformation);
     }
   };
 

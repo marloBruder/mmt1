@@ -4,9 +4,9 @@ use tauri::async_runtime::Mutex;
 
 use crate::{
     model::{
-        Comment, Constant, FloatingHypothesis, Header, HeaderPath, HeaderRepresentation,
-        HtmlRepresentation, Hypothesis, MetamathData, OptimizedMetamathData, Statement, Theorem,
-        Variable,
+        ColorInformation, Comment, Constant, FloatingHypothesis, Header, HeaderPath,
+        HeaderRepresentation, HtmlRepresentation, Hypothesis, MetamathData, OptimizedMetamathData,
+        Statement, Theorem, Variable, VariableColor,
     },
     util, AppState, Error,
 };
@@ -15,7 +15,14 @@ use crate::{
 pub async fn open_metamath_database(
     state: tauri::State<'_, Mutex<AppState>>,
     mm_file_path: &str,
-) -> Result<(HeaderRepresentation, Vec<HtmlRepresentation>), Error> {
+) -> Result<
+    (
+        HeaderRepresentation,
+        Vec<HtmlRepresentation>,
+        Vec<ColorInformation>,
+    ),
+    Error,
+> {
     let mut app_state = state.lock().await;
 
     let metamath_data = MmParser::process_database(mm_file_path)?;
@@ -24,9 +31,11 @@ pub async fn open_metamath_database(
 
     let html_reps = metamath_data.html_representations.clone();
 
+    let color_information = metamath_data.calc_color_information(true);
+
     app_state.metamath_data = Some(metamath_data);
 
-    Ok((header_rep, html_reps))
+    Ok((header_rep, html_reps, color_information))
 }
 
 pub struct MmParser {
@@ -35,6 +44,8 @@ pub struct MmParser {
     database_path: String,
     database_header: Header,
     html_representations: Vec<HtmlRepresentation>,
+    variable_colors: Vec<VariableColor>,
+    alt_variable_colors: Vec<VariableColor>,
     curr_header_path: HeaderPath,
     scope: usize,
     active_consts: HashSet<String>,
@@ -76,6 +87,8 @@ impl MmParser {
             database_header: Header::default(),
             database_path: file_path.to_string(),
             html_representations: Vec::new(),
+            variable_colors: Vec::new(),
+            alt_variable_colors: Vec::new(),
             curr_header_path: HeaderPath::default(),
             scope: 0,
             active_consts: HashSet::new(),
@@ -177,6 +190,8 @@ impl MmParser {
                 theorem_amount: self.theorem_amount,
                 ..Default::default()
             },
+            variable_colors: self.variable_colors,
+            alt_variable_colors: self.alt_variable_colors,
         };
 
         metamath_data.recalc_symbol_number_mapping_and_grammar()?;
@@ -235,6 +250,8 @@ impl MmParser {
         if let Some(first_token) = comment.split_whitespace().next() {
             if first_token == "$t" {
                 self.process_typesetting_comment(&comment)?;
+            } else if first_token == "$j" {
+                self.process_additional_information_comment(&comment)?;
             } else {
                 let mut depth = -1;
                 let mut curr_heading = "";
@@ -301,6 +318,58 @@ impl MmParser {
         }
 
         Err(Error::UnclosedCommentError)
+    }
+
+    fn process_additional_information_comment(&mut self, comment: &str) -> Result<(), Error> {
+        let typesetting_tokens = super::tokenize_typesetting_text(comment)?;
+        let mut typesetting_token_iter = typesetting_tokens.iter();
+
+        typesetting_token_iter.next(); // Flush out leading "$j"
+
+        loop {
+            let mut statement_tokens: Vec<&str> = Vec::new();
+            while let Some(&typesetting_token) = typesetting_token_iter.next() {
+                if !typesetting_token.starts_with("/*") {
+                    if typesetting_token != ";" {
+                        statement_tokens.push(typesetting_token);
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            if statement_tokens.len() == 0 {
+                break;
+            }
+
+            match statement_tokens[0] {
+                keyword @ ("varcolorcode" | "altvarcolorcode") => {
+                    if statement_tokens.len() != 4 || statement_tokens[2] != "as" {
+                        return Err(Error::AdditionalInfoCommentFormatError);
+                    }
+
+                    let typecode = super::get_str_in_quotes(statement_tokens[1])
+                        .ok_or(Error::AdditionalInfoCommentFormatError)?;
+                    let color = super::get_str_in_quotes(statement_tokens[3])
+                        .ok_or(Error::AdditionalInfoCommentFormatError)?;
+
+                    let variable_colors = if keyword == "varcolorcode" {
+                        &mut self.variable_colors
+                    } else {
+                        &mut self.alt_variable_colors
+                    };
+
+                    if variable_colors.iter().any(|vc| vc.typecode == typecode) {
+                        return Err(Error::AdditionalInfoCommentFormatError);
+                    }
+
+                    variable_colors.push(VariableColor { typecode, color });
+                }
+                _ => {}
+            }
+        }
+
+        Ok(())
     }
 
     fn process_typesetting_comment(&mut self, comment: &str) -> Result<(), Error> {

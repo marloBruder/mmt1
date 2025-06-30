@@ -26,6 +26,8 @@ pub struct MetamathData {
     pub html_representations: Vec<HtmlRepresentation>,
     pub optimized_data: OptimizedMetamathData,
     pub database_path: String,
+    pub variable_colors: Vec<VariableColor>,
+    pub alt_variable_colors: Vec<VariableColor>,
 }
 
 #[derive(Debug, Default)]
@@ -128,6 +130,19 @@ pub struct HeaderContentRepresentation {
     //Should only ever be "CommentStatement" or "ConstantStatement" or "VariableStatement" or "FloatingHypohesisStatement" or "TheoremStatement";
     pub content_type: String,
     pub title: String,
+}
+
+#[derive(Debug)]
+pub struct VariableColor {
+    pub typecode: String,
+    pub color: String,
+}
+
+#[derive(Serialize)]
+pub struct ColorInformation {
+    pub typecode: String,
+    pub variables: Vec<String>,
+    pub color: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -366,6 +381,34 @@ impl MetamathData {
         //     println!("{:?}", grammar_rule);
         // }
         Ok(())
+    }
+
+    pub fn calc_color_information(&self, alt: bool) -> Vec<ColorInformation> {
+        let variable_colors = if alt {
+            &self.alt_variable_colors
+        } else {
+            &self.variable_colors
+        };
+
+        let mut color_information: Vec<ColorInformation> = variable_colors
+            .iter()
+            .map(|vc| ColorInformation {
+                typecode: vc.typecode.clone(),
+                variables: Vec::new(),
+                color: vc.color.clone(),
+            })
+            .collect();
+
+        self.database_header
+            .floating_hypohesis_iter()
+            .for_each(|fh| {
+                color_information
+                    .iter_mut()
+                    .find(|ci| ci.typecode == fh.typecode)
+                    .map(|ci| ci.variables.push(fh.variable.clone()));
+            });
+
+        color_information
     }
 }
 

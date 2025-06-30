@@ -1,3 +1,4 @@
+import type { ColorInformation } from "$lib/sharedState/model.svelte";
 import * as monaco from "monaco-editor";
 
 // Import the workers in a production-safe way.
@@ -8,7 +9,6 @@ import cssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";
 import htmlWorker from "monaco-editor/esm/vs/language/html/html.worker?worker";
 import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker";
-import { comment, root } from "postcss";
 
 self.MonacoEnvironment = {
   getWorker: function (_: string, label: string) {
@@ -32,32 +32,26 @@ self.MonacoEnvironment = {
   },
 };
 
-interface ColorInformation {
-  information: { typecode: string; variables: string[]; color: string }[];
-}
+// let test: ColorInformation[] = [
+//   { typecode: "wff", variables: ["ph", "ps", "ch", "th", "ta", "et", "ze", "si", "rh", "mu", "la", "ka"], color: "337DFF" },
+//   { typecode: "setvar", variables: ["x", "y", "z", "w", "v", "u", "t"], color: "ff0000" },
+//   { typecode: "class", variables: ["A", "B", "C", "D", "P", "Q", "R", "S"], color: "cc33cc" },
+// ];
 
-let test: ColorInformation = {
-  information: [
-    { typecode: "wff", variables: ["ph", "ps", "ch", "th", "ta", "et", "ze", "si", "rh", "mu", "la", "ka"], color: "337DFF" },
-    { typecode: "setvar", variables: ["x", "y", "z", "w", "v", "u", "t"], color: "ff0000" },
-    { typecode: "class", variables: ["A", "B", "C", "D", "P", "Q", "R", "S"], color: "cc33cc" },
-  ],
-};
-
-let colorInformationToKeywords = (colorInformation: ColorInformation): any => {
+let colorInformationToKeywords = (colorInformation: ColorInformation[]): any => {
   let res: any = {};
 
-  for (let information of colorInformation.information) {
+  for (let information of colorInformation) {
     res["$" + information.typecode] = information.variables;
   }
 
   return res;
 };
 
-let colorInformationToCases = (colorInformation: ColorInformation): any => {
+let colorInformationToCases = (colorInformation: ColorInformation[]): any => {
   let res: any = {};
 
-  for (let information of colorInformation.information) {
+  for (let information of colorInformation) {
     res["@$" + information.typecode] = "$" + information.typecode;
     // res["@default"] = "token";
   }
@@ -65,10 +59,10 @@ let colorInformationToCases = (colorInformation: ColorInformation): any => {
   return res;
 };
 
-let colorInformationToRules = (colorInformation: ColorInformation): { token: string; foreground: string }[] => {
+let colorInformationToRules = (colorInformation: ColorInformation[]): { token: string; foreground: string }[] => {
   let res: { token: string; foreground: string }[] = [];
 
-  for (let information of colorInformation.information) {
+  for (let information of colorInformation) {
     res.push({ token: "$" + information.typecode, foreground: information.color });
   }
 
@@ -77,7 +71,7 @@ let colorInformationToRules = (colorInformation: ColorInformation): { token: str
 
 monaco.languages.register({ id: "mmp" });
 
-export let setSyntaxHighlighting = (colorInformation: ColorInformation) => {
+export let setSyntaxHighlighting = (colorInformation: ColorInformation[]) => {
   monaco.languages.setMonarchTokensProvider("mmp", {
     ...colorInformationToKeywords(colorInformation),
     keywords: ["$theorem", "$axiom", "$c", "$v", "$f", "$header", "$comment", "$locateafter", "$locateaftervar", "$locateafterconst", "$allowdiscouraged", "$d"],
@@ -119,6 +113,6 @@ export let setSyntaxHighlighting = (colorInformation: ColorInformation) => {
 };
 
 // setSyntaxHighlighting({ information: [] });
-setSyntaxHighlighting(test);
+// setSyntaxHighlighting(test);
 
 export default monaco;

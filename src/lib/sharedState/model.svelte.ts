@@ -1,10 +1,3 @@
-export interface MetamathData {
-  constants: Constant[];
-  variables: Variable[];
-  theorems: Theorem[];
-  in_progress_theorems: InProgressTheorem[];
-}
-
 export interface Comment {
   text: string;
 }
@@ -37,11 +30,6 @@ export interface Hypothesis {
   expression: string;
 }
 
-export interface InProgressTheorem {
-  name: string;
-  text: string;
-}
-
 // Header, but instead of having a theorem list, it has a theorem name list
 // Aditionally has a opened to store whether the headers ui is opened
 // Used to store the explorer state
@@ -64,6 +52,12 @@ export interface HeaderRepresentation {
 export interface HeaderContentRepresentation {
   contentType: "CommentStatement" | "ConstantStatement" | "VariableStatement" | "FloatingHypothesisStatement" | "TheoremStatement";
   title: string;
+}
+
+export interface ColorInformation {
+  typecode: string;
+  variables: string[];
+  color: string;
 }
 
 export interface HeaderPath {
