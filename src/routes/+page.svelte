@@ -6,6 +6,8 @@
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import HorizontalSplit from "$lib/components/util/HorizontalSplit.svelte";
   import VerticalSplit from "$lib/components/util/VerticalSplit.svelte";
+  import { onMount } from "svelte";
+  import { invoke } from "@tauri-apps/api/core";
 
   let openTab = $derived(tabManager.getOpenTab());
 
@@ -20,6 +22,10 @@
       openTab.scrollTop = (e.target as HTMLElement).scrollTop;
     }
   };
+
+  onMount(() => {
+    invoke("show_main_window");
+  });
 </script>
 
 <div class="h-screen w-screen fixed custom-bg-bg-color text-gray-300">

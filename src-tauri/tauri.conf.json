@@ -12,10 +12,11 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "mmdbt",
-        "width": 800,
-        "height": 600,
-        "decorations": false
+        "decorations": false,
+        "visible": false,
+        "maximized": true
       }
     ],
     "security": {

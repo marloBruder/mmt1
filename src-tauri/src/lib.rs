@@ -25,6 +25,11 @@ fn app_setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+#[tauri::command]
+fn show_main_window(window: tauri::Window) {
+    window.get_webview_window("main").unwrap().show().unwrap();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -40,6 +45,7 @@ pub fn run() {
             // editor::set_in_progress_theorem_name,
             // editor::set_in_progress_theorem,
             // editor::delete_in_progress_theorem,
+            show_main_window,
             explorer::add_header,
             explorer::quick_search,
             search::search_theorems,
