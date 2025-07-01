@@ -353,6 +353,14 @@ impl MmParser {
                     let color = super::get_str_in_quotes(statement_tokens[3])
                         .ok_or(Error::AdditionalInfoCommentFormatError)?;
 
+                    if color.len() != 6
+                        || !color
+                            .chars()
+                            .all(|c| matches!(c, '0'..='9' | 'a'..='f' | 'A'..='F'))
+                    {
+                        return Err(Error::InvalidColorCodeError);
+                    }
+
                     let variable_colors = if keyword == "varcolorcode" {
                         &mut self.variable_colors
                     } else {

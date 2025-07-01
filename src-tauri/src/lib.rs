@@ -125,7 +125,8 @@ pub enum Error {
     InvalidLabelError,          // Returned if a label is not valid
     TypesettingFormatError,     // Returned if there is a format error in a typesetting comment
     AdditionalInfoCommentFormatError, // Returned if there is a format error in a additional information comment
-    ExpressionParseError,             // Returned if an expression could not be successfully parsed
+    InvalidColorCodeError, // Returned if there is an invalid colorcode in an (alt)varcolorcode comment
+    ExpressionParseError,  // Returned if an expression could not be successfully parsed
 
     InternalLogicError,
     InvaildArgumentError,

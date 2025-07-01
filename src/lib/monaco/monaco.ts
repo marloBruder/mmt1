@@ -72,6 +72,30 @@ let colorInformationToRules = (colorInformation: ColorInformation[]): { token: s
 monaco.languages.register({ id: "mmp" });
 
 export let setSyntaxHighlighting = (colorInformation: ColorInformation[]) => {
+  // Add custom stylesheet to override color of variable html representations
+  let existing_stylesheet = document.getElementById("custom-syntax-highlighting-stylesheet");
+  if (existing_stylesheet) {
+    document.head.removeChild(existing_stylesheet);
+  }
+
+  let style = "";
+
+  for (let [i, information] of colorInformation.entries()) {
+    style =
+      style +
+      `.custom-variable-color-${i + 1} * {
+  color: #${information.color} !important;    
+}
+  
+`;
+  }
+
+  let stylesheet = document.createElement("style");
+  stylesheet.id = "custom-syntax-highlighting-stylesheet";
+  stylesheet.textContent = style;
+  document.head.appendChild(stylesheet);
+
+  // Set editor syntax highlighting
   monaco.languages.setMonarchTokensProvider("mmp", {
     ...colorInformationToKeywords(colorInformation),
     keywords: ["$theorem", "$axiom", "$c", "$v", "$f", "$header", "$comment", "$locateafter", "$locateaftervar", "$locateafterconst", "$allowdiscouraged", "$d"],
