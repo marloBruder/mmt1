@@ -7,6 +7,28 @@
   src: url(xits-math.woff);
 } */
 
+.os-custom-scrollbar-theme.os-scrollbar {
+  --os-size: 12px;
+  --os-track-border-radius: 0;
+  --os-track-bg: rgba(0, 0, 0, 0.05);
+  --os-handle-bg: rgba(90, 90, 90, 0.5);
+  --os-handle-bg-hover: rgba(90, 90, 90, 0.7);
+  --os-handle-bg-active: rgba(90, 90, 90, 0.5);
+  --os-handle-border-radius: 0;
+  --os-handle-min-size: 32px;
+}
+
+.os-custom-scrollbar-theme-small.os-scrollbar {
+  --os-size: 4px;
+  --os-track-border-radius: 0;
+  --os-track-bg: rgba(0, 0, 0, 0.05);
+  --os-handle-bg: rgba(90, 90, 90, 0.5);
+  --os-handle-bg-hover: rgba(90, 90, 90, 0.7);
+  --os-handle-bg-active: rgba(90, 90, 90, 0.5);
+  --os-handle-border-radius: 2px;
+  --os-handle-min-size: 32px;
+}
+
 .math {
   font-family: XITSMath-Regular;
 }

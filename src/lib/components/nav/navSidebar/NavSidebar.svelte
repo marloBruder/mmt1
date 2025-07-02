@@ -6,6 +6,7 @@
   import BookIcon from "$lib/icons/navSidebar/BookIcon.svelte";
   import SearchIcon from "$lib/icons/navSidebar/SearchIcon.svelte";
   import FileIcon from "$lib/icons/navSidebar/FileIcon.svelte";
+  import ScrollableContainer from "$lib/components/util/ScrollableContainer.svelte";
 
   let tabInfo = [
     {
@@ -37,7 +38,9 @@
   <div class="h-full w-12 float-left">
     <NavSidebarButtons {activeTab} {tabInfo} onClick={onNavButtonClick} />
   </div>
-  <div class="h-full ml-12 border-l-2 custom-border-bg-color overflow-y-auto overflow-x-hidden">
-    <TabComponent></TabComponent>
+  <div class="h-full ml-12 border-l-2 custom-border-bg-color overflow-x-hidden">
+    <ScrollableContainer>
+      <TabComponent></TabComponent>
+    </ScrollableContainer>
   </div>
 </div>

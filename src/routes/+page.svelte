@@ -8,6 +8,7 @@
   import VerticalSplit from "$lib/components/util/VerticalSplit.svelte";
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
+  import ScrollableContainer from "$lib/components/util/ScrollableContainer.svelte";
 
   let openTab = $derived(tabManager.getOpenTab());
 
@@ -51,12 +52,14 @@
                 </div>
               {/snippet}
               {#snippet second()}
-                <div id="tabContainer" class="h-full w-full overflow-auto" onscroll={onscrollTab}>
-                  {#if openTab != null}
-                    <openTab.component tab={openTab}></openTab.component>
-                  {:else}
-                    <EmptyTabComponent></EmptyTabComponent>
-                  {/if}
+                <div id="tabContainer" class="h-full w-full" onscroll={onscrollTab}>
+                  <ScrollableContainer>
+                    {#if openTab != null}
+                      <openTab.component tab={openTab}></openTab.component>
+                    {:else}
+                      <EmptyTabComponent></EmptyTabComponent>
+                    {/if}
+                  </ScrollableContainer>
                 </div>
               {/snippet}
             </HorizontalSplit>

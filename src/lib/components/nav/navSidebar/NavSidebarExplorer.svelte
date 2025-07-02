@@ -27,7 +27,7 @@
   };
 </script>
 
-<div class="h-full">
+<div class="h-full w-full">
   <div class="p-2">
     <RoundButton onclick={newExplorerTabClick}>New Explorer Tab</RoundButton>
   </div>
