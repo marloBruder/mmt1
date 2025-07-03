@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { onMount, type Snippet } from "svelte";
-  import type { MouseEventHandler } from "svelte/elements";
+  import { type Snippet } from "svelte";
 
   let { title, children }: { title: string; children: Snippet } = $props();
 
@@ -30,9 +29,3 @@
     </div>
   {/if}
 </div>
-
-<style>
-  .custom-bg-dropdown-color {
-    background-color: #463465;
-  }
-</style>

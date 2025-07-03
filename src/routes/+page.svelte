@@ -2,27 +2,11 @@
   import NavSidebar from "$lib/components/nav/navSidebar/NavSidebar.svelte";
   import TabBar from "$lib/components/nav/tabBar/TabBar.svelte";
   import TitleBar from "$lib/components/titleBar/TitleBar.svelte";
-  import EmptyTabComponent from "$lib/components/tabs/EmptyTabComponent.svelte";
-  import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import HorizontalSplit from "$lib/components/util/HorizontalSplit.svelte";
   import VerticalSplit from "$lib/components/util/VerticalSplit.svelte";
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import ScrollableContainer from "$lib/components/util/ScrollableContainer.svelte";
-
-  let openTab = $derived(tabManager.getOpenTab());
-
-  $effect(() => {
-    if (openTab) {
-      document.getElementById("tabContainer")!.scrollTop = openTab.scrollTop;
-    }
-  });
-
-  let onscrollTab = (e: UIEvent) => {
-    if (openTab) {
-      openTab.scrollTop = (e.target as HTMLElement).scrollTop;
-    }
-  };
+  import TabComponent from "$lib/components/tabs/TabComponent.svelte";
 
   onMount(() => {
     invoke("show_main_window");
@@ -52,15 +36,7 @@
                 </div>
               {/snippet}
               {#snippet second()}
-                <div id="tabContainer" class="h-full w-full" onscroll={onscrollTab}>
-                  <ScrollableContainer>
-                    {#if openTab != null}
-                      <openTab.component tab={openTab}></openTab.component>
-                    {:else}
-                      <EmptyTabComponent></EmptyTabComponent>
-                    {/if}
-                  </ScrollableContainer>
-                </div>
+                <TabComponent></TabComponent>
               {/snippet}
             </HorizontalSplit>
           </div>

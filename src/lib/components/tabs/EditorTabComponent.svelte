@@ -5,6 +5,7 @@
 
   export class EditorTab extends Tab {
     component = EditorTabComponent;
+    splitComponent = EditorTabSplitViewComponent;
 
     #filePath: string = $state("");
     #fileName: string = $derived.by(() => {
@@ -14,8 +15,7 @@
 
     textChanged: boolean = $state(false);
 
-    #isSplit: boolean = $state(false);
-    #pageData: DatabaseElementPageData | null = $state(null);
+    splitViewPageData: DatabaseElementPageData | null = $state(null);
 
     #monacoModel: Monaco.editor.ITextModel | null = null;
     #monacoScrollTop: number = 0;
@@ -91,18 +91,6 @@
       return false;
     }
 
-    async split() {
-      this.#isSplit = !this.#isSplit;
-
-      if (this.#isSplit) {
-        await this.onMonacoChange();
-      }
-    }
-
-    splitDisabled(): boolean {
-      return false;
-    }
-
     setMonacoScrollInternal(scrollTop: number, scrollLeft: number) {
       this.#monacoScrollTop = scrollTop;
       this.#monacoScrollLeft = scrollLeft;
@@ -118,7 +106,7 @@
 
         let onEditData = onEditDataUnkown as OnEditData;
 
-        this.#pageData = onEditData.pageData;
+        this.splitViewPageData = onEditData.pageData;
         // const markers: Monaco.editor.IMarkerData[] = [
         //   {
         //     severity: monaco.MarkerSeverity.Error,
@@ -156,19 +144,13 @@
     get monacoModel() {
       return this.#monacoModel;
     }
+
     get monacoScrollTop() {
       return this.#monacoScrollTop;
     }
+
     get monacoScrollLeft() {
       return this.#monacoScrollLeft;
-    }
-
-    get isSplit() {
-      return this.#isSplit;
-    }
-
-    get pageData() {
-      return this.#pageData;
     }
   }
 </script>
@@ -177,16 +159,11 @@
   import type * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
   import { invoke } from "@tauri-apps/api/core";
   import { Tab, tabManager } from "$lib/sharedState/tabManager.svelte";
-  import { onDestroy, onMount } from "svelte";
+  import { onDestroy, onMount, type Component } from "svelte";
   import monaco from "$lib/monaco/monaco";
   import type { DatabaseElementPageData, DetailedError } from "$lib/sharedState/model.svelte";
-  import TheoremPage from "../pages/TheoremPage.svelte";
-  import FloatingHypothesisPage from "../pages/FloatingHypothesisPage.svelte";
   import { getErrorMessage, getErrorSeverity } from "../util/errorMessages.svelte";
-  import VariablesPage from "../pages/VariablesPage.svelte";
-  import ConstantsPage from "../pages/ConstantsPage.svelte";
-  import CommentPage from "../pages/CommentPage.svelte";
-  import HeaderPage from "../pages/HeaderPage.svelte";
+  import EditorTabSplitViewComponent from "./EditorTabSplitViewComponent.svelte";
 
   let { tab }: { tab: Tab } = $props();
 
@@ -355,8 +332,8 @@
   <input id="placeAfter" bind:value={placeAfter} autocomplete="off" />
   <RoundButton onclick={addToDatabase}>Add to database</RoundButton>
 </div> -->
-<div class="h-full w-full flex overflow-hidden">
-  <div id="editor-area" class="h-full {editorTab.isSplit ? 'w-1/2' : 'w-full'}">
+<div class="h-full w-full">
+  <div id="editor-area" class="h-full w-full">
     <!-- <div class="w-8 float-left text-right">
     {#each { length: lines } as _, i}
       <div>
@@ -369,27 +346,4 @@
     <button class="w-full h-screen cursor-text" onclick={belowTextareaClick} aria-label="below-textrea"></button>
   </div> -->
   </div>
-  {#if editorTab.isSplit}
-    <div class="w-1/2 h-full overflow-auto">
-      {#if editorTab.pageData != null}
-        {#if editorTab.pageData.discriminator == "EmptyPageData"}
-          <div class="p-2">Nothing to see yet.</div>
-        {:else if editorTab.pageData.discriminator == "HeaderPageData"}
-          <HeaderPage pageData={editorTab.pageData}></HeaderPage>
-        {:else if editorTab.pageData.discriminator == "CommentPageData"}
-          <CommentPage pageData={editorTab.pageData}></CommentPage>
-        {:else if editorTab.pageData.discriminator == "ConstantsPageData"}
-          <ConstantsPage pageData={editorTab.pageData}></ConstantsPage>
-        {:else if editorTab.pageData.discriminator == "VariablesPageData"}
-          <VariablesPage pageData={editorTab.pageData}></VariablesPage>
-        {:else if editorTab.pageData.discriminator == "FloatingHypothesisPageData"}
-          <FloatingHypothesisPage pageData={editorTab.pageData}></FloatingHypothesisPage>
-        {:else if editorTab.pageData.discriminator == "TheoremPageData"}
-          <TheoremPage pageData={editorTab.pageData}></TheoremPage>
-        {/if}
-      {:else}
-        <div class="p-2">Resolve most errors to show the unicode preview.</div>
-      {/if}
-    </div>
-  {/if}
 </div>

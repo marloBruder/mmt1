@@ -1,9 +1,14 @@
 import type { Component } from "svelte";
+import type { DatabaseElementPageData } from "./model.svelte";
+
+export type SplitTabState = "none" | "splitVertical" | "splitHorizontal" | "externalWindow";
 
 class TabManager {
   #tabs: Tab[] = $state([]);
   #openTabIndex: number = $state(-1);
   #tempTabIndex: number = $state(-1);
+
+  #splitTabState: SplitTabState = $state("none");
 
   getOpenTab(): Tab | null {
     return 0 <= this.#openTabIndex && this.#openTabIndex < this.#tabs.length ? this.#tabs[this.#openTabIndex] : null;
@@ -176,6 +181,10 @@ class TabManager {
     return false;
   }
 
+  setSplitTabState(newState: SplitTabState) {
+    this.#splitTabState = newState;
+  }
+
   get tabs() {
     return this.#tabs;
   }
@@ -187,6 +196,10 @@ class TabManager {
   get tempTabIndex() {
     return this.#tempTabIndex;
   }
+
+  get splitTabState() {
+    return this.#splitTabState;
+  }
 }
 
 let tabManager = new TabManager();
@@ -194,6 +207,8 @@ export { tabManager };
 
 export abstract class Tab {
   abstract readonly component: Component<{ tab: Tab }>;
+  readonly splitComponent: Component<{ pageData: DatabaseElementPageData | null }> | null = null;
+  splitViewPageData: DatabaseElementPageData | null = $state(null);
 
   scrollTop: number = 0;
   previousTab: Tab | null = null;
@@ -226,12 +241,6 @@ export abstract class Tab {
   async addToDatabase(): Promise<void> {}
 
   addToDatabaseDisabled(): boolean {
-    return true;
-  }
-
-  async split(): Promise<void> {}
-
-  splitDisabled(): boolean {
     return true;
   }
 }

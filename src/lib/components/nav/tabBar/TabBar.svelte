@@ -1,7 +1,9 @@
 <script lang="ts">
+  import Dropdown from "$lib/components/util/Dropdown.svelte";
   import ScrollableContainer from "$lib/components/util/ScrollableContainer.svelte";
   import ArrowLeftIcon from "$lib/icons/ArrowLeftIcon.svelte";
   import ArrowRightIcon from "$lib/icons/ArrowRightIcon.svelte";
+  import SplitViewIcon from "$lib/icons/SplitViewIcon.svelte";
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import TabBarItem from "./TabBarItem.svelte";
 
@@ -12,8 +14,17 @@
     await tabManager.switchToNextTab();
   };
 
-  let splitClick = async () => {
-    await tabManager.getOpenTab()?.split();
+  let splitNoneClick = async () => {
+    tabManager.setSplitTabState("none");
+  };
+  let splitVerticalClick = async () => {
+    tabManager.setSplitTabState("splitVertical");
+  };
+  let splitHorizontalClick = async () => {
+    tabManager.setSplitTabState("splitHorizontal");
+  };
+  let splitExternalWindowClick = async () => {
+    tabManager.setSplitTabState("externalWindow");
   };
 </script>
 
@@ -29,9 +40,27 @@
       {/each}
     </div>
   </ScrollableContainer>
-  {#if tabManager.getOpenTab() != null && !tabManager.getOpenTab()!.splitDisabled()}
-    <div class="h-full flex flex-nowrap border-l border-gray-300">
-      <button class="px-2" onclick={splitClick}>SPLIT</button>
+  <div class="h-full flex flex-nowrap items-center border-l border-gray-300">
+    <div class="px-1 h-6">
+      <Dropdown title="Split view" alignDropdownLeft>
+        {#snippet buttonContent()}
+          <SplitViewIcon />
+        {/snippet}
+        {#snippet dropdownContent()}
+          <div class="px-2 {tabManager.splitTabState === 'none' ? 'bg-purple-500' : ''}">
+            <button onclick={splitNoneClick}>Don't Split Tab</button>
+          </div>
+          <div class="px-2 {tabManager.splitTabState === 'splitVertical' ? 'bg-purple-500' : ''}">
+            <button onclick={splitVerticalClick}>Split Tab Vertical</button>
+          </div>
+          <div class="px-2 {tabManager.splitTabState === 'splitHorizontal' ? 'bg-purple-500' : ''}">
+            <button onclick={splitHorizontalClick}>Split Tab Horizontal</button>
+          </div>
+          <div class="px-2 {tabManager.splitTabState === 'externalWindow' ? 'bg-purple-500' : ''}">
+            <button onclick={splitExternalWindowClick}>Open In External Window</button>
+          </div>
+        {/snippet}
+      </Dropdown>
     </div>
-  {/if}
+  </div>
 </div>
