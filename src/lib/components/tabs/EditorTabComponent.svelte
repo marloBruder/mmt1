@@ -98,7 +98,7 @@
 
     async onMonacoChange() {
       monaco.editor.removeAllMarkers("on_edit");
-      invoke("on_edit", { text: this.monacoModel!.getValue() }).then((onEditDataUnkown) => {
+      invoke("on_edit", { text: this.monacoModel!.getValue() }).then(async (onEditDataUnkown) => {
         interface OnEditData {
           pageData: DatabaseElementPageData | null;
           errors: DetailedError[];
@@ -107,6 +107,11 @@
         let onEditData = onEditDataUnkown as OnEditData;
 
         this.splitViewPageData = onEditData.pageData;
+
+        if (tabManager.splitTabState === "externalWindow") {
+          await emit("split-view-page-data-transfer", tabManager.getOpenTab()?.splitViewPageData);
+        }
+
         // const markers: Monaco.editor.IMarkerData[] = [
         //   {
         //     severity: monaco.MarkerSeverity.Error,
@@ -164,6 +169,7 @@
   import type { DatabaseElementPageData, DetailedError } from "$lib/sharedState/model.svelte";
   import { getErrorMessage, getErrorSeverity } from "../util/errorMessages.svelte";
   import EditorTabSplitViewComponent from "./EditorTabSplitViewComponent.svelte";
+  import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
 
   let { tab }: { tab: Tab } = $props();
 
@@ -176,6 +182,8 @@
 
   // let monaco: typeof Monaco;
   let editorContainer: HTMLElement;
+
+  let unlistenFns: UnlistenFn[] = $state([]);
 
   onMount(async () => {
     editorContainer = document.getElementById("editor-area")!;
@@ -202,6 +210,23 @@
     editor.onDidScrollChange((e) => {
       editorTab.setMonacoScrollInternal(e.scrollTop, e.scrollLeft);
     });
+
+    unlistenFns.push(
+      await listen("request-first-split-view-transfer", () => {
+        emit("split-view-page-data-transfer", tabManager.getOpenTab()?.splitViewPageData);
+      })
+    );
+    unlistenFns.push(
+      await listen("mm-db-opened", () => {
+        editorTab.onMonacoChange();
+      })
+    );
+  });
+
+  onDestroy(() => {
+    for (let unlisten of unlistenFns) {
+      unlisten();
+    }
   });
 
   $effect(() => {

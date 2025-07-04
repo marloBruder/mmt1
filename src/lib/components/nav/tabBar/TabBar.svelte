@@ -48,13 +48,13 @@
         {/snippet}
         {#snippet dropdownContent()}
           <div class="px-2 {tabManager.splitTabState === 'none' ? 'bg-purple-500' : ''}">
-            <button onclick={splitNoneClick}>Don't Split Tab</button>
+            <button onclick={splitNoneClick}>Don't Split Editor Tabs</button>
           </div>
           <div class="px-2 {tabManager.splitTabState === 'splitVertical' ? 'bg-purple-500' : ''}">
-            <button onclick={splitVerticalClick}>Split Tab Vertical</button>
+            <button onclick={splitVerticalClick}>Split Editor Tabs Vertically</button>
           </div>
           <div class="px-2 {tabManager.splitTabState === 'splitHorizontal' ? 'bg-purple-500' : ''}">
-            <button onclick={splitHorizontalClick}>Split Tab Horizontal</button>
+            <button onclick={splitHorizontalClick}>Split Editor Tabs Horizontally</button>
           </div>
           <div class="px-2 {tabManager.splitTabState === 'externalWindow' ? 'bg-purple-500' : ''}">
             <button onclick={splitExternalWindowClick}>Open In External Window</button>

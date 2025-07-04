@@ -13,6 +13,9 @@
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { setSyntaxHighlighting } from "$lib/monaco/monaco";
   import UnMaximizeIcon from "$lib/icons/titleBar/UnMaximizeIcon.svelte";
+  import { emit } from "@tauri-apps/api/event";
+
+  let { externalWindow = false }: { externalWindow?: boolean } = $props();
 
   const appWindow = getCurrentWindow();
 
@@ -67,6 +70,7 @@
       explorerData.resetExplorerWithFirstHeader(topHeaderRep);
       htmlData.loadLocal(htmlReps, colorInformation);
       setSyntaxHighlighting(colorInformation);
+      emit("mm-db-opened");
     }
   };
 
@@ -92,24 +96,28 @@
 <div class="h-8 w-screen flex justify-between" data-tauri-drag-region>
   <div class="pl-4 h-full flex items-center">
     <span class="text-xl pr-2">mmt1</span>
-    <TitleBarDropdown title="File">
-      <div><button onclick={onOpenFolderClick}>Open Folder</button></div>
-      <div><button onclick={onCloseFolderClick}>Close Folder</button></div>
-      <hr class="border-gray-300" />
-      <div><button onclick={onSaveFileClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.saveFileDisabled() : true} class="disabled:text-gray-500">Save File</button></div>
-      <hr class="border-gray-300" />
-      <div><button onclick={closeClick}>Exit</button></div>
-    </TitleBarDropdown>
-    <TitleBarDropdown title="Unify">
-      <div><button onclick={onUnifyClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.unifyDisabled() : true} class="disabled:text-gray-500">Unify</button></div>
-    </TitleBarDropdown>
-    <TitleBarDropdown title="Metamath">
-      <div><button onclick={onNewMetamathDatabaseClick}>New Metamath Database</button></div>
-      <div><button onclick={onOpenMetamathDatabaseClick}>Open Metamath Database</button></div>
-      <div><button onclick={onExportMetamathDatabaseClick}>Export Metamath Database</button></div>
-      <hr class="border-gray-300" />
-      <div><button onclick={onAddToDatabaseClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.addToDatabaseDisabled() : true} class="disabled:text-gray-500">Add to database</button></div>
-    </TitleBarDropdown>
+    {#if !externalWindow}
+      <TitleBarDropdown title="File">
+        <div><button onclick={onOpenFolderClick}>Open Folder</button></div>
+        <div><button onclick={onCloseFolderClick}>Close Folder</button></div>
+        <hr class="border-gray-300" />
+        <div><button onclick={onSaveFileClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.saveFileDisabled() : true} class="disabled:text-gray-500">Save File</button></div>
+        <hr class="border-gray-300" />
+        <div><button onclick={closeClick}>Exit</button></div>
+      </TitleBarDropdown>
+      <TitleBarDropdown title="Unify">
+        <div><button onclick={onUnifyClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.unifyDisabled() : true} class="disabled:text-gray-500">Unify</button></div>
+      </TitleBarDropdown>
+      <TitleBarDropdown title="Metamath">
+        <div><button onclick={onNewMetamathDatabaseClick}>New Metamath Database</button></div>
+        <div><button onclick={onOpenMetamathDatabaseClick}>Open Metamath Database</button></div>
+        <div><button onclick={onExportMetamathDatabaseClick}>Export Metamath Database</button></div>
+        <hr class="border-gray-300" />
+        <div><button onclick={onAddToDatabaseClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.addToDatabaseDisabled() : true} class="disabled:text-gray-500">Add to database</button></div>
+      </TitleBarDropdown>
+    {:else}
+      <div class="pl-2">Editor HTML Preview</div>
+    {/if}
   </div>
   <div class="flex">
     <button class="mx-3" onclick={minimizeClick}><MinimizeIcon /></button>

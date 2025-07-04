@@ -9,7 +9,7 @@
   import TabComponent from "$lib/components/tabs/TabComponent.svelte";
 
   onMount(() => {
-    invoke("show_main_window");
+    invoke("setup_main_window");
   });
 </script>
 

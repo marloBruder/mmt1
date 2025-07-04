@@ -1,7 +1,7 @@
 use std::fmt;
 
 use model::MetamathData;
-use tauri::{async_runtime::Mutex, App, Manager};
+use tauri::{async_runtime::Mutex, App, AppHandle, Emitter, Listener, Manager};
 
 mod editor;
 mod explorer;
@@ -26,7 +26,11 @@ fn app_setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[tauri::command]
-fn show_main_window(window: tauri::Window) {
+fn setup_main_window(window: tauri::Window, app: AppHandle) {
+    window.listen("tauri://close-requested", move |_| {
+        // Do nothing if emit fails
+        app.emit("external-window-close", ()).ok();
+    });
     window.get_webview_window("main").unwrap().show().unwrap();
 }
 
@@ -45,7 +49,7 @@ pub fn run() {
             // editor::set_in_progress_theorem_name,
             // editor::set_in_progress_theorem,
             // editor::delete_in_progress_theorem,
-            show_main_window,
+            setup_main_window,
             explorer::add_header,
             explorer::quick_search,
             search::search_theorems,
@@ -54,6 +58,9 @@ pub fn run() {
             editor::get_subfolder,
             editor::read_file,
             editor::save_file,
+            editor::external_window::open_external_window,
+            editor::external_window::close_external_window,
+            editor::external_window::set_up_external_window_close_listener,
             editor::on_edit::on_edit,
             editor::parse_mmp::add_to_database,
             editor::unify::unify,
@@ -206,6 +213,8 @@ pub enum Error {
     MissingExpressionError, // Returned when converting str to number vec and skipping the first, but the str is empty
 
     AddingToInnerScopeError,
+
+    OpenExternalWindowError,
 }
 
 impl fmt::Display for Error {

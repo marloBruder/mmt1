@@ -1,5 +1,7 @@
 import type { Component } from "svelte";
 import type { DatabaseElementPageData } from "./model.svelte";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 
 export type SplitTabState = "none" | "splitVertical" | "splitHorizontal" | "externalWindow";
 
@@ -182,7 +184,17 @@ class TabManager {
   }
 
   setSplitTabState(newState: SplitTabState) {
-    this.#splitTabState = newState;
+    if (this.#splitTabState !== "externalWindow" && newState === "externalWindow") {
+      this.#splitTabState = newState;
+      invoke("open_external_window");
+    } else if (this.#splitTabState === "externalWindow" && newState !== "externalWindow") {
+      // Set splitTabState before closing the window, so that the event "external-window-close" will be triggered after the state has been set.
+      // For the "external-window-close" event listener, see below
+      this.#splitTabState = newState;
+      invoke("close_external_window");
+    } else {
+      this.#splitTabState = newState;
+    }
   }
 
   get tabs() {
@@ -244,3 +256,9 @@ export abstract class Tab {
     return true;
   }
 }
+
+listen("external-window-close", () => {
+  if (tabManager.splitTabState === "externalWindow") {
+    tabManager.setSplitTabState("none");
+  }
+});

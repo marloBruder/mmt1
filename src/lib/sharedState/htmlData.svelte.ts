@@ -9,12 +9,14 @@ class HtmlData {
   //   i, where the symbols typecode is the i-th typecode to have it's color specified
   #htmlRepresentations: Map<string, [string, number]> = $state(new Map());
 
-  // async load() {
-  //   let htmlRepresentations = (await invoke("get_html_representations_local")) as HtmlRepresentation[];
-  //   this.loadLocal(htmlRepresentations, []);
-  // }
+  async load() {
+    let [htmlRepresentations, colorInfo] = (await invoke("get_html_representations_local")) as [HtmlRepresentation[], ColorInformation[]];
+    this.loadLocal(htmlRepresentations, colorInfo);
+  }
 
   loadLocal(htmlRepresentations: HtmlRepresentation[], colorInformation: ColorInformation[]) {
+    addCustomStylesheetForVariableColorOverriding(colorInformation);
+
     this.#htmlRepresentations.clear();
     for (let htmlRepresentation of htmlRepresentations) {
       let typecode = 0;
@@ -40,6 +42,31 @@ class HtmlData {
   get htmlRepresentations() {
     return this.#htmlRepresentations;
   }
+}
+
+export function addCustomStylesheetForVariableColorOverriding(colorInformation: ColorInformation[]) {
+  // Add custom stylesheet to override color of variable html representations
+  let existing_stylesheet = document.getElementById("custom-syntax-highlighting-stylesheet");
+  if (existing_stylesheet) {
+    document.head.removeChild(existing_stylesheet);
+  }
+
+  let style = "";
+
+  for (let [i, information] of colorInformation.entries()) {
+    style =
+      style +
+      `.custom-variable-color-${i + 1} * {
+    color: #${information.color} !important;    
+  }
+    
+  `;
+  }
+
+  let stylesheet = document.createElement("style");
+  stylesheet.id = "custom-syntax-highlighting-stylesheet";
+  stylesheet.textContent = style;
+  document.head.appendChild(stylesheet);
 }
 
 let htmlData = new HtmlData();
