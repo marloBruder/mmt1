@@ -3,16 +3,16 @@
   import NavSidebarExplorer from "./NavSidebarExplorer.svelte";
   import NavSidebarSearch from "./NavSidebarSearch.svelte";
   import NavSidebarEditor from "./NavSidebarEditor.svelte";
-  import BookIcon from "$lib/icons/navSidebar/BookIcon.svelte";
   import SearchIcon from "$lib/icons/navSidebar/SearchIcon.svelte";
   import FileIcon from "$lib/icons/navSidebar/FileIcon.svelte";
   import ScrollableContainer from "$lib/components/util/ScrollableContainer.svelte";
+  import AlephZeroIcon from "$lib/icons/navSidebar/AlephZeroIcon.svelte";
 
   let tabInfo = [
     {
       title: "Explorer",
       component: NavSidebarExplorer,
-      icon: BookIcon,
+      icon: AlephZeroIcon,
     },
     {
       title: "Search",
