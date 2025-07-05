@@ -30,8 +30,8 @@
 
 <div class="h-8 flex flex-nowrap border-b border-gray-300 overflow-hidden">
   <div class="h-full flex flex-nowrap border-r border-gray-300">
-    <button onclick={previousClick} class={tabManager.getOpenTab()?.previousTab ? "text-gray-700 " : "text-gray-400 "}><ArrowLeftIcon></ArrowLeftIcon></button>
-    <button onclick={nextClick} class={tabManager.getOpenTab()?.nextTab ? "text-gray-700 " : "text-gray-400 "}><ArrowRightIcon></ArrowRightIcon></button>
+    <button onclick={previousClick} class={tabManager.getOpenTab()?.previousTab ? "" : "text-gray-700 "}><ArrowLeftIcon></ArrowLeftIcon></button>
+    <button onclick={nextClick} class={tabManager.getOpenTab()?.nextTab ? "" : "text-gray-700 "}><ArrowRightIcon></ArrowRightIcon></button>
   </div>
   <ScrollableContainer theme="os-custom-scrollbar-theme-small">
     <div class="h-full flex-grow flex flex-nowrap">

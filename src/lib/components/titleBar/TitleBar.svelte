@@ -11,7 +11,7 @@
   import MaximizeIcon from "$lib/icons/titleBar/MaximizeIcon.svelte";
   import MinimizeIcon from "$lib/icons/titleBar/MinimizeIcon.svelte";
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
-  import { setSyntaxHighlighting } from "$lib/monaco/monaco";
+  import { setEditorSyntaxHighlighting } from "$lib/monaco/monaco";
   import UnMaximizeIcon from "$lib/icons/titleBar/UnMaximizeIcon.svelte";
   import { emit } from "@tauri-apps/api/event";
 
@@ -69,7 +69,7 @@
       let [topHeaderRep, htmlReps, colorInformation]: [HeaderRepresentation, HtmlRepresentation[], ColorInformation[]] = await invoke("open_metamath_database", { mmFilePath: filePath });
       explorerData.resetExplorerWithFirstHeader(topHeaderRep);
       htmlData.loadLocal(htmlReps, colorInformation);
-      setSyntaxHighlighting(colorInformation);
+      setEditorSyntaxHighlighting(colorInformation);
       emit("mm-db-opened");
     }
   };

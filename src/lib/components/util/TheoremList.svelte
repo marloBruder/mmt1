@@ -27,7 +27,7 @@
 </script>
 
 {#each theoremListData.list as theoremListEntry}
-  <div class="my-10 text-center border-black border-y">
+  <div class="my-10 text-center border-y">
     {#if theoremListEntry.discriminator === "HeaderListEntry"}
       <div class="text-2xl p-4">
         {theoremListEntry.headerPath + " " + theoremListEntry.title}

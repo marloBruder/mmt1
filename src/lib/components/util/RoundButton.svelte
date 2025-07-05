@@ -16,4 +16,4 @@
   } = $props();
 </script>
 
-<button class="border border-gray-300 rounded px-1 disabled:bg-gray-300" class:bg-red-400={warning} {onclick} {ondblclick} {disabled}>{@render children()}</button>
+<button class="border rounded px-1 disabled:text-gray-700" class:bg-red-400={warning} {onclick} {ondblclick} {disabled}>{@render children()}</button>

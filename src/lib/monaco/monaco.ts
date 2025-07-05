@@ -112,7 +112,6 @@ export let setEditorSyntaxHighlighting = (colorInformation: ColorInformation[]) 
   });
 };
 
-// setSyntaxHighlighting({ information: [] });
-// setSyntaxHighlighting(test);
+setEditorSyntaxHighlighting([]);
 
 export default monaco;
