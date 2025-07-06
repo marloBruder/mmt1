@@ -123,7 +123,7 @@
                 {/if}
               </td>
               <td class={"border border-gray-600 py-1 pr-2" + (pageData.previewErrors ? (pageData.previewErrors[i][3] ? " bg-red-400 " : "") : "")}>
-                <span class="text-xs text-gray-600">
+                <span class="text-xs text-gray-300">
                   {#each { length: proofLine.indention - 1 } as _}
                     {". "}
                   {/each}

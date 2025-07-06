@@ -14,6 +14,7 @@
   import { setEditorSyntaxHighlighting } from "$lib/monaco/monaco";
   import UnMaximizeIcon from "$lib/icons/titleBar/UnMaximizeIcon.svelte";
   import { emit } from "@tauri-apps/api/event";
+  import { onMount } from "svelte";
 
   let { externalWindow = false }: { externalWindow?: boolean } = $props();
 
@@ -86,9 +87,13 @@
     tabManager.getOpenTab()!.addToDatabase();
   };
 
-  let isMaximized = $state(false);
+  let isMaximized = $state(true);
 
   appWindow.onResized(async () => {
+    isMaximized = await appWindow.isMaximized();
+  });
+
+  onMount(async () => {
     isMaximized = await appWindow.isMaximized();
   });
 </script>
@@ -120,14 +125,14 @@
     {/if}
   </div>
   <div class="flex">
-    <button class="mx-3" onclick={minimizeClick}><MinimizeIcon /></button>
-    <button class="mx-3" onclick={maximizeClick}>
+    <button class="px-3 hover:bg-gray-700" onclick={minimizeClick}><MinimizeIcon /></button>
+    <button class="px-3 hover:bg-gray-700" onclick={maximizeClick}>
       {#if isMaximized}
         <UnMaximizeIcon />
       {:else}
         <MaximizeIcon />
       {/if}
     </button>
-    <button class="mx-3" onclick={closeClick}><CloseIcon /></button>
+    <button class="px-3 hover:bg-red-700" onclick={closeClick}><CloseIcon /></button>
   </div>
 </div>
