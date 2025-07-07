@@ -7,8 +7,8 @@
     tabManager.openTabWithIndex(index);
   };
 
-  let tabClose = (index: number) => {
-    tabManager.closeTabWithIndex(index);
+  let tabClose = async (index: number) => {
+    await tabManager.closeTabWithIndex(index);
   };
 
   let tabDblClick = (index: number) => {

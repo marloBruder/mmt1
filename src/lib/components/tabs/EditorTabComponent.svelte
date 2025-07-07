@@ -34,7 +34,6 @@
         tabManager.makeOpenTempTabPermanent();
         await this.onMonacoChange();
       });
-      await this.onMonacoChange();
     }
 
     unloadData(): void {
@@ -49,6 +48,10 @@
 
     sameTab(tab: Tab): boolean {
       return tab instanceof EditorTab && this.#filePath == tab.filePath;
+    }
+
+    async onTabOpen(): Promise<void> {
+      await this.onMonacoChange();
     }
 
     showDot(): boolean {
@@ -223,12 +226,6 @@
     );
   });
 
-  onDestroy(() => {
-    for (let unlisten of unlistenFns) {
-      unlisten();
-    }
-  });
-
   $effect(() => {
     editor?.setModel(editorTab.monacoModel);
     editor?.setScrollTop(editorTab.monacoScrollTop);
@@ -238,6 +235,10 @@
   onDestroy(() => {
     // monaco?.editor.getModels().forEach((model) => model.dispose());
     editor?.dispose();
+
+    for (let unlisten of unlistenFns) {
+      unlisten();
+    }
   });
 
   // let lines = $derived.by(() => {

@@ -25,6 +25,7 @@ class TabManager {
     }
 
     await newTab.loadData();
+    await newTab.onTabOpen();
     if (0 <= this.#tempTabIndex && this.#tempTabIndex < this.#tabs.length) {
       this.#tabs[this.#tempTabIndex].unloadData();
       this.#tabs[this.#tempTabIndex] = newTab;
@@ -46,6 +47,7 @@ class TabManager {
       this.openTab(newTab);
     } else {
       await newTab.loadData();
+      await newTab.onTabOpen();
       this.#tabs[this.#openTabIndex].unloadData();
 
       newTab.previousTab = this.#tabs[this.#openTabIndex];
@@ -100,14 +102,13 @@ class TabManager {
   openTabWithIndex(tabIndex: number) {
     if (tabIndex >= 0 && tabIndex < this.#tabs.length) {
       this.#openTabIndex = tabIndex;
-      // goto(this.#tabs[tabIndex].url());
+      this.#tabs[this.#openTabIndex].onTabOpen();
     } else {
       this.#openTabIndex = -1;
-      // goto("/main");
     }
   }
 
-  closeTabWithIndex(tabIndex: number) {
+  async closeTabWithIndex(tabIndex: number) {
     if (tabIndex >= 0 && tabIndex < this.#tabs.length) {
       if (tabIndex < this.#openTabIndex || (tabIndex == this.#openTabIndex && tabIndex == this.#tabs.length - 1)) {
         this.#openTabIndex--;
@@ -125,6 +126,8 @@ class TabManager {
 
       this.#tabs[tabIndex].unloadData();
       this.#tabs.splice(tabIndex, 1);
+
+      await this.#tabs[this.#openTabIndex].onTabOpen();
 
       // if (closedCurrentTab && navigate) {
       //   let newTabIndex = tabIndex;
@@ -150,6 +153,7 @@ class TabManager {
     if (openTab && openTab.previousTab) {
       openTab.unloadData();
       await openTab.previousTab.loadData();
+      await openTab.previousTab.onTabOpen();
 
       this.#tabs[this.#openTabIndex] = openTab.previousTab;
     }
@@ -160,6 +164,7 @@ class TabManager {
     if (openTab && openTab.nextTab) {
       openTab.unloadData();
       await openTab.nextTab.loadData();
+      await openTab.nextTab.onTabOpen();
 
       this.#tabs[this.#openTabIndex] = openTab.nextTab;
     }
@@ -233,6 +238,8 @@ export abstract class Tab {
   abstract name(): string;
 
   abstract sameTab(tab: Tab): boolean;
+
+  async onTabOpen(): Promise<void> {}
 
   showDot(): boolean {
     return false;
