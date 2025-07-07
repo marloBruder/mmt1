@@ -25,6 +25,7 @@ pub struct MetamathData {
     pub database_header: Header,
     pub html_representations: Vec<HtmlRepresentation>,
     pub optimized_data: OptimizedMetamathData,
+    pub grammar_calculations_done: bool,
     pub database_path: String,
     pub variable_colors: Vec<VariableColor>,
     pub alt_variable_colors: Vec<VariableColor>,
@@ -41,6 +42,11 @@ pub struct OptimizedMetamathData {
 
 #[derive(Debug)]
 pub struct OptimizedTheoremData {
+    pub parse_trees: Option<TheoremParseTrees>,
+}
+
+#[derive(Debug)]
+pub struct TheoremParseTrees {
     pub hypotheses_parsed: Vec<ParseTree>,
     pub assertion_parsed: ParseTree,
 }
@@ -61,7 +67,7 @@ pub struct SymbolNumberMapping {
     pub constant_count: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Statement {
     CommentStatement(Comment),
     ConstantStatement(Vec<Constant>),
@@ -113,7 +119,7 @@ pub struct Hypothesis {
     pub expression: String,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Header {
     pub title: String,
     pub content: Vec<Statement>,
@@ -313,23 +319,23 @@ impl MetamathData {
             .is_some_and(|&n| self.optimized_data.symbol_number_mapping.is_variable(n))
     }
 
-    pub fn calc_optimized_theorem_data(&mut self) -> Result<(), Error> {
-        let mut i = 0;
-        for theorem in self.database_header.theorem_iter() {
-            // if i % 100 == 0 {
-            println!("{}", i);
-            // }
-            i += 1;
-            if theorem.assertion.starts_with("|- ") {
-                self.optimized_data.theorem_data.insert(
-                    theorem.label.to_string(),
-                    theorem.calc_optimized_data(self)?,
-                );
-            }
-        }
+    // pub fn calc_optimized_theorem_data(&mut self) -> Result<(), Error> {
+    //     let mut i = 0;
+    //     for theorem in self.database_header.theorem_iter() {
+    //         // if i % 100 == 0 {
+    //         println!("{}", i);
+    //         // }
+    //         i += 1;
+    //         if theorem.assertion.starts_with("|- ") {
+    //             self.optimized_data.theorem_data.insert(
+    //                 theorem.label.to_string(),
+    //                 theorem.calc_optimized_data(self)?,
+    //             );
+    //         }
+    //     }
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     pub fn recalc_optimized_floating_hypotheses_after_one_new(&mut self) -> Result<(), Error> {
         let mut i: usize = 0;
@@ -361,27 +367,27 @@ impl MetamathData {
         Ok(())
     }
 
-    pub fn recalc_symbol_number_mapping_and_grammar(&mut self) -> Result<(), Error> {
-        self.optimized_data.symbol_number_mapping =
-            SymbolNumberMapping::calc_mapping(&self.database_header);
+    // pub fn recalc_symbol_number_mapping_and_grammar(&mut self) -> Result<(), Error> {
+    //     self.optimized_data.symbol_number_mapping =
+    //         SymbolNumberMapping::calc_mapping(&self.database_header);
 
-        Grammar::calc_grammar(self)?;
-        // let mut i: u32 = 1;
-        // while let Some(symbol) = self.optimized_data.symbol_number_mapping.symbols.get(&i) {
-        //     println!("{}: {}", i, symbol);
-        //     if i == self.optimized_data.symbol_number_mapping.typecode_count
-        //         || i == self.optimized_data.symbol_number_mapping.typecode_count
-        //             + self.optimized_data.symbol_number_mapping.variable_count
-        //     {
-        //         println!("");
-        //     }
-        //     i += 1;
-        // }
-        // for grammar_rule in &self.optimized_data.grammar.rules {
-        //     println!("{:?}", grammar_rule);
-        // }
-        Ok(())
-    }
+    //     Grammar::calc_grammar(self)?;
+    //     // let mut i: u32 = 1;
+    //     // while let Some(symbol) = self.optimized_data.symbol_number_mapping.symbols.get(&i) {
+    //     //     println!("{}: {}", i, symbol);
+    //     //     if i == self.optimized_data.symbol_number_mapping.typecode_count
+    //     //         || i == self.optimized_data.symbol_number_mapping.typecode_count
+    //     //             + self.optimized_data.symbol_number_mapping.variable_count
+    //     //     {
+    //     //         println!("");
+    //     //     }
+    //     //     i += 1;
+    //     // }
+    //     // for grammar_rule in &self.optimized_data.grammar.rules {
+    //     //     println!("{:?}", grammar_rule);
+    //     // }
+    //     Ok(())
+    // }
 
     pub fn calc_color_information(&self, alt: bool) -> Vec<ColorInformation> {
         let variable_colors = if alt {
@@ -797,42 +803,38 @@ impl SymbolNumberMapping {
 }
 
 impl Grammar {
-    pub fn calc_grammar(metamath_data: &mut MetamathData) -> Result<(), Error> {
-        metamath_data.optimized_data.grammar = Grammar {
+    pub fn calc_grammar_and_parse_trees<'a>(
+        database_header: &'a Header,
+        symbol_number_mapping: &SymbolNumberMapping,
+    ) -> Result<(Grammar, Vec<(&'a str, ParseTree, Vec<ParseTree>)>), Error> {
+        let mut grammar = Grammar {
             rules: Vec::new(),
             earley_optimized_data: EarleyOptimizedData::default(),
         };
 
+        let mut parse_trees = Vec::new();
+
         let mut i = 0;
 
-        let symbol_number_mapping = &metamath_data.optimized_data.symbol_number_mapping;
-
-        for floating_hypothesis in &metamath_data.optimized_data.floating_hypotheses {
-            metamath_data
-                .optimized_data
-                .grammar
-                .rules
-                .push(GrammarRule {
-                    left_side: *symbol_number_mapping
-                        .numbers
-                        .get(&format!("${}", floating_hypothesis.typecode))
-                        .ok_or(Error::InternalLogicError)?,
-                    right_side: vec![*symbol_number_mapping
-                        .numbers
-                        .get(&floating_hypothesis.variable)
-                        .ok_or(Error::InternalLogicError)?],
-                    label: floating_hypothesis.label.clone(),
-                    var_order: Vec::new(),
-                    is_floating_hypothesis: true,
-                });
+        for floating_hypothesis in database_header.floating_hypohesis_iter() {
+            grammar.rules.push(GrammarRule {
+                left_side: *symbol_number_mapping
+                    .numbers
+                    .get(&format!("${}", floating_hypothesis.typecode))
+                    .ok_or(Error::InternalLogicError)?,
+                right_side: vec![*symbol_number_mapping
+                    .numbers
+                    .get(&floating_hypothesis.variable)
+                    .ok_or(Error::InternalLogicError)?],
+                label: floating_hypothesis.label.clone(),
+                var_order: Vec::new(),
+                is_floating_hypothesis: true,
+            });
         }
 
-        metamath_data
-            .optimized_data
-            .grammar
-            .recalc_earley_optimized_data(symbol_number_mapping)?;
+        grammar.recalc_earley_optimized_data(symbol_number_mapping)?;
 
-        for theorem in metamath_data.database_header.theorem_iter() {
+        for theorem in database_header.theorem_iter() {
             if theorem.proof == None
                 && theorem
                     .assertion
@@ -869,7 +871,7 @@ impl Grammar {
 
                 let mut var_order: Vec<u32> = Vec::new();
 
-                for floating_hypothesis in &metamath_data.optimized_data.floating_hypotheses {
+                for floating_hypothesis in database_header.floating_hypohesis_iter() {
                     for (i, &var) in vars.iter().enumerate() {
                         if *symbol_number_mapping
                             .numbers
@@ -883,22 +885,15 @@ impl Grammar {
                     }
                 }
 
-                metamath_data
-                    .optimized_data
-                    .grammar
-                    .rules
-                    .push(GrammarRule {
-                        left_side,
-                        right_side,
-                        label: theorem.label.clone(),
-                        var_order,
-                        is_floating_hypothesis: false,
-                    });
+                grammar.rules.push(GrammarRule {
+                    left_side,
+                    right_side,
+                    label: theorem.label.clone(),
+                    var_order,
+                    is_floating_hypothesis: false,
+                });
 
-                metamath_data
-                    .optimized_data
-                    .grammar
-                    .recalc_earley_optimized_data(symbol_number_mapping)?;
+                grammar.recalc_earley_optimized_data(symbol_number_mapping)?;
             } else if theorem
                 .assertion
                 .split_ascii_whitespace()
@@ -911,14 +906,14 @@ impl Grammar {
                     println!("{}:", i);
                 }
 
-                metamath_data.optimized_data.theorem_data.insert(
-                    theorem.label.to_string(),
-                    theorem.calc_optimized_data(metamath_data)?,
-                );
+                let (assertion_parsed, hypotheses_parsed) =
+                    theorem.calc_parse_trees(&grammar, symbol_number_mapping)?;
+
+                parse_trees.push((theorem.label.as_str(), assertion_parsed, hypotheses_parsed));
             }
         }
 
-        Ok(())
+        Ok((grammar, parse_trees))
     }
 
     fn recalc_earley_optimized_data(
@@ -1005,23 +1000,22 @@ impl Theorem {
         }
     }
 
-    pub fn calc_optimized_data(
+    pub fn calc_parse_trees(
         &self,
-        metamath_data: &MetamathData,
-    ) -> Result<OptimizedTheoremData, Error> {
+        grammar: &Grammar,
+        symbol_number_mapping: &SymbolNumberMapping,
+    ) -> Result<(ParseTree, Vec<ParseTree>), Error> {
         let hypotheses_parsed = self
             .hypotheses
             .iter()
             .map(|h| {
                 earley_parser_optimized::earley_parse(
-                    &metamath_data.optimized_data.grammar,
-                    &metamath_data
-                        .optimized_data
-                        .symbol_number_mapping
+                    grammar,
+                    &symbol_number_mapping
                         .expression_to_number_vec_skip_first(&h.expression)
                         .or(Err(Error::InternalLogicError))?,
                     vec![1],
-                    &metamath_data.optimized_data.symbol_number_mapping,
+                    symbol_number_mapping,
                 )?
                 .ok_or(Error::ExpressionParseError)?
                 .into_iter()
@@ -1031,14 +1025,12 @@ impl Theorem {
             .collect::<Result<Vec<ParseTree>, Error>>()?;
 
         let assertion_parsed = earley_parser_optimized::earley_parse(
-            &metamath_data.optimized_data.grammar,
-            &metamath_data
-                .optimized_data
-                .symbol_number_mapping
+            grammar,
+            &symbol_number_mapping
                 .expression_to_number_vec_skip_first(&self.assertion)
                 .or(Err(Error::InternalLogicError))?,
             vec![1],
-            &metamath_data.optimized_data.symbol_number_mapping,
+            symbol_number_mapping,
         )?
         .ok_or(Error::ExpressionParseError)?
         .into_iter()
@@ -1050,10 +1042,7 @@ impl Theorem {
         // }
         // println!("{:?}", assertion_parsed.calc_proof(&grammar));
 
-        Ok(OptimizedTheoremData {
-            hypotheses_parsed,
-            assertion_parsed,
-        })
+        Ok((assertion_parsed, hypotheses_parsed))
     }
 }
 

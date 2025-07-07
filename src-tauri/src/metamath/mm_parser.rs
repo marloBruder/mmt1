@@ -6,15 +6,44 @@ use crate::{
     model::{
         ColorInformation, Comment, Constant, FloatingHypothesis, Header, HeaderPath,
         HeaderRepresentation, HtmlRepresentation, Hypothesis, MetamathData, OptimizedMetamathData,
-        Statement, Theorem, Variable, VariableColor,
+        Statement, SymbolNumberMapping, Theorem, TheoremParseTrees, Variable, VariableColor,
     },
-    util, AppState, Error,
+    util::{self, earley_parser_optimized::Grammar},
+    AppState, Error,
 };
 
 #[tauri::command]
 pub async fn open_metamath_database(
     state: tauri::State<'_, Mutex<AppState>>,
     mm_file_path: &str,
+) -> Result<(), Error> {
+    let mut app_state = state.lock().await;
+
+    // let metamath_data = MmParser::process_database(mm_file_path)?;
+
+    let mut mm_parser = MmParser::new(mm_file_path)?;
+    mm_parser.process_all_statements()?;
+    let metamath_data = mm_parser.consume_early_before_grammar_calculations()?;
+
+    app_state.temp_metamath_data = Some(metamath_data);
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn cancel_open_metamath_database(
+    state: tauri::State<'_, Mutex<AppState>>,
+) -> Result<(), Error> {
+    let mut app_state = state.lock().await;
+
+    app_state.temp_metamath_data = None;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn confirm_open_metamath_database(
+    state: tauri::State<'_, Mutex<AppState>>,
 ) -> Result<
     (
         HeaderRepresentation,
@@ -25,7 +54,10 @@ pub async fn open_metamath_database(
 > {
     let mut app_state = state.lock().await;
 
-    let metamath_data = MmParser::process_database(mm_file_path)?;
+    let metamath_data = app_state
+        .temp_metamath_data
+        .take()
+        .ok_or(Error::InternalLogicError)?;
 
     let header_rep = metamath_data.database_header.to_representation();
 
@@ -36,6 +68,43 @@ pub async fn open_metamath_database(
     app_state.metamath_data = Some(metamath_data);
 
     Ok((header_rep, html_reps, color_information))
+}
+
+#[tauri::command]
+pub async fn perform_grammar_calculations(
+    state: tauri::State<'_, Mutex<AppState>>,
+) -> Result<(), Error> {
+    let app_state = state.lock().await;
+    let mm_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
+
+    let database_header = mm_data.database_header.clone();
+
+    drop(app_state);
+
+    let symbol_number_mapping = SymbolNumberMapping::calc_mapping(&database_header);
+
+    let (grammar, parse_trees) =
+        Grammar::calc_grammar_and_parse_trees(&database_header, &symbol_number_mapping)?;
+
+    let mut app_state = state.lock().await;
+    let mm_data = app_state.metamath_data.as_mut().ok_or(Error::NoMmDbError)?;
+
+    mm_data.grammar_calculations_done = true;
+    mm_data.optimized_data.symbol_number_mapping = symbol_number_mapping;
+    mm_data.optimized_data.grammar = grammar;
+    for (label, assertion_parsed, hypotheses_parsed) in parse_trees {
+        mm_data
+            .optimized_data
+            .theorem_data
+            .get_mut(label)
+            .ok_or(Error::InternalLogicError)?
+            .parse_trees = Some(TheoremParseTrees {
+            assertion_parsed,
+            hypotheses_parsed,
+        })
+    }
+
+    Ok(())
 }
 
 pub struct MmParser {
@@ -104,11 +173,11 @@ impl MmParser {
         })
     }
 
-    pub fn process_database(file_path: &str) -> Result<MetamathData, Error> {
-        let mm_parser = MmParser::new(file_path)?;
+    // pub fn process_database(file_path: &str) -> Result<MetamathData, Error> {
+    //     let mm_parser = MmParser::new(file_path)?;
 
-        Ok(mm_parser.process_all_statements_and_consume()?)
-    }
+    //     Ok(mm_parser.process_all_statements_and_consume()?)
+    // }
 
     pub fn process_next_statement(&mut self) -> Result<Option<StatementProcessed>, Error> {
         let mut comment_processed = false;
@@ -176,8 +245,35 @@ impl MmParser {
         Ok(())
     }
 
-    fn consume(self) -> Result<MetamathData, Error> {
-        let mut metamath_data = MetamathData {
+    // fn consume(self) -> Result<MetamathData, Error> {
+    //     let mut metamath_data = MetamathData {
+    //         database_path: self.database_path,
+    //         database_header: self.database_header,
+    //         html_representations: self.html_representations,
+    //         optimized_data: OptimizedMetamathData {
+    //             floating_hypotheses: self
+    //                 .active_float_hyps
+    //                 .into_iter()
+    //                 .next()
+    //                 .ok_or(Error::InternalLogicError)?,
+    //             theorem_amount: self.theorem_amount,
+    //             ..Default::default()
+    //         },
+    //         variable_colors: self.variable_colors,
+    //         alt_variable_colors: self.alt_variable_colors,
+    //     };
+
+    //     metamath_data.recalc_symbol_number_mapping_and_grammar()?;
+
+    //     Ok(metamath_data)
+    // }
+
+    pub fn consume_early_and_return_file_content(self) -> (String, usize) {
+        (self.file_content, self.next_token_i)
+    }
+
+    fn consume_early_before_grammar_calculations(self) -> Result<MetamathData, Error> {
+        Ok(MetamathData {
             database_path: self.database_path,
             database_header: self.database_header,
             html_representations: self.html_representations,
@@ -190,24 +286,17 @@ impl MmParser {
                 theorem_amount: self.theorem_amount,
                 ..Default::default()
             },
+            grammar_calculations_done: false,
             variable_colors: self.variable_colors,
             alt_variable_colors: self.alt_variable_colors,
-        };
-
-        metamath_data.recalc_symbol_number_mapping_and_grammar()?;
-
-        Ok(metamath_data)
+        })
     }
 
-    pub fn consume_early_and_return_file_content(self) -> (String, usize) {
-        (self.file_content, self.next_token_i)
-    }
+    // pub fn process_all_statements_and_consume(mut self) -> Result<MetamathData, Error> {
+    //     self.process_all_statements()?;
 
-    pub fn process_all_statements_and_consume(mut self) -> Result<MetamathData, Error> {
-        self.process_all_statements()?;
-
-        self.consume()
-    }
+    //     self.consume()
+    // }
 
     fn advance_next_token(&mut self) -> Option<&str> {
         let string_bytes = self.file_content.as_bytes();

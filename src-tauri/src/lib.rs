@@ -13,12 +13,16 @@ mod util;
 
 pub struct AppState {
     metamath_data: Option<MetamathData>,
+    // Used to temporarily store MetamathData before the user confirms they wants to open a databse
+    // This way the old MetamathData is not lost, if they cancel
+    temp_metamath_data: Option<MetamathData>,
     open_folder: Option<String>,
 }
 
 fn app_setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     app.manage(Mutex::new(AppState {
         metamath_data: None,
+        temp_metamath_data: None,
         open_folder: None,
     }));
     // app.manage::<Mutex<Option<AppState>>>(Mutex::new(None));
@@ -73,6 +77,9 @@ pub fn run() {
             metamath::export::save_database,
             metamath::export::export_database,
             metamath::mm_parser::open_metamath_database,
+            metamath::mm_parser::cancel_open_metamath_database,
+            metamath::mm_parser::confirm_open_metamath_database,
+            metamath::mm_parser::perform_grammar_calculations,
             local_state::comment::get_comment_local,
             local_state::constant::get_constants_local,
             local_state::constant::get_constant_statement_local,

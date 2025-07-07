@@ -144,9 +144,14 @@ pub async fn unify(state: tauri::State<'_, Mutex<AppState>>, text: &str) -> Resu
                             if let Some(theorem_data) =
                                 mm_data.optimized_data.theorem_data.get(&theorem.label)
                             {
+                                let parse_trees = theorem_data
+                                    .parse_trees
+                                    .as_ref()
+                                    .ok_or(Error::InternalLogicError)?;
+
                                 let mut theorem_parse_trees: Vec<&ParseTree> =
-                                    theorem_data.hypotheses_parsed.iter().collect();
-                                theorem_parse_trees.push(&theorem_data.assertion_parsed);
+                                    parse_trees.hypotheses_parsed.iter().collect();
+                                theorem_parse_trees.push(&parse_trees.assertion_parsed);
 
                                 if ParseTree::are_substitutions(
                                     &theorem_parse_trees,
