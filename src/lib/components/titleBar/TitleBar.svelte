@@ -15,6 +15,8 @@
   import UnMaximizeIcon from "$lib/icons/titleBar/UnMaximizeIcon.svelte";
   import { emit } from "@tauri-apps/api/event";
   import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
+  import { globalState } from "$lib/sharedState/globalState.svelte";
 
   let { externalWindow = false }: { externalWindow?: boolean } = $props();
 
@@ -67,11 +69,13 @@
     const filePath = await open({ multiple: false, directory: false, filters: [{ name: "Metamath Database", extensions: ["mm"] }] });
 
     if (filePath) {
-      let [topHeaderRep, htmlReps, colorInformation]: [HeaderRepresentation, HtmlRepresentation[], ColorInformation[]] = await invoke("open_metamath_database", { mmFilePath: filePath });
-      explorerData.resetExplorerWithFirstHeader(topHeaderRep);
-      htmlData.loadLocal(htmlReps, colorInformation);
-      setEditorSyntaxHighlighting(colorInformation);
-      emit("mm-db-opened");
+      globalState.databaseBeingOpened = filePath;
+      await goto("/main/openDatabase");
+      // let [topHeaderRep, htmlReps, colorInformation]: [HeaderRepresentation, HtmlRepresentation[], ColorInformation[]] = await invoke("open_metamath_database", { mmFilePath: filePath });
+      // explorerData.resetExplorerWithFirstHeader(topHeaderRep);
+      // htmlData.loadLocal(htmlReps, colorInformation);
+      // setEditorSyntaxHighlighting(colorInformation);
+      // emit("mm-db-opened");
     }
   };
 
@@ -115,7 +119,7 @@
       </TitleBarDropdown>
       <TitleBarDropdown title="Metamath">
         <div><button onclick={onNewMetamathDatabaseClick}>New Metamath Database</button></div>
-        <div><button onclick={onOpenMetamathDatabaseClick}>Open Metamath Database</button></div>
+        <div><button onclick={onOpenMetamathDatabaseClick} disabled={globalState.databaseBeingOpened != ""} class="disabled:text-gray-500">Open Metamath Database</button></div>
         <div><button onclick={onExportMetamathDatabaseClick}>Export Metamath Database</button></div>
         <hr class="border-gray-300" />
         <div><button onclick={onAddToDatabaseClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.addToDatabaseDisabled() : true} class="disabled:text-gray-500">Add to database</button></div>

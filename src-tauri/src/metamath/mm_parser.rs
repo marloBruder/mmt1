@@ -1,4 +1,7 @@
-use std::{collections::HashSet, fs};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+};
 
 use tauri::async_runtime::Mutex;
 
@@ -73,9 +76,13 @@ pub async fn confirm_open_metamath_database(
 #[tauri::command]
 pub async fn perform_grammar_calculations(
     state: tauri::State<'_, Mutex<AppState>>,
+    mm_file_path: &str,
 ) -> Result<(), Error> {
     let app_state = state.lock().await;
-    let mm_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
+    let mm_data = app_state
+        .temp_metamath_data
+        .as_ref()
+        .ok_or(Error::NoMmDbError)?;
 
     let database_header = mm_data.database_header.clone();
 
@@ -87,7 +94,15 @@ pub async fn perform_grammar_calculations(
         Grammar::calc_grammar_and_parse_trees(&database_header, &symbol_number_mapping)?;
 
     let mut app_state = state.lock().await;
-    let mm_data = app_state.metamath_data.as_mut().ok_or(Error::NoMmDbError)?;
+    let mm_data = if let Some(ref mut temp_mm_data) = app_state.temp_metamath_data {
+        temp_mm_data
+    } else {
+        app_state.metamath_data.as_mut().ok_or(Error::NoMmDbError)?
+    };
+
+    if mm_data.database_path != mm_file_path {
+        return Ok(());
+    }
 
     mm_data.grammar_calculations_done = true;
     mm_data.optimized_data.symbol_number_mapping = symbol_number_mapping;
@@ -273,7 +288,7 @@ impl MmParser {
     }
 
     fn consume_early_before_grammar_calculations(self) -> Result<MetamathData, Error> {
-        Ok(MetamathData {
+        let mut metamath_data = MetamathData {
             database_path: self.database_path,
             database_header: self.database_header,
             html_representations: self.html_representations,
@@ -284,12 +299,18 @@ impl MmParser {
                     .next()
                     .ok_or(Error::InternalLogicError)?,
                 theorem_amount: self.theorem_amount,
-                ..Default::default()
+                theorem_data: HashMap::new(),
+                symbol_number_mapping: SymbolNumberMapping::default(),
+                grammar: Grammar::default(),
             },
             grammar_calculations_done: false,
             variable_colors: self.variable_colors,
             alt_variable_colors: self.alt_variable_colors,
-        })
+        };
+
+        metamath_data.calc_optimized_theorem_data();
+
+        Ok(metamath_data)
     }
 
     // pub fn process_all_statements_and_consume(mut self) -> Result<MetamathData, Error> {

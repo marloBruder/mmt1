@@ -14,12 +14,12 @@
   let pageDataLoaded: boolean = $state(false);
   let pageData: DatabaseElementPageData | null = $state(null);
 
-  onMount(() => {
+  onMount(async () => {
     listen("mm-db-opened", () => {
       htmlData.load();
     });
 
-    htmlData.load();
+    await htmlData.load();
 
     // If event "external-window-close" has been triggered and the window is still up, then close the external window
     listen("external-window-close", () => {

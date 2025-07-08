@@ -319,23 +319,16 @@ impl MetamathData {
             .is_some_and(|&n| self.optimized_data.symbol_number_mapping.is_variable(n))
     }
 
-    // pub fn calc_optimized_theorem_data(&mut self) -> Result<(), Error> {
-    //     let mut i = 0;
-    //     for theorem in self.database_header.theorem_iter() {
-    //         // if i % 100 == 0 {
-    //         println!("{}", i);
-    //         // }
-    //         i += 1;
-    //         if theorem.assertion.starts_with("|- ") {
-    //             self.optimized_data.theorem_data.insert(
-    //                 theorem.label.to_string(),
-    //                 theorem.calc_optimized_data(self)?,
-    //             );
-    //         }
-    //     }
-
-    //     Ok(())
-    // }
+    pub fn calc_optimized_theorem_data(&mut self) {
+        for theorem in self.database_header.theorem_iter() {
+            if theorem.assertion.starts_with("|- ") {
+                self.optimized_data.theorem_data.insert(
+                    theorem.label.to_string(),
+                    OptimizedTheoremData { parse_trees: None },
+                );
+            }
+        }
+    }
 
     pub fn recalc_optimized_floating_hypotheses_after_one_new(&mut self) -> Result<(), Error> {
         let mut i: usize = 0;

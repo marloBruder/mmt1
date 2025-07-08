@@ -17,18 +17,14 @@
   };
 
   let proofLineBackground = (i: number): string => {
-    if (pageData.previewConfirmationsRecursive) {
-      if (pageData.previewConfirmationsRecursive[i]) {
-        return "custom-confirmation-recursive-color";
-        // return "bg-green-300";
-      }
+    if (pageData.previewConfirmationsRecursive && pageData.previewConfirmationsRecursive[i]) {
+      return "custom-confirmation-recursive-color";
+      // return "bg-green-300";
     }
 
-    if (pageData.previewConfirmations) {
-      if (pageData.previewConfirmations[i]) {
-        return "custom-confirmation-color";
-        // return "bg-green-200";
-      }
+    if (pageData.previewConfirmations && pageData.previewConfirmations[i]) {
+      return "custom-confirmation-color";
+      // return "bg-green-200";
     }
 
     return "";

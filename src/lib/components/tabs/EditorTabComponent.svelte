@@ -224,6 +224,11 @@
         editorTab.onMonacoChange();
       })
     );
+    unlistenFns.push(
+      await listen("grammar-calculations-performed", () => {
+        editorTab.onMonacoChange();
+      })
+    );
   });
 
   $effect(() => {
