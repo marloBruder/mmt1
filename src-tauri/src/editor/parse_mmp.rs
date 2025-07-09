@@ -761,7 +761,7 @@ fn add_statement_locate_after_file(
     locate_after: &LocateAfterRef,
     statement: &Statement,
 ) -> Result<(), Error> {
-    let mut mm_parser = MmParser::new(file_path)?;
+    let mut mm_parser = MmParser::new(file_path, None)?;
     // REAL CODE:
     // let header_iter = header.locate_after_iter(*locate_after);
     // TEMP CODE: (can't use locate_after_iter rn)

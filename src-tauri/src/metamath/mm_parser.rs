@@ -3,7 +3,7 @@ use std::{
     fs,
 };
 
-use tauri::async_runtime::Mutex;
+use tauri::{async_runtime::Mutex, AppHandle, Emitter};
 
 use crate::{
     model::{
@@ -18,13 +18,14 @@ use crate::{
 #[tauri::command]
 pub async fn open_metamath_database(
     state: tauri::State<'_, Mutex<AppState>>,
+    app: AppHandle,
     mm_file_path: &str,
 ) -> Result<(), Error> {
     let mut app_state = state.lock().await;
 
     // let metamath_data = MmParser::process_database(mm_file_path)?;
 
-    let mut mm_parser = MmParser::new(mm_file_path)?;
+    let mut mm_parser = MmParser::new(mm_file_path, Some(app))?;
     mm_parser.process_all_statements()?;
     let metamath_data = mm_parser.consume_early_before_grammar_calculations()?;
 
@@ -142,6 +143,10 @@ pub struct MmParser {
     next_label: Option<String>,
     next_description: Option<String>,
     theorem_amount: u32,
+    curr_line_amount: u32,
+    total_line_amount: u32,
+    last_progress_reported: u8,
+    app: Option<AppHandle>,
 }
 
 pub enum StatementProcessed {
@@ -158,12 +163,14 @@ pub enum StatementProcessed {
 }
 
 impl MmParser {
-    pub fn new(file_path: &str) -> Result<MmParser, Error> {
+    pub fn new(file_path: &str, app: Option<AppHandle>) -> Result<MmParser, Error> {
         let file_content = fs::read_to_string(file_path).or(Err(Error::FileReadError))?;
 
         if !file_content.is_ascii() {
             return Err(Error::InvalidCharactersError);
         }
+
+        let total_line_amount = file_content.lines().count() as u32;
 
         Ok(MmParser {
             file_content,
@@ -185,6 +192,10 @@ impl MmParser {
             next_label: None,
             next_description: None,
             theorem_amount: 0,
+            curr_line_amount: 0,
+            total_line_amount,
+            last_progress_reported: 0,
+            app,
         })
     }
 
@@ -242,6 +253,15 @@ impl MmParser {
                 self.next_description = None;
             }
 
+            if let Some(ref app_handle) = self.app {
+                // Should always produce value between 0 and 100
+                let curr_progress = ((self.curr_line_amount * 100) / self.total_line_amount) as u8;
+                if self.last_progress_reported < curr_progress {
+                    self.last_progress_reported = curr_progress;
+                    app_handle.emit("mm_parser_progress", curr_progress).ok();
+                }
+            }
+
             Ok(Some(statement_processed))
         } else {
             Ok(None)
@@ -284,10 +304,18 @@ impl MmParser {
     // }
 
     pub fn consume_early_and_return_file_content(self) -> (String, usize) {
+        if let Some(ref app_handle) = self.app {
+            app_handle.emit("mm_parser_progress", 100).ok();
+        }
+
         (self.file_content, self.next_token_i)
     }
 
     fn consume_early_before_grammar_calculations(self) -> Result<MetamathData, Error> {
+        if let Some(ref app_handle) = self.app {
+            app_handle.emit("mm_parser_progress", 100).ok();
+        }
+
         let mut metamath_data = MetamathData {
             database_path: self.database_path,
             database_header: self.database_header,
@@ -326,6 +354,12 @@ impl MmParser {
             .get(self.next_token_i)
             .is_some_and(|c| c.is_ascii_whitespace())
         {
+            if string_bytes
+                .get(self.next_token_i)
+                .is_some_and(|c| *c == b'\n')
+            {
+                self.curr_line_amount += 1;
+            }
             self.next_token_i += 1;
         }
 
@@ -352,10 +386,7 @@ impl MmParser {
     }
 
     fn process_comment_statement(&mut self) -> Result<StatementProcessed, Error> {
-        let comment = self
-            .advance_until_end_of_comment()
-            .ok_or(Error::UnclosedCommentError)?
-            .to_string();
+        let comment = self.advance_until_end_of_comment()?.to_string();
 
         if let Some(first_token) = comment.split_whitespace().next() {
             if first_token == "$t" {
@@ -390,40 +421,12 @@ impl MmParser {
         Ok(StatementProcessed::CommentStatement)
     }
 
-    fn advance_until_end_of_comment(&mut self) -> Option<&str> {
-        let start_token_i = self.next_token_i;
-
-        let file_content_bytes = self.file_content.as_bytes();
-
-        loop {
-            let char_0 = file_content_bytes.get(self.next_token_i);
-            let char_1 = file_content_bytes.get(self.next_token_i + 1);
-            let char_2 = file_content_bytes.get(self.next_token_i + 2);
-            let char_3 = file_content_bytes.get(self.next_token_i + 3);
-
-            if char_2.is_none() {
-                break None;
-            }
-
-            if char_0.is_some_and(|c| c.is_ascii_whitespace())
-                && char_1.is_some_and(|c| *c == b'$')
-                && char_2.is_some_and(|c| *c == b')')
-                && char_3.is_none_or(|c| c.is_ascii_whitespace())
-            {
-                let end_token_i = self.next_token_i + 1;
-                self.next_token_i += 3;
-                break Some(&self.file_content[start_token_i..end_token_i]);
-            }
-
-            self.next_token_i += 1;
-        }
-    }
-
     // Should be slightly more efficient than advance_until_end_of_comment
-    fn advance_until_end_of_comment_without_return(&mut self) -> Result<(), Error> {
+    fn advance_until_end_of_comment(&mut self) -> Result<&str, Error> {
+        let start_token_i = self.next_token_i;
         while let Some(token) = self.advance_next_token() {
             if token == "$)" {
-                return Ok(());
+                return Ok(&self.file_content[start_token_i..(self.next_token_i - 2)]);
             }
         }
 
@@ -645,7 +648,9 @@ impl MmParser {
 
         while let Some(const_token) = self.advance_next_token() {
             match const_token {
-                "$(" => self.advance_until_end_of_comment_without_return()?,
+                "$(" => {
+                    self.advance_until_end_of_comment()?;
+                }
                 "$." => break,
                 const_symbol => {
                     if !util::is_valid_math_symbol(const_symbol) {
@@ -686,7 +691,9 @@ impl MmParser {
 
         while let Some(var_token) = self.advance_next_token() {
             match var_token {
-                "$(" => self.advance_until_end_of_comment_without_return()?,
+                "$(" => {
+                    self.advance_until_end_of_comment()?;
+                }
                 "$." => break,
                 var_symbol => {
                     if !util::is_valid_math_symbol(var_symbol) {
@@ -742,7 +749,9 @@ impl MmParser {
 
         while let Some(float_hyp_token) = self.advance_next_token() {
             match float_hyp_token {
-                "$(" => self.advance_until_end_of_comment_without_return()?,
+                "$(" => {
+                    self.advance_until_end_of_comment()?;
+                }
                 "$." => break,
                 non_comment_token => non_comment_tokens.push(non_comment_token.to_string()),
             }
@@ -841,7 +850,7 @@ impl MmParser {
 
         while let Some(token) = self.advance_next_token() {
             if token == "$(" {
-                self.advance_until_end_of_comment_without_return()?;
+                self.advance_until_end_of_comment()?;
                 continue;
             }
 
@@ -886,7 +895,7 @@ impl MmParser {
 
         while let Some(token) = self.advance_next_token() {
             if token == "$(" {
-                self.advance_until_end_of_comment_without_return()?;
+                self.advance_until_end_of_comment()?;
                 continue;
             }
 
@@ -959,7 +968,7 @@ impl MmParser {
 
         while let Some(token) = self.advance_next_token() {
             if token == "$(" {
-                self.advance_until_end_of_comment_without_return()?;
+                self.advance_until_end_of_comment()?;
                 continue;
             }
 

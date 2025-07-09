@@ -3,17 +3,13 @@
   import TitleBarDropdown from "./TitleBarDropdown.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { open, save } from "@tauri-apps/plugin-dialog";
-  import type { ColorInformation, FolderRepresentation, HeaderRepresentation, HtmlRepresentation } from "$lib/sharedState/model.svelte";
-  import { explorerData } from "$lib/sharedState/explorerData.svelte";
-  import { htmlData } from "$lib/sharedState/htmlData.svelte";
+  import type { FolderRepresentation } from "$lib/sharedState/model.svelte";
   import { fileExplorerData } from "$lib/sharedState/fileExplorerData.svelte";
   import CloseIcon from "$lib/icons/titleBar/CloseIcon.svelte";
   import MaximizeIcon from "$lib/icons/titleBar/MaximizeIcon.svelte";
   import MinimizeIcon from "$lib/icons/titleBar/MinimizeIcon.svelte";
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
-  import { setEditorSyntaxHighlighting } from "$lib/monaco/monaco";
   import UnMaximizeIcon from "$lib/icons/titleBar/UnMaximizeIcon.svelte";
-  import { emit } from "@tauri-apps/api/event";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { globalState } from "$lib/sharedState/globalState.svelte";
