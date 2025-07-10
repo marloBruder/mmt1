@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import ProgressBar from "$lib/components/util/ProgressBar.svelte";
   import RoundButton from "$lib/components/util/RoundButton.svelte";
   import { setEditorSyntaxHighlighting } from "$lib/monaco/monaco";
   import { explorerData } from "$lib/sharedState/explorerData.svelte";
@@ -15,7 +16,8 @@
   let confirmClicked = false;
   let cancelClicked = false;
 
-  let last_mm_parser_progress = $state(0);
+  let lastMmParserProgress = $state(0);
+  let lastGrammarCalculationsProgress = $state(0);
 
   let unlistenFns: UnlistenFn[] = [];
 
@@ -30,11 +32,18 @@
     });
 
     unlistenFns.push(
-      await listen("mm_parser_progress", (e) => {
+      await listen("mm-parser-progress", (e) => {
         let progress = e.payload as number;
-        if (progress > last_mm_parser_progress) {
-          last_mm_parser_progress = progress;
-          document.getElementById("mm_parser_progress_bar")!.style.width = progress + "%";
+        if (progress > lastMmParserProgress) {
+          lastMmParserProgress = progress;
+        }
+      })
+    );
+    unlistenFns.push(
+      await listen("grammar-calculations-progress", (e) => {
+        let [progress, databasePath] = e.payload as [number, string];
+        if (globalState.databaseBeingOpened === databasePath && progress > lastGrammarCalculationsProgress) {
+          lastGrammarCalculationsProgress = progress;
         }
       })
     );
@@ -66,6 +75,7 @@
       await tabManager.getOpenTab()?.onTabOpen();
       await goto("/main");
       globalState.databaseBeingOpened = "";
+      globalState.grammarCalculationsProgress = lastGrammarCalculationsProgress;
     }
   };
 </script>
@@ -82,12 +92,13 @@
   </p>
   <div class="my-4">
     Parsing database:
-    <div class="mt-2 w-48 border rounded-lg p-2 relative z-0">
-      <div class="z-10">Progress: {last_mm_parser_progress}{"%"}</div>
-      <div id="mm_parser_progress_bar" class="bg-green-800 absolute start-0 top-0 rounded-lg h-full -z-10"></div>
-    </div>
+    <ProgressBar progress={lastMmParserProgress}></ProgressBar>
   </div>
   <RoundButton onclick={onConfirmClick} disabled={!databaseLoaded}>Open database</RoundButton>
+  <div class="my-4">
+    Calculating parse trees:
+    <ProgressBar progress={lastGrammarCalculationsProgress}></ProgressBar>
+  </div>
 </div>
 
 <style>

@@ -78,6 +78,7 @@ pub async fn confirm_open_metamath_database(
 pub async fn perform_grammar_calculations(
     state: tauri::State<'_, Mutex<AppState>>,
     mm_file_path: &str,
+    app: AppHandle,
 ) -> Result<(), Error> {
     let app_state = state.lock().await;
     let mm_data = app_state
@@ -85,14 +86,20 @@ pub async fn perform_grammar_calculations(
         .as_ref()
         .ok_or(Error::NoMmDbError)?;
 
+    let theorem_amount = mm_data.optimized_data.theorem_amount;
     let database_header = mm_data.database_header.clone();
 
     drop(app_state);
 
     let symbol_number_mapping = SymbolNumberMapping::calc_mapping(&database_header);
 
-    let (grammar, parse_trees) =
-        Grammar::calc_grammar_and_parse_trees(&database_header, &symbol_number_mapping)?;
+    let (grammar, parse_trees) = Grammar::calc_grammar_and_parse_trees(
+        &database_header,
+        &symbol_number_mapping,
+        theorem_amount,
+        mm_file_path,
+        Some(app),
+    )?;
 
     let mut app_state = state.lock().await;
     let mm_data = if let Some(ref mut temp_mm_data) = app_state.temp_metamath_data {
@@ -258,7 +265,7 @@ impl MmParser {
                 let curr_progress = ((self.curr_line_amount * 100) / self.total_line_amount) as u8;
                 if self.last_progress_reported < curr_progress {
                     self.last_progress_reported = curr_progress;
-                    app_handle.emit("mm_parser_progress", curr_progress).ok();
+                    app_handle.emit("mm-parser-progress", curr_progress).ok();
                 }
             }
 
@@ -305,7 +312,7 @@ impl MmParser {
 
     pub fn consume_early_and_return_file_content(self) -> (String, usize) {
         if let Some(ref app_handle) = self.app {
-            app_handle.emit("mm_parser_progress", 100).ok();
+            app_handle.emit("mm-parser-progress", 100).ok();
         }
 
         (self.file_content, self.next_token_i)
@@ -313,7 +320,7 @@ impl MmParser {
 
     fn consume_early_before_grammar_calculations(self) -> Result<MetamathData, Error> {
         if let Some(ref app_handle) = self.app {
-            app_handle.emit("mm_parser_progress", 100).ok();
+            app_handle.emit("mm-parser-progress", 100).ok();
         }
 
         let mut metamath_data = MetamathData {

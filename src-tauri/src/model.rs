@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use tauri::{AppHandle, Emitter};
 
 use crate::{
     metamath::{
@@ -799,6 +800,9 @@ impl Grammar {
     pub fn calc_grammar_and_parse_trees<'a>(
         database_header: &'a Header,
         symbol_number_mapping: &SymbolNumberMapping,
+        theorem_amount: u32,
+        database_path: &str,
+        app: Option<AppHandle>,
     ) -> Result<(Grammar, Vec<(&'a str, ParseTree, Vec<ParseTree>)>), Error> {
         let mut grammar = Grammar {
             rules: Vec::new(),
@@ -807,7 +811,8 @@ impl Grammar {
 
         let mut parse_trees = Vec::new();
 
-        let mut i = 0;
+        let mut theorems_parsed = 0;
+        let mut last_progress_reported = 0;
 
         for floating_hypothesis in database_header.floating_hypohesis_iter() {
             grammar.rules.push(GrammarRule {
@@ -894,16 +899,33 @@ impl Grammar {
                 .ok_or(Error::InternalLogicError)?
                 == "|-"
             {
-                i += 1;
-                if i % 100 == 0 {
-                    println!("{}:", i);
-                }
-
                 let (assertion_parsed, hypotheses_parsed) =
                     theorem.calc_parse_trees(&grammar, symbol_number_mapping)?;
 
                 parse_trees.push((theorem.label.as_str(), assertion_parsed, hypotheses_parsed));
             }
+
+            if let Some(ref app_handle) = app {
+                let progress = (theorems_parsed * 100) / theorem_amount;
+                if progress > last_progress_reported {
+                    last_progress_reported = progress;
+                    app_handle
+                        .emit("grammar-calculations-progress", (progress, database_path))
+                        .ok();
+                }
+            }
+
+            theorems_parsed += 1;
+
+            if theorems_parsed % 100 == 0 {
+                println!("{}:", theorems_parsed);
+            }
+        }
+
+        if let Some(ref app_handle) = app {
+            app_handle
+                .emit("grammar-calculations-progress", (100, database_path))
+                .ok();
         }
 
         Ok((grammar, parse_trees))
