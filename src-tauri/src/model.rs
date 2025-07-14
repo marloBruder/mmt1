@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
@@ -23,6 +23,7 @@ use Statement::*;
 
 #[derive(Debug, Default)]
 pub struct MetamathData {
+    pub database_id: u32,
     pub database_header: Header,
     pub html_representations: Vec<HtmlRepresentation>,
     pub optimized_data: OptimizedMetamathData,
@@ -30,6 +31,10 @@ pub struct MetamathData {
     pub database_path: String,
     pub variable_colors: Vec<VariableColor>,
     pub alt_variable_colors: Vec<VariableColor>,
+}
+
+pub struct IdManager {
+    next_id: u32,
 }
 
 #[derive(Debug, Default)]
@@ -409,6 +414,17 @@ impl MetamathData {
             });
 
         color_information
+    }
+}
+
+impl IdManager {
+    pub fn new() -> IdManager {
+        IdManager { next_id: 0 }
+    }
+
+    pub fn get_next_id(&mut self) -> u32 {
+        self.next_id += 1;
+        self.next_id - 1
     }
 }
 
@@ -801,9 +817,10 @@ impl Grammar {
         database_header: &'a Header,
         symbol_number_mapping: &SymbolNumberMapping,
         theorem_amount: u32,
-        database_path: &str,
+        database_id: u32,
         app: Option<AppHandle>,
-    ) -> Result<(Grammar, Vec<(&'a str, ParseTree, Vec<ParseTree>)>), Error> {
+        stop: Option<Arc<std::sync::Mutex<bool>>>,
+    ) -> Result<Option<(Grammar, Vec<(&'a str, ParseTree, Vec<ParseTree>)>)>, Error> {
         let mut grammar = Grammar {
             rules: Vec::new(),
             earley_optimized_data: EarleyOptimizedData::default(),
@@ -910,8 +927,15 @@ impl Grammar {
                 if progress > last_progress_reported {
                     last_progress_reported = progress;
                     app_handle
-                        .emit("grammar-calculations-progress", (progress, database_path))
+                        .emit("grammar-calculations-progress", (progress, database_id))
                         .ok();
+                }
+            }
+
+            if let Some(ref stop_arc) = stop {
+                let mut stop_bool = stop_arc.lock().or(Err(Error::InternalLogicError))?;
+                if *stop_bool {
+                    return Ok(None);
                 }
             }
 
@@ -924,11 +948,11 @@ impl Grammar {
 
         if let Some(ref app_handle) = app {
             app_handle
-                .emit("grammar-calculations-progress", (100, database_path))
+                .emit("grammar-calculations-progress", (100, database_id))
                 .ok();
         }
 
-        Ok((grammar, parse_trees))
+        Ok(Some((grammar, parse_trees)))
     }
 
     fn recalc_earley_optimized_data(

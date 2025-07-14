@@ -6,6 +6,6 @@
 <div class="p-2">
   <div>
     Progress calculating parse trees:
-    <ProgressBar progress={globalState.grammarCalculationsProgress}></ProgressBar>
+    <ProgressBar progress={globalState.databaseState.grammarCalculationsProgress}></ProgressBar>
   </div>
 </div>

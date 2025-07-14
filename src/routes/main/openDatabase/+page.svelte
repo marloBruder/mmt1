@@ -13,6 +13,7 @@
   import { onDestroy, onMount } from "svelte";
 
   let databaseLoaded = $state(false);
+  let databaseId: number | null = null;
   let confirmClicked = false;
   let cancelClicked = false;
 
@@ -22,8 +23,9 @@
   let unlistenFns: UnlistenFn[] = [];
 
   onMount(async () => {
-    invoke("open_metamath_database", { mmFilePath: globalState.databaseBeingOpened }).then(async () => {
-      invoke("perform_grammar_calculations", { mmFilePath: globalState.databaseBeingOpened }).then(() => {
+    invoke("open_metamath_database", { mmFilePath: globalState.databaseBeingOpened }).then(async (id) => {
+      databaseId = id as number;
+      invoke("perform_grammar_calculations", { databaseId: id }).then(() => {
         emit("grammar-calculations-performed");
       });
       // wait 1 second to avoid bug
@@ -41,8 +43,8 @@
     );
     unlistenFns.push(
       await listen("grammar-calculations-progress", (e) => {
-        let [progress, databasePath] = e.payload as [number, string];
-        if (globalState.databaseBeingOpened === databasePath && progress > lastGrammarCalculationsProgress) {
+        let [progress, id] = e.payload as [number, number];
+        if (databaseId === id && progress > lastGrammarCalculationsProgress) {
           lastGrammarCalculationsProgress = progress;
         }
       })
@@ -67,7 +69,7 @@
   let onConfirmClick = async () => {
     if (!confirmClicked) {
       confirmClicked = true;
-      let [topHeaderRep, htmlReps, colorInformation]: [HeaderRepresentation, HtmlRepresentation[], ColorInformation[]] = await invoke("confirm_open_metamath_database");
+      let [databaseId, topHeaderRep, htmlReps, colorInformation]: [number, HeaderRepresentation, HtmlRepresentation[], ColorInformation[]] = await invoke("confirm_open_metamath_database");
       explorerData.resetExplorerWithFirstHeader(topHeaderRep);
       htmlData.loadLocal(htmlReps, colorInformation);
       setEditorSyntaxHighlighting(colorInformation);
@@ -75,14 +77,15 @@
       await tabManager.getOpenTab()?.onTabOpen();
       await goto("/main");
       globalState.databaseBeingOpened = "";
-      globalState.grammarCalculationsProgress = lastGrammarCalculationsProgress;
+      globalState.databaseState.grammarCalculationsProgress = lastGrammarCalculationsProgress;
+      globalState.databaseState.databaseId = databaseId;
     }
   };
 </script>
 
 <div class="custom-height-width-minus-margin m-2 rounded-lg custom-bg-color flex flex-col items-center text-center">
   <div class="w-full text-left py-2">
-    <button class="pl-4" onclick={onCancelClick}>{"< Cancel"}</button>
+    <button class="pl-4 disabled:text-gray-700" disabled={!databaseLoaded} onclick={onCancelClick}>{"< Cancel"}</button>
   </div>
   <h1 class="text-3xl py-2">Opening Database</h1>
   <p class="py-2">

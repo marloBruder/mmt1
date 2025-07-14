@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     fs,
+    sync::Arc,
 };
 
 use tauri::{async_runtime::Mutex, AppHandle, Emitter};
@@ -8,8 +9,9 @@ use tauri::{async_runtime::Mutex, AppHandle, Emitter};
 use crate::{
     model::{
         ColorInformation, Comment, Constant, FloatingHypothesis, Header, HeaderPath,
-        HeaderRepresentation, HtmlRepresentation, Hypothesis, MetamathData, OptimizedMetamathData,
-        Statement, SymbolNumberMapping, Theorem, TheoremParseTrees, Variable, VariableColor,
+        HeaderRepresentation, HtmlRepresentation, Hypothesis, IdManager, MetamathData,
+        OptimizedMetamathData, Statement, SymbolNumberMapping, Theorem, TheoremParseTrees,
+        Variable, VariableColor,
     },
     util::{self, earley_parser_optimized::Grammar},
     AppState, Error,
@@ -20,18 +22,22 @@ pub async fn open_metamath_database(
     state: tauri::State<'_, Mutex<AppState>>,
     app: AppHandle,
     mm_file_path: &str,
-) -> Result<(), Error> {
+) -> Result<u32, Error> {
     let mut app_state = state.lock().await;
 
     // let metamath_data = MmParser::process_database(mm_file_path)?;
 
     let mut mm_parser = MmParser::new(mm_file_path, Some(app))?;
     mm_parser.process_all_statements()?;
-    let metamath_data = mm_parser.consume_early_before_grammar_calculations()?;
+    let metamath_data =
+        mm_parser.consume_early_before_grammar_calculations(&mut app_state.id_manager)?;
+
+    let database_id = metamath_data.database_id;
 
     app_state.temp_metamath_data = Some(metamath_data);
+    app_state.stop_temp_grammar_calculations = Arc::new(std::sync::Mutex::new(false));
 
-    Ok(())
+    Ok(database_id)
 }
 
 #[tauri::command]
@@ -40,6 +46,10 @@ pub async fn cancel_open_metamath_database(
 ) -> Result<(), Error> {
     let mut app_state = state.lock().await;
 
+    *app_state
+        .stop_temp_grammar_calculations
+        .lock()
+        .or(Err(Error::InternalLogicError))? = true;
     app_state.temp_metamath_data = None;
 
     Ok(())
@@ -50,6 +60,7 @@ pub async fn confirm_open_metamath_database(
     state: tauri::State<'_, Mutex<AppState>>,
 ) -> Result<
     (
+        u32,
         HeaderRepresentation,
         Vec<HtmlRepresentation>,
         Vec<ColorInformation>,
@@ -63,6 +74,8 @@ pub async fn confirm_open_metamath_database(
         .take()
         .ok_or(Error::InternalLogicError)?;
 
+    let database_id = metamath_data.database_id;
+
     let header_rep = metamath_data.database_header.to_representation();
 
     let html_reps = metamath_data.html_representations.clone();
@@ -71,13 +84,19 @@ pub async fn confirm_open_metamath_database(
 
     app_state.metamath_data = Some(metamath_data);
 
-    Ok((header_rep, html_reps, color_information))
+    *app_state
+        .stop_grammar_calculations
+        .lock()
+        .or(Err(Error::InternalLogicError))? = true;
+    app_state.stop_grammar_calculations = app_state.stop_temp_grammar_calculations.clone();
+
+    Ok((database_id, header_rep, html_reps, color_information))
 }
 
 #[tauri::command]
 pub async fn perform_grammar_calculations(
     state: tauri::State<'_, Mutex<AppState>>,
-    mm_file_path: &str,
+    database_id: u32,
     app: AppHandle,
 ) -> Result<(), Error> {
     let app_state = state.lock().await;
@@ -86,6 +105,7 @@ pub async fn perform_grammar_calculations(
         .as_ref()
         .ok_or(Error::NoMmDbError)?;
 
+    let stop = app_state.stop_temp_grammar_calculations.clone();
     let theorem_amount = mm_data.optimized_data.theorem_amount;
     let database_header = mm_data.database_header.clone();
 
@@ -93,24 +113,40 @@ pub async fn perform_grammar_calculations(
 
     let symbol_number_mapping = SymbolNumberMapping::calc_mapping(&database_header);
 
-    let (grammar, parse_trees) = Grammar::calc_grammar_and_parse_trees(
+    let Some((grammar, parse_trees)) = Grammar::calc_grammar_and_parse_trees(
         &database_header,
         &symbol_number_mapping,
         theorem_amount,
-        mm_file_path,
+        database_id,
         Some(app),
-    )?;
-
-    let mut app_state = state.lock().await;
-    let mm_data = if let Some(ref mut temp_mm_data) = app_state.temp_metamath_data {
-        temp_mm_data
-    } else {
-        app_state.metamath_data.as_mut().ok_or(Error::NoMmDbError)?
+        Some(stop),
+    )?
+    else {
+        return Ok(());
     };
 
-    if mm_data.database_path != mm_file_path {
+    let mut app_state = state.lock().await;
+    let mm_data = if app_state
+        .temp_metamath_data
+        .as_ref()
+        .is_some_and(|mm| mm.database_id == database_id)
+    {
+        app_state
+            .temp_metamath_data
+            .as_mut()
+            .ok_or(Error::InternalLogicError)?
+    } else if app_state
+        .metamath_data
+        .as_ref()
+        .is_some_and(|mm| mm.database_id == database_id)
+    {
+        app_state
+            .metamath_data
+            .as_mut()
+            .ok_or(Error::InternalLogicError)?
+    } else {
         return Ok(());
-    }
+    };
 
     mm_data.grammar_calculations_done = true;
     mm_data.optimized_data.symbol_number_mapping = symbol_number_mapping;
@@ -318,12 +354,16 @@ impl MmParser {
         (self.file_content, self.next_token_i)
     }
 
-    fn consume_early_before_grammar_calculations(self) -> Result<MetamathData, Error> {
+    fn consume_early_before_grammar_calculations(
+        self,
+        id_manager: &mut IdManager,
+    ) -> Result<MetamathData, Error> {
         if let Some(ref app_handle) = self.app {
             app_handle.emit("mm-parser-progress", 100).ok();
         }
 
         let mut metamath_data = MetamathData {
+            database_id: id_manager.get_next_id(),
             database_path: self.database_path,
             database_header: self.database_header,
             html_representations: self.html_representations,
