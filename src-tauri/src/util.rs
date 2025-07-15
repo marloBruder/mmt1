@@ -57,3 +57,15 @@ pub fn is_valid_math_symbol(symbol: &str) -> bool {
     // range of printable non-whitespace ascii characters excluding '$'
     symbol.bytes().all(|b| matches!(b, 33..=35 | 37..=126))
 }
+
+pub fn new_lines_in_str(str: &str) -> u32 {
+    str.chars().filter(|c| *c == '\n').count() as u32
+}
+
+pub fn new_lines_at_end_of_str(str: &str) -> u32 {
+    str.chars()
+        .rev()
+        .take_while(|c| c.is_ascii_whitespace())
+        .filter(|c| *c == '\n')
+        .count() as u32
+}

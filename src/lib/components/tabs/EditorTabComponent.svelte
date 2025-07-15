@@ -69,11 +69,8 @@
 
     async unify(): Promise<void> {
       let resultText = (await invoke("unify", { text: this.monacoModel!.getValue() })) as string;
-      if (resultText != this.monacoModel!.getValue()) {
-        // this.monacoModel!.setValue(resultText);
-        editor.executeEdits("unifier", [{ /*identifier: "delete" as any,*/ range: new monaco.Range(1, 1, 10000, 1), text: resultText, forceMoveMarkers: true }]);
-        // editor.executeEdits("unifier", [{ /*identifier: "insert" as any,*/ range: new monaco.Range(1, 1, 1, 1), text: resultText, forceMoveMarkers: true }]);
-      }
+
+      editor.executeEdits("unifier", [{ range: new monaco.Range(1, 1, 10000, 1), text: resultText, forceMoveMarkers: true }]);
     }
 
     unifyDisabled(): boolean {
@@ -92,6 +89,17 @@
 
     addToDatabaseDisabled(): boolean {
       return false;
+    }
+
+    formatDisabled(): boolean {
+      return false;
+    }
+
+    async format() {
+      let resultText = (await invoke("format", { text: this.#monacoModel!.getValue() })) as string | null;
+      if (resultText !== null) {
+        editor.executeEdits("format", [{ range: new monaco.Range(1, 1, 10000, 1), text: resultText, forceMoveMarkers: true }]);
+      }
     }
 
     setMonacoScrollInternal(scrollTop: number, scrollLeft: number) {
@@ -207,6 +215,15 @@
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
       run: async () => {
         await editorTab.saveFile();
+      },
+    });
+
+    editor.addAction({
+      id: "format-action",
+      label: "Format",
+      keybindings: [monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF],
+      run: async () => {
+        await editorTab.format();
       },
     });
 

@@ -5,6 +5,7 @@ use tauri::async_runtime::Mutex;
 use crate::{AppState, Error};
 
 pub mod external_window;
+pub mod format;
 pub mod on_edit;
 pub mod parse_mmp;
 pub mod unify;

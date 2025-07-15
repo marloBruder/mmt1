@@ -752,7 +752,7 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
             }
         }
 
-        current_line += new_lines_in_str(statement_str);
+        current_line += util::new_lines_in_str(statement_str);
     }
 
     Ok(if errors.is_empty() {
@@ -866,10 +866,6 @@ pub fn nth_token_end_pos(str: &str, n: u32) -> (u32, u32) {
     }
 
     (line_number, column_number)
-}
-
-pub fn new_lines_in_str(str: &str) -> u32 {
-    str.chars().filter(|c| *c == '\n').count() as u32
 }
 
 fn is_valid_step_name(step_name: &str) -> bool {

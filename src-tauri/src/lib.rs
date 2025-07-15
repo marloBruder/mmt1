@@ -75,6 +75,7 @@ pub fn run() {
             editor::external_window::set_up_external_window_close_listener,
             editor::on_edit::on_edit,
             editor::parse_mmp::add_to_database,
+            editor::format::format,
             editor::unify::unify,
             metamath::turn_into_theorem,
             // metamath::text_to_constants,
