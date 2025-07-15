@@ -257,6 +257,18 @@ export abstract class Tab {
     return true;
   }
 
+  async format(): Promise<void> {}
+
+  formatDisabled(): boolean {
+    return true;
+  }
+
+  async renumber(): Promise<void> {}
+
+  renumberDisabled(): boolean {
+    return true;
+  }
+
   async addToDatabase(): Promise<void> {}
 
   addToDatabaseDisabled(): boolean {

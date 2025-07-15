@@ -53,6 +53,14 @@
     tabManager.getOpenTab()!.unify();
   };
 
+  let onFormatClick = async () => {
+    tabManager.getOpenTab()!.format();
+  };
+
+  let onRenumberClick = async () => {
+    tabManager.getOpenTab()!.renumber();
+  };
+
   let onNewMetamathDatabaseClick = async () => {
     const filePath = await save({ filters: [{ name: "Metamath Database", extensions: ["mm"] }] });
 
@@ -110,8 +118,10 @@
         <hr class="border-gray-300" />
         <div><button onclick={closeClick}>Exit</button></div>
       </TitleBarDropdown>
-      <TitleBarDropdown title="Unify">
+      <TitleBarDropdown title="Editor">
         <div><button onclick={onUnifyClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.unifyDisabled() : true} class="disabled:text-gray-500">Unify</button></div>
+        <div><button onclick={onFormatClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.formatDisabled() : true} class="disabled:text-gray-500">Format</button></div>
+        <div><button onclick={onRenumberClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.renumberDisabled() : true} class="disabled:text-gray-500">Renumber</button></div>
       </TitleBarDropdown>
       <TitleBarDropdown title="Metamath">
         <div><button onclick={onNewMetamathDatabaseClick}>New Metamath Database</button></div>
