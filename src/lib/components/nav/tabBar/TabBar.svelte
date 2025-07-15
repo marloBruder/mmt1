@@ -33,7 +33,7 @@
     <button onclick={previousClick} class={tabManager.getOpenTab()?.previousTab ? "" : "text-gray-700 "}><ArrowLeftIcon></ArrowLeftIcon></button>
     <button onclick={nextClick} class={tabManager.getOpenTab()?.nextTab ? "" : "text-gray-700 "}><ArrowRightIcon></ArrowRightIcon></button>
   </div>
-  <ScrollableContainer theme="os-custom-scrollbar-theme-small">
+  <ScrollableContainer horizontalScroll theme="os-custom-scrollbar-theme-small">
     <div class="h-full flex-grow flex flex-nowrap">
       {#each tabManager.tabs as tab, index}
         <TabBarItem {tab} {index}></TabBarItem>
