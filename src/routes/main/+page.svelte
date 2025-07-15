@@ -3,13 +3,7 @@
   import TabBar from "$lib/components/nav/tabBar/TabBar.svelte";
   import HorizontalSplit from "$lib/components/util/HorizontalSplit.svelte";
   import VerticalSplit from "$lib/components/util/VerticalSplit.svelte";
-  import { onMount } from "svelte";
-  import { invoke } from "@tauri-apps/api/core";
   import TabComponent from "$lib/components/tabs/TabComponent.svelte";
-
-  onMount(() => {
-    invoke("setup_main_window");
-  });
 </script>
 
 <VerticalSplit>

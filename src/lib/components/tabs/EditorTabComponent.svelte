@@ -102,6 +102,17 @@
       }
     }
 
+    renumberDisabled(): boolean {
+      return false;
+    }
+
+    async renumber() {
+      let resultText = (await invoke("renumber", { text: this.#monacoModel!.getValue() })) as string | null;
+      if (resultText !== null) {
+        editor.executeEdits("renumber", [{ range: new monaco.Range(1, 1, 10000, 1), text: resultText, forceMoveMarkers: true }]);
+      }
+    }
+
     setMonacoScrollInternal(scrollTop: number, scrollLeft: number) {
       this.#monacoScrollTop = scrollTop;
       this.#monacoScrollLeft = scrollLeft;
@@ -224,6 +235,15 @@
       keybindings: [monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF],
       run: async () => {
         await editorTab.format();
+      },
+    });
+
+    editor.addAction({
+      id: "renumber-action",
+      label: "Renumber",
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyR],
+      run: async () => {
+        await editorTab.renumber();
       },
     });
 

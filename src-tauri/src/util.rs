@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 pub mod earley_parser;
 pub mod earley_parser_optimized;
 pub mod header_iterators;
@@ -10,27 +12,51 @@ pub fn spaces(num: u32) -> &'static str {
 
 pub fn str_to_space_seperated_string(str: &str) -> String {
     str.split_ascii_whitespace()
-        .fold_to_space_seperated_string()
+        .fold_to_delimiter_seperated_string(" ")
 }
 
-pub trait StrIterToSpaceSeperatedString<'a>
+pub trait StrIterToDelimiterSeperatedString
 where
     Self: Sized,
-    Self: Iterator<Item = &'a str>,
+    Self: Iterator,
+    Self::Item: Deref<Target = str>,
 {
-    fn fold_to_space_seperated_string(self) -> String {
+    fn fold_to_delimiter_seperated_string(self, delimiter: &str) -> String {
         self.fold((true, String::new()), |(first, mut s), t| {
             if !first {
-                s.push(' ');
+                s.push_str(delimiter);
             }
-            s.push_str(t);
+            s.push_str(&t);
             (false, s)
         })
         .1
     }
 }
 
-impl<'a, T> StrIterToSpaceSeperatedString<'a> for T where T: Iterator<Item = &'a str> {}
+impl<T> StrIterToDelimiterSeperatedString for T
+where
+    T: Iterator,
+    T::Item: Deref<Target = str>,
+{
+}
+
+pub trait StrIterToSpaceSeperatedString
+where
+    Self: Sized,
+    Self: Iterator,
+    Self::Item: Deref<Target = str>,
+{
+    fn fold_to_space_seperated_string(self) -> String {
+        self.fold_to_delimiter_seperated_string(" ")
+    }
+}
+
+impl<T> StrIterToSpaceSeperatedString for T
+where
+    T: Iterator,
+    T::Item: Deref<Target = str>,
+{
+}
 
 pub trait ForEachWhile<I>
 where

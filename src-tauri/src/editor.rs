@@ -8,6 +8,7 @@ pub mod external_window;
 pub mod format;
 pub mod on_edit;
 pub mod parse_mmp;
+pub mod renumber;
 pub mod unify;
 
 pub struct FolderRepresentation {
