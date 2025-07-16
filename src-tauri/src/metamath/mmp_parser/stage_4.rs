@@ -160,17 +160,17 @@ pub fn stage_4(
         {
             Ok(pt) => parse_tree = Some(pt),
             Err(Error::MissingExpressionError) => {
-                let last_non_whitespace_pos = stage_2::last_non_whitespace_pos(statement_str);
+                // let last_non_whitespace_pos = stage_2::last_non_whitespace_pos(statement_str);
 
-                errors.push(DetailedError {
-                    error_type: Error::MissingMmpStepExpressionError,
-                    start_line_number: line_number,
-                    start_column: last_non_whitespace_pos.1 + 1,
-                    end_line_number: line_number,
-                    end_column: last_non_whitespace_pos.1 + 2,
-                });
+                // errors.push(DetailedError {
+                //     error_type: Error::MissingMmpStepExpressionError,
+                //     start_line_number: line_number,
+                //     start_column: last_non_whitespace_pos.1 + 1,
+                //     end_line_number: line_number,
+                //     end_column: last_non_whitespace_pos.1 + 2,
+                // });
 
-                preview_error.3 = true;
+                // preview_error.3 = true;
             }
             Err(Error::NonSymbolInExpressionError) => {
                 errors.append(&mut calc_non_symbol_in_expression_errors(

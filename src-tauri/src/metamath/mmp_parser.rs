@@ -8,6 +8,7 @@ mod stage_1;
 mod stage_2;
 mod stage_3;
 mod stage_4;
+mod stage_5;
 
 pub fn new(text: &str) -> MmpParserStage0 {
     MmpParserStage0 { text }
@@ -195,4 +196,26 @@ pub struct MmpParserStage4Fail {
     pub preview_errors: Vec<(bool, bool, bool, bool)>,
     pub preview_confirmations: Vec<bool>,
     pub preview_confirmations_recursive: Vec<bool>,
+}
+
+impl MmpParserStage4Success {
+    pub fn next_stage(
+        &self,
+        stage_2: &MmpParserStage2Success,
+        mm_data: &MetamathData,
+    ) -> Result<MmpParserStage5, Error> {
+        stage_5::stage_5(stage_2, self, mm_data)
+    }
+}
+
+pub struct MmpParserStage5 {
+    pub unify_result: Vec<UnifyLine>,
+}
+
+pub struct UnifyLine {
+    pub new_line: bool,
+    pub step_name: Option<String>,
+    pub hypotheses: Option<String>,
+    pub step_ref: Option<String>,
+    pub expression: Option<String>,
 }
