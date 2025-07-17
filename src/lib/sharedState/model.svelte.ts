@@ -115,6 +115,7 @@ export interface TheoremPageData {
   previewErrors: [boolean, boolean, boolean, boolean][] | null;
   previewConfirmations: boolean[] | null;
   previewConfirmationsRecursive: boolean[] | null;
+  previewUnifyMarkers: [boolean, boolean, boolean, boolean][] | null;
   lastTheoremLabel: string | null;
   nextTheoremLabel: string | null;
   discriminator: "TheoremPageData";

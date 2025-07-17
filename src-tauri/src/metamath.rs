@@ -484,6 +484,7 @@ pub fn calc_theorem_page_data(
             preview_errors: None,
             preview_confirmations: None,
             preview_confirmations_recursive: None,
+            preview_unify_markers: None,
             last_theorem_label,
             next_theorem_label,
         });
@@ -590,6 +591,7 @@ pub fn calc_theorem_page_data(
         preview_errors: None,
         preview_confirmations: None,
         preview_confirmations_recursive: None,
+        preview_unify_markers: None,
         last_theorem_label,
         next_theorem_label,
     })

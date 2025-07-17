@@ -1,7 +1,7 @@
 use crate::{
     metamath::mmp_parser::{
         self, MmpParserStage1, MmpParserStage2, MmpParserStage2Success, MmpParserStage3,
-        MmpParserStage3Success, MmpParserStage3Theorem, MmpParserStage4,
+        MmpParserStage3Success, MmpParserStage3Theorem, MmpParserStage4, MmpParserStage5,
     },
     model::{
         self, CommentPageData, ConstantsPageData, DatabaseElementPageData, FloatingHypothesis,
@@ -142,11 +142,14 @@ pub async fn on_edit(
                         fail.preview_errors,
                         fail.preview_confirmations,
                         fail.preview_confirmations_recursive,
+                        None,
                     ),
                     errors: fail.errors,
                 })
             }
         };
+
+    let stage_5 = stage_4_success.next_stage(&stage_2_success, mm_data)?;
 
     Ok(OnEditData {
         page_data: calc_theorem_page_data(
@@ -155,6 +158,7 @@ pub async fn on_edit(
             stage_4_success.preview_errors,
             stage_4_success.preview_confirmations,
             stage_4_success.preview_confirmations_recursive,
+            Some(&stage_5),
         ),
         errors: Vec::new(),
     })
@@ -191,7 +195,41 @@ pub fn calc_theorem_page_data(
     preview_errors: Vec<(bool, bool, bool, bool)>,
     preview_confirmations: Vec<bool>,
     preview_confirmations_recursive: Vec<bool>,
+    stage_5: Option<&MmpParserStage5>,
 ) -> Option<DatabaseElementPageData> {
+    let mut proof_lines: Vec<model::ProofLine> = Vec::new();
+    let mut preview_unify_markers: Vec<(bool, bool, bool, bool)> = Vec::new();
+
+    for (i, (pl, &indention)) in stage_2_success
+        .proof_lines
+        .iter()
+        .zip(stage_3_theorem.indention.iter())
+        .enumerate()
+    {
+        let mut unify_markers = (false, false, false, false);
+
+        let unify_result = stage_5.and_then(|s5| s5.unify_result.get(i));
+        let unify_step_ref = unify_result.and_then(|ur| ur.step_ref.as_ref());
+
+        proof_lines.push(model::ProofLine {
+            step_name: pl.step_name.to_string(),
+            hypotheses: if pl.hypotheses.len() != 0 {
+                pl.hypotheses.split(',').map(|s| s.to_string()).collect()
+            } else {
+                Vec::new()
+            },
+            reference: if let Some(step_ref) = unify_step_ref {
+                unify_markers.2 = true;
+                step_ref.clone()
+            } else {
+                pl.step_ref.to_string()
+            },
+            assertion: util::str_to_space_seperated_string(pl.expression),
+            indention,
+        });
+        preview_unify_markers.push(unify_markers);
+    }
+
     Some(DatabaseElementPageData::Theorem(TheoremPageData {
         theorem: Theorem {
             label: stage_3_theorem.label.to_string(),
@@ -227,25 +265,11 @@ pub fn calc_theorem_page_data(
             },
         },
         theorem_number: 0,
-        proof_lines: stage_2_success
-            .proof_lines
-            .iter()
-            .zip(stage_3_theorem.indention.iter())
-            .map(|(pl, &indention)| model::ProofLine {
-                step_name: pl.step_name.to_string(),
-                hypotheses: if pl.hypotheses.len() != 0 {
-                    pl.hypotheses.split(',').map(|s| s.to_string()).collect()
-                } else {
-                    Vec::new()
-                },
-                reference: pl.step_ref.to_string(),
-                assertion: util::str_to_space_seperated_string(pl.expression),
-                indention,
-            })
-            .collect(),
+        proof_lines,
         preview_errors: Some(preview_errors),
         preview_confirmations: Some(preview_confirmations),
         preview_confirmations_recursive: Some(preview_confirmations_recursive),
+        preview_unify_markers: Some(preview_unify_markers),
         last_theorem_label: None,
         next_theorem_label: None,
     }))
@@ -1179,6 +1203,7 @@ fn get_theorem_page_data(
         preview_errors: None,
         preview_confirmations: None,
         preview_confirmations_recursive: None,
+        preview_unify_markers: None,
         last_theorem_label: None,
         next_theorem_label: None,
     }))

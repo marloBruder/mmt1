@@ -105,20 +105,22 @@
         <tbody>
           {#each pageData.proofLines as proofLine, i}
             <tr class={proofLineBackground(i)}>
-              <td class={"border border-gray-600 py-1 px-2 " + (pageData.previewErrors ? (pageData.previewErrors[i][0] ? " bg-red-400 " : "") : "")}>{proofLine.stepName}</td>
-              <td class={"border border-gray-600 py-1 px-2 " + (pageData.previewErrors ? (pageData.previewErrors[i][1] ? " bg-red-400 " : "") : "")}>
+              <td class={"border border-gray-600 py-1 px-2 " + (pageData.previewErrors ? (pageData.previewErrors[i][0] ? " bg-red-400 " : "") : "") + (pageData.previewUnifyMarkers ? (pageData.previewUnifyMarkers[i][0] ? " bg-blue-400 " : "") : "")}>
+                {proofLine.stepName}
+              </td>
+              <td class={"border border-gray-600 py-1 px-2 " + (pageData.previewErrors ? (pageData.previewErrors[i][1] ? " bg-red-400 " : "") : "") + (pageData.previewUnifyMarkers ? (pageData.previewUnifyMarkers[i][1] ? " bg-blue-400 " : "") : "")}>
                 {#each proofLine.hypotheses as hypothesis, index}
                   {hypothesis + (index != proofLine.hypotheses.length - 1 ? ", " : "")}
                 {/each}
               </td>
-              <td class={"border border-gray-600 py-1 px-2 " + (pageData.previewErrors ? (pageData.previewErrors[i][2] ? " bg-red-400 " : "") : "")}>
+              <td class={"border border-gray-600 py-1 px-2 " + (pageData.previewErrors ? (pageData.previewErrors[i][2] ? " bg-red-400 " : "") : "") + (pageData.previewUnifyMarkers ? (pageData.previewUnifyMarkers[i][2] ? " bg-blue-400 " : "") : "")}>
                 {#if !isHypothesisName(proofLine.reference)}
                   <TheoremLink label={proofLine.reference}></TheoremLink>
                 {:else}
                   {proofLine.reference}
                 {/if}
               </td>
-              <td class={"border border-gray-600 py-1 pr-2" + (pageData.previewErrors ? (pageData.previewErrors[i][3] ? " bg-red-400 " : "") : "")}>
+              <td class={"border border-gray-600 py-1 pr-2" + (pageData.previewErrors ? (pageData.previewErrors[i][3] ? " bg-red-400 " : "") : "") + (pageData.previewUnifyMarkers ? (pageData.previewUnifyMarkers[i][3] ? " bg-blue-400 " : "") : "")}>
                 <span class="text-xs text-gray-300">
                   {#each { length: proofLine.indention - 1 } as _}
                     {". "}
