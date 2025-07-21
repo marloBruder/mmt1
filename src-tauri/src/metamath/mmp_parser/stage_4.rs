@@ -247,7 +247,10 @@ pub fn stage_4(
                                 if ParseTree::are_substitutions(
                                     &theorem_parse_trees,
                                     &proof_line_parse_trees,
+                                    &Vec::new(),
+                                    &Vec::new(),
                                     &mm_data.optimized_data.grammar,
+                                    &mm_data.optimized_data.symbol_number_mapping,
                                 )? {
                                     preview_confirmation = true;
 

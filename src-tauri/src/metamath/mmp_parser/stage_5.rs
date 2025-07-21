@@ -61,9 +61,21 @@ pub fn stage_5(
                                 if ParseTree::are_substitutions(
                                     &theorem_parse_trees,
                                     &proof_line_parse_trees,
+                                    &theorem
+                                        .distincts
+                                        .iter()
+                                        .map(|dis| dis.split_ascii_whitespace().collect())
+                                        .collect(),
+                                    &stage_2
+                                        .distinct_vars
+                                        .iter()
+                                        .map(|dis| dis.split_ascii_whitespace().collect())
+                                        .collect(),
                                     &mm_data.optimized_data.grammar,
+                                    &mm_data.optimized_data.symbol_number_mapping,
                                 )? {
-                                    step_ref = Some(theorem.label.clone())
+                                    step_ref = Some(theorem.label.clone());
+                                    break;
                                 }
                             }
                         }

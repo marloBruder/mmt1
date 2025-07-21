@@ -1,4 +1,7 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
@@ -622,7 +625,10 @@ impl ParseTree {
     pub fn are_substitutions(
         trees: &Vec<&ParseTree>,
         others: &Vec<&ParseTree>,
+        distinct_vars: &Vec<Vec<&str>>,
+        other_distinct_vars: &Vec<Vec<&str>>,
         grammar: &Grammar,
+        symbol_number_mapping: &SymbolNumberMapping,
     ) -> Result<bool, Error> {
         if trees.len() != others.len() {
             return Ok(false);
@@ -673,7 +679,73 @@ impl ParseTree {
             }
         }
 
+        if !distinct_vars.is_empty() {
+            let var_substitutions: HashMap<&str, &ParseTree> = substitutions
+                .iter()
+                .filter_map(|(rule_i, &parse_tree)| {
+                    if let Some(rule) = grammar.rules.get(*rule_i as usize) {
+                        if let Some(right_side_first) = rule.right_side.first() {
+                            if let Some(symbol) =
+                                symbol_number_mapping.symbols.get(right_side_first)
+                            {
+                                return Some((&**symbol, parse_tree));
+                            }
+                        }
+                    }
+                    None
+                })
+                .collect();
+
+            for distinct_var_condition in distinct_vars {
+                let distinct_var_parse_trees: Vec<&ParseTree> = distinct_var_condition
+                    .iter()
+                    .filter_map(|dis| var_substitutions.get(dis).map(|pt| *pt))
+                    .collect();
+
+                let mut vars_seen: HashSet<u32> = HashSet::new();
+
+                for parse_tree in distinct_var_parse_trees {
+                    let vars_in_parse_tree = parse_tree.get_floating_hypotheses_rules(grammar)?;
+
+                    for var in vars_in_parse_tree {
+                        if !vars_seen.insert(var) {
+                            return Ok(false);
+                        }
+                    }
+                }
+            }
+        }
+
         Ok(true)
+    }
+
+    pub fn get_floating_hypotheses_rules(&self, grammar: &Grammar) -> Result<HashSet<u32>, Error> {
+        let mut rules = HashSet::new();
+
+        self.get_floating_hypotheses_rules_helper(&mut rules, grammar)?;
+
+        Ok(rules)
+    }
+
+    fn get_floating_hypotheses_rules_helper(
+        &self,
+        rules_set: &mut HashSet<u32>,
+        grammar: &Grammar,
+    ) -> Result<(), Error> {
+        if grammar
+            .rules
+            .get(self.rule as usize)
+            .ok_or(Error::InternalLogicError)?
+            .is_floating_hypothesis
+        {
+            rules_set.insert(self.rule);
+        } else {
+            for parse_tree in &self.nodes {
+                parse_tree.get_floating_hypotheses_rules_helper(rules_set, grammar)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -934,7 +1006,7 @@ impl Grammar {
             }
 
             if let Some(ref stop_arc) = stop {
-                let mut stop_bool = stop_arc.lock().or(Err(Error::InternalLogicError))?;
+                let stop_bool = stop_arc.lock().or(Err(Error::InternalLogicError))?;
                 if *stop_bool {
                     return Ok(None);
                 }

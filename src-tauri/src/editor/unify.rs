@@ -156,7 +156,10 @@ pub async fn unify(state: tauri::State<'_, Mutex<AppState>>, text: &str) -> Resu
                                 if ParseTree::are_substitutions(
                                     &theorem_parse_trees,
                                     &proof_line_parse_trees,
+                                    &Vec::new(),
+                                    &Vec::new(),
                                     &mm_data.optimized_data.grammar,
+                                    &mm_data.optimized_data.symbol_number_mapping,
                                 )? {
                                     let mut new_statement_string = format!(
                                         "{}{}:{}:{}",
