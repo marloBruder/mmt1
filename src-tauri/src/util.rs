@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::{collections::HashSet, ops::Deref};
 
 pub mod earley_parser;
 pub mod earley_parser_optimized;
@@ -94,4 +94,25 @@ pub fn new_lines_at_end_of_str(str: &str) -> u32 {
         .take_while(|c| c.is_ascii_whitespace())
         .filter(|c| *c == '\n')
         .count() as u32
+}
+
+pub fn calc_distinct_variable_pairs<T>(distinct_vars: &Vec<T>) -> HashSet<(String, String)>
+where
+    T: Deref<Target = str>,
+{
+    let mut distinct_variable_pairs: HashSet<(String, String)> = HashSet::new();
+
+    for distinct_var_condition in distinct_vars {
+        let distinct_vars: Vec<&str> = distinct_var_condition.split_ascii_whitespace().collect();
+
+        for var_1 in distinct_vars.iter() {
+            for var_2 in distinct_vars.iter() {
+                if var_1 != var_2 {
+                    distinct_variable_pairs.insert((var_1.to_string(), var_2.to_string()));
+                }
+            }
+        }
+    }
+
+    distinct_variable_pairs
 }

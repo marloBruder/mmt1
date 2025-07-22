@@ -2,7 +2,7 @@ use crate::{
     editor::on_edit::DetailedError,
     metamath::mmp_parser::MmpStatement,
     model::{MetamathData, ParseTree, SymbolNumberMapping, Theorem},
-    Error,
+    util, Error,
 };
 
 use super::{
@@ -22,6 +22,8 @@ pub fn stage_4(
     let mut preview_confirmations_recursive: Vec<bool> = Vec::new();
 
     let mut proof_lines_parsed: Vec<ProofLineParsed> = Vec::new();
+
+    let distinct_variable_pairs = util::calc_distinct_variable_pairs(&stage_2.distinct_vars);
 
     for (i, (proof_line, (statement_str, line_number))) in stage_2
         .proof_lines
@@ -247,8 +249,8 @@ pub fn stage_4(
                                 if ParseTree::are_substitutions(
                                     &theorem_parse_trees,
                                     &proof_line_parse_trees,
-                                    &Vec::new(),
-                                    &Vec::new(),
+                                    &optimized_theorem_data.distinct_variable_pairs,
+                                    &distinct_variable_pairs,
                                     &mm_data.optimized_data.grammar,
                                     &mm_data.optimized_data.symbol_number_mapping,
                                 )? {
@@ -285,6 +287,7 @@ pub fn stage_4(
 
     Ok(if errors.is_empty() {
         MmpParserStage4::Success(MmpParserStage4Success {
+            distinct_variable_pairs,
             proof_lines_parsed,
             preview_errors,
             preview_confirmations,

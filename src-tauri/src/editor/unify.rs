@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use tauri::async_runtime::Mutex;
 
 use crate::{
@@ -156,8 +158,8 @@ pub async fn unify(state: tauri::State<'_, Mutex<AppState>>, text: &str) -> Resu
                                 if ParseTree::are_substitutions(
                                     &theorem_parse_trees,
                                     &proof_line_parse_trees,
-                                    &Vec::new(),
-                                    &Vec::new(),
+                                    &HashSet::new(),
+                                    &HashSet::new(),
                                     &mm_data.optimized_data.grammar,
                                     &mm_data.optimized_data.symbol_number_mapping,
                                 )? {

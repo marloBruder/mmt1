@@ -61,16 +61,8 @@ pub fn stage_5(
                                 if ParseTree::are_substitutions(
                                     &theorem_parse_trees,
                                     &proof_line_parse_trees,
-                                    &theorem
-                                        .distincts
-                                        .iter()
-                                        .map(|dis| dis.split_ascii_whitespace().collect())
-                                        .collect(),
-                                    &stage_2
-                                        .distinct_vars
-                                        .iter()
-                                        .map(|dis| dis.split_ascii_whitespace().collect())
-                                        .collect(),
+                                    &theorem_data.distinct_variable_pairs,
+                                    &stage_4.distinct_variable_pairs,
                                     &mm_data.optimized_data.grammar,
                                     &mm_data.optimized_data.symbol_number_mapping,
                                 )? {

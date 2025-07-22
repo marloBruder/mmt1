@@ -52,6 +52,7 @@ pub struct OptimizedMetamathData {
 #[derive(Debug)]
 pub struct OptimizedTheoremData {
     pub parse_trees: Option<TheoremParseTrees>,
+    pub distinct_variable_pairs: HashSet<(String, String)>,
 }
 
 #[derive(Debug)]
@@ -334,7 +335,12 @@ impl MetamathData {
             if theorem.assertion.starts_with("|- ") {
                 self.optimized_data.theorem_data.insert(
                     theorem.label.to_string(),
-                    OptimizedTheoremData { parse_trees: None },
+                    OptimizedTheoremData {
+                        distinct_variable_pairs: util::calc_distinct_variable_pairs(
+                            &theorem.distincts,
+                        ),
+                        parse_trees: None,
+                    },
                 );
             }
         }
@@ -625,8 +631,8 @@ impl ParseTree {
     pub fn are_substitutions(
         trees: &Vec<&ParseTree>,
         others: &Vec<&ParseTree>,
-        distinct_vars: &Vec<Vec<&str>>,
-        other_distinct_vars: &Vec<Vec<&str>>,
+        distinct_vars: &HashSet<(String, String)>,
+        other_distinct_vars: &HashSet<(String, String)>,
         grammar: &Grammar,
         symbol_number_mapping: &SymbolNumberMapping,
     ) -> Result<bool, Error> {
@@ -680,7 +686,7 @@ impl ParseTree {
         }
 
         if !distinct_vars.is_empty() {
-            let var_substitutions: HashMap<&str, &ParseTree> = substitutions
+            let substitutions_variables: HashMap<&str, HashSet<u32>> = substitutions
                 .iter()
                 .filter_map(|(rule_i, &parse_tree)| {
                     if let Some(rule) = grammar.rules.get(*rule_i as usize) {
@@ -688,28 +694,43 @@ impl ParseTree {
                             if let Some(symbol) =
                                 symbol_number_mapping.symbols.get(right_side_first)
                             {
-                                return Some((&**symbol, parse_tree));
+                                if let Ok(vars_in_parse_tree) =
+                                    parse_tree.get_floating_hypotheses_rules(grammar)
+                                {
+                                    return Some((&**symbol, vars_in_parse_tree));
+                                }
                             }
                         }
                     }
+                    // Should never be the case
                     None
                 })
                 .collect();
 
-            for distinct_var_condition in distinct_vars {
-                let distinct_var_parse_trees: Vec<&ParseTree> = distinct_var_condition
-                    .iter()
-                    .filter_map(|dis| var_substitutions.get(dis).map(|pt| *pt))
-                    .collect();
-
-                let mut vars_seen: HashSet<u32> = HashSet::new();
-
-                for parse_tree in distinct_var_parse_trees {
-                    let vars_in_parse_tree = parse_tree.get_floating_hypotheses_rules(grammar)?;
-
-                    for var in vars_in_parse_tree {
-                        if !vars_seen.insert(var) {
-                            return Ok(false);
+            for (var_1, var_2) in distinct_vars {
+                if let Some(var_1_vars_in_parse_tree) = substitutions_variables.get(&**var_1) {
+                    if let Some(var_2_vars_in_parse_tree) = substitutions_variables.get(&**var_2) {
+                        for &var_1_var in var_1_vars_in_parse_tree.iter() {
+                            for &var_2_var in var_2_vars_in_parse_tree.iter() {
+                                if var_1_var == var_2_var
+                                    || !other_distinct_vars.contains(&(
+                                        ParseTree::get_floating_hypothesis_rule_variable_symbol(
+                                            var_1_var,
+                                            grammar,
+                                            symbol_number_mapping,
+                                        )?
+                                        .clone(),
+                                        ParseTree::get_floating_hypothesis_rule_variable_symbol(
+                                            var_2_var,
+                                            grammar,
+                                            symbol_number_mapping,
+                                        )?
+                                        .clone(),
+                                    ))
+                                {
+                                    return Ok(false);
+                                }
+                            }
                         }
                     }
                 }
@@ -719,7 +740,7 @@ impl ParseTree {
         Ok(true)
     }
 
-    pub fn get_floating_hypotheses_rules(&self, grammar: &Grammar) -> Result<HashSet<u32>, Error> {
+    fn get_floating_hypotheses_rules(&self, grammar: &Grammar) -> Result<HashSet<u32>, Error> {
         let mut rules = HashSet::new();
 
         self.get_floating_hypotheses_rules_helper(&mut rules, grammar)?;
@@ -746,6 +767,25 @@ impl ParseTree {
         }
 
         Ok(())
+    }
+
+    fn get_floating_hypothesis_rule_variable_symbol<'a>(
+        rule_i: u32,
+        grammar: &Grammar,
+        symbol_number_mapping: &'a SymbolNumberMapping,
+    ) -> Result<&'a String, Error> {
+        symbol_number_mapping
+            .symbols
+            .get(
+                grammar
+                    .rules
+                    .get(rule_i as usize)
+                    .ok_or(Error::InternalLogicError)?
+                    .right_side
+                    .first()
+                    .ok_or(Error::InternalLogicError)?,
+            )
+            .ok_or(Error::InternalLogicError)
     }
 }
 

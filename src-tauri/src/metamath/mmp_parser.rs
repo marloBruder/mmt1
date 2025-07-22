@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{
     editor::on_edit::DetailedError,
     model::{Comment, Constant, FloatingHypothesis, HeaderPath, MetamathData, ParseTree, Variable},
@@ -179,6 +181,7 @@ pub enum MmpParserStage4 {
 }
 
 pub struct MmpParserStage4Success {
+    pub distinct_variable_pairs: HashSet<(String, String)>,
     pub proof_lines_parsed: Vec<ProofLineParsed>,
     pub preview_errors: Vec<(bool, bool, bool, bool)>,
     pub preview_confirmations: Vec<bool>,
