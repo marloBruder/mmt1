@@ -367,16 +367,19 @@ fn calc_proof(
                 .zip(expressions.into_iter())
                 .zip(variable_vecs.iter())
             {
-                let new_var_proofs = earley_parse(
-                    &mm_data.optimized_data.grammar,
-                    expression,
-                    match_against_expression,
-                    &mm_data.optimized_data.symbol_number_mapping,
-                )?
-                .ok_or(Error::MmpStepParseError)?
-                .iter()
-                .map(|pt| pt.calc_proof(&mm_data.optimized_data.grammar))
-                .collect::<Result<Vec<String>, Error>>()?;
+                // This will temporarily break adding theorems to the database
+                // TODO: Fix when implmenting stage_6
+                let new_var_proofs = Vec::new();
+                // let new_var_proofs = earley_parse(
+                //     &mm_data.optimized_data.grammar,
+                //     expression,
+                //     match_against_expression,
+                //     &mm_data.optimized_data.symbol_number_mapping,
+                // )?
+                // .ok_or(Error::MmpStepParseError)?
+                // .iter()
+                // .map(|pt| pt.calc_proof(&mm_data.optimized_data.grammar))
+                // .collect::<Result<Vec<String>, Error>>()?;
 
                 for (var_proof, variable) in new_var_proofs.into_iter().zip(variables.iter()) {
                     match variable_proofs.get(variable) {

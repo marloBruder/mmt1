@@ -13,7 +13,9 @@ use crate::{
     },
     util::{
         self,
-        earley_parser_optimized::{self, EarleyOptimizedData, Grammar, GrammarRule},
+        earley_parser_optimized::{
+            self, EarleyOptimizedData, Grammar, GrammarRule, InputSymbol, Symbol, WorkVariable,
+        },
         header_iterators::{
             ConstantIterator, ConstantLocateAfterIterator, FloatingHypothesisIterator,
             HeaderIterator, HeaderLocateAfterIterator, TheoremIterator, TheoremLocateAfterIterator,
@@ -63,8 +65,17 @@ pub struct TheoremParseTrees {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParseTree {
-    pub nodes: Vec<ParseTree>,
-    pub rule: u32,
+    pub typecode: u32,
+    pub top_node: ParseTreeNode,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ParseTreeNode {
+    Node {
+        rule_i: u32,
+        sub_nodes: Vec<ParseTreeNode>,
+    },
+    WorkVariable(WorkVariable),
 }
 
 #[derive(Debug, Default)]
@@ -590,76 +601,94 @@ impl Statement {
 }
 
 impl ParseTree {
-    pub fn calc_proof(&self, grammar: &Grammar) -> Result<String, Error> {
+    pub fn calc_proof(&self, grammar: &Grammar) -> Result<Option<String>, Error> {
         let mut proof = String::new();
 
-        let mut trees = vec![(self, 0)];
+        let mut trees = vec![(&self.top_node, 0)];
 
         while let Some((tree, next_node_i)) = trees.last_mut() {
-            if let Some(&node_i) = grammar
-                .rules
-                .get(tree.rule as usize)
-                .ok_or(Error::InternalLogicError)?
-                .var_order
-                .get(*next_node_i as usize)
-            {
-                let node = tree
-                    .nodes
-                    .get(node_i as usize)
-                    .ok_or(Error::InternalLogicError)?;
-
-                *next_node_i += 1;
-                trees.push((node, 0));
-            } else {
-                proof.push_str(
-                    &grammar
+            match tree {
+                ParseTreeNode::Node { rule_i, sub_nodes } => {
+                    if let Some(&node_i) = grammar
                         .rules
-                        .get(tree.rule as usize)
+                        .get(*rule_i as usize)
                         .ok_or(Error::InternalLogicError)?
-                        .label,
-                );
-                proof.push(' ');
-                trees.pop();
+                        .var_order
+                        .get(*next_node_i as usize)
+                    {
+                        let node = sub_nodes
+                            .get(node_i as usize)
+                            .ok_or(Error::InternalLogicError)?;
+
+                        *next_node_i += 1;
+                        trees.push((node, 0));
+                    } else {
+                        proof.push_str(
+                            &grammar
+                                .rules
+                                .get(*rule_i as usize)
+                                .ok_or(Error::InternalLogicError)?
+                                .label,
+                        );
+                        proof.push(' ');
+                        trees.pop();
+                    }
+                }
+                ParseTreeNode::WorkVariable(_) => return Ok(None),
             }
         }
 
         proof.pop();
 
-        Ok(proof)
+        Ok(Some(proof))
     }
 
     pub fn are_substitutions(
         trees: &Vec<&ParseTree>,
-        others: &Vec<&ParseTree>,
+        other_trees: &Vec<&ParseTree>,
         distinct_vars: &HashSet<(String, String)>,
         other_distinct_vars: &HashSet<(String, String)>,
         grammar: &Grammar,
         symbol_number_mapping: &SymbolNumberMapping,
     ) -> Result<bool, Error> {
-        if trees.len() != others.len() {
+        if trees.len() != other_trees.len()
+            || trees.iter().any(|t| t.has_work_variables())
+            || other_trees.iter().any(|t| t.has_work_variables())
+        {
             return Ok(false);
         }
 
-        let mut substitutions: HashMap<u32, &ParseTree> = HashMap::new();
+        let mut substitutions: HashMap<u32, &ParseTreeNode> = HashMap::new();
 
-        let mut check: Vec<(&ParseTree, &ParseTree)> = trees
+        let mut check: Vec<(&ParseTreeNode, &ParseTreeNode)> = trees
             .iter()
-            .zip(others.iter())
-            .map(|(t, o)| (*t, *o))
+            .zip(other_trees.iter())
+            .map(|(t, o)| (&t.top_node, &o.top_node))
             .collect();
 
         while let Some((subtree, other_subtree)) = check.pop() {
+            let ParseTreeNode::Node { rule_i, sub_nodes } = subtree else {
+                return Err(Error::InternalLogicError);
+            };
+            let ParseTreeNode::Node {
+                rule_i: other_rule_i,
+                sub_nodes: other_sub_nodes,
+            } = other_subtree
+            else {
+                return Err(Error::InternalLogicError);
+            };
+
             let subtree_rule = grammar
                 .rules
-                .get(subtree.rule as usize)
+                .get(*rule_i as usize)
                 .ok_or(Error::InternalLogicError)?;
             let other_subtree_rule = grammar
                 .rules
-                .get(other_subtree.rule as usize)
+                .get(*other_rule_i as usize)
                 .ok_or(Error::InternalLogicError)?;
 
             if subtree_rule.is_floating_hypothesis {
-                match substitutions.get(&subtree.rule) {
+                match substitutions.get(rule_i) {
                     Some(&sub) => {
                         if sub != other_subtree {
                             return Ok(false);
@@ -667,19 +696,17 @@ impl ParseTree {
                     }
                     None => {
                         if subtree_rule.left_side == other_subtree_rule.left_side {
-                            substitutions.insert(subtree.rule, other_subtree);
+                            substitutions.insert(*rule_i, other_subtree);
                         } else {
                             return Ok(false);
                         }
                     }
                 }
             } else {
-                if subtree.rule != other_subtree.rule
-                    || subtree.nodes.len() != other_subtree.nodes.len()
-                {
+                if *rule_i != *other_rule_i || sub_nodes.len() != other_sub_nodes.len() {
                     return Ok(false);
                 }
-                for (node, other_node) in subtree.nodes.iter().zip(other_subtree.nodes.iter()) {
+                for (node, other_node) in sub_nodes.iter().zip(other_sub_nodes.iter()) {
                     check.push((node, other_node));
                 }
             }
@@ -691,8 +718,9 @@ impl ParseTree {
                 .filter_map(|(rule_i, &parse_tree)| {
                     if let Some(rule) = grammar.rules.get(*rule_i as usize) {
                         if let Some(right_side_first) = rule.right_side.first() {
-                            if let Some(symbol) =
-                                symbol_number_mapping.symbols.get(right_side_first)
+                            if let Some(symbol) = symbol_number_mapping
+                                .symbols
+                                .get(&right_side_first.symbol_i)
                             {
                                 if let Ok(vars_in_parse_tree) =
                                     parse_tree.get_floating_hypotheses_rules(grammar)
@@ -740,35 +768,6 @@ impl ParseTree {
         Ok(true)
     }
 
-    fn get_floating_hypotheses_rules(&self, grammar: &Grammar) -> Result<HashSet<u32>, Error> {
-        let mut rules = HashSet::new();
-
-        self.get_floating_hypotheses_rules_helper(&mut rules, grammar)?;
-
-        Ok(rules)
-    }
-
-    fn get_floating_hypotheses_rules_helper(
-        &self,
-        rules_set: &mut HashSet<u32>,
-        grammar: &Grammar,
-    ) -> Result<(), Error> {
-        if grammar
-            .rules
-            .get(self.rule as usize)
-            .ok_or(Error::InternalLogicError)?
-            .is_floating_hypothesis
-        {
-            rules_set.insert(self.rule);
-        } else {
-            for parse_tree in &self.nodes {
-                parse_tree.get_floating_hypotheses_rules_helper(rules_set, grammar)?;
-            }
-        }
-
-        Ok(())
-    }
-
     fn get_floating_hypothesis_rule_variable_symbol<'a>(
         rule_i: u32,
         grammar: &Grammar,
@@ -777,15 +776,58 @@ impl ParseTree {
         symbol_number_mapping
             .symbols
             .get(
-                grammar
+                &grammar
                     .rules
                     .get(rule_i as usize)
                     .ok_or(Error::InternalLogicError)?
                     .right_side
                     .first()
-                    .ok_or(Error::InternalLogicError)?,
+                    .ok_or(Error::InternalLogicError)?
+                    .symbol_i,
             )
             .ok_or(Error::InternalLogicError)
+    }
+
+    fn has_work_variables(&self) -> bool {
+        let mut check: Vec<&ParseTreeNode> = vec![&self.top_node];
+
+        while let Some(node) = check.pop() {
+            match node {
+                ParseTreeNode::Node { sub_nodes, .. } => {
+                    check.extend(sub_nodes.iter());
+                }
+                ParseTreeNode::WorkVariable(_) => {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+}
+
+impl ParseTreeNode {
+    fn get_floating_hypotheses_rules(&self, grammar: &Grammar) -> Result<HashSet<u32>, Error> {
+        let mut rules: HashSet<u32> = HashSet::new();
+
+        let mut check: Vec<&ParseTreeNode> = vec![self];
+
+        while let Some(node) = check.pop() {
+            if let ParseTreeNode::Node { rule_i, sub_nodes } = node {
+                if grammar
+                    .rules
+                    .get(*rule_i as usize)
+                    .ok_or(Error::InternalLogicError)?
+                    .is_floating_hypothesis
+                {
+                    rules.insert(*rule_i);
+                } else {
+                    check.extend(sub_nodes.iter());
+                }
+            }
+        }
+
+        Ok(rules)
     }
 }
 
@@ -878,7 +920,11 @@ impl SymbolNumberMapping {
         ))
     }
 
-    pub fn expression_to_number_vec_skip_first(&self, expression: &str) -> Result<Vec<u32>, Error> {
+    pub fn expression_to_input_vec_skip_first(
+        &self,
+        expression: &str,
+        floating_hypotheses: &Vec<FloatingHypothesis>,
+    ) -> Result<Vec<InputSymbol>, Error> {
         if expression.split_ascii_whitespace().next().is_none() {
             return Err(Error::MissingExpressionError);
         }
@@ -887,48 +933,94 @@ impl SymbolNumberMapping {
             .split_ascii_whitespace()
             .skip(1)
             .map(|t| {
-                Ok(*self
-                    .numbers
-                    .get(t)
-                    .ok_or(Error::NonSymbolInExpressionError)?)
+                if let Some((before, after)) = t.split_once('$') {
+                    for floating_hypothesis in floating_hypotheses {
+                        if before == floating_hypothesis.variable {
+                            if after.starts_with('+') {
+                                return Err(Error::InvalidWorkVariableError);
+                            }
+
+                            return Ok(InputSymbol::WorkVariable(WorkVariable {
+                                typecode_i: *self
+                                    .numbers
+                                    .get(&format!("${}", floating_hypothesis.typecode))
+                                    .ok_or(Error::InvalidWorkVariableError)?,
+                                variable_i: *self
+                                    .numbers
+                                    .get(before)
+                                    .ok_or(Error::InternalLogicError)?,
+                                number: after.parse().or(Err(Error::InvalidWorkVariableError))?,
+                            }));
+                        }
+                    }
+
+                    Err(Error::InvalidWorkVariableError)
+                } else {
+                    Ok(InputSymbol::Symbol(Symbol {
+                        symbol_i: *self
+                            .numbers
+                            .get(t)
+                            .ok_or(Error::NonSymbolInExpressionError)?,
+                    }))
+                }
             })
-            .collect::<Result<Vec<u32>, Error>>()
+            .collect::<Result<Vec<InputSymbol>, Error>>()
     }
 
     pub fn expression_to_parse_tree(
         &self,
         expression: &str,
         grammar: &Grammar,
+        floating_hypotheses: &Vec<FloatingHypothesis>,
     ) -> Result<ParseTree, Error> {
-        let expression = self.expression_to_number_vec_skip_first(expression)?;
+        let expression_input_vec =
+            self.expression_to_input_vec_skip_first(expression, floating_hypotheses)?;
 
-        let expression_parse_tree =
-            earley_parser_optimized::earley_parse(grammar, &expression, vec![1], self)?
-                .ok_or(Error::ExpressionParseError)?
-                .into_iter()
-                .next()
-                .ok_or(Error::InternalLogicError)?;
+        let expression_parse_tree_node = earley_parser_optimized::earley_parse(
+            grammar,
+            &expression_input_vec,
+            vec![Symbol { symbol_i: 1 }],
+            self,
+        )?
+        .ok_or(Error::ExpressionParseError)?
+        .into_iter()
+        .next()
+        .ok_or(Error::InternalLogicError)?;
 
-        Ok(expression_parse_tree)
+        let parse_tree = ParseTree {
+            typecode: *self
+                .numbers
+                .get(
+                    expression
+                        .split_ascii_whitespace()
+                        .next()
+                        .ok_or(Error::InternalLogicError)?,
+                )
+                .ok_or(Error::NonSymbolInExpressionError)?,
+            top_node: expression_parse_tree_node,
+        };
+
+        Ok(parse_tree)
     }
 
     pub fn is_typecode(&self, number: u32) -> bool {
-        return number <= self.typecode_count;
+        return 0 < number && number <= self.typecode_count;
     }
 
     pub fn is_variable(&self, number: u32) -> bool {
         return self.typecode_count < number && number <= self.typecode_count + self.variable_count;
     }
 
-    pub fn is_constant(&self, number: u32) -> bool {
-        return self.typecode_count + self.variable_count < number;
-    }
+    // pub fn is_constant(&self, number: u32) -> bool {
+    //     return self.typecode_count + self.variable_count < number;
+    // }
 }
 
 impl Grammar {
     pub fn calc_grammar_and_parse_trees<'a>(
         database_header: &'a Header,
         symbol_number_mapping: &SymbolNumberMapping,
+        floating_hypotheses: &Vec<FloatingHypothesis>,
         theorem_amount: u32,
         database_id: u32,
         app: Option<AppHandle>,
@@ -944,16 +1036,32 @@ impl Grammar {
         let mut theorems_parsed = 0;
         let mut last_progress_reported = 0;
 
-        for floating_hypothesis in database_header.floating_hypohesis_iter() {
+        for typecode in 0..symbol_number_mapping.typecode_count {
             grammar.rules.push(GrammarRule {
-                left_side: *symbol_number_mapping
-                    .numbers
-                    .get(&format!("${}", floating_hypothesis.typecode))
-                    .ok_or(Error::InternalLogicError)?,
-                right_side: vec![*symbol_number_mapping
-                    .numbers
-                    .get(&floating_hypothesis.variable)
-                    .ok_or(Error::InternalLogicError)?],
+                left_side: Symbol {
+                    symbol_i: typecode + 1,
+                },
+                right_side: vec![Symbol { symbol_i: 0 }],
+                label: "WorkVariable".to_string(),
+                var_order: Vec::new(),
+                is_floating_hypothesis: false,
+            });
+        }
+
+        for floating_hypothesis in floating_hypotheses {
+            grammar.rules.push(GrammarRule {
+                left_side: Symbol {
+                    symbol_i: *symbol_number_mapping
+                        .numbers
+                        .get(&format!("${}", floating_hypothesis.typecode))
+                        .ok_or(Error::InternalLogicError)?,
+                },
+                right_side: vec![Symbol {
+                    symbol_i: *symbol_number_mapping
+                        .numbers
+                        .get(&floating_hypothesis.variable)
+                        .ok_or(Error::InternalLogicError)?,
+                }],
                 label: floating_hypothesis.label.clone(),
                 var_order: Vec::new(),
                 is_floating_hypothesis: true,
@@ -973,10 +1081,12 @@ impl Grammar {
                 && theorem.hypotheses.len() == 0
             {
                 let mut assertion_token_iter = theorem.assertion.split_ascii_whitespace();
-                let left_side = *symbol_number_mapping
-                    .numbers
-                    .get(&format!("${}", assertion_token_iter.next().unwrap()))
-                    .ok_or(Error::InternalLogicError)?;
+                let left_side = Symbol {
+                    symbol_i: *symbol_number_mapping
+                        .numbers
+                        .get(&format!("${}", assertion_token_iter.next().unwrap()))
+                        .ok_or(Error::InternalLogicError)?,
+                };
 
                 let mut vars: Vec<u32> = Vec::new();
 
@@ -993,9 +1103,9 @@ impl Grammar {
                                 .get(&num)
                                 .ok_or(Error::InternalLogicError)?;
                         }
-                        Ok(num)
+                        Ok(Symbol { symbol_i: num })
                     })
-                    .collect::<Result<Vec<u32>, Error>>()?;
+                    .collect::<Result<Vec<Symbol>, Error>>()?;
 
                 let mut var_order: Vec<u32> = Vec::new();
 
@@ -1029,8 +1139,11 @@ impl Grammar {
                 .ok_or(Error::InternalLogicError)?
                 == "|-"
             {
-                let (assertion_parsed, hypotheses_parsed) =
-                    theorem.calc_parse_trees(&grammar, symbol_number_mapping)?;
+                let (assertion_parsed, hypotheses_parsed) = theorem.calc_parse_trees(
+                    &grammar,
+                    symbol_number_mapping,
+                    floating_hypotheses,
+                )?;
 
                 parse_trees.push((theorem.label.as_str(), assertion_parsed, hypotheses_parsed));
             }
@@ -1092,30 +1205,37 @@ impl Grammar {
         ];
 
         for (rule_i, rule) in self.rules.iter().enumerate() {
-            let right_side_first = *rule.right_side.first().ok_or(Error::InternalLogicError)?;
-            if symbol_number_mapping.is_typecode(right_side_first) {
+            let right_side_first = rule.right_side.first().ok_or(Error::InternalLogicError)?;
+            if right_side_first.symbol_i == 0 {
+                continue;
+            }
+
+            if symbol_number_mapping.is_typecode(right_side_first.symbol_i) {
                 completer_rules
-                    .get_mut(rule.left_side as usize - 1)
+                    .get_mut(rule.left_side.symbol_i as usize - 1)
                     .ok_or(Error::InternalLogicError)?
-                    .get_mut(right_side_first as usize - 1)
+                    .get_mut(right_side_first.symbol_i as usize - 1)
                     .ok_or(Error::InternalLogicError)?
                     .push(rule_i);
 
                 if !combined_states_to_add
-                    .get(rule.left_side as usize - 1)
+                    .get(rule.left_side.symbol_i as usize - 1)
                     .ok_or(Error::InternalLogicError)?
-                    .contains(&right_side_first)
+                    .contains(&right_side_first.symbol_i)
                 {
                     combined_states_to_add
-                        .get_mut(rule.left_side as usize - 1)
+                        .get_mut(rule.left_side.symbol_i as usize - 1)
                         .ok_or(Error::InternalLogicError)?
-                        .push(right_side_first);
+                        .push(right_side_first.symbol_i);
                 }
             } else {
                 single_states_to_add
-                    .get_mut(rule.left_side as usize - 1)
+                    .get_mut(rule.left_side.symbol_i as usize - 1)
                     .ok_or(Error::InternalLogicError)?
-                    .get_mut((right_side_first - symbol_number_mapping.typecode_count - 1) as usize)
+                    .get_mut(
+                        (right_side_first.symbol_i - symbol_number_mapping.typecode_count - 1)
+                            as usize,
+                    )
                     .ok_or(Error::InternalLogicError)?
                     .push(rule_i);
             }
@@ -1156,38 +1276,25 @@ impl Theorem {
         &self,
         grammar: &Grammar,
         symbol_number_mapping: &SymbolNumberMapping,
+        floating_hypotheses: &Vec<FloatingHypothesis>,
     ) -> Result<(ParseTree, Vec<ParseTree>), Error> {
         let hypotheses_parsed = self
             .hypotheses
             .iter()
             .map(|h| {
-                earley_parser_optimized::earley_parse(
+                symbol_number_mapping.expression_to_parse_tree(
+                    &h.expression,
                     grammar,
-                    &symbol_number_mapping
-                        .expression_to_number_vec_skip_first(&h.expression)
-                        .or(Err(Error::InternalLogicError))?,
-                    vec![1],
-                    symbol_number_mapping,
-                )?
-                .ok_or(Error::ExpressionParseError)?
-                .into_iter()
-                .next()
-                .ok_or(Error::InternalLogicError)
+                    floating_hypotheses,
+                )
             })
             .collect::<Result<Vec<ParseTree>, Error>>()?;
 
-        let assertion_parsed = earley_parser_optimized::earley_parse(
+        let assertion_parsed = symbol_number_mapping.expression_to_parse_tree(
+            &self.assertion,
             grammar,
-            &symbol_number_mapping
-                .expression_to_number_vec_skip_first(&self.assertion)
-                .or(Err(Error::InternalLogicError))?,
-            vec![1],
-            symbol_number_mapping,
-        )?
-        .ok_or(Error::ExpressionParseError)?
-        .into_iter()
-        .next()
-        .ok_or(Error::InternalLogicError)?;
+            floating_hypotheses,
+        )?;
 
         // for hyp in &hypotheses_parsed {
         //     println!("{:?}", hyp.calc_proof(&grammar));

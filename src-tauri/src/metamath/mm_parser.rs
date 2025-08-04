@@ -108,6 +108,7 @@ pub async fn perform_grammar_calculations(
     let stop = app_state.stop_temp_grammar_calculations.clone();
     let theorem_amount = mm_data.optimized_data.theorem_amount;
     let database_header = mm_data.database_header.clone();
+    let floating_hypotheses = mm_data.optimized_data.floating_hypotheses.clone();
 
     drop(app_state);
 
@@ -116,6 +117,7 @@ pub async fn perform_grammar_calculations(
     let Some((grammar, parse_trees)) = Grammar::calc_grammar_and_parse_trees(
         &database_header,
         &symbol_number_mapping,
+        &floating_hypotheses,
         theorem_amount,
         database_id,
         Some(app),

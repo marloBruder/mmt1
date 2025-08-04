@@ -226,6 +226,7 @@ pub enum Error {
     DistinctVarOutOfPlaceError, // Returned if there is a distinct variable statement when there shouldn't be
     LocateAfterOutOfPlaceError, // Returned if there is a locate after statement when there shouldn't be
     ProofLinesOutOfPlaceError,  // Returned if there are proof lines when there shouldn't be
+    InvalidWorkVariableError,   // Returned if a work variable's syntax is not correct
 
     MissingExpressionError, // Returned when converting str to number vec and skipping the first, but the str is empty
 

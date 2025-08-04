@@ -1,7 +1,7 @@
 use std::{cmp::Ordering, hash::Hash};
 
 use crate::{
-    model::{ParseTree, SymbolNumberMapping},
+    model::{ParseTreeNode, SymbolNumberMapping},
     Error,
 };
 
@@ -18,11 +18,28 @@ pub struct ExtendedGrammar<'a> {
 
 #[derive(Debug)]
 pub struct GrammarRule {
-    pub left_side: u32,
-    pub right_side: Vec<u32>,
+    pub left_side: Symbol,
+    pub right_side: Vec<Symbol>,
     pub label: String,
     pub var_order: Vec<u32>,
     pub is_floating_hypothesis: bool,
+}
+
+pub enum InputSymbol {
+    Symbol(Symbol),
+    WorkVariable(WorkVariable),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Symbol {
+    pub symbol_i: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WorkVariable {
+    pub typecode_i: u32,
+    pub variable_i: u32,
+    pub number: u32,
 }
 
 #[derive(Debug, Default)]
@@ -35,9 +52,7 @@ pub struct EarleyOptimizedData {
 #[derive(Debug)]
 struct StateSet {
     unprocessed_states: Vec<State>,
-    // unprocessed_states_set: HashSet<StateRaw>,
     processed_states: Vec<State>,
-    // processed_states_set: HashSet<StateRaw>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -51,7 +66,7 @@ struct SingleState {
     pub rule_i: i32,
     pub processed_i: u32,
     pub start_i: u32,
-    pub parse_trees: Vec<ParseTree>,
+    pub parse_trees: Vec<ParseTreeNode>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -190,7 +205,7 @@ impl Hash for SingleState {
 }
 
 impl SingleState {
-    pub fn next_token(&self, extended_grammar: &ExtendedGrammar) -> Option<u32> {
+    pub fn next_token(&self, extended_grammar: &ExtendedGrammar) -> Option<Symbol> {
         extended_grammar
             .grammar
             .rules
@@ -220,10 +235,10 @@ impl SingleState {
 
 pub fn earley_parse(
     grammar: &Grammar,
-    expression: &Vec<u32>,
-    match_against: Vec<u32>,
+    expression: &Vec<InputSymbol>,
+    match_against: Vec<Symbol>,
     symbol_number_mapping: &SymbolNumberMapping,
-) -> Result<Option<Vec<ParseTree>>, Error> {
+) -> Result<Option<Vec<ParseTreeNode>>, Error> {
     if expression.is_empty() {
         return Ok(None);
     }
@@ -233,7 +248,7 @@ pub fn earley_parse(
     let extended_grammar = ExtendedGrammar {
         grammar,
         main_rule: GrammarRule {
-            left_side: 0,
+            left_side: Symbol { symbol_i: 0 },
             right_side: match_against,
             label: String::new(),
             var_order: Vec::new(), // never accessed
@@ -244,7 +259,7 @@ pub fn earley_parse(
     let mut state_sets: Vec<StateSet> = vec![StateSet::new()];
     state_sets
         .get_mut(0)
-        .unwrap()
+        .ok_or(Error::InternalLogicError)?
         .insert(State::Single(SingleState {
             rule_i: -1,
             processed_i: 0,
@@ -259,8 +274,8 @@ pub fn earley_parse(
                 State::Single(state) => {
                     // if state is not finished
                     if let Some(num) = state.next_token(&extended_grammar) {
-                        //if the next element of state is a nonterminal
-                        if symbol_number_mapping.is_typecode(num) {
+                        // if the next element of state is a nonterminal
+                        if symbol_number_mapping.is_typecode(num.symbol_i) {
                             predictor(&state, k, &extended_grammar, &mut state_sets)?;
                         } else {
                             scanner(&state, k, expression, &extended_grammar, &mut state_sets)?;
@@ -295,28 +310,42 @@ pub fn earley_parse(
                             .get_mut(k as usize + 1)
                             .ok_or(Error::InternalLogicError)?;
 
-                        for &rule in grammar
-                            .earley_optimized_data
-                            .single_states_to_add
-                            .get(combined_state.typecode as usize - 1)
-                            .ok_or(Error::InternalLogicError)?
-                            .get(
-                                (*expression
-                                    .get(k as usize)
-                                    .ok_or(Error::InternalLogicError)?
-                                    - symbol_number_mapping.typecode_count
-                                    - 1) as usize,
-                            )
+                        match expression
+                            .get(k as usize)
                             .ok_or(Error::InternalLogicError)?
                         {
-                            let new_state = State::Single(SingleState {
-                                rule_i: rule as i32,
-                                processed_i: 1,
-                                start_i: combined_state.start_i,
-                                parse_trees: Vec::new(),
-                            });
+                            InputSymbol::Symbol(symbol) => {
+                                for &rule in grammar
+                                    .earley_optimized_data
+                                    .single_states_to_add
+                                    .get(combined_state.typecode as usize - 1)
+                                    .ok_or(Error::InternalLogicError)?
+                                    .get(
+                                        (symbol.symbol_i - symbol_number_mapping.typecode_count - 1)
+                                            as usize,
+                                    )
+                                    .ok_or(Error::InternalLogicError)?
+                                {
+                                    let new_state = State::Single(SingleState {
+                                        rule_i: rule as i32,
+                                        processed_i: 1,
+                                        start_i: combined_state.start_i,
+                                        parse_trees: Vec::new(),
+                                    });
 
-                            next_set.insert(new_state);
+                                    next_set.insert(new_state);
+                                }
+                            }
+                            InputSymbol::WorkVariable(work_variable) => {
+                                let new_state = State::Single(SingleState {
+                                    rule_i: work_variable.typecode_i as i32 - 1,
+                                    processed_i: 1,
+                                    start_i: combined_state.start_i,
+                                    parse_trees: vec![ParseTreeNode::WorkVariable(*work_variable)],
+                                });
+
+                                next_set.insert(new_state);
+                            }
                         }
                     }
                 }
@@ -366,27 +395,11 @@ fn predictor(
     state_sets: &mut Vec<StateSet>,
 ) -> Result<(), Error> {
     // println!("predict!");
-    // for (rule_i, rule) in extended_grammar.grammar.rules.iter().enumerate() {
-    //     if Some(rule.left_side) == state.next_token(extended_grammar) {
-    //         let current_set = state_sets
-    //             .get_mut(k as usize)
-    //             .ok_or(Error::InternalLogicError)?;
-
-    //         let new_state = State::Single(SingleState {
-    //             rule_i: rule_i as i32,
-    //             processed_i: 0,
-    //             start_i: k,
-    //             parse_trees: Vec::new(),
-    //         });
-
-    //         current_set.insert(new_state);
-    //     }
-    // }
-
     let new_state = State::Combined(CombinedState {
         typecode: state
             .next_token(extended_grammar)
-            .ok_or(Error::InternalLogicError)?,
+            .ok_or(Error::InternalLogicError)?
+            .symbol_i,
         start_i: k,
     });
 
@@ -402,27 +415,34 @@ fn predictor(
 fn scanner(
     state: &SingleState,
     k: u32,
-    expression: &Vec<u32>,
+    expression: &Vec<InputSymbol>,
     extended_grammar: &ExtendedGrammar,
     state_sets: &mut Vec<StateSet>,
 ) -> Result<(), Error> {
     // println!("scan!");
-    if state.start_i < expression.len() as u32
-        && state.next_token(extended_grammar) == expression.get(k as usize).map(|num| *num)
-    {
-        let next_set = state_sets
-            .get_mut((k + 1) as usize)
-            .ok_or(Error::InternalLogicError)?;
+    if state.start_i < expression.len() as u32 {
+        if let Some(InputSymbol::Symbol(symbol)) = expression.get(k as usize) {
+            if symbol.symbol_i
+                == state
+                    .next_token(extended_grammar)
+                    .ok_or(Error::InternalLogicError)?
+                    .symbol_i
+            {
+                let next_set = state_sets
+                    .get_mut((k + 1) as usize)
+                    .ok_or(Error::InternalLogicError)?;
 
-        let new_state = State::Single(SingleState {
-            rule_i: state.rule_i,
-            processed_i: state.processed_i + 1,
-            start_i: state.start_i,
-            parse_trees: state.parse_trees.clone(),
-            // parse_trees: Vec::new(),
-        });
+                let new_state = State::Single(SingleState {
+                    rule_i: state.rule_i,
+                    processed_i: state.processed_i + 1,
+                    start_i: state.start_i,
+                    parse_trees: state.parse_trees.clone(),
+                    // parse_trees: Vec::new(),
+                });
 
-        next_set.insert(new_state);
+                next_set.insert(new_state);
+            }
+        }
     }
 
     Ok(())
@@ -443,33 +463,54 @@ fn completer(
     {
         match other_state {
             State::Single(other_single_state) => {
-                if Some(state.rule(extended_grammar).left_side)
-                    == other_single_state.next_token(extended_grammar)
-                {
-                    let mut new_parse_trees = other_single_state.parse_trees.clone();
-                    if state.rule_i < 0 {
-                        return Err(Error::InternalLogicError);
+                if let Some(other_state_symbol) = other_single_state.next_token(extended_grammar) {
+                    if state.rule(extended_grammar).left_side.symbol_i
+                        == other_state_symbol.symbol_i
+                    {
+                        let mut new_parse_trees = other_single_state.parse_trees.clone();
+                        if state.rule_i < 0 {
+                            return Err(Error::InternalLogicError);
+                        }
+                        if state
+                            .rule(extended_grammar)
+                            .right_side
+                            .first()
+                            .ok_or(Error::InternalLogicError)?
+                            .symbol_i
+                            != 0
+                        {
+                            new_parse_trees.push(ParseTreeNode::Node {
+                                rule_i: state.rule_i as u32,
+                                sub_nodes: state.parse_trees.clone(),
+                            });
+                        } else {
+                            // Special case where the state has a work variable rule:
+                            // Instead of creating a new Node with that rule, clone the work variable being caried by the state
+                            new_parse_trees.push(
+                                state
+                                    .parse_trees
+                                    .first()
+                                    .ok_or(Error::InternalLogicError)?
+                                    .clone(),
+                            );
+                        }
+
+                        let new_state = State::Single(SingleState {
+                            rule_i: other_single_state.rule_i,
+                            processed_i: other_single_state.processed_i + 1,
+                            start_i: other_single_state.start_i,
+                            parse_trees: new_parse_trees,
+                            // parse_trees: Vec::new(),
+                        });
+
+                        // println!("{:?}", new_state.proof);
+
+                        let current_set = state_sets
+                            .get_mut(k as usize)
+                            .ok_or(Error::InternalLogicError)?;
+
+                        current_set.insert(new_state);
                     }
-                    new_parse_trees.push(ParseTree {
-                        nodes: state.parse_trees.clone(),
-                        rule: state.rule_i as u32,
-                    });
-
-                    let new_state = State::Single(SingleState {
-                        rule_i: other_single_state.rule_i,
-                        processed_i: other_single_state.processed_i + 1,
-                        start_i: other_single_state.start_i,
-                        parse_trees: new_parse_trees,
-                        // parse_trees: Vec::new(),
-                    });
-
-                    // println!("{:?}", new_state.proof);
-
-                    let current_set = state_sets
-                        .get_mut(k as usize)
-                        .ok_or(Error::InternalLogicError)?;
-
-                    current_set.insert(new_state);
                 }
             }
             State::Combined(other_combined_state) => {
@@ -482,16 +523,16 @@ fn completer(
                         .completer_rules
                         .get(other_combined_state.typecode as usize - 1)
                         .ok_or(Error::InternalLogicError)?
-                        .get(state.rule(extended_grammar).left_side as usize - 1)
+                        .get(state.rule(extended_grammar).left_side.symbol_i as usize - 1)
                         .ok_or(Error::InternalLogicError)?
                     {
                         let mut new_parse_trees = Vec::new();
                         if state.rule_i < 0 {
                             return Err(Error::InternalLogicError);
                         }
-                        new_parse_trees.push(ParseTree {
-                            nodes: state.parse_trees.clone(),
-                            rule: state.rule_i as u32,
+                        new_parse_trees.push(ParseTreeNode::Node {
+                            rule_i: state.rule_i as u32,
+                            sub_nodes: state.parse_trees.clone(),
                         });
 
                         new_states.push(State::Single(SingleState {

@@ -6,7 +6,7 @@ use crate::{
     model::{
         self, CommentPageData, ConstantsPageData, DatabaseElementPageData, FloatingHypothesis,
         FloatingHypothesisPageData, HeaderPageData, Hypothesis, MetamathData, ParseTree,
-        SymbolNumberMapping, Theorem, TheoremPageData, VariablesPageData,
+        ParseTreeNode, SymbolNumberMapping, Theorem, TheoremPageData, VariablesPageData,
     },
     util, AppState, Error,
 };
@@ -872,15 +872,21 @@ pub fn statement_strs_to_mmp_info_structured_for_unify_with_error_info<'a>(
 
                     // This will be overritten if expression is convertable to a parse tree
                     let mut parse_tree = ParseTree {
-                        rule: 0,
-                        nodes: Vec::new(),
+                        typecode: 0,
+                        top_node: ParseTreeNode::Node {
+                            rule_i: 0,
+                            sub_nodes: Vec::new(),
+                        },
                     };
 
                     match mm_data
                         .optimized_data
                         .symbol_number_mapping
-                        .expression_to_parse_tree(expression, &mm_data.optimized_data.grammar)
-                    {
+                        .expression_to_parse_tree(
+                            expression,
+                            &mm_data.optimized_data.grammar,
+                            &mm_data.optimized_data.floating_hypotheses,
+                        ) {
                         Ok(pt) => parse_tree = pt,
                         Err(Error::MissingExpressionError) => {
                             errors.push(DetailedError {

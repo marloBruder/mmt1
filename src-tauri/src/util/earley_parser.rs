@@ -2,7 +2,7 @@
 use std::{cmp::Ordering, collections::HashSet, hash::Hash};
 
 use crate::{
-    model::{ParseTree, SymbolNumberMapping},
+    model::{ParseTreeNode, SymbolNumberMapping},
     Error,
 };
 
@@ -37,7 +37,7 @@ struct State {
     pub rule_i: i32,
     pub processed_i: u32,
     pub start_i: u32,
-    pub parse_trees: Vec<ParseTree>,
+    pub parse_trees: Vec<ParseTreeNode>,
 }
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
@@ -177,7 +177,7 @@ pub fn earley_parse(
     expression: &Vec<u32>,
     match_against: Vec<u32>,
     symbol_number_mapping: &SymbolNumberMapping,
-) -> Result<Option<Vec<ParseTree>>, Error> {
+) -> Result<Option<Vec<ParseTreeNode>>, Error> {
     let match_against_len = match_against.len();
 
     let extended_grammar = ExtendedGrammar {
@@ -322,9 +322,9 @@ fn completer(
             if state.rule_i < 0 {
                 return Err(Error::InternalLogicError);
             }
-            new_parse_trees.push(ParseTree {
-                nodes: state.parse_trees.clone(),
-                rule: state.rule_i as u32,
+            new_parse_trees.push(ParseTreeNode::Node {
+                rule_i: state.rule_i as u32,
+                sub_nodes: state.parse_trees.clone(),
             });
 
             let new_state = State {

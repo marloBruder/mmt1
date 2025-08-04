@@ -158,8 +158,11 @@ pub fn stage_4(
         match mm_data
             .optimized_data
             .symbol_number_mapping
-            .expression_to_parse_tree(proof_line.expression, &mm_data.optimized_data.grammar)
-        {
+            .expression_to_parse_tree(
+                proof_line.expression,
+                &mm_data.optimized_data.grammar,
+                &mm_data.optimized_data.floating_hypotheses,
+            ) {
             Ok(pt) => parse_tree = Some(pt),
             Err(Error::MissingExpressionError) => {
                 // let last_non_whitespace_pos = stage_2::last_non_whitespace_pos(statement_str);
@@ -175,13 +178,15 @@ pub fn stage_4(
                 // preview_error.3 = true;
             }
             Err(Error::NonSymbolInExpressionError) => {
-                errors.append(&mut calc_non_symbol_in_expression_errors(
-                    proof_line.expression,
-                    &mm_data.optimized_data.symbol_number_mapping,
-                    line_number,
-                    // step_prefix.len() as u32,
-                    step_prefix_len,
-                ));
+                errors.append(
+                    &mut calc_non_symbol_in_expression_and_invalid_work_variable_errors(
+                        proof_line.expression,
+                        &mm_data.optimized_data.symbol_number_mapping,
+                        line_number,
+                        // step_prefix.len() as u32,
+                        step_prefix_len,
+                    ),
+                );
 
                 preview_error.3 = true;
             }
@@ -195,6 +200,19 @@ pub fn stage_4(
                     end_line_number: line_number,
                     end_column: last_non_whitespace_pos.1 + 2,
                 });
+
+                preview_error.3 = true;
+            }
+            Err(Error::InvalidWorkVariableError) => {
+                errors.append(
+                    &mut calc_non_symbol_in_expression_and_invalid_work_variable_errors(
+                        proof_line.expression,
+                        &mm_data.optimized_data.symbol_number_mapping,
+                        line_number,
+                        // step_prefix.len() as u32,
+                        step_prefix_len,
+                    ),
+                );
 
                 preview_error.3 = true;
             }
@@ -303,7 +321,7 @@ pub fn stage_4(
     })
 }
 
-fn calc_non_symbol_in_expression_errors(
+fn calc_non_symbol_in_expression_and_invalid_work_variable_errors(
     expression: &str,
     symbol_number_mapping: &SymbolNumberMapping,
     first_line: u32,
@@ -325,16 +343,14 @@ fn calc_non_symbol_in_expression_errors(
 
         if char.is_ascii_whitespace() {
             if seeing_token {
-                if current_token.starts_with('$')
-                    || symbol_number_mapping.numbers.get(&current_token).is_none()
-                {
-                    errors.push(DetailedError {
-                        error_type: Error::NonSymbolInExpressionError,
-                        start_line_number: line,
-                        start_column: current_token_start_column,
-                        end_line_number: line,
-                        end_column: column,
-                    });
+                if let Some(error) = check_symbol_for_error(
+                    &current_token,
+                    symbol_number_mapping,
+                    line,
+                    column,
+                    current_token_start_column,
+                ) {
+                    errors.push(error);
                 }
 
                 current_token = String::new();
@@ -355,4 +371,42 @@ fn calc_non_symbol_in_expression_errors(
     }
 
     errors
+}
+
+fn check_symbol_for_error(
+    symbol: &str,
+    symbol_number_mapping: &SymbolNumberMapping,
+    line: u32,
+    column: u32,
+    current_token_start_column: u32,
+) -> Option<DetailedError> {
+    if let Some((before, after)) = symbol.split_once('$') {
+        if symbol_number_mapping
+            .numbers
+            .get(before)
+            .is_none_or(|num| !symbol_number_mapping.is_variable(*num))
+            || after.starts_with('+')
+            || after.parse::<u32>().is_err()
+        {
+            return Some(DetailedError {
+                error_type: Error::InvalidWorkVariableError,
+                start_line_number: line,
+                start_column: current_token_start_column,
+                end_line_number: line,
+                end_column: column,
+            });
+        }
+    } else {
+        if symbol_number_mapping.numbers.get(symbol).is_none() {
+            return Some(DetailedError {
+                error_type: Error::NonSymbolInExpressionError,
+                start_line_number: line,
+                start_column: current_token_start_column,
+                end_line_number: line,
+                end_column: column,
+            });
+        }
+    }
+
+    None
 }
