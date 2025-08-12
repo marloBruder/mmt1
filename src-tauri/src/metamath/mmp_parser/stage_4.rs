@@ -16,6 +16,15 @@ pub fn stage_4(
     _stage_3: &MmpParserStage3Theorem,
     mm_data: &MetamathData,
 ) -> Result<MmpParserStage4, Error> {
+    if !mm_data.grammar_calculations_done {
+        return Ok(MmpParserStage4::Fail(MmpParserStage4Fail {
+            errors: Vec::new(),
+            preview_errors: vec![(false, false, false, false); stage_2.proof_lines.len()],
+            preview_confirmations: vec![false; stage_2.proof_lines.len()],
+            preview_confirmations_recursive: vec![false; stage_2.proof_lines.len()],
+        }));
+    }
+
     let mut errors: Vec<DetailedError> = Vec::new();
     let mut preview_errors: Vec<(bool, bool, bool, bool)> = Vec::new();
     let mut preview_confirmations: Vec<bool> = Vec::new();

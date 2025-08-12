@@ -35,7 +35,7 @@ pub struct Symbol {
     pub symbol_i: u32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct WorkVariable {
     pub typecode_i: u32,
     pub variable_i: u32,

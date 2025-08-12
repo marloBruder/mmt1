@@ -83,6 +83,7 @@ pub struct SymbolNumberMapping {
     pub symbols: HashMap<u32, String>,
     pub numbers: HashMap<String, u32>,
     pub variable_typecodes: HashMap<u32, u32>,
+    pub typecode_default_vars: Vec<(u32, u32)>,
     pub typecode_count: u32,
     pub variable_count: u32,
     pub constant_count: u32,
@@ -807,7 +808,7 @@ impl ParseTree {
 }
 
 impl ParseTreeNode {
-    fn get_floating_hypotheses_rules(&self, grammar: &Grammar) -> Result<HashSet<u32>, Error> {
+    pub fn get_floating_hypotheses_rules(&self, grammar: &Grammar) -> Result<HashSet<u32>, Error> {
         let mut rules: HashSet<u32> = HashSet::new();
 
         let mut check: Vec<&ParseTreeNode> = vec![self];
@@ -836,14 +837,14 @@ impl SymbolNumberMapping {
         let mut symbols: HashMap<u32, String> = HashMap::new();
         let mut numbers: HashMap<String, u32> = HashMap::new();
         let mut variable_typecodes: HashMap<u32, u32> = HashMap::new();
+        let mut typecode_default_vars: Vec<(u32, u32)> = Vec::new();
         let mut next_i: u32 = 1;
         let mut typecodes: Vec<&str> = Vec::new();
 
         for fh in header.floating_hypohesis_iter() {
             if !typecodes.contains(&&*fh.typecode) {
                 typecodes.push(&fh.typecode);
-                let mut typecode_string = "$".to_string();
-                typecode_string.push_str(&fh.typecode);
+                let typecode_string = format!("${}", fh.typecode);
                 symbols.insert(next_i, typecode_string.clone());
                 numbers.insert(typecode_string, next_i);
                 next_i += 1;
@@ -870,9 +871,17 @@ impl SymbolNumberMapping {
 
         for fh in header.floating_hypohesis_iter() {
             if let Some(num) = numbers.get(&fh.variable) {
-                let mut typecode_string = "$".to_string();
-                typecode_string.push_str(&fh.typecode);
-                variable_typecodes.insert(*num, *numbers.get(&typecode_string).unwrap());
+                let typecode_string = format!("${}", fh.typecode);
+                let variable_typecode_i = *numbers.get(&typecode_string).unwrap();
+                variable_typecodes.insert(*num, variable_typecode_i);
+
+                if typecode_default_vars
+                    .iter()
+                    .find(|(typecode_i, _)| *typecode_i == variable_typecode_i)
+                    .is_none()
+                {
+                    typecode_default_vars.push((variable_typecode_i, *num));
+                }
             }
         }
 
@@ -880,6 +889,7 @@ impl SymbolNumberMapping {
             symbols,
             numbers,
             variable_typecodes,
+            typecode_default_vars,
             typecode_count,
             variable_count,
             constant_count,
@@ -1014,6 +1024,18 @@ impl SymbolNumberMapping {
     // pub fn is_constant(&self, number: u32) -> bool {
     //     return self.typecode_count + self.variable_count < number;
     // }
+
+    pub fn get_typecode_default_variable_i(&self, typecode_i: u32) -> Option<u32> {
+        self.typecode_default_vars
+            .iter()
+            .find_map(|(typecode, default_var)| {
+                if *typecode == typecode_i {
+                    Some(*default_var)
+                } else {
+                    None
+                }
+            })
+    }
 }
 
 impl Grammar {
