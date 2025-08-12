@@ -127,7 +127,7 @@ class TabManager {
       this.#tabs[tabIndex].unloadData();
       this.#tabs.splice(tabIndex, 1);
 
-      await this.#tabs[this.#openTabIndex].onTabOpen();
+      await this.#tabs[this.#openTabIndex]?.onTabOpen();
 
       // if (closedCurrentTab && navigate) {
       //   let newTabIndex = tabIndex;

@@ -4,19 +4,20 @@
   import EmptyTabComponent from "./EmptyTabComponent.svelte";
 
   let openTab = $derived(tabManager.getOpenTab());
+  let scrollTop = $state(0);
 
+  let setScroll: (scrollTop: number) => void;
+
+  // Triggers only when openTab changes
   $effect(() => {
     if (openTab) {
-      let tabContainer = document.getElementById("tabContainer");
-      if (tabContainer !== null) {
-        tabContainer.scrollTop = openTab.scrollTop;
-      }
+      scrollTop = openTab.scrollTop;
     }
   });
 
-  let onscrollTab = (e: UIEvent) => {
+  let onscrollTab = (newScrollTop: number) => {
     if (openTab) {
-      openTab.scrollTop = (e.target as HTMLElement).scrollTop;
+      openTab.scrollTop = newScrollTop;
     }
   };
 
@@ -25,9 +26,9 @@
 </script>
 
 {#if openTab != null}
-  <div id="tabContainer" class="h-full w-full flex {verticalSplit ? 'flex-row' : 'flex-col'}" onscroll={onscrollTab}>
+  <div class="h-full w-full flex {verticalSplit ? 'flex-row' : 'flex-col'}">
     <div class="{horizontalSplit ? 'h-1/2' : 'h-full'} {verticalSplit ? 'w-1/2' : 'w-full'}">
-      <ScrollableContainer>
+      <ScrollableContainer onscroll={onscrollTab} {scrollTop}>
         <openTab.component tab={openTab}></openTab.component>
       </ScrollableContainer>
     </div>
