@@ -118,6 +118,7 @@ export interface TheoremPageData {
   previewUnifyMarkers: [boolean, boolean, boolean, boolean][] | null;
   lastTheoremLabel: string | null;
   nextTheoremLabel: string | null;
+  axiomDependencies: string[];
   discriminator: "TheoremPageData";
 }
 

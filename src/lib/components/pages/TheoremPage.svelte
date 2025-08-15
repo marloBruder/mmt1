@@ -135,6 +135,39 @@
       </table>
     </div>
   {/if}
+  <div class="p-8">
+    <hr />
+  </div>
+  {#if theorem.proof !== null}
+    <div class="text-left px-4">
+      <span class="font-bold">This theorem was proved from axioms: </span>
+      {#if pageData.axiomDependencies.length === 0}
+        (None)
+      {/if}
+      <div>
+        {#each pageData.axiomDependencies as axiomDependency}
+          {#if !axiomDependency.startsWith("df-")}
+            <span class="mr-2">
+              <TheoremLink label={axiomDependency}></TheoremLink>
+            </span>
+          {/if}
+        {/each}
+      </div>
+      <span class="font-bold">This theorem depends on definitions: </span>
+      {#if pageData.axiomDependencies.length === 0}
+        (None)
+      {/if}
+      <div>
+        {#each pageData.axiomDependencies as axiomDependency}
+          {#if axiomDependency.startsWith("df-")}
+            <span class="mr-2">
+              <TheoremLink label={axiomDependency}></TheoremLink>
+            </span>
+          {/if}
+        {/each}
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
