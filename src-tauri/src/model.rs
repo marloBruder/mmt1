@@ -55,6 +55,7 @@ pub struct OptimizedMetamathData {
 pub struct OptimizedTheoremData {
     pub parse_trees: Option<TheoremParseTrees>,
     pub distinct_variable_pairs: HashSet<(String, String)>,
+    pub axiom_dependencies: Vec<usize>,
 }
 
 #[derive(Debug)]
@@ -232,6 +233,7 @@ pub struct TheoremPageData {
     pub preview_unify_markers: Option<Vec<(bool, bool, bool, bool)>>,
     pub last_theorem_label: Option<String>,
     pub next_theorem_label: Option<String>,
+    pub axiom_dependencies: Vec<String>,
 }
 
 pub struct ProofLine {
@@ -343,7 +345,7 @@ impl MetamathData {
     }
 
     pub fn calc_optimized_theorem_data(&mut self) {
-        for theorem in self.database_header.theorem_iter() {
+        for (i, theorem) in self.database_header.theorem_iter().enumerate() {
             if theorem.assertion.starts_with("|- ") {
                 self.optimized_data.theorem_data.insert(
                     theorem.label.to_string(),
@@ -352,6 +354,7 @@ impl MetamathData {
                             &theorem.distincts,
                         ),
                         parse_trees: None,
+                        axiom_dependencies: theorem.calc_axiom_dependencies(self, i),
                     },
                 );
             }
@@ -1325,6 +1328,97 @@ impl Theorem {
 
         Ok((assertion_parsed, hypotheses_parsed))
     }
+
+    pub fn calc_axiom_dependencies(&self, mm_data: &MetamathData, i: usize) -> Vec<usize> {
+        let Some(proof) = self.proof.as_ref() else {
+            return vec![i];
+        };
+
+        let labels: Vec<&str> = if proof.starts_with("(") {
+            proof
+                .split_ascii_whitespace()
+                .skip(1)
+                .take_while(|token| *token != ")")
+                .collect()
+        } else {
+            let mut already_seen: HashSet<&str> = HashSet::new();
+
+            proof
+                .split_ascii_whitespace()
+                .filter(|label| {
+                    if already_seen.contains(label) {
+                        false
+                    } else {
+                        already_seen.insert(*label);
+                        true
+                    }
+                })
+                .collect()
+        };
+
+        Theorem::calc_axiom_dependencies_from_labels(labels, mm_data)
+    }
+
+    pub fn calc_axiom_dependencies_from_labels(
+        labels: Vec<&str>,
+        mm_data: &MetamathData,
+    ) -> Vec<usize> {
+        let dependencies: Vec<&Vec<usize>> = labels
+            .iter()
+            .filter_map(|label| {
+                mm_data
+                    .optimized_data
+                    .theorem_data
+                    .get(*label)
+                    .map(|theorem_data| &theorem_data.axiom_dependencies)
+            })
+            .collect();
+
+        // dependency_indexes is an array A of indexes, with element A[i] pointing towards dependencies[i][A[i]]
+        let mut dependencies_indexes: Vec<usize> = vec![0; dependencies.len()];
+
+        let filter_map_closure =
+            Box::new(|(i, (dep_vec, next_i)): (usize, (&&Vec<usize>, &usize))| {
+                dep_vec.get(*next_i).map(|dep| (i, *dep))
+            });
+
+        let mut lowest_dependencies = dependencies
+            .iter()
+            .zip(dependencies_indexes.iter())
+            .enumerate()
+            .filter_map(&filter_map_closure)
+            .peekable();
+
+        let mut result: Vec<usize> = Vec::new();
+
+        while lowest_dependencies.peek().is_some() {
+            let mut lowest_dependency = usize::MAX;
+            let mut indexes_with_lowest_dependency: Vec<usize> = Vec::new();
+
+            lowest_dependencies.for_each(|(i, dependency)| {
+                if dependency < lowest_dependency {
+                    lowest_dependency = dependency;
+                    indexes_with_lowest_dependency = vec![i];
+                } else if dependency == lowest_dependency {
+                    indexes_with_lowest_dependency.push(i);
+                }
+            });
+
+            result.push(lowest_dependency);
+            indexes_with_lowest_dependency
+                .into_iter()
+                .for_each(|i| *dependencies_indexes.get_mut(i).unwrap() += 1);
+
+            lowest_dependencies = dependencies
+                .iter()
+                .zip(dependencies_indexes.iter())
+                .enumerate()
+                .filter_map(&filter_map_closure)
+                .peekable()
+        }
+
+        result
+    }
 }
 
 impl Header {
@@ -1735,6 +1829,7 @@ impl serde::Serialize for TheoremPageData {
         state.serialize_field("previewUnifyMarkers", &self.preview_unify_markers)?;
         state.serialize_field("lastTheoremLabel", &self.last_theorem_label)?;
         state.serialize_field("nextTheoremLabel", &self.next_theorem_label)?;
+        state.serialize_field("axiomDependencies", &self.axiom_dependencies)?;
         state.serialize_field("discriminator", "TheoremPageData")?;
         state.end()
     }

@@ -138,7 +138,7 @@ pub async fn on_edit(
                 return Ok(OnEditData {
                     page_data: calc_theorem_page_data(
                         &stage_2_success,
-                        &stage_3_theorem,
+                        stage_3_theorem,
                         fail.preview_errors,
                         fail.preview_confirmations,
                         fail.preview_confirmations_recursive,
@@ -154,7 +154,7 @@ pub async fn on_edit(
     Ok(OnEditData {
         page_data: calc_theorem_page_data(
             &stage_2_success,
-            &stage_3_theorem,
+            stage_3_theorem,
             stage_4_success.preview_errors,
             stage_4_success.preview_confirmations,
             stage_4_success.preview_confirmations_recursive,
@@ -191,7 +191,7 @@ pub async fn on_edit(
 
 pub fn calc_theorem_page_data(
     stage_2_success: &MmpParserStage2Success,
-    stage_3_theorem: &MmpParserStage3Theorem,
+    stage_3_theorem: MmpParserStage3Theorem,
     preview_errors: Vec<(bool, bool, bool, bool)>,
     preview_confirmations: Vec<bool>,
     preview_confirmations_recursive: Vec<bool>,
@@ -272,6 +272,7 @@ pub fn calc_theorem_page_data(
         preview_unify_markers: Some(preview_unify_markers),
         last_theorem_label: None,
         next_theorem_label: None,
+        axiom_dependencies: stage_3_theorem.axiom_dependencies,
     }))
 }
 
@@ -1212,6 +1213,7 @@ fn get_theorem_page_data(
         preview_unify_markers: None,
         last_theorem_label: None,
         next_theorem_label: None,
+        axiom_dependencies: Vec::new(),
     }))
 }
 

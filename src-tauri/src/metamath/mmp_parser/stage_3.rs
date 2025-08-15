@@ -1,8 +1,11 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     editor::on_edit::DetailedError,
-    model::{Comment, Constant, FloatingHypothesis, HeaderPath, MetamathData, Statement, Variable},
+    model::{
+        Comment, Constant, FloatingHypothesis, HeaderPath, MetamathData, Statement, Theorem,
+        Variable,
+    },
     util, Error,
 };
 
@@ -24,9 +27,11 @@ pub fn stage_3<'a>(
         Some(MmpLabel::Comment(comment_path)) => {
             stage_3_comment(stage_1, stage_2, mm_data, comment_path)
         }
-        Some(MmpLabel::Axiom(axiom_label)) => stage_3_theorem(stage_1, stage_2, axiom_label, true),
+        Some(MmpLabel::Axiom(axiom_label)) => {
+            stage_3_theorem(stage_1, stage_2, axiom_label, true, mm_data)
+        }
         Some(MmpLabel::Theorem(theorem_label)) => {
-            stage_3_theorem(stage_1, stage_2, theorem_label, false)
+            stage_3_theorem(stage_1, stage_2, theorem_label, false, mm_data)
         }
         None => stage_3_no_label(stage_1, stage_2, mm_data),
     }
@@ -256,6 +261,7 @@ fn stage_3_theorem<'a>(
     stage_2: &MmpParserStage2Success<'a>,
     label: &'a str,
     is_axiom: bool,
+    metamath_data: &MetamathData,
 ) -> Result<MmpParserStage3<'a>, Error> {
     let mut errors: Vec<DetailedError> = Vec::new();
 
@@ -270,11 +276,14 @@ fn stage_3_theorem<'a>(
 
     let indention = calc_indention(&stage_2.proof_lines)?;
 
+    let axiom_dependencies = calc_axiom_dependencies(&stage_2.proof_lines, metamath_data);
+
     Ok(if errors.is_empty() {
         MmpParserStage3::Success(MmpParserStage3Success::Theorem(MmpParserStage3Theorem {
             is_axiom,
             label,
             indention,
+            axiom_dependencies,
         }))
     } else {
         MmpParserStage3::Fail(MmpParserStage3Fail { errors })
@@ -338,6 +347,50 @@ fn calc_indention(proof_lines: &Vec<ProofLine>) -> Result<Vec<u32>, Error> {
     }
 
     Ok(indentions_vec)
+}
+
+fn calc_axiom_dependencies(
+    proof_lines: &Vec<ProofLine>,
+    metamath_data: &MetamathData,
+) -> Vec<String> {
+    let mut already_seen: HashSet<&str> = HashSet::new();
+
+    let step_refs: Vec<&str> = proof_lines
+        .iter()
+        .filter_map(|pl| {
+            if pl.is_hypothesis {
+                None
+            } else {
+                if already_seen.contains(&pl.step_ref) {
+                    None
+                } else {
+                    already_seen.insert(pl.step_ref);
+                    Some(pl.step_ref)
+                }
+            }
+        })
+        .collect();
+
+    let theorem_indexes = Theorem::calc_axiom_dependencies_from_labels(step_refs, metamath_data);
+
+    let mut theorem_i_iter = theorem_indexes.into_iter().peekable();
+
+    metamath_data
+        .database_header
+        .theorem_iter()
+        .enumerate()
+        .filter_map(|(i, theorem)| {
+            if theorem_i_iter
+                .peek()
+                .is_some_and(|theorem_i| *theorem_i == i)
+            {
+                theorem_i_iter.next();
+                Some(theorem.label.clone())
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 fn stage_3_no_label<'a>(

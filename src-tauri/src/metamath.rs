@@ -476,6 +476,27 @@ pub fn calc_theorem_page_data(
 
     let theorem_number = (theorem_i + 1) as u32;
 
+    let empty_vec: Vec<usize> = Vec::new();
+
+    let axiom_dependency_indexes = metamath_data
+        .optimized_data
+        .theorem_data
+        .get(label)
+        .map(|theorem_data| &theorem_data.axiom_dependencies)
+        .unwrap_or(&empty_vec);
+
+    let mut theorem_iter = metamath_data.database_header.theorem_iter().enumerate();
+
+    let axiom_dependencies: Vec<String> = axiom_dependency_indexes
+        .iter()
+        .map(|&i| {
+            theorem_iter
+                .find(|(theorem_i, _)| *theorem_i == i)
+                .map(|(_, theorem)| theorem.label.clone())
+        })
+        .collect::<Option<Vec<String>>>()
+        .ok_or(Error::InternalLogicError)?;
+
     if theorem.proof == None {
         return Ok(TheoremPageData {
             theorem: theorem.clone(),
@@ -487,6 +508,7 @@ pub fn calc_theorem_page_data(
             preview_unify_markers: None,
             last_theorem_label,
             next_theorem_label,
+            axiom_dependencies,
         });
     }
     let mut proof_lines = Vec::new();
@@ -594,6 +616,7 @@ pub fn calc_theorem_page_data(
         preview_unify_markers: None,
         last_theorem_label,
         next_theorem_label,
+        axiom_dependencies,
     })
 }
 
