@@ -1374,48 +1374,21 @@ impl Theorem {
             })
             .collect();
 
-        // dependency_indexes is an array A of indexes, with element A[i] pointing towards dependencies[i][A[i]]
-        let mut dependencies_indexes: Vec<usize> = vec![0; dependencies.len()];
+        let mut result: Vec<usize> = dependencies
+            .first()
+            .map(|dep_vec| (*dep_vec).clone())
+            .unwrap_or(Vec::new());
 
-        let filter_map_closure =
-            Box::new(|(i, (dep_vec, next_i)): (usize, (&&Vec<usize>, &usize))| {
-                dep_vec.get(*next_i).map(|dep| (i, *dep))
-            });
-
-        let mut lowest_dependencies = dependencies
-            .iter()
-            .zip(dependencies_indexes.iter())
-            .enumerate()
-            .filter_map(&filter_map_closure)
-            .peekable();
-
-        let mut result: Vec<usize> = Vec::new();
-
-        while lowest_dependencies.peek().is_some() {
-            let mut lowest_dependency = usize::MAX;
-            let mut indexes_with_lowest_dependency: Vec<usize> = Vec::new();
-
-            lowest_dependencies.for_each(|(i, dependency)| {
-                if dependency < lowest_dependency {
-                    lowest_dependency = dependency;
-                    indexes_with_lowest_dependency = vec![i];
-                } else if dependency == lowest_dependency {
-                    indexes_with_lowest_dependency.push(i);
-                }
-            });
-
-            result.push(lowest_dependency);
-            indexes_with_lowest_dependency
-                .into_iter()
-                .for_each(|i| *dependencies_indexes.get_mut(i).unwrap() += 1);
-
-            lowest_dependencies = dependencies
+        dependencies.iter().skip(1).for_each(|dep_vec| {
+            dep_vec
                 .iter()
-                .zip(dependencies_indexes.iter())
-                .enumerate()
-                .filter_map(&filter_map_closure)
-                .peekable()
-        }
+                .for_each(|dep| match result.binary_search(dep) {
+                    Ok(_) => {}
+                    Err(index) => {
+                        result.insert(index, *dep);
+                    }
+                })
+        });
 
         result
     }
