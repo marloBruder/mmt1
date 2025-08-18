@@ -17,19 +17,21 @@ use crate::{
     AppState, Error,
 };
 
+mod html_validation;
+
 #[tauri::command]
 pub async fn open_metamath_database(
     state: tauri::State<'_, Mutex<AppState>>,
     app: AppHandle,
     mm_file_path: &str,
-) -> Result<u32, Error> {
+) -> Result<(u32, Vec<HtmlRepresentation>), Error> {
     let mut app_state = state.lock().await;
 
     // let metamath_data = MmParser::process_database(mm_file_path)?;
 
     let mut mm_parser = MmParser::new(mm_file_path, Some(app))?;
     mm_parser.process_all_statements()?;
-    let metamath_data =
+    let (metamath_data, invalid_html) =
         mm_parser.consume_early_before_grammar_calculations(&mut app_state.id_manager)?;
 
     let database_id = metamath_data.database_id;
@@ -37,7 +39,7 @@ pub async fn open_metamath_database(
     app_state.temp_metamath_data = Some(metamath_data);
     app_state.stop_temp_grammar_calculations = Arc::new(std::sync::Mutex::new(false));
 
-    Ok(database_id)
+    Ok((database_id, invalid_html))
 }
 
 #[tauri::command]
@@ -192,6 +194,7 @@ pub struct MmParser {
     total_line_amount: u32,
     last_progress_reported: u8,
     app: Option<AppHandle>,
+    invalid_html: Vec<HtmlRepresentation>,
 }
 
 pub enum StatementProcessed {
@@ -241,6 +244,7 @@ impl MmParser {
             total_line_amount,
             last_progress_reported: 0,
             app,
+            invalid_html: Vec::new(),
         })
     }
 
@@ -359,7 +363,7 @@ impl MmParser {
     fn consume_early_before_grammar_calculations(
         self,
         id_manager: &mut IdManager,
-    ) -> Result<MetamathData, Error> {
+    ) -> Result<(MetamathData, Vec<HtmlRepresentation>), Error> {
         if let Some(ref app_handle) = self.app {
             app_handle.emit("mm-parser-progress", 100).ok();
         }
@@ -387,7 +391,7 @@ impl MmParser {
 
         metamath_data.calc_optimized_theorem_data();
 
-        Ok(metamath_data)
+        Ok((metamath_data, self.invalid_html))
     }
 
     // pub fn process_all_statements_and_consume(mut self) -> Result<MetamathData, Error> {
@@ -470,7 +474,6 @@ impl MmParser {
         Ok(StatementProcessed::CommentStatement)
     }
 
-    // Should be slightly more efficient than advance_until_end_of_comment
     fn advance_until_end_of_comment(&mut self) -> Result<&str, Error> {
         let start_token_i = self.next_token_i;
         while let Some(token) = self.advance_next_token() {
@@ -592,12 +595,17 @@ impl MmParser {
                 next_html_index += 2;
             }
 
-            self.html_representations.push(HtmlRepresentation {
+            let html_rep = HtmlRepresentation {
                 symbol: super::get_str_in_quotes(statement_tokens[1])
                     .ok_or(Error::TypesettingFormatError)?
                     .to_string(),
                 html,
-            })
+            };
+
+            if !html_validation::verify_html(&*html_rep.html) {
+                self.invalid_html.push(html_rep.clone());
+            }
+            self.html_representations.push(html_rep);
         }
 
         Ok(())
