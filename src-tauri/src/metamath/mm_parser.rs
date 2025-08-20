@@ -195,6 +195,8 @@ pub struct MmParser {
     last_progress_reported: u8,
     app: Option<AppHandle>,
     invalid_html: Vec<HtmlRepresentation>,
+    html_allowed_tags_and_attributes: HashMap<String, HashSet<String>>,
+    css_allowed_properties: HashSet<String>,
 }
 
 pub enum StatementProcessed {
@@ -219,6 +221,39 @@ impl MmParser {
         }
 
         let total_line_amount = file_content.lines().count() as u32;
+
+        let mut html_allowed_tags_and_attributes: HashMap<String, HashSet<String>> = HashMap::new();
+        html_allowed_tags_and_attributes.insert(
+            String::from("span"),
+            HashSet::from([String::from("class"), String::from("style")]),
+        );
+        html_allowed_tags_and_attributes.insert(String::from("u"), HashSet::new());
+        html_allowed_tags_and_attributes.insert(String::from("b"), HashSet::new());
+        html_allowed_tags_and_attributes.insert(
+            String::from("font"),
+            HashSet::from([String::from("size"), String::from("face")]),
+        );
+        html_allowed_tags_and_attributes.insert(String::from("sup"), HashSet::new());
+        html_allowed_tags_and_attributes.insert(String::from("sub"), HashSet::new());
+        html_allowed_tags_and_attributes.insert(String::from("small"), HashSet::new());
+        html_allowed_tags_and_attributes.insert(String::from("i"), HashSet::new());
+
+        let css_allowed_properties: HashSet<String> = HashSet::from(
+            [
+                "color",
+                "border-bottom",
+                "text-decoration",
+                "overflow",
+                "width",
+                "height",
+                "display",
+                "font-size",
+                "position",
+                "top",
+                "left",
+            ]
+            .map(|s| s.to_string()),
+        );
 
         Ok(MmParser {
             file_content,
@@ -245,6 +280,8 @@ impl MmParser {
             last_progress_reported: 0,
             app,
             invalid_html: Vec::new(),
+            html_allowed_tags_and_attributes,
+            css_allowed_properties,
         })
     }
 
@@ -602,7 +639,11 @@ impl MmParser {
                 html,
             };
 
-            if !html_validation::verify_html(&*html_rep.html) {
+            if !html_validation::verify_html(
+                &*html_rep.html,
+                &self.html_allowed_tags_and_attributes,
+                &self.css_allowed_properties,
+            ) {
                 self.invalid_html.push(html_rep.clone());
             }
             self.html_representations.push(html_rep);
