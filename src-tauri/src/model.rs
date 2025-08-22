@@ -337,11 +337,18 @@ impl MetamathData {
     }
 
     pub fn is_variable(&self, str: &str) -> bool {
-        self.optimized_data
-            .symbol_number_mapping
-            .numbers
-            .get(str)
-            .is_some_and(|&n| self.optimized_data.symbol_number_mapping.is_variable(n))
+        if self.grammar_calculations_done {
+            self.optimized_data
+                .symbol_number_mapping
+                .numbers
+                .get(str)
+                .is_some_and(|&n| self.optimized_data.symbol_number_mapping.is_variable(n))
+        } else {
+            self.optimized_data
+                .floating_hypotheses
+                .iter()
+                .any(|fh| fh.variable == str)
+        }
     }
 
     pub fn calc_optimized_theorem_data(&mut self) {
