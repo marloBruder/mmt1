@@ -273,6 +273,7 @@ pub fn calc_theorem_page_data(
         last_theorem_label: None,
         next_theorem_label: None,
         axiom_dependencies: stage_3_theorem.axiom_dependencies,
+        references: Vec::new(),
     }))
 }
 
@@ -1214,6 +1215,7 @@ fn get_theorem_page_data(
         last_theorem_label: None,
         next_theorem_label: None,
         axiom_dependencies: Vec::new(),
+        references: Vec::new(),
     }))
 }
 

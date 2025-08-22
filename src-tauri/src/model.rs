@@ -56,6 +56,7 @@ pub struct OptimizedTheoremData {
     pub parse_trees: Option<TheoremParseTrees>,
     pub distinct_variable_pairs: HashSet<(String, String)>,
     pub axiom_dependencies: Vec<usize>,
+    pub references: Vec<usize>,
 }
 
 #[derive(Debug)]
@@ -234,6 +235,7 @@ pub struct TheoremPageData {
     pub last_theorem_label: Option<String>,
     pub next_theorem_label: Option<String>,
     pub axiom_dependencies: Vec<String>,
+    pub references: Vec<String>,
 }
 
 pub struct ProofLine {
@@ -354,16 +356,17 @@ impl MetamathData {
     pub fn calc_optimized_theorem_data(&mut self) {
         for (i, theorem) in self.database_header.theorem_iter().enumerate() {
             if theorem.assertion.starts_with("|- ") {
-                self.optimized_data.theorem_data.insert(
-                    theorem.label.to_string(),
-                    OptimizedTheoremData {
-                        distinct_variable_pairs: util::calc_distinct_variable_pairs(
-                            &theorem.distincts,
-                        ),
-                        parse_trees: None,
-                        axiom_dependencies: theorem.calc_axiom_dependencies(self, i),
-                    },
-                );
+                let optimized_theorem_data = OptimizedTheoremData {
+                    distinct_variable_pairs: util::calc_distinct_variable_pairs(&theorem.distincts),
+                    parse_trees: None,
+                    axiom_dependencies: theorem
+                        .calc_axiom_dependencies_and_add_references(&mut self.optimized_data, i),
+                    references: Vec::new(),
+                };
+
+                self.optimized_data
+                    .theorem_data
+                    .insert(theorem.label.to_string(), optimized_theorem_data);
             }
         }
     }
@@ -1336,7 +1339,11 @@ impl Theorem {
         Ok((assertion_parsed, hypotheses_parsed))
     }
 
-    pub fn calc_axiom_dependencies(&self, mm_data: &MetamathData, i: usize) -> Vec<usize> {
+    pub fn calc_axiom_dependencies_and_add_references(
+        &self,
+        optimized_data: &mut OptimizedMetamathData,
+        i: usize,
+    ) -> Vec<usize> {
         let Some(proof) = self.proof.as_ref() else {
             return vec![i];
         };
@@ -1363,18 +1370,24 @@ impl Theorem {
                 .collect()
         };
 
-        Theorem::calc_axiom_dependencies_from_labels(labels, mm_data)
+        // Add references to prior theorems
+        for label in &labels {
+            if let Some(theorem_data) = optimized_data.theorem_data.get_mut(*label) {
+                theorem_data.references.push(i);
+            }
+        }
+
+        Theorem::calc_axiom_dependencies_from_labels(&labels, optimized_data)
     }
 
     pub fn calc_axiom_dependencies_from_labels(
-        labels: Vec<&str>,
-        mm_data: &MetamathData,
+        labels: &Vec<&str>,
+        optimized_data: &OptimizedMetamathData,
     ) -> Vec<usize> {
         let dependencies: Vec<&Vec<usize>> = labels
             .iter()
             .filter_map(|label| {
-                mm_data
-                    .optimized_data
+                optimized_data
                     .theorem_data
                     .get(*label)
                     .map(|theorem_data| &theorem_data.axiom_dependencies)
@@ -1509,6 +1522,23 @@ impl Header {
         }
 
         None
+    }
+
+    pub fn theorem_i_vec_to_theorem_label_vec(
+        &self,
+        theorem_i_vec: &Vec<usize>,
+    ) -> Result<Vec<String>, ()> {
+        let mut theorem_iter = self.theorem_iter().enumerate();
+
+        theorem_i_vec
+            .iter()
+            .map(|&i| {
+                theorem_iter
+                    .find(|(theorem_i, _)| *theorem_i == i)
+                    .map(|(_, theorem)| theorem.label.clone())
+            })
+            .collect::<Option<Vec<String>>>()
+            .ok_or(())
     }
 
     // pub fn count_theorems_and_headers(&self) -> i32 {
@@ -1810,6 +1840,7 @@ impl serde::Serialize for TheoremPageData {
         state.serialize_field("lastTheoremLabel", &self.last_theorem_label)?;
         state.serialize_field("nextTheoremLabel", &self.next_theorem_label)?;
         state.serialize_field("axiomDependencies", &self.axiom_dependencies)?;
+        state.serialize_field("references", &self.references)?;
         state.serialize_field("discriminator", "TheoremPageData")?;
         state.end()
     }

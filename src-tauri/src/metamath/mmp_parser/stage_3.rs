@@ -371,26 +371,14 @@ fn calc_axiom_dependencies(
         })
         .collect();
 
-    let theorem_indexes = Theorem::calc_axiom_dependencies_from_labels(step_refs, metamath_data);
-
-    let mut theorem_i_iter = theorem_indexes.into_iter().peekable();
+    let theorem_indexes =
+        Theorem::calc_axiom_dependencies_from_labels(&step_refs, &metamath_data.optimized_data);
 
     metamath_data
         .database_header
-        .theorem_iter()
-        .enumerate()
-        .filter_map(|(i, theorem)| {
-            if theorem_i_iter
-                .peek()
-                .is_some_and(|theorem_i| *theorem_i == i)
-            {
-                theorem_i_iter.next();
-                Some(theorem.label.clone())
-            } else {
-                None
-            }
-        })
-        .collect()
+        .theorem_i_vec_to_theorem_label_vec(&theorem_indexes)
+        // Should never be the case
+        .unwrap_or(Vec::new())
 }
 
 fn stage_3_no_label<'a>(

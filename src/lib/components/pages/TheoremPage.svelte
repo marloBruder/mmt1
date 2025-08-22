@@ -141,8 +141,8 @@
   <div class="p-8">
     <hr />
   </div>
-  {#if theorem.proof !== null}
-    <div class="text-left px-4">
+  <div class="text-left px-4">
+    {#if theorem.proof !== null}
       <span class="font-bold">This theorem was proved from axioms: </span>
       {#if axiomDependencies.length === 0}
         (None)
@@ -165,8 +165,19 @@
           </span>
         {/each}
       </div>
+    {/if}
+    <span class="font-bold">This theorem is referenced by:</span>
+    {#if pageData.references.length === 0}
+      (None)
+    {/if}
+    <div>
+      {#each pageData.references as reference}
+        <span class="mr-2">
+          <TheoremLink label={reference}></TheoremLink>
+        </span>
+      {/each}
     </div>
-  {/if}
+  </div>
 </div>
 
 <style>

@@ -119,6 +119,7 @@ export interface TheoremPageData {
   lastTheoremLabel: string | null;
   nextTheoremLabel: string | null;
   axiomDependencies: string[];
+  references: string[];
   discriminator: "TheoremPageData";
 }
 

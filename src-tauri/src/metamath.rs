@@ -478,24 +478,22 @@ pub fn calc_theorem_page_data(
 
     let empty_vec: Vec<usize> = Vec::new();
 
-    let axiom_dependency_indexes = metamath_data
+    let (axiom_dependency_indexes, reference_indexes) = metamath_data
         .optimized_data
         .theorem_data
         .get(label)
-        .map(|theorem_data| &theorem_data.axiom_dependencies)
-        .unwrap_or(&empty_vec);
+        .map(|theorem_data| (&theorem_data.axiom_dependencies, &theorem_data.references))
+        .unwrap_or((&empty_vec, &empty_vec));
 
-    let mut theorem_iter = metamath_data.database_header.theorem_iter().enumerate();
+    let axiom_dependencies: Vec<String> = metamath_data
+        .database_header
+        .theorem_i_vec_to_theorem_label_vec(axiom_dependency_indexes)
+        .map_err(|_| Error::InternalLogicError)?;
 
-    let axiom_dependencies: Vec<String> = axiom_dependency_indexes
-        .iter()
-        .map(|&i| {
-            theorem_iter
-                .find(|(theorem_i, _)| *theorem_i == i)
-                .map(|(_, theorem)| theorem.label.clone())
-        })
-        .collect::<Option<Vec<String>>>()
-        .ok_or(Error::InternalLogicError)?;
+    let references: Vec<String> = metamath_data
+        .database_header
+        .theorem_i_vec_to_theorem_label_vec(reference_indexes)
+        .map_err(|_| Error::InternalLogicError)?;
 
     if theorem.proof == None {
         return Ok(TheoremPageData {
@@ -509,6 +507,7 @@ pub fn calc_theorem_page_data(
             last_theorem_label,
             next_theorem_label,
             axiom_dependencies,
+            references,
         });
     }
     let mut proof_lines = Vec::new();
@@ -617,6 +616,7 @@ pub fn calc_theorem_page_data(
         last_theorem_label,
         next_theorem_label,
         axiom_dependencies,
+        references,
     })
 }
 
