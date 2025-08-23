@@ -485,12 +485,12 @@ pub fn calc_theorem_page_data(
         .map(|theorem_data| (&theorem_data.axiom_dependencies, &theorem_data.references))
         .unwrap_or((&empty_vec, &empty_vec));
 
-    let axiom_dependencies: Vec<String> = metamath_data
+    let axiom_dependencies = metamath_data
         .database_header
         .theorem_i_vec_to_theorem_label_vec(axiom_dependency_indexes)
         .map_err(|_| Error::InternalLogicError)?;
 
-    let references: Vec<String> = metamath_data
+    let references = metamath_data
         .database_header
         .theorem_i_vec_to_theorem_label_vec(reference_indexes)
         .map_err(|_| Error::InternalLogicError)?;

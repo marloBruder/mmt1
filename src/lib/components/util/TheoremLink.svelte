@@ -2,7 +2,7 @@
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { TheoremTab } from "../tabs/TheoremTabComponent.svelte";
 
-  let { label, text, disabled = false }: { label: string; text?: string; disabled?: boolean } = $props();
+  let { label, text, disabled = false, theoremNumber }: { label: string; text?: string; disabled?: boolean; theoremNumber?: number } = $props();
 
   let onclick = (e: MouseEvent) => {
     tabManager.changeTab(new TheoremTab(label));
@@ -30,3 +30,8 @@
     {label}
   {/if}
 </button>
+{#if theoremNumber !== undefined}
+  <small class="text-xs">
+    {theoremNumber}
+  </small>
+{/if}

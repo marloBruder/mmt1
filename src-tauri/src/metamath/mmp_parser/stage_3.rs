@@ -352,7 +352,7 @@ fn calc_indention(proof_lines: &Vec<ProofLine>) -> Result<Vec<u32>, Error> {
 fn calc_axiom_dependencies(
     proof_lines: &Vec<ProofLine>,
     metamath_data: &MetamathData,
-) -> Vec<String> {
+) -> Vec<(String, u32)> {
     let mut already_seen: HashSet<&str> = HashSet::new();
 
     let step_refs: Vec<&str> = proof_lines

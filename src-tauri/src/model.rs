@@ -234,8 +234,8 @@ pub struct TheoremPageData {
     pub preview_unify_markers: Option<Vec<(bool, bool, bool, bool)>>,
     pub last_theorem_label: Option<String>,
     pub next_theorem_label: Option<String>,
-    pub axiom_dependencies: Vec<String>,
-    pub references: Vec<String>,
+    pub axiom_dependencies: Vec<(String, u32)>,
+    pub references: Vec<(String, u32)>,
 }
 
 pub struct ProofLine {
@@ -1527,7 +1527,7 @@ impl Header {
     pub fn theorem_i_vec_to_theorem_label_vec(
         &self,
         theorem_i_vec: &Vec<usize>,
-    ) -> Result<Vec<String>, ()> {
+    ) -> Result<Vec<(String, u32)>, ()> {
         let mut theorem_iter = self.theorem_iter().enumerate();
 
         theorem_i_vec
@@ -1535,9 +1535,9 @@ impl Header {
             .map(|&i| {
                 theorem_iter
                     .find(|(theorem_i, _)| *theorem_i == i)
-                    .map(|(_, theorem)| theorem.label.clone())
+                    .map(|(_, theorem)| (theorem.label.clone(), (i + 1) as u32))
             })
-            .collect::<Option<Vec<String>>>()
+            .collect::<Option<Vec<(String, u32)>>>()
             .ok_or(())
     }
 

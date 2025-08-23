@@ -158,7 +158,7 @@ pub struct MmpParserStage3Theorem<'a> {
     // pub locate_after: Option<LocateAfterRef<'a>>,
     // pub description: &'a str,
     pub indention: Vec<u32>,
-    pub axiom_dependencies: Vec<String>,
+    pub axiom_dependencies: Vec<(String, u32)>,
 }
 
 pub struct MmpParserStage3Fail {

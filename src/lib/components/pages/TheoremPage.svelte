@@ -7,8 +7,8 @@
 
   let theorem = $derived(pageData.theorem);
 
-  let axiomDependencies = $derived(pageData.axiomDependencies.filter((dep) => !dep.startsWith("df-")));
-  let definitionDependencies = $derived(pageData.axiomDependencies.filter((dep) => dep.startsWith("df-")));
+  let axiomDependencies = $derived(pageData.axiomDependencies.filter(([dep, _]) => !dep.startsWith("df-")));
+  let definitionDependencies = $derived(pageData.axiomDependencies.filter(([dep, _]) => dep.startsWith("df-")));
 
   let isHypothesisName = (name: string): boolean => {
     for (let hypothesis of theorem.hypotheses) {
@@ -148,9 +148,9 @@
         (None)
       {/if}
       <div>
-        {#each axiomDependencies as axiomDependency}
+        {#each axiomDependencies as [axiomDependency, dependencyNumber]}
           <span class="mr-2">
-            <TheoremLink label={axiomDependency}></TheoremLink>
+            <TheoremLink label={axiomDependency} theoremNumber={dependencyNumber}></TheoremLink>
           </span>
         {/each}
       </div>
@@ -159,9 +159,9 @@
         (None)
       {/if}
       <div>
-        {#each definitionDependencies as definitionDependency}
+        {#each definitionDependencies as [definitionDependency, dependencyNumber]}
           <span class="mr-2">
-            <TheoremLink label={definitionDependency}></TheoremLink>
+            <TheoremLink label={definitionDependency} theoremNumber={dependencyNumber}></TheoremLink>
           </span>
         {/each}
       </div>
@@ -171,9 +171,9 @@
       (None)
     {/if}
     <div>
-      {#each pageData.references as reference}
+      {#each pageData.references as [reference, referenceNumber]}
         <span class="mr-2">
-          <TheoremLink label={reference}></TheoremLink>
+          <TheoremLink label={reference} theoremNumber={referenceNumber}></TheoremLink>
         </span>
       {/each}
     </div>
