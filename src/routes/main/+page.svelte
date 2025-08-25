@@ -2,13 +2,13 @@
   import NavSidebar from "$lib/components/nav/navSidebar/NavSidebar.svelte";
   import TabBar from "$lib/components/nav/tabBar/TabBar.svelte";
   import HorizontalSplit from "$lib/components/util/HorizontalSplit.svelte";
-  import VerticalSplit from "$lib/components/util/VerticalSplit.svelte";
   import TabComponent from "$lib/components/tabs/TabComponent.svelte";
+  import VerticalDraggableSplit from "$lib/components/util/VerticalDraggableSplit.svelte";
 </script>
 
-<VerticalSplit>
+<VerticalDraggableSplit>
   {#snippet first()}
-    <div class="custom-height-minus-margin w-80 overflow-hidden custom-bg-color my-2 ml-2 mr-1 rounded-lg">
+    <div class="custom-height-minus-margin custom-width-minus-margin overflow-hidden custom-bg-color my-2 ml-2 mr-1 rounded-lg">
       <NavSidebar></NavSidebar>
     </div>
   {/snippet}
@@ -26,7 +26,7 @@
       </HorizontalSplit>
     </div>
   {/snippet}
-</VerticalSplit>
+</VerticalDraggableSplit>
 
 <style>
   .custom-height-minus-margin {
