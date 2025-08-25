@@ -139,6 +139,7 @@ pub async fn on_edit(
                     page_data: calc_theorem_page_data(
                         &stage_2_success,
                         stage_3_theorem,
+                        fail.reference_numbers,
                         fail.preview_errors,
                         fail.preview_confirmations,
                         fail.preview_confirmations_recursive,
@@ -155,6 +156,7 @@ pub async fn on_edit(
         page_data: calc_theorem_page_data(
             &stage_2_success,
             stage_3_theorem,
+            stage_4_success.reference_numbers,
             stage_4_success.preview_errors,
             stage_4_success.preview_confirmations,
             stage_4_success.preview_confirmations_recursive,
@@ -192,6 +194,7 @@ pub async fn on_edit(
 pub fn calc_theorem_page_data(
     stage_2_success: &MmpParserStage2Success,
     stage_3_theorem: MmpParserStage3Theorem,
+    reference_numbers: Vec<Option<u32>>,
     preview_errors: Vec<(bool, bool, bool, bool)>,
     preview_confirmations: Vec<bool>,
     preview_confirmations_recursive: Vec<bool>,
@@ -200,10 +203,11 @@ pub fn calc_theorem_page_data(
     let mut proof_lines: Vec<model::ProofLine> = Vec::new();
     let mut preview_unify_markers: Vec<(bool, bool, bool, bool)> = Vec::new();
 
-    for (i, (pl, &indention)) in stage_2_success
+    for (i, ((pl, &indention), ref_number)) in stage_2_success
         .proof_lines
         .iter()
         .zip(stage_3_theorem.indention.iter())
+        .zip(reference_numbers.into_iter())
         .enumerate()
     {
         let mut unify_markers = (false, false, false, false);
@@ -224,6 +228,7 @@ pub fn calc_theorem_page_data(
             } else {
                 pl.step_ref.to_string()
             },
+            reference_number: ref_number,
             assertion: util::str_to_space_seperated_string(pl.expression),
             indention,
         });

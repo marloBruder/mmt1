@@ -242,6 +242,7 @@ pub struct ProofLine {
     pub step_name: String,
     pub hypotheses: Vec<String>,
     pub reference: String,
+    pub reference_number: Option<u32>,
     pub indention: u32,
     pub assertion: String,
 }
@@ -1468,21 +1469,12 @@ impl Header {
 
     pub fn find_theorem_by_label(&self, label: &str) -> Option<&Theorem> {
         self.theorem_iter().find(|t| t.label == label)
+    }
 
-        // for theorem in &self.theorems {
-        //     if theorem.name == name {
-        //         return Some(theorem);
-        //     }
-        // }
-
-        // for sub_header in &self.sub_headers {
-        //     let sub_header_res = sub_header.find_theorem_by_name(name);
-        //     if sub_header_res.is_some() {
-        //         return sub_header_res;
-        //     }
-        // }
-
-        // None
+    pub fn find_theorem_and_index_by_label(&self, label: &str) -> Option<(usize, &Theorem)> {
+        self.theorem_iter()
+            .enumerate()
+            .find(|(_, t)| t.label == label)
     }
 
     pub fn calc_theorem_path_by_label(&self, label: &str) -> Option<TheoremPath> {
@@ -1857,6 +1849,7 @@ impl serde::Serialize for ProofLine {
         state.serialize_field("stepName", &self.step_name)?;
         state.serialize_field("hypotheses", &self.hypotheses)?;
         state.serialize_field("reference", &self.reference)?;
+        state.serialize_field("referenceNumber", &self.reference_number)?;
         state.serialize_field("assertion", &self.assertion)?;
         state.serialize_field("indention", &self.indention)?;
         state.end()

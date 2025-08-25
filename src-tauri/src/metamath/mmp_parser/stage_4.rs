@@ -19,6 +19,7 @@ pub fn stage_4(
     if !mm_data.grammar_calculations_done {
         return Ok(MmpParserStage4::Fail(MmpParserStage4Fail {
             errors: Vec::new(),
+            reference_numbers: vec![None; stage_2.proof_lines.len()],
             preview_errors: vec![(false, false, false, false); stage_2.proof_lines.len()],
             preview_confirmations: vec![false; stage_2.proof_lines.len()],
             preview_confirmations_recursive: vec![false; stage_2.proof_lines.len()],
@@ -26,6 +27,7 @@ pub fn stage_4(
     }
 
     let mut errors: Vec<DetailedError> = Vec::new();
+    let mut reference_numbers = Vec::new();
     let mut preview_errors: Vec<(bool, bool, bool, bool)> = Vec::new();
     let mut preview_confirmations: Vec<bool> = Vec::new();
     let mut preview_confirmations_recursive: Vec<bool> = Vec::new();
@@ -142,12 +144,14 @@ pub fn stage_4(
         let mut theorem: Option<&Theorem> = None;
 
         if !proof_line.is_hypothesis && proof_line.step_ref != "" {
-            if let Some(theorem_ref) = mm_data
+            if let Some((theorem_i, theorem_ref)) = mm_data
                 .database_header
                 .theorem_locate_after_iter(stage_2.locate_after)
-                .find(|t| t.label == proof_line.step_ref)
+                .enumerate()
+                .find(|(_, t)| t.label == proof_line.step_ref)
             {
                 theorem = Some(theorem_ref);
+                reference_numbers.push(Some((theorem_i + 1) as u32));
             } else {
                 errors.push(DetailedError {
                     error_type: Error::MmpStepRefNotALabelError,
@@ -158,7 +162,10 @@ pub fn stage_4(
                 });
 
                 preview_error.2 = true;
+                reference_numbers.push(None);
             }
+        } else {
+            reference_numbers.push(None)
         }
 
         // Calculate parse_tree
@@ -316,6 +323,7 @@ pub fn stage_4(
         MmpParserStage4::Success(MmpParserStage4Success {
             distinct_variable_pairs,
             proof_lines_parsed,
+            reference_numbers,
             preview_errors,
             preview_confirmations,
             preview_confirmations_recursive,
@@ -323,6 +331,7 @@ pub fn stage_4(
     } else {
         MmpParserStage4::Fail(MmpParserStage4Fail {
             errors,
+            reference_numbers,
             preview_errors,
             preview_confirmations,
             preview_confirmations_recursive,

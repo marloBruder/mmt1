@@ -127,6 +127,7 @@ export interface ProofLine {
   stepName: string;
   hypotheses: string[];
   reference: string;
+  referenceNumber: number | null;
   indention: number;
   assertion: string;
 }

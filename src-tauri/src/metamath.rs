@@ -446,6 +446,7 @@ fn get_str_in_quotes(str: &str) -> Option<String> {
 #[derive(Debug)]
 struct ProofStep {
     pub label: String,
+    pub label_theorem_number: Option<u32>,
     pub hypotheses: Vec<String>,
     pub statement: String,
     // dispaly_step_number is -1, if the proof step was not saved,
@@ -575,6 +576,7 @@ pub fn calc_theorem_page_data(
                     step_name: (proof_lines.len() + 1).to_string(),
                     hypotheses: hypotheses_nums.iter().map(|&i| i.to_string()).collect(),
                     reference: step.label.clone(),
+                    reference_number: step.label_theorem_number,
                     indention: 1,
                     assertion: stack[stack.len() - 1].statement.clone(),
                 });
@@ -588,6 +590,7 @@ pub fn calc_theorem_page_data(
         if save {
             proof_steps.push(ProofStep {
                 label: String::new(),
+                label_theorem_number: None,
                 hypotheses: Vec::new(),
                 statement: stack[stack.len() - 1].statement.clone(),
                 display_step_number: stack.last().unwrap().display_step_number,
@@ -776,6 +779,7 @@ fn calc_proof_step_from_label(
     if let Some(hyp) = theorem.hypotheses.iter().find(|h| h.label == label) {
         return Ok(ProofStep {
             label: label.to_string(),
+            label_theorem_number: None,
             hypotheses: Vec::new(),
             statement: hyp.expression.clone(),
             display_step_number: -1,
@@ -789,20 +793,21 @@ fn calc_proof_step_from_label(
     {
         return Ok(ProofStep {
             label: label.to_string(),
+            label_theorem_number: None,
             hypotheses: Vec::new(),
             statement: floating_hypothesis.to_assertions_string(),
             display_step_number: -1,
         });
     }
 
-    if let Some(theorem) = metamath_data
+    if let Some((theorem_i, theorem)) = metamath_data
         .database_header
-        .theorem_iter()
-        .find(|t| t.label == label)
+        .find_theorem_and_index_by_label(label)
     {
         let label_theorem_hypotheses = calc_all_hypotheses_of_theorem(theorem, metamath_data);
         return Ok(ProofStep {
             label: label.to_string(),
+            label_theorem_number: Some((theorem_i + 1) as u32),
             hypotheses: label_theorem_hypotheses
                 .into_iter()
                 .map(|(hyp, _label)| hyp)
@@ -898,6 +903,7 @@ fn calc_proof_steps_compressed(
     for (hypothesis, label) in hypotheses {
         steps.push(ProofStep {
             label,
+            label_theorem_number: None,
             hypotheses: Vec::new(),
             statement: hypothesis,
             display_step_number: -1,
@@ -909,13 +915,15 @@ fn calc_proof_steps_compressed(
             "(" => {}
             ")" => break,
             label => {
-                let theorem_option = metamath_data.database_header.find_theorem_by_label(label);
-                //.ok_or(Error::NotFoundError)?;
-                if let Some(theorem) = theorem_option {
+                if let Some((theorem_i, theorem)) = metamath_data
+                    .database_header
+                    .find_theorem_and_index_by_label(label)
+                {
                     let label_theorem_hypotheses =
                         calc_all_hypotheses_of_theorem(theorem, metamath_data);
                     steps.push(ProofStep {
                         label: label.to_string(),
+                        label_theorem_number: Some((theorem_i + 1) as u32),
                         hypotheses: label_theorem_hypotheses
                             .into_iter()
                             .map(|(hyp, _label)| hyp)
@@ -930,6 +938,7 @@ fn calc_proof_steps_compressed(
 
                     steps.push(ProofStep {
                         label: label.to_string(),
+                        label_theorem_number: None,
                         hypotheses: Vec::new(),
                         statement: floating_hypothesis.to_assertions_string(),
                         display_step_number: -1,

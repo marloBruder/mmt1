@@ -184,6 +184,7 @@ pub enum MmpParserStage4 {
 pub struct MmpParserStage4Success {
     pub distinct_variable_pairs: HashSet<(String, String)>,
     pub proof_lines_parsed: Vec<ProofLineParsed>,
+    pub reference_numbers: Vec<Option<u32>>,
     pub preview_errors: Vec<(bool, bool, bool, bool)>,
     pub preview_confirmations: Vec<bool>,
     pub preview_confirmations_recursive: Vec<bool>,
@@ -197,6 +198,7 @@ pub struct ProofLineParsed {
 
 pub struct MmpParserStage4Fail {
     pub errors: Vec<DetailedError>,
+    pub reference_numbers: Vec<Option<u32>>,
     pub preview_errors: Vec<(bool, bool, bool, bool)>,
     pub preview_confirmations: Vec<bool>,
     pub preview_confirmations_recursive: Vec<bool>,

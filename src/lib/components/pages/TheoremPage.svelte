@@ -116,8 +116,8 @@
                 {/each}
               </td>
               <td class={"border border-gray-600 py-1 px-2 " + (pageData.previewErrors ? (pageData.previewErrors[i][2] ? " bg-red-400 " : "") : "") + (pageData.previewUnifyMarkers ? (pageData.previewUnifyMarkers[i][2] ? " bg-blue-400 " : "") : "")}>
-                {#if !isHypothesisName(proofLine.reference)}
-                  <TheoremLink label={proofLine.reference}></TheoremLink>
+                {#if !isHypothesisName(proofLine.reference) && proofLine.referenceNumber !== null}
+                  <TheoremLink label={proofLine.reference} theoremNumber={proofLine.referenceNumber}></TheoremLink>
                 {:else}
                   {proofLine.reference}
                 {/if}
