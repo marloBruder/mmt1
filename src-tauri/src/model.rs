@@ -250,6 +250,7 @@ pub struct ProofLine {
 pub struct TheoremListData {
     pub list: Vec<ListEntry>,
     pub page_amount: u32,
+    pub page_limits: Option<Vec<(u32, u32)>>,
 }
 
 pub enum ListEntry {
@@ -1818,7 +1819,7 @@ impl serde::Serialize for TheoremPageData {
     {
         use serde::ser::SerializeStruct;
 
-        let mut state = serializer.serialize_struct("TheoremPageData", 5)?;
+        let mut state = serializer.serialize_struct("TheoremPageData", 11)?;
         state.serialize_field("theorem", &self.theorem)?;
         state.serialize_field("theoremNumber", &self.theorem_number)?;
         state.serialize_field("proofLines", &self.proof_lines)?;
@@ -1845,7 +1846,7 @@ impl serde::Serialize for ProofLine {
     {
         use serde::ser::SerializeStruct;
 
-        let mut state = serializer.serialize_struct("ProofLine", 5)?;
+        let mut state = serializer.serialize_struct("ProofLine", 6)?;
         state.serialize_field("stepName", &self.step_name)?;
         state.serialize_field("hypotheses", &self.hypotheses)?;
         state.serialize_field("reference", &self.reference)?;
@@ -1863,9 +1864,10 @@ impl serde::Serialize for TheoremListData {
     {
         use serde::ser::SerializeStruct;
 
-        let mut state = serializer.serialize_struct("TheoremListData", 2)?;
+        let mut state = serializer.serialize_struct("TheoremListData", 3)?;
         state.serialize_field("list", &self.list)?;
         state.serialize_field("pageAmount", &self.page_amount)?;
+        state.serialize_field("pageLimits", &self.page_limits)?;
         state.end()
     }
 }

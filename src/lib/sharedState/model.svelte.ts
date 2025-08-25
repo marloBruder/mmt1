@@ -135,6 +135,7 @@ export interface ProofLine {
 export interface TheoremListData {
   list: ListEntry[];
   pageAmount: number;
+  pageLimits: [number, number][] | null;
 }
 
 export type ListEntry = HeaderListEntry | CommentListEntry | ConstantListEntry | VariableListEntry | FloatingHypothesisListEntry | TheoremListEntry;

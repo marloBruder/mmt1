@@ -6,6 +6,7 @@
   import MetamathExpression from "./MetamathExpression.svelte";
   import RoundButton from "./RoundButton.svelte";
   import TheoremLink from "./TheoremLink.svelte";
+  import TheoremNumber from "./TheoremNumber.svelte";
 
   let { theoremListData, previousPageClick, nextPageClick, pageButtonClick, pageNum }: { theoremListData: TheoremListData; previousPageClick: () => void; nextPageClick: () => void; pageButtonClick: (pageNum: number) => void; pageNum: number } = $props();
 
@@ -84,8 +85,24 @@
   <RoundButton onclick={previousPageClick} disabled={pageNum <= 0}>Previous Page</RoundButton>
   <RoundButton onclick={nextPageClick} disabled={pageNum >= theoremListData.pageAmount - 1}>Next Page</RoundButton>
 </div>
-<div>
-  {#each { length: theoremListData.pageAmount } as _, i}
-    <button onclick={() => pageButtonClick(i)} class="px-2">{i + 1}</button>
-  {/each}
+<div class="text-justify">
+  {#if theoremListData.pageLimits !== null}
+    {#each theoremListData.pageLimits as [pageLimitStart, pageLimitEnd], i}
+      <span class="text-nowrap">
+        <button class="underline pl-2" onclick={() => pageButtonClick(i)}>{i + 1}</button>
+        <TheoremNumber theoremNumber={pageLimitStart}></TheoremNumber>
+        <span class="text-xs">-</span>
+        <TheoremNumber theoremNumber={pageLimitEnd}></TheoremNumber>
+      </span>
+    {/each}
+  {:else}
+    {#each { length: theoremListData.pageAmount } as _, i}
+      <span class="text-nowrap">
+        <button class="underline pl-2" onclick={() => pageButtonClick(i)}>{i + 1}</button>
+        <TheoremNumber theoremNumber={i * 100 + 1}></TheoremNumber>
+        <span class="text-xs">-</span>
+        <TheoremNumber theoremNumber={(i + 1) * 100}></TheoremNumber>
+      </span>
+    {/each}
+  {/if}
 </div>

@@ -199,5 +199,9 @@ pub async fn get_theorem_list_local(
     let page_amount =
         ((((metamath_data.optimized_data.theorem_amount as i32) - 1) / 100) + 1) as u32;
 
-    Ok(TheoremListData { list, page_amount })
+    Ok(TheoremListData {
+        list,
+        page_amount,
+        page_limits: None,
+    })
 }
