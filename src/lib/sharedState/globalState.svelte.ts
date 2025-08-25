@@ -8,6 +8,7 @@ class GlobalState {
 class DatabaseState {
   databaseId: number | null = $state(null);
   grammarCalculationsProgress: number = $state(0);
+  theoremAmount: number = $state(0);
 }
 
 let globalState = new GlobalState();

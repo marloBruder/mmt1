@@ -74,7 +74,7 @@
   let onConfirmClick = async () => {
     if (!confirmClicked) {
       confirmClicked = true;
-      let [databaseId, topHeaderRep, htmlReps, colorInformation]: [number, HeaderRepresentation, HtmlRepresentation[], ColorInformation[]] = await invoke("confirm_open_metamath_database");
+      let [databaseId, theoremAmount, topHeaderRep, htmlReps, colorInformation]: [number, number, HeaderRepresentation, HtmlRepresentation[], ColorInformation[]] = await invoke("confirm_open_metamath_database");
       explorerData.resetExplorerWithFirstHeader(topHeaderRep);
       htmlData.loadLocal(htmlReps, colorInformation);
       setEditorSyntaxHighlighting(colorInformation);
@@ -84,6 +84,7 @@
       globalState.databaseBeingOpened = "";
       globalState.databaseState.grammarCalculationsProgress = lastGrammarCalculationsProgress;
       globalState.databaseState.databaseId = databaseId;
+      globalState.databaseState.theoremAmount = theoremAmount;
     }
   };
 

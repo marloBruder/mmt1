@@ -63,6 +63,7 @@ pub async fn confirm_open_metamath_database(
 ) -> Result<
     (
         u32,
+        u32,
         HeaderRepresentation,
         Vec<HtmlRepresentation>,
         Vec<ColorInformation>,
@@ -78,6 +79,8 @@ pub async fn confirm_open_metamath_database(
 
     let database_id = metamath_data.database_id;
 
+    let theorem_amount = metamath_data.optimized_data.theorem_amount;
+
     let header_rep = metamath_data.database_header.to_representation();
 
     let html_reps = metamath_data.html_representations.clone();
@@ -92,7 +95,13 @@ pub async fn confirm_open_metamath_database(
         .or(Err(Error::InternalLogicError))? = true;
     app_state.stop_grammar_calculations = app_state.stop_temp_grammar_calculations.clone();
 
-    Ok((database_id, header_rep, html_reps, color_information))
+    Ok((
+        database_id,
+        theorem_amount,
+        header_rep,
+        html_reps,
+        color_information,
+    ))
 }
 
 #[tauri::command]

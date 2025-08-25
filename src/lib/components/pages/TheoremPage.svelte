@@ -2,6 +2,7 @@
   import type { TheoremPageData } from "$lib/sharedState/model.svelte";
   import MetamathExpression from "../util/MetamathExpression.svelte";
   import TheoremLink from "../util/TheoremLink.svelte";
+  import TheoremNumber from "../util/TheoremNumber.svelte";
 
   let { pageData }: { pageData: TheoremPageData } = $props();
 
@@ -45,9 +46,7 @@
       {/if}
       {theorem.label}
       {#if pageData.theoremNumber != 0}
-        <small class="text-sm">
-          {pageData.theoremNumber}
-        </small>
+        <TheoremNumber theoremNumber={pageData.theoremNumber} normalTextSize></TheoremNumber>
       {/if}
     </h1>
   </div>
@@ -147,7 +146,7 @@
       {#if axiomDependencies.length === 0}
         (None)
       {/if}
-      <div>
+      <div class="text-justify">
         {#each axiomDependencies as [axiomDependency, dependencyNumber]}
           <span class="mr-2">
             <TheoremLink label={axiomDependency} theoremNumber={dependencyNumber}></TheoremLink>
@@ -158,7 +157,7 @@
       {#if definitionDependencies.length === 0}
         (None)
       {/if}
-      <div>
+      <div class="text-justify">
         {#each definitionDependencies as [definitionDependency, dependencyNumber]}
           <span class="mr-2">
             <TheoremLink label={definitionDependency} theoremNumber={dependencyNumber}></TheoremLink>
@@ -170,7 +169,7 @@
     {#if pageData.references.length === 0}
       (None)
     {/if}
-    <div>
+    <div class="text-justify">
       {#each pageData.references as [reference, referenceNumber]}
         <span class="mr-2">
           <TheoremLink label={reference} theoremNumber={referenceNumber}></TheoremLink>

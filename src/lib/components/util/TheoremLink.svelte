@@ -1,6 +1,7 @@
 <script lang="ts">
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { TheoremTab } from "../tabs/TheoremTabComponent.svelte";
+  import TheoremNumber from "./TheoremNumber.svelte";
 
   let { label, text, disabled = false, theoremNumber }: { label: string; text?: string; disabled?: boolean; theoremNumber?: number } = $props();
 
@@ -23,7 +24,7 @@
   };
 </script>
 
-<button class={disabled ? "text-gray-400" : ""} {onclick} {onmousedown} {onmouseup} {disabled}>
+<button class={(disabled ? "text-gray-400 " : "") + " underline"} {onclick} {onmousedown} {onmouseup} {disabled}>
   {#if text}
     {text}
   {:else}
@@ -31,7 +32,5 @@
   {/if}
 </button>
 {#if theoremNumber !== undefined}
-  <small class="text-xs">
-    {theoremNumber}
-  </small>
+  <TheoremNumber {theoremNumber}></TheoremNumber>
 {/if}

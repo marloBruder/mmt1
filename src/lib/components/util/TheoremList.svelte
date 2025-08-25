@@ -64,10 +64,7 @@
       </div>
     {:else if theoremListEntry.discriminator === "TheoremListEntry"}
       <div>
-        <TheoremLink label={theoremListEntry.label}></TheoremLink>
-        <small>
-          {theoremListEntry.theoremNumber}
-        </small>
+        <TheoremLink label={theoremListEntry.label} theoremNumber={theoremListEntry.theoremNumber}></TheoremLink>
       </div>
       <div class="border-gray-500 border-y">
         {theoremListEntry.description}
