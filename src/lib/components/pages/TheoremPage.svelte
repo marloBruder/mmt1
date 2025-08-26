@@ -89,10 +89,10 @@
     <p>{theorem.description}</p>
   </div>
   {#if theorem.proof != null}
-    <div class="pb-4">
+    <!-- <div class="pb-4">
       <h2>Raw Proof:</h2>
       <p>{theorem.proof}</p>
-    </div>
+    </div> -->
     <div class="pb-4">
       <h2>Proof</h2>
       <table class="mx-auto border text-left border-collapse">

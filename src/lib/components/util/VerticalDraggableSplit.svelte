@@ -2,7 +2,7 @@
   import { createInstanceId } from "$lib/sharedState/idGenerator.svelte";
   import { onDestroy, onMount, type Snippet } from "svelte";
 
-  let { first, second }: { first: Snippet; second: Snippet } = $props();
+  let { first, second, setPosition = 320, onDrag = () => {}, onCollapse = () => {} }: { first: Snippet; second: Snippet; setPosition?: number; onDrag?: () => void; onCollapse?: () => void } = $props();
 
   let position = $state(320);
   let containerId = "container-id-" + createInstanceId();
@@ -17,7 +17,15 @@
     let containerElement = document.getElementById(containerId)!;
 
     let newPosition = e.clientX - containerElement.offsetLeft;
-    position = Math.max(200, Math.min(containerElement.clientWidth - 200, newPosition));
+    let newPositionRightCapped = Math.min(containerElement.clientWidth - 200, newPosition);
+
+    if (newPositionRightCapped < 130) {
+      position = 60;
+      onCollapse();
+    } else {
+      position = Math.max(200, newPositionRightCapped);
+      onDrag();
+    }
   };
 
   let handleWindowResize = () => {
@@ -88,6 +96,10 @@
     secondElement.style.width = Math.max(containerElement.clientWidth - position, 0) + "px";
 
     buttonContainerElement.style.left = position - 2 + "px";
+  });
+
+  $effect(() => {
+    position = setPosition;
   });
 </script>
 

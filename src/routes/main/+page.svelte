@@ -4,12 +4,35 @@
   import HorizontalSplit from "$lib/components/util/HorizontalSplit.svelte";
   import TabComponent from "$lib/components/tabs/TabComponent.svelte";
   import VerticalDraggableSplit from "$lib/components/util/VerticalDraggableSplit.svelte";
+
+  let setVerticalDraggableSplitPosition = $state(320);
+  let setNavSidebarCollapsed = $state(false);
+
+  let onVerticalDraggableSplitDrag = () => {
+    setNavSidebarCollapsed = true;
+    setNavSidebarCollapsed = false;
+  };
+
+  let onVerticalDraggableSplitCollapse = () => {
+    setNavSidebarCollapsed = false;
+    setNavSidebarCollapsed = true;
+  };
+
+  let onNavSidebarCollapse = () => {
+    setVerticalDraggableSplitPosition = 0;
+    setVerticalDraggableSplitPosition = 60;
+  };
+
+  let onNavSidebarUncollapse = () => {
+    setVerticalDraggableSplitPosition = 0;
+    setVerticalDraggableSplitPosition = 320;
+  };
 </script>
 
-<VerticalDraggableSplit>
+<VerticalDraggableSplit onDrag={onVerticalDraggableSplitDrag} onCollapse={onVerticalDraggableSplitCollapse} setPosition={setVerticalDraggableSplitPosition}>
   {#snippet first()}
     <div class="custom-height-minus-margin custom-width-minus-margin overflow-hidden custom-bg-color my-2 ml-2 mr-1 rounded-lg">
-      <NavSidebar></NavSidebar>
+      <NavSidebar onCollapse={onNavSidebarCollapse} onUncollapse={onNavSidebarUncollapse} setCollapsed={setNavSidebarCollapsed}></NavSidebar>
     </div>
   {/snippet}
   {#snippet second()}
