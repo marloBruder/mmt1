@@ -1,5 +1,6 @@
 use std::{collections::HashSet, ops::Deref};
 
+pub mod description_parser;
 pub mod earley_parser;
 pub mod earley_parser_optimized;
 pub mod header_iterators;

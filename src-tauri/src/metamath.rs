@@ -477,24 +477,23 @@ pub fn calc_theorem_page_data(
 
     let theorem_number = (theorem_i + 1) as u32;
 
-    let empty_vec: Vec<usize> = Vec::new();
-
-    let (axiom_dependency_indexes, reference_indexes) = metamath_data
+    let optimized_theorem_data = metamath_data
         .optimized_data
         .theorem_data
         .get(label)
-        .map(|theorem_data| (&theorem_data.axiom_dependencies, &theorem_data.references))
-        .unwrap_or((&empty_vec, &empty_vec));
+        .ok_or(Error::InternalLogicError)?;
 
     let axiom_dependencies = metamath_data
         .database_header
-        .theorem_i_vec_to_theorem_label_vec(axiom_dependency_indexes)
+        .theorem_i_vec_to_theorem_label_vec(&optimized_theorem_data.axiom_dependencies)
         .map_err(|_| Error::InternalLogicError)?;
 
     let references = metamath_data
         .database_header
-        .theorem_i_vec_to_theorem_label_vec(reference_indexes)
+        .theorem_i_vec_to_theorem_label_vec(&optimized_theorem_data.references)
         .map_err(|_| Error::InternalLogicError)?;
+
+    let description_parsed = optimized_theorem_data.description_parsed.clone();
 
     if theorem.proof == None {
         return Ok(TheoremPageData {
@@ -509,6 +508,7 @@ pub fn calc_theorem_page_data(
             next_theorem_label,
             axiom_dependencies,
             references,
+            description_parsed,
         });
     }
     let mut proof_lines = Vec::new();
@@ -620,6 +620,7 @@ pub fn calc_theorem_page_data(
         next_theorem_label,
         axiom_dependencies,
         references,
+        description_parsed,
     })
 }
 

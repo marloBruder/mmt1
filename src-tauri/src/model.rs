@@ -12,7 +12,7 @@ use crate::{
         mmp_parser::LocateAfterRef,
     },
     util::{
-        self,
+        self, description_parser,
         earley_parser_optimized::{
             self, EarleyOptimizedData, Grammar, GrammarRule, InputSymbol, Symbol, WorkVariable,
         },
@@ -57,6 +57,7 @@ pub struct OptimizedTheoremData {
     pub distinct_variable_pairs: HashSet<(String, String)>,
     pub axiom_dependencies: Vec<usize>,
     pub references: Vec<usize>,
+    pub description_parsed: Vec<ParsedDescriptionSegment>,
 }
 
 #[derive(Debug)]
@@ -78,6 +79,18 @@ pub enum ParseTreeNode {
         sub_nodes: Vec<ParseTreeNode>,
     },
     WorkVariable(WorkVariable),
+}
+
+#[derive(Debug, Clone)]
+pub enum ParsedDescriptionSegment {
+    Text(String),
+    MathMode(String),
+    Label(String, Option<u32>),
+    Link(String),
+    Italic(String),
+    Subscript(String),
+    Html(String),
+    HtmlCharacterRef(String),
 }
 
 #[derive(Debug, Default)]
@@ -127,7 +140,7 @@ pub struct FloatingHypothesis {
     pub variable: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct Theorem {
     pub label: String,
     pub description: String,
@@ -236,6 +249,7 @@ pub struct TheoremPageData {
     pub next_theorem_label: Option<String>,
     pub axiom_dependencies: Vec<(String, u32)>,
     pub references: Vec<(String, u32)>,
+    pub description_parsed: Vec<ParsedDescriptionSegment>,
 }
 
 pub struct ProofLine {
@@ -357,19 +371,21 @@ impl MetamathData {
 
     pub fn calc_optimized_theorem_data(&mut self) {
         for (i, theorem) in self.database_header.theorem_iter().enumerate() {
-            if theorem.assertion.starts_with("|- ") {
-                let optimized_theorem_data = OptimizedTheoremData {
-                    distinct_variable_pairs: util::calc_distinct_variable_pairs(&theorem.distincts),
-                    parse_trees: None,
-                    axiom_dependencies: theorem
-                        .calc_axiom_dependencies_and_add_references(&mut self.optimized_data, i),
-                    references: Vec::new(),
-                };
+            let optimized_theorem_data = OptimizedTheoremData {
+                distinct_variable_pairs: util::calc_distinct_variable_pairs(&theorem.distincts),
+                parse_trees: None,
+                axiom_dependencies: theorem
+                    .calc_axiom_dependencies_and_add_references(&mut self.optimized_data, i),
+                references: Vec::new(),
+                description_parsed: description_parser::parse_description(
+                    &theorem.description,
+                    &self.database_header,
+                ),
+            };
 
-                self.optimized_data
-                    .theorem_data
-                    .insert(theorem.label.to_string(), optimized_theorem_data);
-            }
+            self.optimized_data
+                .theorem_data
+                .insert(theorem.label.to_string(), optimized_theorem_data);
         }
     }
 
@@ -1288,6 +1304,21 @@ impl Grammar {
     }
 }
 
+impl ParsedDescriptionSegment {
+    pub fn push(&mut self, char: char) {
+        match self {
+            Self::Text(string) => string.push(char),
+            Self::MathMode(string) => string.push(char),
+            Self::Label(string, _) => string.push(char),
+            Self::Link(string) => string.push(char),
+            Self::Italic(string) => string.push(char),
+            Self::Subscript(string) => string.push(char),
+            Self::Html(string) => string.push(char),
+            Self::HtmlCharacterRef(string) => string.push(char),
+        }
+    }
+}
+
 impl FloatingHypothesis {
     pub fn to_assertions_string(&self) -> String {
         format!("{} {}", self.typecode, self.variable)
@@ -1671,6 +1702,85 @@ impl Default for TheoremPath {
     }
 }
 
+impl serde::Serialize for Theorem {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("Theorem", 6)?;
+        state.serialize_field("label", &self.label)?;
+        state.serialize_field("description", &self.description)?;
+        state.serialize_field("distincts", &self.distincts)?;
+        state.serialize_field("hypotheses", &self.hypotheses)?;
+        state.serialize_field("assertion", &self.assertion)?;
+        state.serialize_field("proof", &self.proof)?;
+        state.end()
+    }
+}
+
+impl serde::Serialize for ParsedDescriptionSegment {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        match self {
+            Self::Text(text) => {
+                let mut state = serializer.serialize_struct("Text", 1)?;
+                state.serialize_field("text", text)?;
+                state.serialize_field("discriminator", "Text")?;
+                state.end()
+            }
+            Self::MathMode(expression) => {
+                let mut state = serializer.serialize_struct("MathMode", 1)?;
+                state.serialize_field("expression", expression)?;
+                state.serialize_field("discriminator", "MathMode")?;
+                state.end()
+            }
+            Self::Label(label, theorem_number) => {
+                let mut state = serializer.serialize_struct("Label", 1)?;
+                state.serialize_field("label", label)?;
+                state.serialize_field("theoremNumber", theorem_number)?;
+                state.serialize_field("discriminator", "Label")?;
+                state.end()
+            }
+            Self::Link(url) => {
+                let mut state = serializer.serialize_struct("Link", 1)?;
+                state.serialize_field("url", url)?;
+                state.serialize_field("discriminator", "Link")?;
+                state.end()
+            }
+            Self::Italic(word) => {
+                let mut state = serializer.serialize_struct("Italic", 1)?;
+                state.serialize_field("word", word)?;
+                state.serialize_field("discriminator", "Italic")?;
+                state.end()
+            }
+            Self::Subscript(subscript) => {
+                let mut state = serializer.serialize_struct("Subscript", 1)?;
+                state.serialize_field("subscript", subscript)?;
+                state.serialize_field("discriminator", "Subscript")?;
+                state.end()
+            }
+            Self::Html(html) => {
+                let mut state = serializer.serialize_struct("Html", 1)?;
+                state.serialize_field("html", html)?;
+                state.serialize_field("discriminator", "Html")?;
+                state.end()
+            }
+            Self::HtmlCharacterRef(char_ref) => {
+                let mut state = serializer.serialize_struct("HtmlCharacterRef", 1)?;
+                state.serialize_field("charRef", char_ref)?;
+                state.serialize_field("discriminator", "HtmlCharacterRef")?;
+                state.end()
+            }
+        }
+    }
+}
+
 impl serde::Serialize for HeaderRepresentation {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -1834,6 +1944,7 @@ impl serde::Serialize for TheoremPageData {
         state.serialize_field("nextTheoremLabel", &self.next_theorem_label)?;
         state.serialize_field("axiomDependencies", &self.axiom_dependencies)?;
         state.serialize_field("references", &self.references)?;
+        state.serialize_field("descriptionParsed", &self.description_parsed)?;
         state.serialize_field("discriminator", "TheoremPageData")?;
         state.end()
     }

@@ -8,7 +8,8 @@ use crate::{
         FloatingHypothesisPageData, HeaderPageData, Hypothesis, MetamathData, ParseTree,
         ParseTreeNode, SymbolNumberMapping, Theorem, TheoremPageData, VariablesPageData,
     },
-    util, AppState, Error,
+    util::{self, description_parser},
+    AppState, Error,
 };
 use serde::{ser::SerializeStruct, Serialize};
 use tauri::async_runtime::Mutex;
@@ -137,6 +138,7 @@ pub async fn on_edit(
             MmpParserStage4::Fail(fail) => {
                 return Ok(OnEditData {
                     page_data: calc_theorem_page_data(
+                        mm_data,
                         &stage_2_success,
                         stage_3_theorem,
                         fail.reference_numbers,
@@ -154,6 +156,7 @@ pub async fn on_edit(
 
     Ok(OnEditData {
         page_data: calc_theorem_page_data(
+            mm_data,
             &stage_2_success,
             stage_3_theorem,
             stage_4_success.reference_numbers,
@@ -192,6 +195,7 @@ pub async fn on_edit(
 }
 
 pub fn calc_theorem_page_data(
+    mm_data: &MetamathData,
     stage_2_success: &MmpParserStage2Success,
     stage_3_theorem: MmpParserStage3Theorem,
     reference_numbers: Vec<Option<u32>>,
@@ -235,14 +239,20 @@ pub fn calc_theorem_page_data(
         preview_unify_markers.push(unify_markers);
     }
 
+    let description = stage_2_success
+        .comments
+        .first()
+        .map(|s| s.to_string())
+        .unwrap_or(String::new());
+
     Some(DatabaseElementPageData::Theorem(TheoremPageData {
+        description_parsed: description_parser::parse_description(
+            &description,
+            &mm_data.database_header,
+        ),
         theorem: Theorem {
             label: stage_3_theorem.label.to_string(),
-            description: stage_2_success
-                .comments
-                .first()
-                .map(|s| s.to_string())
-                .unwrap_or(String::new()),
+            description,
             distincts: stage_2_success
                 .distinct_vars
                 .iter()
@@ -1221,6 +1231,7 @@ fn get_theorem_page_data(
         next_theorem_label: None,
         axiom_dependencies: Vec::new(),
         references: Vec::new(),
+        description_parsed: Vec::new(),
     }))
 }
 
