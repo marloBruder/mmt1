@@ -85,7 +85,7 @@
       {/each}
     </div>
   {/if}
-  <div class="pb-4 px-8 text-left">
+  <div class="pb-4 px-8">
     <h2 class="font-bold">Description:</h2>
     <DescriptionParsed descriptionParsed={pageData.descriptionParsed}></DescriptionParsed>
   </div>

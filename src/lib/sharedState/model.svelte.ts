@@ -218,7 +218,7 @@ export interface TheoremListEntry {
   theoremNumber: number;
   hypotheses: string[];
   assertion: string;
-  description: string;
+  descriptionParsed: ParsedDescriptionSegment[];
   discriminator: "TheoremListEntry";
 }
 

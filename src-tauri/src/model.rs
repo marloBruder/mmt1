@@ -305,7 +305,7 @@ pub struct TheoremListEntry {
     pub theorem_number: u32,
     pub hypotheses: Vec<String>,
     pub assertion: String,
-    pub description: String,
+    pub description_parsed: Vec<ParsedDescriptionSegment>,
 }
 
 impl MetamathData {
@@ -1326,7 +1326,11 @@ impl FloatingHypothesis {
 }
 
 impl Theorem {
-    pub fn to_theorem_list_entry(&self, theorem_number: u32) -> TheoremListEntry {
+    pub fn to_theorem_list_entry(
+        &self,
+        theorem_number: u32,
+        optimized_data: &OptimizedMetamathData,
+    ) -> TheoremListEntry {
         TheoremListEntry {
             label: self.label.clone(),
             theorem_number,
@@ -1336,7 +1340,11 @@ impl Theorem {
                 .map(|hypothesis| hypothesis.expression.clone())
                 .collect(),
             assertion: self.assertion.clone(),
-            description: self.description.clone(),
+            description_parsed: optimized_data
+                .theorem_data
+                .get(&self.label)
+                .map(|t_d| t_d.description_parsed.clone())
+                .unwrap_or(Vec::new()),
         }
     }
 
@@ -2031,7 +2039,8 @@ impl serde::Serialize for ListEntry {
                 state.serialize_field("theoremNumber", &theorem_list_entry.theorem_number)?;
                 state.serialize_field("hypotheses", &theorem_list_entry.hypotheses)?;
                 state.serialize_field("assertion", &theorem_list_entry.assertion)?;
-                state.serialize_field("description", &theorem_list_entry.description)?;
+                state
+                    .serialize_field("descriptionParsed", &theorem_list_entry.description_parsed)?;
                 state.serialize_field("discriminator", "TheoremListEntry")?;
                 state.end()
             }

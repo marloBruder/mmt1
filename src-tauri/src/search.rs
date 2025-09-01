@@ -47,9 +47,10 @@ pub async fn search_theorems(
             if search_parameters.page * 100 <= theorem_amount as u32
                 && (theorem_amount as u32) < (search_parameters.page + 1) * 100
             {
-                list.push(ListEntry::Theorem(
-                    theorem.to_theorem_list_entry((theorem_number + 1) as u32),
-                ));
+                list.push(ListEntry::Theorem(theorem.to_theorem_list_entry(
+                    (theorem_number + 1) as u32,
+                    &metamath_data.optimized_data,
+                )));
             }
 
             theorem_amount += 1;

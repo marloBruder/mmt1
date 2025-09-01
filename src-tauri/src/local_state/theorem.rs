@@ -185,9 +185,10 @@ pub async fn get_theorem_list_local(
                     }
                     Statement::TheoremStatement(theorem) => {
                         if page * 100 <= theorem_amount {
-                            list.push(ListEntry::Theorem(
-                                theorem.to_theorem_list_entry((theorem_amount + 1) as u32),
-                            ));
+                            list.push(ListEntry::Theorem(theorem.to_theorem_list_entry(
+                                (theorem_amount + 1) as u32,
+                                &metamath_data.optimized_data,
+                            )));
                         }
                         theorem_amount += 1;
                     }

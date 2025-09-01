@@ -3,6 +3,7 @@
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { CommentTab } from "../tabs/CommentTabComponent.svelte";
   import { FloatingHypothesisTab } from "../tabs/FloatingHypothesisTabComponent.svelte";
+  import DescriptionParsed from "./DescriptionParsed.svelte";
   import MetamathExpression from "./MetamathExpression.svelte";
   import RoundButton from "./RoundButton.svelte";
   import TheoremLink from "./TheoremLink.svelte";
@@ -67,8 +68,8 @@
       <div>
         <TheoremLink label={theoremListEntry.label} theoremNumber={theoremListEntry.theoremNumber}></TheoremLink>
       </div>
-      <div class="border-gray-500 border-y">
-        {theoremListEntry.description}
+      <div class="border-gray-500 border-y px-4">
+        <DescriptionParsed descriptionParsed={theoremListEntry.descriptionParsed}></DescriptionParsed>
       </div>
       {#each theoremListEntry.hypotheses as hypothesis}
         <div>

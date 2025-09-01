@@ -11,7 +11,7 @@
   };
 </script>
 
-<div>
+<div class="text-left">
   {#each descriptionParsed as descriptionParsedSegement}
     {#if descriptionParsedSegement.discriminator == "DescriptionText"}
       {#each descriptionParsedSegement.text.split("\n") as paragraph, i}
