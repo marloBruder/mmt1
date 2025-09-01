@@ -369,7 +369,9 @@ impl MetamathData {
         }
     }
 
-    pub fn calc_optimized_theorem_data(&mut self) {
+    pub fn calc_optimized_theorem_data(&mut self, app: Option<&AppHandle>) {
+        let mut last_reported_progress = 0;
+
         for (i, theorem) in self.database_header.theorem_iter().enumerate() {
             let optimized_theorem_data = OptimizedTheoremData {
                 distinct_variable_pairs: util::calc_distinct_variable_pairs(&theorem.distincts),
@@ -386,6 +388,17 @@ impl MetamathData {
             self.optimized_data
                 .theorem_data
                 .insert(theorem.label.to_string(), optimized_theorem_data);
+
+            if let Some(app_handle) = app {
+                let progress = (i as u32 * 100) / self.optimized_data.theorem_amount;
+
+                if progress > last_reported_progress {
+                    app_handle
+                        .emit("calc-optimized-theorem-data-progress", progress)
+                        .ok();
+                    last_reported_progress = progress;
+                }
+            }
         }
     }
 

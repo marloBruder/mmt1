@@ -23,6 +23,7 @@
   let invalidHtmlPage: number = $state(0);
 
   let lastMmParserProgress = $state(0);
+  let lastCalcOptimizedTheoremDataProgress = $state(0);
   let lastGrammarCalculationsProgress = $state(0);
 
   let unlistenFns: UnlistenFn[] = [];
@@ -43,6 +44,14 @@
         let progress = e.payload as number;
         if (progress > lastMmParserProgress) {
           lastMmParserProgress = progress;
+        }
+      })
+    );
+    unlistenFns.push(
+      await listen("calc-optimized-theorem-data-progress", (e) => {
+        let progress = e.payload as number;
+        if (progress > lastCalcOptimizedTheoremDataProgress) {
+          lastCalcOptimizedTheoremDataProgress = progress;
         }
       })
     );
@@ -112,6 +121,14 @@
       <div class="my-4">
         Parsing database:
         <ProgressBar progress={lastMmParserProgress}></ProgressBar>
+      </div>
+      <div class="my-4">
+        Calculating relevant theorem data:
+        <div class="flex flex-col items-center">
+          <div>
+            <ProgressBar progress={lastCalcOptimizedTheoremDataProgress}></ProgressBar>
+          </div>
+        </div>
       </div>
       {#if invalidHtml.length != 0}
         <div class="p-2 mx-12 border rounded-lg">

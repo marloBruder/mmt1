@@ -435,7 +435,13 @@ impl MmParser {
             alt_variable_colors: self.alt_variable_colors,
         };
 
-        metamath_data.calc_optimized_theorem_data();
+        metamath_data.calc_optimized_theorem_data(self.app.as_ref());
+
+        if let Some(ref app_handle) = self.app {
+            app_handle
+                .emit("calc-optimized-theorem-data-progress", 100)
+                .ok();
+        }
 
         Ok((metamath_data, self.invalid_html))
     }
