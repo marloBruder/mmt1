@@ -6,7 +6,7 @@
     component = SearchTabComponent;
 
     #searchParameters: SearchParameters = $state({ page: 0, label: "" });
-    #searchResult: TheoremListData = $state({ list: [], pageAmount: 0 });
+    #searchResult: TheoremListData = $state({ list: [], pageAmount: 0, pageLimits: null });
 
     constructor(searchParameters: SearchParameters) {
       super();
@@ -18,7 +18,7 @@
     }
 
     unloadData(): void {
-      this.#searchResult = { list: [], pageAmount: 0 };
+      this.#searchResult = { list: [], pageAmount: 0, pageLimits: null };
     }
 
     name(): string {

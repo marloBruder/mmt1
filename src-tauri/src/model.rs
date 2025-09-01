@@ -1731,50 +1731,50 @@ impl serde::Serialize for ParsedDescriptionSegment {
             Self::Text(text) => {
                 let mut state = serializer.serialize_struct("Text", 1)?;
                 state.serialize_field("text", text)?;
-                state.serialize_field("discriminator", "Text")?;
+                state.serialize_field("discriminator", "DescriptionText")?;
                 state.end()
             }
             Self::MathMode(expression) => {
                 let mut state = serializer.serialize_struct("MathMode", 1)?;
                 state.serialize_field("expression", expression)?;
-                state.serialize_field("discriminator", "MathMode")?;
+                state.serialize_field("discriminator", "DescriptionMathMode")?;
                 state.end()
             }
             Self::Label(label, theorem_number) => {
                 let mut state = serializer.serialize_struct("Label", 1)?;
                 state.serialize_field("label", label)?;
                 state.serialize_field("theoremNumber", theorem_number)?;
-                state.serialize_field("discriminator", "Label")?;
+                state.serialize_field("discriminator", "DescriptionLabel")?;
                 state.end()
             }
             Self::Link(url) => {
                 let mut state = serializer.serialize_struct("Link", 1)?;
                 state.serialize_field("url", url)?;
-                state.serialize_field("discriminator", "Link")?;
+                state.serialize_field("discriminator", "DescriptionLink")?;
                 state.end()
             }
-            Self::Italic(word) => {
+            Self::Italic(italic) => {
                 let mut state = serializer.serialize_struct("Italic", 1)?;
-                state.serialize_field("word", word)?;
-                state.serialize_field("discriminator", "Italic")?;
+                state.serialize_field("italic", italic)?;
+                state.serialize_field("discriminator", "DescriptionItalic")?;
                 state.end()
             }
             Self::Subscript(subscript) => {
                 let mut state = serializer.serialize_struct("Subscript", 1)?;
                 state.serialize_field("subscript", subscript)?;
-                state.serialize_field("discriminator", "Subscript")?;
+                state.serialize_field("discriminator", "DescriptionSubscript")?;
                 state.end()
             }
             Self::Html(html) => {
                 let mut state = serializer.serialize_struct("Html", 1)?;
                 state.serialize_field("html", html)?;
-                state.serialize_field("discriminator", "Html")?;
+                state.serialize_field("discriminator", "DescriptionHtml")?;
                 state.end()
             }
             Self::HtmlCharacterRef(char_ref) => {
                 let mut state = serializer.serialize_struct("HtmlCharacterRef", 1)?;
                 state.serialize_field("charRef", char_ref)?;
-                state.serialize_field("discriminator", "HtmlCharacterRef")?;
+                state.serialize_field("discriminator", "DescriptionHtmlCharacterRef")?;
                 state.end()
             }
         }

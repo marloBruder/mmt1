@@ -58,7 +58,7 @@ pub fn parse_description(
                 } else {
                     let theorem_number = database_header
                         .find_theorem_and_index_by_label(&label)
-                        .map(|(i, _)| i as u32);
+                        .map(|(i, _)| (i + 1) as u32);
                     ParsedDescriptionSegment::Label(label, theorem_number)
                 }
             }
@@ -240,6 +240,9 @@ impl<'a> Iterator for ParsedCommentCharIterator<'a> {
                 if next_char.is_ascii_whitespace() {
                     self.last_start = Some(ParsedDescriptionChar::NormalModeStart);
                     return Some(ParsedDescriptionChar::NormalModeStart);
+                } else if next_char == '~' && next_plus_1_char.is_some_and(|c| c == '~') {
+                    self.next_char_i += 2;
+                    return Some(ParsedDescriptionChar::Character('~'));
                 } else {
                     self.next_char_i += 1;
                     return Some(ParsedDescriptionChar::Character(next_char));

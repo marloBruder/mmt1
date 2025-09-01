@@ -6,7 +6,7 @@
     component = TheoremExplorerTabComponent;
 
     #page: number = $state(0);
-    #theoremListData: TheoremListData = $state({ list: [], pageAmount: 0 });
+    #theoremListData: TheoremListData = $state({ list: [], pageAmount: 0, pageLimits: null });
 
     constructor(page: number) {
       super();
@@ -18,7 +18,7 @@
     }
 
     unloadData(): void {
-      this.#theoremListData = { list: [], pageAmount: 0 };
+      this.#theoremListData = { list: [], pageAmount: 0, pageLimits: null };
     }
 
     name(): string {

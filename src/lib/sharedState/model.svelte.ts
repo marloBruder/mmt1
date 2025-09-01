@@ -120,6 +120,7 @@ export interface TheoremPageData {
   nextTheoremLabel: string | null;
   axiomDependencies: [string, number][];
   references: [string, number][];
+  descriptionParsed: ParsedDescriptionSegment[];
   discriminator: "TheoremPageData";
 }
 
@@ -130,6 +131,49 @@ export interface ProofLine {
   referenceNumber: number | null;
   indention: number;
   assertion: string;
+}
+
+export type ParsedDescriptionSegment = DescriptionText | DescriptionMathMode | DescriptionLabel | DescriptionLink | DescriptionItalic | DescriptionSubscript | DescriptionHtml | DescriptionHtmlCharacterRef;
+
+export interface DescriptionText {
+  text: string;
+  discriminator: "DescriptionText";
+}
+
+export interface DescriptionMathMode {
+  expression: string;
+  discriminator: "DescriptionMathMode";
+}
+
+export interface DescriptionLabel {
+  label: string;
+  theoremNumber: number;
+  discriminator: "DescriptionLabel";
+}
+
+export interface DescriptionLink {
+  url: string;
+  discriminator: "DescriptionLink";
+}
+
+export interface DescriptionItalic {
+  italic: string;
+  discriminator: "DescriptionItalic";
+}
+
+export interface DescriptionSubscript {
+  subscript: string;
+  discriminator: "DescriptionSubscript";
+}
+
+export interface DescriptionHtml {
+  html: string;
+  discriminator: "DescriptionHtml";
+}
+
+export interface DescriptionHtmlCharacterRef {
+  charRef: string;
+  discriminator: "DescriptionHtmlCharacterRef";
 }
 
 export interface TheoremListData {

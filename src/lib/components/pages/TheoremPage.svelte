@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { TheoremPageData } from "$lib/sharedState/model.svelte";
+  import DescriptionParsed from "../util/DescriptionParsed.svelte";
   import MetamathExpression from "../util/MetamathExpression.svelte";
   import TheoremLink from "../util/TheoremLink.svelte";
   import TheoremNumber from "../util/TheoremNumber.svelte";
@@ -37,7 +38,7 @@
 
 <div class="text-center pb-4 flex">
   <div class="w-1/5 pt-2">
-    <TheoremLink text={"< Previous"} label={pageData.lastTheoremLabel ? pageData.lastTheoremLabel : ""} disabled={pageData.lastTheoremLabel === null}></TheoremLink>
+    <TheoremLink text={"< Previous"} label={pageData.lastTheoremLabel ? pageData.lastTheoremLabel : ""} disabled={pageData.lastTheoremLabel === null} noUnderline></TheoremLink>
   </div>
   <div class="w-3/5 pt-4">
     <h1 class="text-3xl">
@@ -51,7 +52,7 @@
     </h1>
   </div>
   <div class="w-1/5 pt-2">
-    <TheoremLink text={"Next >"} label={pageData.nextTheoremLabel ? pageData.nextTheoremLabel : ""} disabled={pageData.nextTheoremLabel === null}></TheoremLink>
+    <TheoremLink text={"Next >"} label={pageData.nextTheoremLabel ? pageData.nextTheoremLabel : ""} disabled={pageData.nextTheoremLabel === null} noUnderline></TheoremLink>
   </div>
 </div>
 <div class="text-center">
@@ -84,9 +85,9 @@
       {/each}
     </div>
   {/if}
-  <div class="pb-4">
-    <h2>Description:</h2>
-    <p>{theorem.description}</p>
+  <div class="pb-4 px-8 text-left">
+    <h2 class="font-bold">Description:</h2>
+    <DescriptionParsed descriptionParsed={pageData.descriptionParsed}></DescriptionParsed>
   </div>
   {#if theorem.proof != null}
     <!-- <div class="pb-4">
