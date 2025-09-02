@@ -40,15 +40,21 @@ pub fn verify_html(
             if let Some(allowed_attributes) = allowed_tags_and_attributes.get(element_name) {
                 for (attr_name, attr_value) in &element_data.attributes.borrow().map {
                     if !allowed_attributes.contains(attr_name.local.as_ref()) {
+                        // println!("Non allowed attibute: {}", attr_name.local.as_ref());
+                        // println!("{}\n", html);
                         return false;
                     }
                     if attr_name.local.as_ref() == "style"
                         && !verify_inline_css(&attr_value.value, allowed_css_properties)
                     {
+                        // println!("Non allowed inline css:");
+                        // println!("{}\n", html);
                         return false;
                     }
                 }
             } else {
+                // println!("Non allowed tag: {}", element_name);
+                // println!("{}\n", html);
                 return false;
             }
         }
@@ -121,6 +127,28 @@ pub fn create_rule_structs() -> (HashMap<String, HashSet<String>>, HashSet<Strin
     html_allowed_tags_and_attributes.insert(String::from("sub"), HashSet::new());
     html_allowed_tags_and_attributes.insert(String::from("small"), HashSet::new());
     html_allowed_tags_and_attributes.insert(String::from("i"), HashSet::new());
+    html_allowed_tags_and_attributes.insert(String::from("ol"), HashSet::new());
+    html_allowed_tags_and_attributes.insert(String::from("li"), HashSet::new());
+    html_allowed_tags_and_attributes.insert(String::from("code"), HashSet::new());
+    html_allowed_tags_and_attributes.insert(String::from("pre"), HashSet::new());
+    html_allowed_tags_and_attributes.insert(String::from("ul"), HashSet::new());
+    html_allowed_tags_and_attributes.insert(
+        String::from("table"),
+        HashSet::from([
+            String::from("border"),
+            String::from("align"),
+            String::from("cellspacing"),
+            String::from("width"),
+        ]),
+    );
+    html_allowed_tags_and_attributes.insert(String::from("tbody"), HashSet::new());
+    html_allowed_tags_and_attributes.insert(String::from("tr"), HashSet::new());
+    html_allowed_tags_and_attributes
+        .insert(String::from("th"), HashSet::from([String::from("nowrap")]));
+    html_allowed_tags_and_attributes
+        .insert(String::from("td"), HashSet::from([String::from("nowrap")]));
+    html_allowed_tags_and_attributes.insert(String::from("p"), HashSet::new());
+    html_allowed_tags_and_attributes.insert(String::from("br"), HashSet::new());
 
     let css_allowed_properties: HashSet<String> = HashSet::from(
         [
