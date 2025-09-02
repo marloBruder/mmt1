@@ -29,16 +29,6 @@
   let unlistenFns: UnlistenFn[] = [];
 
   onMount(async () => {
-    invoke("open_metamath_database", { mmFilePath: globalState.databaseBeingOpened }).then(async (payload) => {
-      [databaseId, invalidHtml, invalidDescriptionHtml] = payload as [number, HtmlRepresentation[], [string, string][]];
-      invoke("perform_grammar_calculations", { databaseId }).then(() => {
-        emit("grammar-calculations-performed");
-      });
-      // wait 1 second to avoid bug
-      await new Promise((r) => setTimeout(r, 1000));
-      databaseLoaded = true;
-    });
-
     unlistenFns.push(
       await listen("mm-parser-progress", (e) => {
         let progress = e.payload as number;
@@ -63,6 +53,16 @@
         }
       })
     );
+
+    invoke("open_metamath_database", { mmFilePath: globalState.databaseBeingOpened }).then(async (payload) => {
+      [databaseId, invalidHtml, invalidDescriptionHtml] = payload as [number, HtmlRepresentation[], [string, string][]];
+      invoke("perform_grammar_calculations", { databaseId }).then(() => {
+        emit("grammar-calculations-performed");
+      });
+      // wait 1 second to avoid bug
+      await new Promise((r) => setTimeout(r, 1000));
+      databaseLoaded = true;
+    });
   });
 
   onDestroy(() => {
