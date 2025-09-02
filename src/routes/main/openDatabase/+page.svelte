@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { page } from "$app/stores";
+  import InvalidHtmlPopup from "$lib/components/util/InvalidHtmlPopup.svelte";
   import ProgressBar from "$lib/components/util/ProgressBar.svelte";
   import RoundButton from "$lib/components/util/RoundButton.svelte";
   import ScrollableContainer from "$lib/components/util/ScrollableContainer.svelte";
@@ -20,7 +20,7 @@
   let cancelClicked = false;
 
   let invalidHtml: HtmlRepresentation[] = $state([]);
-  let invalidHtmlPage: number = $state(0);
+  let invalidDescriptionHtml: [string, string][] = $state([]);
 
   let lastMmParserProgress = $state(0);
   let lastCalcOptimizedTheoremDataProgress = $state(0);
@@ -30,7 +30,7 @@
 
   onMount(async () => {
     invoke("open_metamath_database", { mmFilePath: globalState.databaseBeingOpened }).then(async (payload) => {
-      [databaseId, invalidHtml] = payload as [number, HtmlRepresentation[]];
+      [databaseId, invalidHtml, invalidDescriptionHtml] = payload as [number, HtmlRepresentation[], [string, string][]];
       invoke("perform_grammar_calculations", { databaseId }).then(() => {
         emit("grammar-calculations-performed");
       });
@@ -96,14 +96,6 @@
       globalState.databaseState.theoremAmount = theoremAmount;
     }
   };
-
-  let invalidHtmlPreviousPage = () => {
-    invalidHtmlPage -= 1;
-  };
-
-  let invalidHtmlNextPage = () => {
-    invalidHtmlPage += 1;
-  };
 </script>
 
 <div class="custom-height-width-minus-margin m-2 rounded-lg custom-bg-color overflow-hidden">
@@ -122,6 +114,7 @@
         Parsing database:
         <ProgressBar progress={lastMmParserProgress}></ProgressBar>
       </div>
+      <InvalidHtmlPopup invalidHtml={invalidHtml.map((htmlRep) => [htmlRep.symbol, htmlRep.html])}></InvalidHtmlPopup>
       <div class="my-4">
         Calculating relevant theorem data:
         <div class="flex flex-col items-center">
@@ -130,45 +123,11 @@
           </div>
         </div>
       </div>
-      {#if invalidHtml.length != 0}
-        <div class="p-2 mx-12 border rounded-lg">
-          <h2 class="text-red-600">WARNING</h2>
-          The HTML representation of symbols in this database does not follow all rules for safe HTML checked by mmt1. The following
-          <span class="text-red-600">{invalidHtml.length}</span>
-          rules may be dangerous. This does not mean that they must be dangerous, but that they could be. Please manually check that
-          <span class="text-red-600">EVERY SINGLE</span>
-          one of them is safe:
-          <div class="mt-4">
-            <table class=" mx-auto">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th class="border">Symbol</th>
-                  <th class="border">HTML representation</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each invalidHtml as invalidHtmlRep, i}
-                  {#if invalidHtmlPage * 10 <= i && i < (invalidHtmlPage + 1) * 10}
-                    <tr>
-                      <td class="border">{i + 1}</td>
-                      <td class="border">{invalidHtmlRep.symbol}</td>
-                      <td class="border">{invalidHtmlRep.html}</td>
-                    </tr>
-                  {/if}
-                {/each}
-              </tbody>
-            </table>
-            <div class="flex flex-row justify-center mt-2">
-              <div class="px-2">
-                <RoundButton onclick={invalidHtmlPreviousPage} disabled={invalidHtmlPage === 0}>Previous Page</RoundButton>
-              </div>
-              <div class="px-2">
-                <RoundButton onclick={invalidHtmlNextPage} disabled={invalidHtmlPage >= Math.floor((invalidHtml.length - 1) / 10)}>Next Page</RoundButton>
-              </div>
-            </div>
-          </div>
-          If you have a tag or attribute that is guaranteed to be safe, but that is not on the whitelist, please create an issue on Github, so it can be added to the rules of what makes an html representation safe.
+      <InvalidHtmlPopup invalidHtml={invalidDescriptionHtml} descriptionHtml></InvalidHtmlPopup>
+      {#if invalidHtml.length !== 0 || invalidDescriptionHtml.length !== 0}
+        <div class="border rounded-lg p-2 mx-12 my-4">
+          <h2 class="text-blue-400">INFO</h2>
+          The whitelist for what is considered safe HTML was created based on what is in set.mm and is by no means exhaustive. If you have a tag or attribute that is guaranteed to be safe, but that is not on the whitelist, please create an issue on Github, so it can be added to the rules of what makes HTML safe.
         </div>
       {/if}
       <div class="mt-4">

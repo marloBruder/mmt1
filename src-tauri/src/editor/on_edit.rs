@@ -1,7 +1,10 @@
 use crate::{
-    metamath::mmp_parser::{
-        self, MmpParserStage1, MmpParserStage2, MmpParserStage2Success, MmpParserStage3,
-        MmpParserStage3Success, MmpParserStage3Theorem, MmpParserStage4, MmpParserStage5,
+    metamath::{
+        mm_parser::html_validation,
+        mmp_parser::{
+            self, MmpParserStage1, MmpParserStage2, MmpParserStage2Success, MmpParserStage3,
+            MmpParserStage3Success, MmpParserStage3Theorem, MmpParserStage4, MmpParserStage5,
+        },
     },
     model::{
         self, CommentPageData, ConstantsPageData, DatabaseElementPageData, FloatingHypothesis,
@@ -204,6 +207,9 @@ pub fn calc_theorem_page_data(
     preview_confirmations_recursive: Vec<bool>,
     stage_5: Option<&MmpParserStage5>,
 ) -> Option<DatabaseElementPageData> {
+    let (html_allowed_tags_and_attributes, css_allowed_properties) =
+        html_validation::create_rule_structs();
+
     let mut proof_lines: Vec<model::ProofLine> = Vec::new();
     let mut preview_unify_markers: Vec<(bool, bool, bool, bool)> = Vec::new();
 
@@ -249,7 +255,10 @@ pub fn calc_theorem_page_data(
         description_parsed: description_parser::parse_description(
             &description,
             &mm_data.database_header,
-        ),
+            &html_allowed_tags_and_attributes,
+            &css_allowed_properties,
+        )
+        .0,
         theorem: Theorem {
             label: stage_3_theorem.label.to_string(),
             description,

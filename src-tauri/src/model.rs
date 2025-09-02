@@ -369,20 +369,37 @@ impl MetamathData {
         }
     }
 
-    pub fn calc_optimized_theorem_data(&mut self, app: Option<&AppHandle>) {
+    pub fn calc_optimized_theorem_data(
+        &mut self,
+        app: Option<&AppHandle>,
+        allowed_tags_and_attributes: &HashMap<String, HashSet<String>>,
+        allowed_css_properties: &HashSet<String>,
+    ) -> Vec<(String, String)> {
         let mut last_reported_progress = 0;
 
+        let mut invalid_description_html = Vec::new();
+
         for (i, theorem) in self.database_header.theorem_iter().enumerate() {
+            let (description_parsed, invalid_html) = description_parser::parse_description(
+                &theorem.description,
+                &self.database_header,
+                allowed_tags_and_attributes,
+                allowed_css_properties,
+            );
+
+            invalid_description_html.extend(
+                invalid_html
+                    .into_iter()
+                    .map(|html| (theorem.label.clone(), html)),
+            );
+
             let optimized_theorem_data = OptimizedTheoremData {
                 distinct_variable_pairs: util::calc_distinct_variable_pairs(&theorem.distincts),
                 parse_trees: None,
                 axiom_dependencies: theorem
                     .calc_axiom_dependencies_and_add_references(&mut self.optimized_data, i),
                 references: Vec::new(),
-                description_parsed: description_parser::parse_description(
-                    &theorem.description,
-                    &self.database_header,
-                ),
+                description_parsed,
             };
 
             self.optimized_data
@@ -400,6 +417,8 @@ impl MetamathData {
                 }
             }
         }
+
+        invalid_description_html
     }
 
     pub fn recalc_optimized_floating_hypotheses_after_one_new(&mut self) -> Result<(), Error> {

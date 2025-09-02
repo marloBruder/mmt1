@@ -1,4 +1,7 @@
+use std::collections::{HashMap, HashSet};
+
 use crate::{
+    metamath::mm_parser::html_validation::verify_html,
     model::{Header, ParsedDescriptionSegment},
     util,
 };
@@ -6,7 +9,9 @@ use crate::{
 pub fn parse_description(
     description: &str,
     database_header: &Header,
-) -> Vec<ParsedDescriptionSegment> {
+    allowed_tags_and_attributes: &HashMap<String, HashSet<String>>,
+    allowed_css_properties: &HashSet<String>,
+) -> (Vec<ParsedDescriptionSegment>, Vec<String>) {
     let mut result = Vec::new();
 
     let mut last_segment: Option<ParsedDescriptionSegment> = None;
@@ -49,22 +54,33 @@ pub fn parse_description(
 
     last_segment.map(|segment| result.push(segment));
 
-    result
-        .into_iter()
-        .map(|segment| match segment {
-            ParsedDescriptionSegment::Label(label, _) => {
-                if label.starts_with("http:") || label.starts_with("https:") {
-                    ParsedDescriptionSegment::Link(label)
-                } else {
-                    let theorem_number = database_header
-                        .find_theorem_and_index_by_label(&label)
-                        .map(|(i, _)| (i + 1) as u32);
-                    ParsedDescriptionSegment::Label(label, theorem_number)
+    let mut invalid_html = Vec::new();
+
+    (
+        result
+            .into_iter()
+            .map(|segment| match segment {
+                ParsedDescriptionSegment::Label(label, _) => {
+                    if label.starts_with("http:") || label.starts_with("https:") {
+                        ParsedDescriptionSegment::Link(label)
+                    } else {
+                        let theorem_number = database_header
+                            .find_theorem_and_index_by_label(&label)
+                            .map(|(i, _)| (i + 1) as u32);
+                        ParsedDescriptionSegment::Label(label, theorem_number)
+                    }
                 }
-            }
-            _ => segment,
-        })
-        .collect()
+                ParsedDescriptionSegment::Html(html) => {
+                    if !verify_html(&html, allowed_tags_and_attributes, allowed_css_properties) {
+                        invalid_html.push(html.clone());
+                    }
+                    ParsedDescriptionSegment::Html(html)
+                }
+                _ => segment,
+            })
+            .collect(),
+        invalid_html,
+    )
 }
 
 enum ParsedDescriptionChar {

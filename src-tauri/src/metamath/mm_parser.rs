@@ -17,21 +17,21 @@ use crate::{
     AppState, Error,
 };
 
-mod html_validation;
+pub mod html_validation;
 
 #[tauri::command]
 pub async fn open_metamath_database(
     state: tauri::State<'_, Mutex<AppState>>,
     app: AppHandle,
     mm_file_path: &str,
-) -> Result<(u32, Vec<HtmlRepresentation>), Error> {
+) -> Result<(u32, Vec<HtmlRepresentation>, Vec<(String, String)>), Error> {
     let mut app_state = state.lock().await;
 
     // let metamath_data = MmParser::process_database(mm_file_path)?;
 
     let mut mm_parser = MmParser::new(mm_file_path, Some(app))?;
     mm_parser.process_all_statements()?;
-    let (metamath_data, invalid_html) =
+    let (metamath_data, invalid_html, invalid_description_html) =
         mm_parser.consume_early_before_grammar_calculations(&mut app_state.id_manager)?;
 
     let database_id = metamath_data.database_id;
@@ -39,7 +39,7 @@ pub async fn open_metamath_database(
     app_state.temp_metamath_data = Some(metamath_data);
     app_state.stop_temp_grammar_calculations = Arc::new(std::sync::Mutex::new(false));
 
-    Ok((database_id, invalid_html))
+    Ok((database_id, invalid_html, invalid_description_html))
 }
 
 #[tauri::command]
@@ -231,38 +231,8 @@ impl MmParser {
 
         let total_line_amount = file_content.lines().count() as u32;
 
-        let mut html_allowed_tags_and_attributes: HashMap<String, HashSet<String>> = HashMap::new();
-        html_allowed_tags_and_attributes.insert(
-            String::from("span"),
-            HashSet::from([String::from("class"), String::from("style")]),
-        );
-        html_allowed_tags_and_attributes.insert(String::from("u"), HashSet::new());
-        html_allowed_tags_and_attributes.insert(String::from("b"), HashSet::new());
-        html_allowed_tags_and_attributes.insert(
-            String::from("font"),
-            HashSet::from([String::from("size"), String::from("face")]),
-        );
-        html_allowed_tags_and_attributes.insert(String::from("sup"), HashSet::new());
-        html_allowed_tags_and_attributes.insert(String::from("sub"), HashSet::new());
-        html_allowed_tags_and_attributes.insert(String::from("small"), HashSet::new());
-        html_allowed_tags_and_attributes.insert(String::from("i"), HashSet::new());
-
-        let css_allowed_properties: HashSet<String> = HashSet::from(
-            [
-                "color",
-                "border-bottom",
-                "text-decoration",
-                "overflow",
-                "width",
-                "height",
-                "display",
-                "font-size",
-                "position",
-                "top",
-                "left",
-            ]
-            .map(|s| s.to_string()),
-        );
+        let (html_allowed_tags_and_attributes, css_allowed_properties) =
+            html_validation::create_rule_structs();
 
         Ok(MmParser {
             file_content,
@@ -409,7 +379,7 @@ impl MmParser {
     fn consume_early_before_grammar_calculations(
         self,
         id_manager: &mut IdManager,
-    ) -> Result<(MetamathData, Vec<HtmlRepresentation>), Error> {
+    ) -> Result<(MetamathData, Vec<HtmlRepresentation>, Vec<(String, String)>), Error> {
         if let Some(ref app_handle) = self.app {
             app_handle.emit("mm-parser-progress", 100).ok();
         }
@@ -435,7 +405,11 @@ impl MmParser {
             alt_variable_colors: self.alt_variable_colors,
         };
 
-        metamath_data.calc_optimized_theorem_data(self.app.as_ref());
+        let invalid_description_html = metamath_data.calc_optimized_theorem_data(
+            self.app.as_ref(),
+            &self.html_allowed_tags_and_attributes,
+            &self.css_allowed_properties,
+        );
 
         if let Some(ref app_handle) = self.app {
             app_handle
@@ -443,7 +417,7 @@ impl MmParser {
                 .ok();
         }
 
-        Ok((metamath_data, self.invalid_html))
+        Ok((metamath_data, self.invalid_html, invalid_description_html))
     }
 
     // pub fn process_all_statements_and_consume(mut self) -> Result<MetamathData, Error> {

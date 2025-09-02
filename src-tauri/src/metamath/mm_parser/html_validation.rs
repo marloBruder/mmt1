@@ -104,3 +104,40 @@ fn verify_css_value(value: &str) -> bool {
         && !lowercase_value.contains("javascript:")
         && !lowercase_value.contains("calc(")
 }
+
+pub fn create_rule_structs() -> (HashMap<String, HashSet<String>>, HashSet<String>) {
+    let mut html_allowed_tags_and_attributes: HashMap<String, HashSet<String>> = HashMap::new();
+    html_allowed_tags_and_attributes.insert(
+        String::from("span"),
+        HashSet::from([String::from("class"), String::from("style")]),
+    );
+    html_allowed_tags_and_attributes.insert(String::from("u"), HashSet::new());
+    html_allowed_tags_and_attributes.insert(String::from("b"), HashSet::new());
+    html_allowed_tags_and_attributes.insert(
+        String::from("font"),
+        HashSet::from([String::from("size"), String::from("face")]),
+    );
+    html_allowed_tags_and_attributes.insert(String::from("sup"), HashSet::new());
+    html_allowed_tags_and_attributes.insert(String::from("sub"), HashSet::new());
+    html_allowed_tags_and_attributes.insert(String::from("small"), HashSet::new());
+    html_allowed_tags_and_attributes.insert(String::from("i"), HashSet::new());
+
+    let css_allowed_properties: HashSet<String> = HashSet::from(
+        [
+            "color",
+            "border-bottom",
+            "text-decoration",
+            "overflow",
+            "width",
+            "height",
+            "display",
+            "font-size",
+            "position",
+            "top",
+            "left",
+        ]
+        .map(|s| s.to_string()),
+    );
+
+    (html_allowed_tags_and_attributes, css_allowed_properties)
+}
