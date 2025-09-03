@@ -159,9 +159,14 @@ impl<'a> Iterator for ParsedCommentCharIterator<'a> {
                         return Some(ParsedDescriptionChar::LabelModeStart);
                     }
                 } else if next_char == '_' {
-                    self.next_char_i += 1;
-                    self.last_start = Some(ParsedDescriptionChar::ItalicStart);
-                    return Some(ParsedDescriptionChar::ItalicStart);
+                    if next_plus_1_char.is_some_and(|c| c == '_') {
+                        self.last_start = Some(ParsedDescriptionChar::NormalModeStart);
+                        return Some(ParsedDescriptionChar::NormalModeStart);
+                    } else {
+                        self.next_char_i += 1;
+                        self.last_start = Some(ParsedDescriptionChar::ItalicStart);
+                        return Some(ParsedDescriptionChar::ItalicStart);
+                    }
                 } else if self.comment.len() >= (self.next_char_i + 6)
                     && &self.comment[self.next_char_i..(self.next_char_i + 6)] == "<HTML>"
                 {
@@ -202,7 +207,10 @@ impl<'a> Iterator for ParsedCommentCharIterator<'a> {
                         return Some(ParsedDescriptionChar::LabelModeStart);
                     }
                 } else if next_char == '_' {
-                    if next_minus_1_char
+                    if next_plus_1_char.is_some_and(|c| c == '_') {
+                        self.next_char_i += 2;
+                        return Some(ParsedDescriptionChar::Character('_'));
+                    } else if next_minus_1_char
                         .is_none_or(|c| c.is_ascii_whitespace() || c.is_ascii_punctuation())
                     {
                         self.next_char_i += 1;
@@ -241,9 +249,14 @@ impl<'a> Iterator for ParsedCommentCharIterator<'a> {
             }
             Some(ParsedDescriptionChar::MathModeStart) => {
                 if next_char == '`' {
-                    self.next_char_i += 1;
-                    self.last_start = None;
-                    return self.next();
+                    if next_plus_1_char.is_some_and(|c| c == '`') {
+                        self.next_char_i += 2;
+                        return Some(ParsedDescriptionChar::Character('`'));
+                    } else {
+                        self.next_char_i += 1;
+                        self.last_start = None;
+                        return self.next();
+                    }
                 } else if next_char.is_ascii_whitespace() {
                     self.next_char_i = next_non_whitespace_i(self.comment, self.next_char_i);
                     return Some(ParsedDescriptionChar::Character(' '));
@@ -259,6 +272,9 @@ impl<'a> Iterator for ParsedCommentCharIterator<'a> {
                 } else if next_char == '~' && next_plus_1_char.is_some_and(|c| c == '~') {
                     self.next_char_i += 2;
                     return Some(ParsedDescriptionChar::Character('~'));
+                } else if next_char == '`' && next_plus_1_char.is_some_and(|c| c == '`') {
+                    self.next_char_i += 2;
+                    return Some(ParsedDescriptionChar::Character('`'));
                 } else {
                     self.next_char_i += 1;
                     return Some(ParsedDescriptionChar::Character(next_char));
@@ -272,6 +288,12 @@ impl<'a> Iterator for ParsedCommentCharIterator<'a> {
                     self.next_char_i += 1;
                     self.last_start = None;
                     return self.next();
+                } else if next_char == '~' && next_plus_1_char.is_some_and(|c| c == '~') {
+                    self.next_char_i += 2;
+                    return Some(ParsedDescriptionChar::Character('~'));
+                } else if next_char == '~' && next_plus_1_char.is_some_and(|c| c == '~') {
+                    self.next_char_i += 2;
+                    return Some(ParsedDescriptionChar::Character('~'));
                 } else {
                     self.next_char_i += 1;
                     return Some(ParsedDescriptionChar::Character(next_char));
