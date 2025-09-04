@@ -50,6 +50,10 @@
   background-color: #332a3d;
 }
 
+.custom-bg-hover-color-without-hover-condition {
+  background-color: #332a3d;
+}
+
 .custom-bg-active-color {
   background-color: #4b3d5b;
 }

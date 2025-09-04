@@ -1,6 +1,5 @@
 <script lang="ts">
   import { getCurrentWindow } from "@tauri-apps/api/window";
-  import TitleBarDropdown from "./TitleBarDropdown.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { open, save } from "@tauri-apps/plugin-dialog";
   import type { FolderRepresentation } from "$lib/sharedState/model.svelte";
@@ -13,10 +12,17 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { globalState } from "$lib/sharedState/globalState.svelte";
+  import Dropdown from "../util/Dropdown.svelte";
 
   let { externalWindow = false }: { externalWindow?: boolean } = $props();
 
   const appWindow = getCurrentWindow();
+
+  let disableTitleBar = $derived(globalState.databaseBeingOpened != "");
+
+  let dropdown1Open = $state(false);
+  let dropdown2Open = $state(false);
+  let dropdown3Open = $state(false);
 
   let minimizeClick = () => {
     appWindow.minimize();
@@ -104,32 +110,62 @@
   onMount(async () => {
     isMaximized = await appWindow.isMaximized();
   });
+
+  let onmouseenterDropdownButton = (num: number) => {
+    if ([dropdown1Open, dropdown2Open, dropdown3Open].some((bool) => bool)) {
+      // reuse function to set everything to false;
+      customDropdownOnclose();
+      switch (num) {
+        case 0:
+          dropdown1Open = true;
+          break;
+        case 1:
+          dropdown2Open = true;
+          break;
+        case 2:
+          dropdown3Open = true;
+          break;
+      }
+    }
+  };
+
+  let customDropdownOnclose = () => {
+    dropdown1Open = false;
+    dropdown2Open = false;
+    dropdown3Open = false;
+  };
 </script>
 
 <div class="h-8 w-screen flex justify-between" data-tauri-drag-region>
   <div class="pl-4 h-full flex items-center">
     <span class="text-xl pr-2">mmt1</span>
     {#if !externalWindow}
-      <TitleBarDropdown title="File">
-        <div><button onclick={onOpenFolderClick}>Open Folder</button></div>
-        <div><button onclick={onCloseFolderClick}>Close Folder</button></div>
-        <hr class="border-gray-300" />
-        <div><button onclick={onSaveFileClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.saveFileDisabled() : true} class="disabled:text-gray-500">Save File</button></div>
-        <hr class="border-gray-300" />
-        <div><button onclick={closeClick}>Exit</button></div>
-      </TitleBarDropdown>
-      <TitleBarDropdown title="Editor">
-        <div><button onclick={onUnifyClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.unifyDisabled() : true} class="disabled:text-gray-500">Unify</button></div>
-        <div><button onclick={onFormatClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.formatDisabled() : true} class="disabled:text-gray-500">Format</button></div>
-        <div><button onclick={onRenumberClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.renumberDisabled() : true} class="disabled:text-gray-500">Renumber</button></div>
-      </TitleBarDropdown>
-      <TitleBarDropdown title="Metamath">
-        <div><button onclick={onNewMetamathDatabaseClick}>New Metamath Database</button></div>
-        <div><button onclick={onOpenMetamathDatabaseClick} disabled={globalState.databaseBeingOpened != ""} class="disabled:text-gray-500">Open Metamath Database</button></div>
-        <div><button onclick={onExportMetamathDatabaseClick}>Export Metamath Database</button></div>
-        <hr class="border-gray-300" />
-        <div><button onclick={onAddToDatabaseClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.addToDatabaseDisabled() : true} class="disabled:text-gray-500">Add to database</button></div>
-      </TitleBarDropdown>
+      <Dropdown title="File" disabled={disableTitleBar} bind:open={dropdown1Open} onmouseenter={() => onmouseenterDropdownButton(0)} customOnclose={customDropdownOnclose}>
+        {#snippet dropdownContent()}
+          <div><button class="hover:bg-purple-500 px-2 w-full text-left" onclick={onOpenFolderClick}>Open Folder</button></div>
+          <div><button class="hover:bg-purple-500 px-2 w-full text-left" onclick={onCloseFolderClick}>Close Folder</button></div>
+          <div class="py-1"><hr /></div>
+          <div><button class="enabled:hover:bg-purple-500 px-2 w-full text-left disabled:text-gray-500" onclick={onSaveFileClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.saveFileDisabled() : true}>Save File</button></div>
+          <div class="py-1"><hr /></div>
+          <div><button class="hover:bg-purple-500 px-2 w-full text-left" onclick={closeClick}>Exit</button></div>
+        {/snippet}
+      </Dropdown>
+      <Dropdown title="Editor" disabled={disableTitleBar} bind:open={dropdown2Open} onmouseenter={() => onmouseenterDropdownButton(1)} customOnclose={customDropdownOnclose}>
+        {#snippet dropdownContent()}
+          <div><button class="enabled:hover:bg-purple-500 px-2 w-full text-left disabled:text-gray-500" onclick={onUnifyClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.unifyDisabled() : true}>Unify</button></div>
+          <div><button class="enabled:hover:bg-purple-500 px-2 w-full text-left disabled:text-gray-500" onclick={onFormatClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.formatDisabled() : true}>Format</button></div>
+          <div><button class="enabled:hover:bg-purple-500 px-2 w-full text-left disabled:text-gray-500" onclick={onRenumberClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.renumberDisabled() : true}>Renumber</button></div>
+        {/snippet}
+      </Dropdown>
+      <Dropdown title="Metamath" disabled={disableTitleBar} bind:open={dropdown3Open} onmouseenter={() => onmouseenterDropdownButton(2)} customOnclose={customDropdownOnclose}>
+        {#snippet dropdownContent()}
+          <div><button class="hover:bg-purple-500 px-2 w-full text-left" onclick={onNewMetamathDatabaseClick}>New Metamath Database</button></div>
+          <div><button class="hover:bg-purple-500 px-2 w-full text-left" onclick={onOpenMetamathDatabaseClick}>Open Metamath Database</button></div>
+          <div><button class="hover:bg-purple-500 px-2 w-full text-left" onclick={onExportMetamathDatabaseClick}>Export Metamath Database</button></div>
+          <div class="py-1"><hr /></div>
+          <div><button class="enabled:hover:bg-purple-500 px-2 w-full text-left disabled:text-gray-500" onclick={onAddToDatabaseClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.addToDatabaseDisabled() : true}>Add to database</button></div>
+        {/snippet}
+      </Dropdown>
     {:else}
       <div class="pl-2">Editor HTML Preview</div>
     {/if}
