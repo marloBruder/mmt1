@@ -76,6 +76,20 @@ pub fn parse_description(
                     }
                     ParsedDescriptionSegment::Html(html)
                 }
+                ParsedDescriptionSegment::HtmlCharacterRef(mut char_ref) => {
+                    if (char_ref.chars().next().is_some_and(|c| c == '#')
+                        && char_ref.chars().skip(1).all(|c| matches!(c, '0'..='9')))
+                        || char_ref
+                            .chars()
+                            .all(|c| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9'))
+                    {
+                        ParsedDescriptionSegment::HtmlCharacterRef(char_ref)
+                    } else {
+                        char_ref.insert(0, '&');
+                        char_ref.push(';');
+                        ParsedDescriptionSegment::Text(char_ref)
+                    }
+                }
                 _ => segment,
             })
             .collect(),
