@@ -15,6 +15,7 @@
   import { onDestroy, onMount } from "svelte";
 
   let databaseLoaded = $state(false);
+  let cancelable = $state(false);
   let databaseId: number | null = null;
   let confirmClicked = false;
   let cancelClicked = false;
@@ -63,6 +64,8 @@
       await new Promise((r) => setTimeout(r, 1000));
       databaseLoaded = true;
     });
+
+    cancelable = true;
   });
 
   onDestroy(() => {
@@ -102,7 +105,7 @@
   <ScrollableContainer>
     <div class="flex flex-col items-center text-center">
       <div class="w-full text-left py-2">
-        <button class="pl-4 disabled:text-gray-700" disabled={!databaseLoaded} onclick={onCancelClick}>{"< Cancel"}</button>
+        <button class="pl-4 disabled:text-gray-700" disabled={!cancelable} onclick={onCancelClick}>{"< Cancel"}</button>
       </div>
       <h1 class="text-3xl py-2">Opening Database</h1>
       <p class="py-2">

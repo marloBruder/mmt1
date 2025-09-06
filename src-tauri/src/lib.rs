@@ -18,8 +18,8 @@ pub struct AppState {
     // Used to temporarily store MetamathData before the user confirms they wants to open a database
     // This way the old MetamathData is not lost, if they cancel
     temp_metamath_data: Option<MetamathData>,
-    stop_grammar_calculations: Arc<std::sync::Mutex<bool>>,
-    stop_temp_grammar_calculations: Arc<std::sync::Mutex<bool>>,
+    stop_database_calculations: Arc<std::sync::Mutex<bool>>,
+    stop_temp_database_calculations: Arc<std::sync::Mutex<bool>>,
     id_manager: IdManager,
     open_folder: Option<String>,
 }
@@ -28,8 +28,8 @@ fn app_setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     app.manage(Mutex::new(AppState {
         metamath_data: None,
         temp_metamath_data: None,
-        stop_grammar_calculations: Arc::new(std::sync::Mutex::new(false)),
-        stop_temp_grammar_calculations: Arc::new(std::sync::Mutex::new(false)),
+        stop_database_calculations: Arc::new(std::sync::Mutex::new(false)),
+        stop_temp_database_calculations: Arc::new(std::sync::Mutex::new(false)),
         id_manager: IdManager::new(),
         open_folder: None,
     }));
@@ -234,6 +234,8 @@ pub enum Error {
     AddingToInnerScopeError,
 
     OpenExternalWindowError,
+
+    OpenDatabaseStoppedEarlyError,
 }
 
 impl fmt::Display for Error {

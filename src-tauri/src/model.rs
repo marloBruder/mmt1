@@ -374,7 +374,8 @@ impl MetamathData {
         app: Option<&AppHandle>,
         allowed_tags_and_attributes: &HashMap<String, HashSet<String>>,
         allowed_css_properties: &HashSet<String>,
-    ) -> Vec<(String, String)> {
+        stop: Option<Arc<std::sync::Mutex<bool>>>,
+    ) -> Result<Vec<(String, String)>, Error> {
         let mut last_reported_progress = 0;
 
         let mut invalid_description_html = Vec::new();
@@ -416,9 +417,20 @@ impl MetamathData {
                     last_reported_progress = progress;
                 }
             }
+
+            if let Some(ref stop_arc) = stop {
+                let stop_bool = stop_arc.lock().or(Err(Error::InternalLogicError))?;
+                if *stop_bool {
+                    return Err(Error::OpenDatabaseStoppedEarlyError);
+                }
+            }
+
+            if (i + 1) % 1000 == 0 {
+                println!("Theorem data: {}", (i + 1));
+            }
         }
 
-        invalid_description_html
+        Ok(invalid_description_html)
     }
 
     pub fn recalc_optimized_floating_hypotheses_after_one_new(&mut self) -> Result<(), Error> {
@@ -1252,8 +1264,8 @@ impl Grammar {
 
             theorems_parsed += 1;
 
-            if theorems_parsed % 100 == 0 {
-                println!("{}:", theorems_parsed);
+            if theorems_parsed % 1000 == 0 {
+                println!("Parse trees: {}", theorems_parsed);
             }
         }
 

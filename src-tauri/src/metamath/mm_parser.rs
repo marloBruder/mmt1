@@ -9,9 +9,8 @@ use tauri::{async_runtime::Mutex, AppHandle, Emitter};
 use crate::{
     model::{
         ColorInformation, Comment, Constant, FloatingHypothesis, Header, HeaderPath,
-        HeaderRepresentation, HtmlRepresentation, Hypothesis, IdManager, MetamathData,
-        OptimizedMetamathData, Statement, SymbolNumberMapping, Theorem, TheoremParseTrees,
-        Variable, VariableColor,
+        HeaderRepresentation, HtmlRepresentation, Hypothesis, MetamathData, OptimizedMetamathData,
+        Statement, SymbolNumberMapping, Theorem, TheoremParseTrees, Variable, VariableColor,
     },
     util::{self, earley_parser_optimized::Grammar},
     AppState, Error,
@@ -25,19 +24,21 @@ pub async fn open_metamath_database(
     app: AppHandle,
     mm_file_path: &str,
 ) -> Result<(u32, Vec<HtmlRepresentation>, Vec<(String, String)>), Error> {
-    let mut app_state = state.lock().await;
-
     // let metamath_data = MmParser::process_database(mm_file_path)?;
 
-    let mut mm_parser = MmParser::new(mm_file_path, Some(app))?;
+    let mut app_state = state.lock().await;
+    let database_id = app_state.id_manager.get_next_id();
+    app_state.stop_temp_database_calculations = Arc::new(std::sync::Mutex::new(false));
+    let stop = app_state.stop_temp_database_calculations.clone();
+    drop(app_state);
+
+    let mut mm_parser = MmParser::new(mm_file_path, Some(app), Some(stop))?;
     mm_parser.process_all_statements()?;
     let (metamath_data, invalid_html, invalid_description_html) =
-        mm_parser.consume_early_before_grammar_calculations(&mut app_state.id_manager)?;
+        mm_parser.consume_early_before_grammar_calculations(database_id)?;
 
-    let database_id = metamath_data.database_id;
-
+    let mut app_state = state.lock().await;
     app_state.temp_metamath_data = Some(metamath_data);
-    app_state.stop_temp_grammar_calculations = Arc::new(std::sync::Mutex::new(false));
 
     Ok((database_id, invalid_html, invalid_description_html))
 }
@@ -49,7 +50,7 @@ pub async fn cancel_open_metamath_database(
     let mut app_state = state.lock().await;
 
     *app_state
-        .stop_temp_grammar_calculations
+        .stop_temp_database_calculations
         .lock()
         .or(Err(Error::InternalLogicError))? = true;
     app_state.temp_metamath_data = None;
@@ -90,10 +91,10 @@ pub async fn confirm_open_metamath_database(
     app_state.metamath_data = Some(metamath_data);
 
     *app_state
-        .stop_grammar_calculations
+        .stop_database_calculations
         .lock()
         .or(Err(Error::InternalLogicError))? = true;
-    app_state.stop_grammar_calculations = app_state.stop_temp_grammar_calculations.clone();
+    app_state.stop_database_calculations = app_state.stop_temp_database_calculations.clone();
 
     Ok((
         database_id,
@@ -111,12 +112,29 @@ pub async fn perform_grammar_calculations(
     app: AppHandle,
 ) -> Result<(), Error> {
     let app_state = state.lock().await;
-    let mm_data = app_state
+    let mm_data = if app_state
         .temp_metamath_data
         .as_ref()
-        .ok_or(Error::NoMmDbError)?;
+        .is_some_and(|mm| mm.database_id == database_id)
+    {
+        app_state
+            .temp_metamath_data
+            .as_ref()
+            .ok_or(Error::InternalLogicError)?
+    } else if app_state
+        .metamath_data
+        .as_ref()
+        .is_some_and(|mm| mm.database_id == database_id)
+    {
+        app_state
+            .metamath_data
+            .as_ref()
+            .ok_or(Error::InternalLogicError)?
+    } else {
+        return Ok(());
+    };
 
-    let stop = app_state.stop_temp_grammar_calculations.clone();
+    let stop = app_state.stop_temp_database_calculations.clone();
     let theorem_amount = mm_data.optimized_data.theorem_amount;
     let database_header = mm_data.database_header.clone();
     let floating_hypotheses = mm_data.optimized_data.floating_hypotheses.clone();
@@ -203,6 +221,8 @@ pub struct MmParser {
     total_line_amount: u32,
     last_progress_reported: u8,
     app: Option<AppHandle>,
+    // Only used when using the process_all_statements or consume_early_before_grammar_calculations functions
+    stop: Option<Arc<std::sync::Mutex<bool>>>,
     invalid_html: Vec<HtmlRepresentation>,
     html_allowed_tags_and_attributes: HashMap<String, HashSet<String>>,
     css_allowed_properties: HashSet<String>,
@@ -222,7 +242,11 @@ pub enum StatementProcessed {
 }
 
 impl MmParser {
-    pub fn new(file_path: &str, app: Option<AppHandle>) -> Result<MmParser, Error> {
+    pub fn new(
+        file_path: &str,
+        app: Option<AppHandle>,
+        stop: Option<Arc<std::sync::Mutex<bool>>>,
+    ) -> Result<MmParser, Error> {
         let file_content = fs::read_to_string(file_path).or(Err(Error::FileReadError))?;
 
         if !file_content.is_ascii() {
@@ -258,6 +282,7 @@ impl MmParser {
             total_line_amount,
             last_progress_reported: 0,
             app,
+            stop,
             invalid_html: Vec::new(),
             html_allowed_tags_and_attributes,
             css_allowed_properties,
@@ -340,6 +365,13 @@ impl MmParser {
             if statements_processed % 10_000 == 0 {
                 println!("Statements processed: {}", statements_processed);
             }
+
+            if let Some(ref stop_arc) = self.stop {
+                let stop_bool = stop_arc.lock().or(Err(Error::InternalLogicError))?;
+                if *stop_bool {
+                    return Err(Error::OpenDatabaseStoppedEarlyError);
+                }
+            }
         }
 
         Ok(())
@@ -378,14 +410,14 @@ impl MmParser {
 
     fn consume_early_before_grammar_calculations(
         self,
-        id_manager: &mut IdManager,
+        database_id: u32,
     ) -> Result<(MetamathData, Vec<HtmlRepresentation>, Vec<(String, String)>), Error> {
         if let Some(ref app_handle) = self.app {
             app_handle.emit("mm-parser-progress", 100).ok();
         }
 
         let mut metamath_data = MetamathData {
-            database_id: id_manager.get_next_id(),
+            database_id,
             database_path: self.database_path,
             database_header: self.database_header,
             html_representations: self.html_representations,
@@ -409,7 +441,8 @@ impl MmParser {
             self.app.as_ref(),
             &self.html_allowed_tags_and_attributes,
             &self.css_allowed_properties,
-        );
+            self.stop,
+        )?;
 
         if let Some(ref app_handle) = self.app {
             app_handle
