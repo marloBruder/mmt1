@@ -5,7 +5,8 @@ use tauri::async_runtime::Mutex;
 use crate::{
     // database::header::{add_header_database, calc_db_index_for_header},
     local_state::header::add_header_local,
-    model::{Header, HeaderPath},
+    model::HeaderPath,
+    search,
     AppState,
     Error,
 };
@@ -47,7 +48,8 @@ pub async fn quick_search(
 
     let limit = if only_ten { 11 } else { u32::MAX };
 
-    let mut theorems = find_theorem_labels(&metamath_data.database_header, query, limit);
+    let mut theorems =
+        search::find_theorem_labels(&metamath_data.database_header, query, limit, |_| true);
 
     let mut more = false;
     if only_ten && theorems.len() == 11 {
@@ -56,32 +58,4 @@ pub async fn quick_search(
     }
 
     Ok((theorems, more))
-}
-
-// Find all theorem labels that match the query in the following order:
-// 1: The name that fully matches the query (if it exists)
-// 2: Labels that start with the query
-// 3: Labels that contain the query
-fn find_theorem_labels(header: &Header, query: &str, limit: u32) -> Vec<String> {
-    let mut theorems = Vec::new();
-
-    let exact_match = header.find_theorem_by_label(query);
-
-    if let Some(theorem) = exact_match {
-        theorems.push(theorem.label.clone())
-    }
-
-    header
-        .theorem_iter()
-        .filter(|t| t.label != query && t.label.starts_with(query))
-        .take((limit as usize) - theorems.len())
-        .for_each(|t| theorems.push(t.label.clone()));
-
-    header
-        .theorem_iter()
-        .filter(|t| t.label != query && !t.label.starts_with(query) && t.label.contains(query))
-        .take((limit as usize) - theorems.len())
-        .for_each(|t| theorems.push(t.label.clone()));
-
-    theorems
 }

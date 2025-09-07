@@ -225,6 +225,8 @@ export interface TheoremListEntry {
 export interface SearchParameters {
   page: number;
   label: string;
+  axiomDependencies: string[];
+  avoidAxiomDependencies: string[];
 }
 
 export interface Folder {

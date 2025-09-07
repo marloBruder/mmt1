@@ -65,3 +65,10 @@
 .custom-bg-dropdown-color {
   background-color: #463465;
 }
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus {
+  outline: none;
+}

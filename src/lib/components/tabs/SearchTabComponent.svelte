@@ -5,7 +5,7 @@
   export class SearchTab extends Tab {
     component = SearchTabComponent;
 
-    #searchParameters: SearchParameters = $state({ page: 0, label: "" });
+    #searchParameters: SearchParameters = $state({ page: 0, label: "", axiomDependencies: [], avoidAxiomDependencies: [] });
     #searchResult: TheoremListData = $state({ list: [], pageAmount: 0, pageLimits: null });
 
     constructor(searchParameters: SearchParameters) {
