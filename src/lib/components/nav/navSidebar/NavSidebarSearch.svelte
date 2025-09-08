@@ -25,8 +25,14 @@
     <RoundButton onclick={searchClick}>Search</RoundButton>
   </div>
   <div class="pt-2">
-    Must depend on axioms:
-    <AutocompleteListInput bind:items={searchParameters.axiomDependencies} bind:inputValue={searchInputValues.axiomDependenciesInputValue} autocomplete={axiomDependenciesAutocomplete}></AutocompleteListInput>
+    Must depend on all of the axioms:
+    <AutocompleteListInput bind:items={searchParameters.allAxiomDependencies} bind:inputValue={searchInputValues.allAxiomDependenciesInputValue} autocomplete={axiomDependenciesAutocomplete}></AutocompleteListInput>
+  </div>
+  <div class="pt-2">
+    Must depend on one of the axioms:
+    <AutocompleteListInput bind:items={searchParameters.anyAxiomDependencies} bind:inputValue={searchInputValues.anyAxiomDependenciesInputValue} autocomplete={axiomDependenciesAutocomplete}></AutocompleteListInput>
+  </div>
+  <div class="pt-2">
     Must not depend on axioms:
     <AutocompleteListInput bind:items={searchParameters.avoidAxiomDependencies} bind:inputValue={searchInputValues.avoidAxiomDependenciesInputValue} autocomplete={axiomDependenciesAutocomplete}></AutocompleteListInput>
   </div>

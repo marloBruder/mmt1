@@ -1617,6 +1617,22 @@ impl Header {
             .ok_or(())
     }
 
+    pub fn theorem_label_vec_to_ordered_theorem_i_vec(
+        &self,
+        theorem_label_vec: &Vec<String>,
+    ) -> Vec<usize> {
+        self.theorem_iter()
+            .enumerate()
+            .filter_map(|(i, t)| {
+                if theorem_label_vec.contains(&t.label) {
+                    Some(i)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     // pub fn count_theorems_and_headers(&self) -> i32 {
     //     let mut sum = 1 + self.theorems.len() as i32;
     //     for sub_header in &self.sub_headers {

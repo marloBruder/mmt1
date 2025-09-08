@@ -11,6 +11,12 @@ use crate::{
 pub struct SearchParameters {
     pub page: u32,
     pub label: String,
+    #[serde(rename = "allAxiomDependencies")]
+    pub all_axiom_dependencies: Vec<String>,
+    #[serde(rename = "anyAxiomDependencies")]
+    pub any_axiom_dependencies: Vec<String>,
+    #[serde(rename = "avoidAxiomDependencies")]
+    pub avoid_axiom_dependencies: Vec<String>,
 }
 
 #[tauri::command]
@@ -20,6 +26,39 @@ pub async fn search_theorems(
 ) -> Result<TheoremListData, Error> {
     let app_state = state.lock().await;
     let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
+
+    let all_axiom_dependencies_indexes: Vec<usize> = if !search_parameters
+        .all_axiom_dependencies
+        .is_empty()
+    {
+        metamath_data
+            .database_header
+            .theorem_label_vec_to_ordered_theorem_i_vec(&search_parameters.all_axiom_dependencies)
+    } else {
+        Vec::new()
+    };
+
+    let any_axiom_dependencies_indexes: Vec<usize> = if !search_parameters
+        .any_axiom_dependencies
+        .is_empty()
+    {
+        metamath_data
+            .database_header
+            .theorem_label_vec_to_ordered_theorem_i_vec(&search_parameters.any_axiom_dependencies)
+    } else {
+        Vec::new()
+    };
+
+    let avoid_axiom_dependencies_indexes: Vec<usize> = if !search_parameters
+        .avoid_axiom_dependencies
+        .is_empty()
+    {
+        metamath_data
+            .database_header
+            .theorem_label_vec_to_ordered_theorem_i_vec(&search_parameters.avoid_axiom_dependencies)
+    } else {
+        Vec::new()
+    };
 
     let mut theorem_amount: i32 = 0;
     let mut list: Vec<ListEntry> = Vec::new();
@@ -31,7 +70,28 @@ pub async fn search_theorems(
         .database_header
         .theorem_iter()
         .enumerate()
-        .filter(|(_, theorem)| theorem.label.contains(&search_parameters.label))
+        .filter(|(_, theorem)| {
+            let optimized_theorem_data = metamath_data
+                .optimized_data
+                .theorem_data
+                .get(&theorem.label)
+                .unwrap();
+
+            theorem.label.contains(&search_parameters.label)
+                && ordered_list_contained_in_other_ordered_list(
+                    &all_axiom_dependencies_indexes,
+                    &optimized_theorem_data.axiom_dependencies,
+                )
+                && (any_axiom_dependencies_indexes.is_empty()
+                    || !ordered_list_disjoint_from_other_ordered_list(
+                        &any_axiom_dependencies_indexes,
+                        &optimized_theorem_data.axiom_dependencies,
+                    ))
+                && ordered_list_disjoint_from_other_ordered_list(
+                    &avoid_axiom_dependencies_indexes,
+                    &optimized_theorem_data.axiom_dependencies,
+                )
+        })
         .for_each(|(theorem_number, theorem)| {
             last_theorem_number = Some((theorem_number + 1) as u32);
 
@@ -69,6 +129,56 @@ pub async fn search_theorems(
         page_amount,
         page_limits: Some(page_limits),
     })
+}
+
+fn ordered_list_contained_in_other_ordered_list(
+    list: &Vec<usize>,
+    other_list: &Vec<usize>,
+) -> bool {
+    let mut other_item_i = 0;
+
+    for &item in list {
+        loop {
+            let Some(&other_item) = other_list.get(other_item_i) else {
+                return false;
+            };
+
+            other_item_i += 1;
+
+            if other_item == item {
+                break;
+            } else if other_item > item {
+                return false;
+            }
+        }
+    }
+
+    true
+}
+
+fn ordered_list_disjoint_from_other_ordered_list(
+    list: &Vec<usize>,
+    other_list: &Vec<usize>,
+) -> bool {
+    let mut other_item_i = 0;
+
+    for &item in list {
+        loop {
+            let Some(&other_item) = other_list.get(other_item_i) else {
+                return true;
+            };
+
+            if other_item == item {
+                return false;
+            } else if other_item > item {
+                break;
+            }
+
+            other_item_i += 1;
+        }
+    }
+
+    true
 }
 
 // If successful, returns a tuple (a,b) where:

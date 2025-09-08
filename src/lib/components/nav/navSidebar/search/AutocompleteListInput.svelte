@@ -12,7 +12,10 @@
   let onInputKeydown = async (e: KeyboardEvent) => {
     if (e.key === "Enter") {
       if (autocompleteFocus === -1) {
-        if (lastInputValueValid) {
+        // prevents a bug where lastInputValueValid is not updated fast enough
+        let [inputValueValid, _] = await autocomplete(inputValue, items);
+
+        if (inputValueValid) {
           items.push(inputValue);
           inputValue = "";
           lastInputValue = "";
