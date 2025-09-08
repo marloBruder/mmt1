@@ -5,12 +5,14 @@
   export class SearchTab extends Tab {
     component = SearchTabComponent;
 
-    #searchParameters: SearchParameters = $state({ page: 0, label: "", axiomDependencies: [], avoidAxiomDependencies: [] });
+    #searchParameters: SearchParameters = $state({ page: 0, label: "", allAxiomDependencies: [], anyAxiomDependencies: [], avoidAxiomDependencies: [] });
     #searchResult: TheoremListData = $state({ list: [], pageAmount: 0, pageLimits: null });
+    #searchNumber: number = $state(0);
 
-    constructor(searchParameters: SearchParameters) {
+    constructor(searchParameters: SearchParameters, searchNumber: number) {
       super();
       this.#searchParameters = searchParameters;
+      this.#searchNumber = searchNumber;
     }
 
     async loadData(): Promise<void> {
@@ -22,7 +24,7 @@
     }
 
     name(): string {
-      return "Search: " + this.#searchParameters.label;
+      return "Search #" + this.#searchNumber;
     }
 
     sameTab(_tab: Tab): boolean {
@@ -35,6 +37,10 @@
 
     get searchResult() {
       return this.#searchResult;
+    }
+
+    get searchNumber() {
+      return this.#searchNumber;
     }
   }
 </script>
@@ -55,17 +61,17 @@
 
   let previousPageClick = () => {
     let searchParams = { ...searchTab.searchParameters, page: searchTab.searchParameters.page - 1 };
-    tabManager.changeTab(new SearchTab(searchParams));
+    tabManager.changeTab(new SearchTab(searchParams, searchTab.searchNumber));
   };
 
   let nextPageClick = () => {
     let searchParams = { ...searchTab.searchParameters, page: searchTab.searchParameters.page + 1 };
-    tabManager.changeTab(new SearchTab(searchParams));
+    tabManager.changeTab(new SearchTab(searchParams, searchTab.searchNumber));
   };
 
   let pageButtonClick = (pageNum: number) => {
     let searchParams = { ...searchTab.searchParameters, page: pageNum };
-    tabManager.changeTab(new SearchTab(searchParams));
+    tabManager.changeTab(new SearchTab(searchParams, searchTab.searchNumber));
   };
 </script>
 

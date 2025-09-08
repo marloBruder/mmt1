@@ -10,4 +10,11 @@ interface SearchInputValues {
 
 let searchInputValues: SearchInputValues = $state({ allAxiomDependenciesInputValue: "", anyAxiomDependenciesInputValue: "", avoidAxiomDependenciesInputValue: "" });
 
-export { searchParameters, searchInputValues };
+let nextSearchNumber = $state(1);
+
+function getNextSearchNumber(): number {
+  nextSearchNumber += 1;
+  return nextSearchNumber - 1;
+}
+
+export { searchParameters, searchInputValues, getNextSearchNumber };

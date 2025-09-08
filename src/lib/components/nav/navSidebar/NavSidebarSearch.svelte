@@ -4,11 +4,11 @@
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import AutocompleteListInput from "./search/AutocompleteListInput.svelte";
-  import { searchInputValues, searchParameters } from "$lib/sharedState/searchData.svelte";
+  import { getNextSearchNumber, searchInputValues, searchParameters } from "$lib/sharedState/searchData.svelte";
   import SearchAccordion from "./search/SearchAccordion.svelte";
 
   let searchClick = async () => {
-    tabManager.openTab(new SearchTab({ ...searchParameters }), true);
+    tabManager.openTab(new SearchTab({ ...searchParameters }, getNextSearchNumber()), true);
   };
 
   let axiomDependenciesAutocomplete = async (query: string, items: string[]) => {
