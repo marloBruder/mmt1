@@ -118,12 +118,12 @@
   </div>
   <div>
     {#if lastInputValue !== ""}
-      <button class={"w-full pl-2 text-left " + (autocompleteFocus === -1 ? " bg-purple-500 " : "") + (lastInputValueValid ? " text-green-500 " : " text-red-500 ")} onclick={() => onAutocompleteClick(-1)}>
+      <button class={"w-full pl-2 text-left " + (autocompleteFocus === -1 ? " bg-purple-500 " : " hover:bg-purple-600 ") + (lastInputValueValid ? " text-green-500 " : " text-red-500 ")} onclick={() => onAutocompleteClick(-1)}>
         {lastInputValue}
       </button>
     {/if}
     {#each autocompleteItems as item, i}
-      <button class={"w-full pl-2 text-left text-green-500 " + (autocompleteFocus === i ? " bg-purple-500 " : " hover:bg-purple-400 ")} onclick={() => onAutocompleteClick(i)}>
+      <button class={"w-full pl-2 text-left text-green-500 " + (autocompleteFocus === i ? " bg-purple-500 " : " hover:bg-purple-600 ")} onclick={() => onAutocompleteClick(i)}>
         {item}
       </button>
     {/each}

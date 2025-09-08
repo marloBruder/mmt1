@@ -2,8 +2,8 @@
   import { invoke } from "@tauri-apps/api/core";
   import FolderHeader from "./FolderHeader.svelte";
   import type { Folder, HeaderPath, NameListHeader } from "$lib/sharedState/model.svelte";
-  import ChevronDownIcon from "$lib/icons/ChevronDownIcon.svelte";
-  import ChevronRightIcon from "$lib/icons/ChevronRightIcon.svelte";
+  import ChevronDownIcon from "$lib/icons/arrows/ChevronDownIcon.svelte";
+  import ChevronRightIcon from "$lib/icons/arrows/ChevronRightIcon.svelte";
   import PlusIcon from "$lib/icons/PlusIcon.svelte";
   import { page } from "$app/stores";
   import { explorerData } from "$lib/sharedState/explorerData.svelte";

@@ -1,8 +1,8 @@
 <script lang="ts">
   import Dropdown from "$lib/components/util/Dropdown.svelte";
   import ScrollableContainer from "$lib/components/util/ScrollableContainer.svelte";
-  import ArrowLeftIcon from "$lib/icons/ArrowLeftIcon.svelte";
-  import ArrowRightIcon from "$lib/icons/ArrowRightIcon.svelte";
+  import ArrowLeftIcon from "$lib/icons/arrows/ArrowLeftIcon.svelte";
+  import ArrowRightIcon from "$lib/icons/arrows/ArrowRightIcon.svelte";
   import SplitViewIcon from "$lib/icons/SplitViewIcon.svelte";
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import TabBarItem from "./TabBarItem.svelte";
