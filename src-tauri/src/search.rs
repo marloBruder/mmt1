@@ -2,7 +2,7 @@ use serde::Deserialize;
 use tauri::async_runtime::Mutex;
 
 use crate::{
-    model::{Header, ListEntry, Theorem, TheoremListData},
+    model::{Header, ListEntry, MetamathData, Theorem, TheoremListData},
     AppState, Error,
 };
 
@@ -17,6 +17,12 @@ pub struct SearchParameters {
     pub any_axiom_dependencies: Vec<String>,
     #[serde(rename = "avoidAxiomDependencies")]
     pub avoid_axiom_dependencies: Vec<String>,
+    #[serde(rename = "allDefinitionDependencies")]
+    pub all_definition_dependencies: Vec<String>,
+    #[serde(rename = "anyDefinitionDependencies")]
+    pub any_definition_dependencies: Vec<String>,
+    #[serde(rename = "avoidDefinitionDependencies")]
+    pub avoid_definition_dependencies: Vec<String>,
 }
 
 #[tauri::command]
@@ -27,38 +33,41 @@ pub async fn search_theorems(
     let app_state = state.lock().await;
     let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
-    let all_axiom_dependencies_indexes: Vec<usize> = if !search_parameters
-        .all_axiom_dependencies
-        .is_empty()
-    {
-        metamath_data
-            .database_header
-            .theorem_label_vec_to_ordered_theorem_i_vec(&search_parameters.all_axiom_dependencies)
-    } else {
-        Vec::new()
-    };
+    let all_axiom_dependencies_indexes: Vec<usize> =
+        calc_theorem_label_vec_to_ordered_theorem_i_vec_if_non_empty(
+            &search_parameters.all_axiom_dependencies,
+            metamath_data,
+        );
 
-    let any_axiom_dependencies_indexes: Vec<usize> = if !search_parameters
-        .any_axiom_dependencies
-        .is_empty()
-    {
-        metamath_data
-            .database_header
-            .theorem_label_vec_to_ordered_theorem_i_vec(&search_parameters.any_axiom_dependencies)
-    } else {
-        Vec::new()
-    };
+    let any_axiom_dependencies_indexes: Vec<usize> =
+        calc_theorem_label_vec_to_ordered_theorem_i_vec_if_non_empty(
+            &search_parameters.any_axiom_dependencies,
+            metamath_data,
+        );
 
-    let avoid_axiom_dependencies_indexes: Vec<usize> = if !search_parameters
-        .avoid_axiom_dependencies
-        .is_empty()
-    {
-        metamath_data
-            .database_header
-            .theorem_label_vec_to_ordered_theorem_i_vec(&search_parameters.avoid_axiom_dependencies)
-    } else {
-        Vec::new()
-    };
+    let avoid_axiom_dependencies_indexes: Vec<usize> =
+        calc_theorem_label_vec_to_ordered_theorem_i_vec_if_non_empty(
+            &search_parameters.avoid_axiom_dependencies,
+            metamath_data,
+        );
+
+    let all_definition_dependencies_indexes: Vec<usize> =
+        calc_theorem_label_vec_to_ordered_theorem_i_vec_if_non_empty(
+            &search_parameters.all_definition_dependencies,
+            metamath_data,
+        );
+
+    let any_definition_dependencies_indexes: Vec<usize> =
+        calc_theorem_label_vec_to_ordered_theorem_i_vec_if_non_empty(
+            &search_parameters.any_definition_dependencies,
+            metamath_data,
+        );
+
+    let avoid_definition_dependencies_indexes: Vec<usize> =
+        calc_theorem_label_vec_to_ordered_theorem_i_vec_if_non_empty(
+            &search_parameters.avoid_definition_dependencies,
+            metamath_data,
+        );
 
     let mut theorem_amount: i32 = 0;
     let mut list: Vec<ListEntry> = Vec::new();
@@ -89,6 +98,19 @@ pub async fn search_theorems(
                     ))
                 && ordered_list_disjoint_from_other_ordered_list(
                     &avoid_axiom_dependencies_indexes,
+                    &optimized_theorem_data.axiom_dependencies,
+                )
+                && ordered_list_contained_in_other_ordered_list(
+                    &all_definition_dependencies_indexes,
+                    &optimized_theorem_data.axiom_dependencies,
+                )
+                && (any_definition_dependencies_indexes.is_empty()
+                    || !ordered_list_disjoint_from_other_ordered_list(
+                        &any_definition_dependencies_indexes,
+                        &optimized_theorem_data.axiom_dependencies,
+                    ))
+                && ordered_list_disjoint_from_other_ordered_list(
+                    &avoid_definition_dependencies_indexes,
                     &optimized_theorem_data.axiom_dependencies,
                 )
         })
@@ -129,6 +151,19 @@ pub async fn search_theorems(
         page_amount,
         page_limits: Some(page_limits),
     })
+}
+
+fn calc_theorem_label_vec_to_ordered_theorem_i_vec_if_non_empty(
+    list: &Vec<String>,
+    metamath_data: &MetamathData,
+) -> Vec<usize> {
+    if !list.is_empty() {
+        metamath_data
+            .database_header
+            .theorem_label_vec_to_ordered_theorem_i_vec(list)
+    } else {
+        Vec::new()
+    }
 }
 
 fn ordered_list_contained_in_other_ordered_list(
@@ -206,6 +241,36 @@ pub async fn axiom_autocomplete(
             theorem.label != query
                 && theorem.proof.is_none()
                 && !theorem.label.starts_with("df-")
+                && !items.contains(&&*theorem.label)
+        }),
+    ))
+}
+
+// If successful, returns a tuple (a,b) where:
+// a is whether the query is a valid definition label
+// b is a list of 5 definition labels to be shown as autocomplete
+#[tauri::command]
+pub async fn definition_autocomplete(
+    state: tauri::State<'_, Mutex<AppState>>,
+    query: &str,
+    items: Vec<&str>,
+) -> Result<(bool, Vec<String>), Error> {
+    let app_state = state.lock().await;
+    let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
+
+    Ok((
+        metamath_data
+            .database_header
+            .find_theorem_by_label(query)
+            .is_some_and(|theorem| {
+                theorem.proof.is_none()
+                    && theorem.label.starts_with("df-")
+                    && !items.contains(&&*theorem.label)
+            }),
+        find_theorem_labels(&metamath_data.database_header, query, 5, |theorem| {
+            theorem.label != query
+                && theorem.proof.is_none()
+                && theorem.label.starts_with("df-")
                 && !items.contains(&&*theorem.label)
         }),
     ))

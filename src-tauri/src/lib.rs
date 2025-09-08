@@ -66,6 +66,7 @@ pub fn run() {
             explorer::quick_search,
             search::search_theorems,
             search::axiom_autocomplete,
+            search::definition_autocomplete,
             editor::open_folder,
             editor::close_folder,
             editor::get_subfolder,

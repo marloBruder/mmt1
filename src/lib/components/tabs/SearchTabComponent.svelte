@@ -5,7 +5,16 @@
   export class SearchTab extends Tab {
     component = SearchTabComponent;
 
-    #searchParameters: SearchParameters = $state({ page: 0, label: "", allAxiomDependencies: [], anyAxiomDependencies: [], avoidAxiomDependencies: [] });
+    #searchParameters: SearchParameters = $state({
+      page: 0,
+      label: "",
+      allAxiomDependencies: [],
+      anyAxiomDependencies: [],
+      avoidAxiomDependencies: [],
+      allDefinitionDependencies: [],
+      anyDefinitionDependencies: [],
+      avoidDefinitionDependencies: [],
+    });
     #searchResult: TheoremListData = $state({ list: [], pageAmount: 0, pageLimits: null });
     #searchNumber: number = $state(0);
 

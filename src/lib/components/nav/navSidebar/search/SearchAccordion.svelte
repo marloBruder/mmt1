@@ -15,7 +15,7 @@
 <div class="w-full border-y">
   <button class="w-full text-left custom-bg-hover-color" onclick={toggleOpen}>
     <div class="flex flex-row">
-      <div class={"flex-auto pl-1 " + (active ? " font-bold " : "")}>
+      <div class={"flex-auto pl-1 text-nowrap overflow-hidden custom-max-width " + (active ? " font-bold " : "")}>
         {title}
       </div>
       <div class="flex-initial w-6">
@@ -33,3 +33,9 @@
     {@render children()}
   </div>
 {/if}
+
+<style>
+  .custom-max-width {
+    max-width: calc(100% - 1.5rem);
+  }
+</style>

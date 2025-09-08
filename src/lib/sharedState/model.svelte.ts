@@ -228,6 +228,9 @@ export interface SearchParameters {
   allAxiomDependencies: string[];
   anyAxiomDependencies: string[];
   avoidAxiomDependencies: string[];
+  allDefinitionDependencies: string[];
+  anyDefinitionDependencies: string[];
+  avoidDefinitionDependencies: string[];
 }
 
 export interface Folder {

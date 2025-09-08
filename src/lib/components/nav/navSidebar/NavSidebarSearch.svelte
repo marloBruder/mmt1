@@ -14,6 +14,10 @@
   let axiomDependenciesAutocomplete = async (query: string, items: string[]) => {
     return (await invoke("axiom_autocomplete", { query, items })) as [boolean, string[]];
   };
+
+  let definitionDependenciesAutocomplete = async (query: string, items: string[]) => {
+    return (await invoke("definition_autocomplete", { query, items })) as [boolean, string[]];
+  };
 </script>
 
 <div class="py-2">
@@ -41,6 +45,22 @@
         <div class="pb-2">
           Must not depend on axioms:
           <AutocompleteListInput bind:items={searchParameters.avoidAxiomDependencies} bind:inputValue={searchInputValues.avoidAxiomDependenciesInputValue} autocomplete={axiomDependenciesAutocomplete}></AutocompleteListInput>
+        </div>
+      </div>
+    </SearchAccordion>
+    <SearchAccordion title="DEFINITION DEPENDENCIES" active={searchParameters.allDefinitionDependencies.length + searchParameters.anyDefinitionDependencies.length + searchParameters.avoidDefinitionDependencies.length != 0}>
+      <div class="px-2">
+        <div class="pb-2">
+          Must depend on all of the definitions:
+          <AutocompleteListInput bind:items={searchParameters.allDefinitionDependencies} bind:inputValue={searchInputValues.allDefinitionDependenciesInputValue} autocomplete={definitionDependenciesAutocomplete}></AutocompleteListInput>
+        </div>
+        <div class="pb-2">
+          Must depend on one of the definitions:
+          <AutocompleteListInput bind:items={searchParameters.anyDefinitionDependencies} bind:inputValue={searchInputValues.anyDefinitionDependenciesInputValue} autocomplete={definitionDependenciesAutocomplete}></AutocompleteListInput>
+        </div>
+        <div class="pb-2">
+          Must not depend on definitions:
+          <AutocompleteListInput bind:items={searchParameters.avoidDefinitionDependencies} bind:inputValue={searchInputValues.avoidDefinitionDependenciesInputValue} autocomplete={definitionDependenciesAutocomplete}></AutocompleteListInput>
         </div>
       </div>
     </SearchAccordion>
