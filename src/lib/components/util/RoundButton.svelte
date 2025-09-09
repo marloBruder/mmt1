@@ -20,4 +20,4 @@
   } = $props();
 </script>
 
-<button class={"border rounded px-1 disabled:text-gray-700 " + additionalClasses} class:bg-red-400={warning} class:bg-green-700={confirm} {onclick} {ondblclick} {disabled}>{@render children()}</button>
+<button class={"border rounded px-1 disabled:text-gray-700 " + additionalClasses} class:bg-red-600={warning} class:bg-green-700={confirm} {onclick} {ondblclick} {disabled}>{@render children()}</button>

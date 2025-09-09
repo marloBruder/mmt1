@@ -4,11 +4,21 @@
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import AutocompleteListInput from "./search/AutocompleteListInput.svelte";
-  import { getNextSearchNumber, searchInputValues, searchParameters } from "$lib/sharedState/searchData.svelte";
+  import { searchData, searchInputValues } from "$lib/sharedState/searchData.svelte";
   import SearchAccordion from "./search/SearchAccordion.svelte";
+  import type { SearchParameters } from "$lib/sharedState/model.svelte";
+  import { confirm } from "@tauri-apps/plugin-dialog";
+
+  let searchParameters = $derived(searchData.searchParameters);
 
   let searchClick = async () => {
-    tabManager.openTab(new SearchTab({ ...searchParameters }, getNextSearchNumber()), true);
+    tabManager.openTab(new SearchTab(JSON.parse(JSON.stringify(searchParameters)) as SearchParameters, searchData.getNextSearchNumber()), true);
+  };
+
+  let resetClick = async () => {
+    if (await confirm("Are you sure that you want to reset all search parameters?")) {
+      searchData.resetSearchParameters();
+    }
   };
 
   let axiomDependenciesAutocomplete = async (query: string, items: string[]) => {
@@ -23,6 +33,9 @@
 <div class="py-2">
   <div class="p-2">
     <RoundButton onclick={searchClick} additionalClasses="w-full">Search</RoundButton>
+  </div>
+  <div class="p-2">
+    <RoundButton onclick={resetClick} additionalClasses="w-full">Reset Search Parameters</RoundButton>
   </div>
   <div class="pt-2">
     <SearchAccordion title="LABEL" active={searchParameters.label.length != 0}>

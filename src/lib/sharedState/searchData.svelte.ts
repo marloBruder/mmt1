@@ -20,7 +20,19 @@ let getNewDefaultSearchParamters = () => {
   return JSON.parse(JSON.stringify(defaultSearchParameters)) as SearchParameters;
 };
 
-let searchParameters: SearchParameters = $state(getNewDefaultSearchParamters());
+class SearchData {
+  searchParameters: SearchParameters = $state(getNewDefaultSearchParamters());
+  nextSearchNumber = $state(1);
+
+  resetSearchParameters() {
+    this.searchParameters = getNewDefaultSearchParamters();
+  }
+
+  getNextSearchNumber(): number {
+    this.nextSearchNumber += 1;
+    return this.nextSearchNumber - 1;
+  }
+}
 
 interface SearchInputValues {
   allAxiomDependenciesInputValue: string;
@@ -40,11 +52,6 @@ let searchInputValues: SearchInputValues = $state({
   avoidDefinitionDependenciesInputValue: "",
 });
 
-let nextSearchNumber = $state(1);
+let searchData = new SearchData();
 
-function getNextSearchNumber(): number {
-  nextSearchNumber += 1;
-  return nextSearchNumber - 1;
-}
-
-export { searchParameters, searchInputValues, getNextSearchNumber, defaultSearchParameters };
+export { searchData, searchInputValues, defaultSearchParameters };
