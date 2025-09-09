@@ -16,6 +16,7 @@
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.0.1",
     "@tauri-apps/plugin-shell": "^2",
+    "@tauri-apps/plugin-store": "^2.4.0",
     "monaco-editor": "^0.52.2",
     "overlayscrollbars-svelte": "^0.5.5"
   },

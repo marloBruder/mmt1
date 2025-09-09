@@ -9,6 +9,10 @@ class Util {
     stringRep = stringRep.slice(0, stringRep.length - 1);
     return stringRep;
   }
+
+  clone(object: any): any {
+    return JSON.parse(JSON.stringify(object));
+  }
 }
 
 let util = new Util();
