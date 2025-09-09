@@ -226,6 +226,10 @@ export interface TheoremListEntry {
 export interface SearchParameters {
   page: number;
   label: string;
+  allowTheorems: boolean;
+  allowAxioms: boolean;
+  allowDefinitions: boolean;
+  allowSyntaxAxioms: boolean;
   allAxiomDependencies: string[];
   anyAxiomDependencies: string[];
   avoidAxiomDependencies: string[];

@@ -543,11 +543,20 @@ impl IdManager {
 }
 
 impl TheoremType {
+    pub fn is_theorem(&self) -> bool {
+        matches!(self, TheoremType::Theorem)
+    }
+
     pub fn is_axiom(&self) -> bool {
         matches!(self, TheoremType::Axiom)
     }
+
     pub fn is_definition(&self) -> bool {
         matches!(self, TheoremType::Definition)
+    }
+
+    pub fn is_syntax_axiom(&self) -> bool {
+        matches!(self, TheoremType::SyntaxAxiom)
     }
 }
 

@@ -5,16 +5,7 @@
   export class SearchTab extends Tab {
     component = SearchTabComponent;
 
-    #searchParameters: SearchParameters = $state({
-      page: 0,
-      label: "",
-      allAxiomDependencies: [],
-      anyAxiomDependencies: [],
-      avoidAxiomDependencies: [],
-      allDefinitionDependencies: [],
-      anyDefinitionDependencies: [],
-      avoidDefinitionDependencies: [],
-    });
+    #searchParameters: SearchParameters = $state(defaultSearchParameters);
     #searchResult: TheoremListData = $state({ list: [], pageAmount: 0, pageLimits: null });
     #searchNumber: number = $state(0);
 
@@ -58,6 +49,7 @@
   import { Tab, tabManager } from "$lib/sharedState/tabManager.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import TheoremList from "../util/TheoremList.svelte";
+  import { defaultSearchParameters } from "$lib/sharedState/searchData.svelte";
 
   let { tab }: { tab: Tab } = $props();
 

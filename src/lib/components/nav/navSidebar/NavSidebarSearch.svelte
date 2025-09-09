@@ -64,5 +64,25 @@
         </div>
       </div>
     </SearchAccordion>
+    <SearchAccordion title="STATEMENT TYPE" active={!searchParameters.allowTheorems || !searchParameters.allowAxioms || !searchParameters.allowDefinitions || !searchParameters.allowSyntaxAxioms}>
+      <div class="px-2 text-nowrap">
+        <div>
+          <input bind:checked={searchParameters.allowTheorems} type="checkbox" />
+          Allow theorems
+        </div>
+        <div>
+          <input bind:checked={searchParameters.allowAxioms} type="checkbox" />
+          Allow axioms
+        </div>
+        <div>
+          <input bind:checked={searchParameters.allowDefinitions} type="checkbox" />
+          Allow definitions
+        </div>
+        <div>
+          <input bind:checked={searchParameters.allowSyntaxAxioms} type="checkbox" />
+          Allow syntax axioms
+        </div>
+      </div>
+    </SearchAccordion>
   </div>
 </div>

@@ -11,6 +11,14 @@ use crate::{
 pub struct SearchParameters {
     pub page: u32,
     pub label: String,
+    #[serde(rename = "allowTheorems")]
+    pub allow_theorems: bool,
+    #[serde(rename = "allowAxioms")]
+    pub allow_axioms: bool,
+    #[serde(rename = "allowDefinitions")]
+    pub allow_definitions: bool,
+    #[serde(rename = "allowSyntaxAxioms")]
+    pub allow_syntax_axioms: bool,
     #[serde(rename = "allAxiomDependencies")]
     pub all_axiom_dependencies: Vec<String>,
     #[serde(rename = "anyAxiomDependencies")]
@@ -87,6 +95,14 @@ pub async fn search_theorems(
                 .unwrap();
 
             theorem.label.contains(&search_parameters.label)
+                && (search_parameters.allow_theorems
+                    || !optimized_theorem_data.theorem_type.is_theorem())
+                && (search_parameters.allow_axioms
+                    || !optimized_theorem_data.theorem_type.is_axiom())
+                && (search_parameters.allow_definitions
+                    || !optimized_theorem_data.theorem_type.is_definition())
+                && (search_parameters.allow_syntax_axioms
+                    || !optimized_theorem_data.theorem_type.is_syntax_axiom())
                 && ordered_list_contained_in_other_ordered_list(
                     &all_axiom_dependencies_indexes,
                     &optimized_theorem_data.axiom_dependencies,

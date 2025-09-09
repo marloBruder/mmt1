@@ -1,15 +1,26 @@
 import type { SearchParameters } from "./model.svelte";
 
-let searchParameters: SearchParameters = $state({
+const defaultSearchParameters: SearchParameters = {
   label: "",
   page: 0,
+  allowTheorems: true,
+  allowAxioms: true,
+  allowDefinitions: true,
+  allowSyntaxAxioms: true,
   allAxiomDependencies: [],
   anyAxiomDependencies: [],
   avoidAxiomDependencies: [],
   allDefinitionDependencies: [],
   anyDefinitionDependencies: [],
   avoidDefinitionDependencies: [],
-});
+};
+
+let getNewDefaultSearchParamters = () => {
+  // Clones the object
+  return JSON.parse(JSON.stringify(defaultSearchParameters)) as SearchParameters;
+};
+
+let searchParameters: SearchParameters = $state(getNewDefaultSearchParamters());
 
 interface SearchInputValues {
   allAxiomDependenciesInputValue: string;
@@ -36,4 +47,4 @@ function getNextSearchNumber(): number {
   return nextSearchNumber - 1;
 }
 
-export { searchParameters, searchInputValues, getNextSearchNumber };
+export { searchParameters, searchInputValues, getNextSearchNumber, defaultSearchParameters };
