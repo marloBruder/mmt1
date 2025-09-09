@@ -2,6 +2,7 @@
   import TitleBar from "$lib/components/titleBar/TitleBar.svelte";
   import HorizontalSplit from "$lib/components/util/HorizontalSplit.svelte";
   import { setupTheoremNumberStyleSheet } from "$lib/components/util/TheoremNumber.svelte";
+  import { setupLinkIntercepter } from "$lib/sharedState/interceptLinks.svelte";
   import { settingsData } from "$lib/sharedState/settingsData.svelte";
   import { setupShortcuts } from "$lib/sharedState/shortcuts.svelte";
   import { invoke } from "@tauri-apps/api/core";
@@ -10,6 +11,7 @@
   onMount(async () => {
     setupTheoremNumberStyleSheet();
     setupShortcuts();
+    setupLinkIntercepter();
     await settingsData.setupSettings();
     await invoke("set_settings", { settings: settingsData.settings });
     await invoke("setup_main_window");

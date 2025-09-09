@@ -29,5 +29,6 @@ markup5ever = "0.10.1"
 kuchiki = "0.8.1"
 lightningcss = "1.0.0-alpha.67"
 tauri-plugin-store = "2"
+tauri-plugin-opener = "2.5.0"
 # This might be needed for sqlx, but I'm not sure at the time
 # tokio = { version = "1.33.0", features = ["time", "rt", "macros"] }
