@@ -39,7 +39,7 @@
         <div class="text-xl">
           <button onclick={() => commentClick(theoremListEntry.commentPath)}>{theoremListEntry.commentPath}</button>
         </div>
-        <div>
+        <div class="whitespace-pre-line">
           {theoremListEntry.text}
         </div>
       </div>

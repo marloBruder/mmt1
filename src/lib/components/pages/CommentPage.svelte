@@ -9,6 +9,6 @@
     <h1 class="text-3xl">{"Comment " + pageData.commentPath}</h1>
   </div>
   <div>
-    <p>{pageData.comment.text}</p>
+    <p class="whitespace-pre-line">{pageData.comment.text}</p>
   </div>
 </div>
