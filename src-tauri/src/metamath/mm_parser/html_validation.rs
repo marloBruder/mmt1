@@ -12,7 +12,7 @@ pub fn verify_html(
     html: &str,
     allowed_tags_and_attributes: &HashMap<String, HashSet<String>>,
     allowed_css_properties: &HashSet<String>,
-) -> bool {
+) -> (bool, Option<String>) {
     let dom = parse_fragment(
         QualName::new(
             Some(Prefix::from("html")),
@@ -30,6 +30,8 @@ pub fn verify_html(
         .map(|node| node.children().collect())
         .unwrap_or(Vec::new());
 
+    let mut id_sanitized = false;
+
     while let Some(node) = nodes.pop() {
         nodes.extend(node.children());
 
@@ -38,29 +40,50 @@ pub fn verify_html(
             // println!("{}", element_name);
 
             if let Some(allowed_attributes) = allowed_tags_and_attributes.get(element_name) {
+                let mut id_in_attributes = false;
                 for (attr_name, attr_value) in &element_data.attributes.borrow().map {
-                    if !allowed_attributes.contains(attr_name.local.as_ref()) {
-                        // println!("Non allowed attibute: {}", attr_name.local.as_ref());
-                        // println!("{}\n", html);
-                        return false;
+                    if attr_name.local.as_ref() == "id" {
+                        id_sanitized = true;
+                        id_in_attributes = true;
+                    } else {
+                        if !allowed_attributes.contains(attr_name.local.as_ref()) {
+                            // println!("Non allowed attibute: {}", attr_name.local.as_ref());
+                            // println!("{}\n", html);
+                            return (false, None);
+                        }
+                        if attr_name.local.as_ref() == "style"
+                            && !verify_inline_css(&attr_value.value, allowed_css_properties)
+                        {
+                            // println!("Non allowed inline css:");
+                            // println!("{}\n", html);
+                            return (false, None);
+                        }
                     }
-                    if attr_name.local.as_ref() == "style"
-                        && !verify_inline_css(&attr_value.value, allowed_css_properties)
-                    {
-                        // println!("Non allowed inline css:");
-                        // println!("{}\n", html);
-                        return false;
-                    }
+                }
+                if id_in_attributes {
+                    element_data.attributes.borrow_mut().remove("id");
                 }
             } else {
                 // println!("Non allowed tag: {}", element_name);
                 // println!("{}\n", html);
-                return false;
+                return (false, None);
             }
         }
     }
 
-    true
+    if id_sanitized {
+        (
+            true,
+            Some(
+                dom.children()
+                    .next()
+                    .map(|node| node.to_string())
+                    .unwrap_or(String::new()),
+            ),
+        )
+    } else {
+        (true, None)
+    }
 }
 
 fn verify_inline_css(css: &str, allowed_css_properties: &HashSet<String>) -> bool {
@@ -149,6 +172,10 @@ pub fn create_rule_structs() -> (HashMap<String, HashSet<String>>, HashSet<Strin
         .insert(String::from("td"), HashSet::from([String::from("nowrap")]));
     html_allowed_tags_and_attributes.insert(String::from("p"), HashSet::new());
     html_allowed_tags_and_attributes.insert(String::from("br"), HashSet::new());
+    html_allowed_tags_and_attributes
+        .insert(String::from("a"), HashSet::from([String::from("href")]));
+    html_allowed_tags_and_attributes.insert(String::from("tt"), HashSet::new());
+    html_allowed_tags_and_attributes.insert(String::from("em"), HashSet::new());
 
     let css_allowed_properties: HashSet<String> = HashSet::from(
         [

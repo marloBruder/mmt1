@@ -657,19 +657,24 @@ impl MmParser {
                 next_html_index += 2;
             }
 
-            let html_rep = HtmlRepresentation {
+            let mut html_rep = HtmlRepresentation {
                 symbol: super::get_str_in_quotes(statement_tokens[1])
                     .ok_or(Error::TypesettingFormatError)?
                     .to_string(),
                 html,
             };
 
-            if !html_validation::verify_html(
+            let (html_valid, html_sanitized_option) = html_validation::verify_html(
                 &*html_rep.html,
                 &self.html_allowed_tags_and_attributes,
                 &self.css_allowed_properties,
-            ) {
+            );
+
+            if !html_valid {
                 self.invalid_html.push(html_rep.clone());
+            }
+            if let Some(html_sanitized) = html_sanitized_option {
+                html_rep.html = html_sanitized;
             }
             self.html_representations.push(html_rep);
         }

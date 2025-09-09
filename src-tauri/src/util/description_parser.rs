@@ -71,10 +71,18 @@ pub fn parse_description(
                     }
                 }
                 ParsedDescriptionSegment::Html(html) => {
-                    if !verify_html(&html, allowed_tags_and_attributes, allowed_css_properties) {
+                    let (html_valid, html_sanitized_option) =
+                        verify_html(&html, allowed_tags_and_attributes, allowed_css_properties);
+                    if !html_valid {
                         invalid_html.push(html.clone());
                     }
-                    ParsedDescriptionSegment::Html(html)
+                    ParsedDescriptionSegment::Html(
+                        if let Some(html_sanitized) = html_sanitized_option {
+                            html_sanitized
+                        } else {
+                            html
+                        },
+                    )
                 }
                 ParsedDescriptionSegment::HtmlCharacterRef(mut char_ref) => {
                     if (char_ref.chars().next().is_some_and(|c| c == '#')
