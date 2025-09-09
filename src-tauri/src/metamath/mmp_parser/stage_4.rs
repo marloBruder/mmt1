@@ -268,14 +268,13 @@ pub fn stage_4(
                         if let Some(parse_tree_ref) = parse_tree.as_ref() {
                             proof_line_parse_trees.push(parse_tree_ref);
 
-                            if let Some(optimized_theorem_data) =
-                                mm_data.optimized_data.theorem_data.get(&theorem_ref.label)
-                            {
-                                let parse_trees = optimized_theorem_data
-                                    .parse_trees
-                                    .as_ref()
-                                    .ok_or(Error::InternalLogicError)?;
+                            let optimized_theorem_data = mm_data
+                                .optimized_data
+                                .theorem_data
+                                .get(&theorem_ref.label)
+                                .ok_or(Error::InternalLogicError)?;
 
+                            if let Some(parse_trees) = optimized_theorem_data.parse_trees.as_ref() {
                                 let mut theorem_parse_trees: Vec<&ParseTree> =
                                     parse_trees.hypotheses_parsed.iter().collect();
                                 theorem_parse_trees.push(&parse_trees.assertion_parsed);

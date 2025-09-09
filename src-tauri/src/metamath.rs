@@ -488,6 +488,11 @@ pub fn calc_theorem_page_data(
         .theorem_i_vec_to_theorem_label_vec(&optimized_theorem_data.axiom_dependencies)
         .map_err(|_| Error::InternalLogicError)?;
 
+    let definition_dependencies = metamath_data
+        .database_header
+        .theorem_i_vec_to_theorem_label_vec(&optimized_theorem_data.definition_dependencies)
+        .map_err(|_| Error::InternalLogicError)?;
+
     let references = metamath_data
         .database_header
         .theorem_i_vec_to_theorem_label_vec(&optimized_theorem_data.references)
@@ -507,6 +512,7 @@ pub fn calc_theorem_page_data(
             last_theorem_label,
             next_theorem_label,
             axiom_dependencies,
+            definition_dependencies,
             references,
             description_parsed,
         });
@@ -619,6 +625,7 @@ pub fn calc_theorem_page_data(
         last_theorem_label,
         next_theorem_label,
         axiom_dependencies,
+        definition_dependencies,
         references,
         description_parsed,
     })

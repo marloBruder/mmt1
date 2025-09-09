@@ -4,7 +4,22 @@
   import type { TheoremPageData } from "$lib/sharedState/model.svelte";
   import { invoke } from "@tauri-apps/api/core";
 
-  let theoremPageDataDefault: TheoremPageData = { theorem: { label: "", description: "", distincts: [], hypotheses: [], assertion: "", proof: null }, theoremNumber: 0, proofLines: [], lastTheoremLabel: null, nextTheoremLabel: null, previewErrors: [], previewConfirmations: [], previewConfirmationsRecursive: [], previewUnifyMarkers: [], axiomDependencies: [], references: [], descriptionParsed: [], discriminator: "TheoremPageData" };
+  let theoremPageDataDefault: TheoremPageData = {
+    theorem: { label: "", description: "", distincts: [], hypotheses: [], assertion: "", proof: null },
+    theoremNumber: 0,
+    proofLines: [],
+    lastTheoremLabel: null,
+    nextTheoremLabel: null,
+    previewErrors: [],
+    previewConfirmations: [],
+    previewConfirmationsRecursive: [],
+    previewUnifyMarkers: [],
+    axiomDependencies: [],
+    definitionDependencies: [],
+    references: [],
+    descriptionParsed: [],
+    discriminator: "TheoremPageData",
+  };
 
   export class TheoremTab extends Tab {
     component = TheoremTabComponent;

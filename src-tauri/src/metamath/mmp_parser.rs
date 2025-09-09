@@ -159,6 +159,7 @@ pub struct MmpParserStage3Theorem<'a> {
     // pub description: &'a str,
     pub indention: Vec<u32>,
     pub axiom_dependencies: Vec<(String, u32)>,
+    pub definition_dependencies: Vec<(String, u32)>,
 }
 
 pub struct MmpParserStage3Fail {

@@ -276,7 +276,8 @@ fn stage_3_theorem<'a>(
 
     let indention = calc_indention(&stage_2.proof_lines)?;
 
-    let axiom_dependencies = calc_axiom_dependencies(&stage_2.proof_lines, metamath_data);
+    let (axiom_dependencies, definition_dependencies) =
+        calc_dependencies(&stage_2.proof_lines, metamath_data);
 
     Ok(if errors.is_empty() {
         MmpParserStage3::Success(MmpParserStage3Success::Theorem(MmpParserStage3Theorem {
@@ -284,6 +285,7 @@ fn stage_3_theorem<'a>(
             label,
             indention,
             axiom_dependencies,
+            definition_dependencies,
         }))
     } else {
         MmpParserStage3::Fail(MmpParserStage3Fail { errors })
@@ -349,10 +351,10 @@ fn calc_indention(proof_lines: &Vec<ProofLine>) -> Result<Vec<u32>, Error> {
     Ok(indentions_vec)
 }
 
-fn calc_axiom_dependencies(
+fn calc_dependencies(
     proof_lines: &Vec<ProofLine>,
     metamath_data: &MetamathData,
-) -> Vec<(String, u32)> {
+) -> (Vec<(String, u32)>, Vec<(String, u32)>) {
     let mut already_seen: HashSet<&str> = HashSet::new();
 
     let step_refs: Vec<&str> = proof_lines
@@ -371,14 +373,21 @@ fn calc_axiom_dependencies(
         })
         .collect();
 
-    let theorem_indexes =
-        Theorem::calc_axiom_dependencies_from_labels(&step_refs, &metamath_data.optimized_data);
+    let (axiom_theorem_indexes, definition_theorem_indexes) =
+        Theorem::calc_dependencies_from_labels(&step_refs, &metamath_data.optimized_data);
 
-    metamath_data
-        .database_header
-        .theorem_i_vec_to_theorem_label_vec(&theorem_indexes)
-        // Should never be the case
-        .unwrap_or(Vec::new())
+    (
+        metamath_data
+            .database_header
+            .theorem_i_vec_to_theorem_label_vec(&axiom_theorem_indexes)
+            // Should never be the case
+            .unwrap_or(Vec::new()),
+        metamath_data
+            .database_header
+            .theorem_i_vec_to_theorem_label_vec(&definition_theorem_indexes)
+            // Should never be the case
+            .unwrap_or(Vec::new()),
+    )
 }
 
 fn stage_3_no_label<'a>(

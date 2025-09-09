@@ -143,14 +143,13 @@ pub async fn unify(state: tauri::State<'_, Mutex<AppState>>, text: &str) -> Resu
                         proof_line_parse_trees.push(&proof_line.parse_tree);
 
                         for theorem in mm_data.database_header.theorem_iter() {
-                            if let Some(theorem_data) =
-                                mm_data.optimized_data.theorem_data.get(&theorem.label)
-                            {
-                                let parse_trees = theorem_data
-                                    .parse_trees
-                                    .as_ref()
-                                    .ok_or(Error::InternalLogicError)?;
+                            let theorem_data = mm_data
+                                .optimized_data
+                                .theorem_data
+                                .get(&theorem.label)
+                                .ok_or(Error::InternalLogicError)?;
 
+                            if let Some(parse_trees) = theorem_data.parse_trees.as_ref() {
                                 let mut theorem_parse_trees: Vec<&ParseTree> =
                                     parse_trees.hypotheses_parsed.iter().collect();
                                 theorem_parse_trees.push(&parse_trees.assertion_parsed);

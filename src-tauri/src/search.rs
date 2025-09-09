@@ -102,16 +102,16 @@ pub async fn search_theorems(
                 )
                 && ordered_list_contained_in_other_ordered_list(
                     &all_definition_dependencies_indexes,
-                    &optimized_theorem_data.axiom_dependencies,
+                    &optimized_theorem_data.definition_dependencies,
                 )
                 && (any_definition_dependencies_indexes.is_empty()
                     || !ordered_list_disjoint_from_other_ordered_list(
                         &any_definition_dependencies_indexes,
-                        &optimized_theorem_data.axiom_dependencies,
+                        &optimized_theorem_data.definition_dependencies,
                     ))
                 && ordered_list_disjoint_from_other_ordered_list(
                     &avoid_definition_dependencies_indexes,
-                    &optimized_theorem_data.axiom_dependencies,
+                    &optimized_theorem_data.definition_dependencies,
                 )
         })
         .for_each(|(theorem_number, theorem)| {
@@ -233,14 +233,11 @@ pub async fn axiom_autocomplete(
             .database_header
             .find_theorem_by_label(query)
             .is_some_and(|theorem| {
-                theorem.proof.is_none()
-                    && !theorem.label.starts_with("df-")
-                    && !items.contains(&&*theorem.label)
+                theorem.calc_theorem_type().is_axiom() && !items.contains(&&*theorem.label)
             }),
         find_theorem_labels(&metamath_data.database_header, query, 5, |theorem| {
             theorem.label != query
-                && theorem.proof.is_none()
-                && !theorem.label.starts_with("df-")
+                && theorem.calc_theorem_type().is_axiom()
                 && !items.contains(&&*theorem.label)
         }),
     ))
@@ -263,14 +260,11 @@ pub async fn definition_autocomplete(
             .database_header
             .find_theorem_by_label(query)
             .is_some_and(|theorem| {
-                theorem.proof.is_none()
-                    && theorem.label.starts_with("df-")
-                    && !items.contains(&&*theorem.label)
+                theorem.calc_theorem_type().is_definition() && !items.contains(&&*theorem.label)
             }),
         find_theorem_labels(&metamath_data.database_header, query, 5, |theorem| {
             theorem.label != query
-                && theorem.proof.is_none()
-                && theorem.label.starts_with("df-")
+                && theorem.calc_theorem_type().is_definition()
                 && !items.contains(&&*theorem.label)
         }),
     ))

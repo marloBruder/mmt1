@@ -9,9 +9,6 @@
 
   let theorem = $derived(pageData.theorem);
 
-  let axiomDependencies = $derived(pageData.axiomDependencies.filter(([dep, _]) => !dep.startsWith("df-")));
-  let definitionDependencies = $derived(pageData.axiomDependencies.filter(([dep, _]) => dep.startsWith("df-")));
-
   let isHypothesisName = (name: string): boolean => {
     for (let hypothesis of theorem.hypotheses) {
       if (hypothesis.label == name) {
@@ -144,22 +141,22 @@
   <div class="text-left px-4">
     {#if theorem.proof !== null}
       <span class="font-bold">This theorem was proved from axioms: </span>
-      {#if axiomDependencies.length === 0}
+      {#if pageData.axiomDependencies.length === 0}
         (None)
       {/if}
       <div class="text-justify">
-        {#each axiomDependencies as [axiomDependency, dependencyNumber]}
+        {#each pageData.axiomDependencies as [axiomDependency, dependencyNumber]}
           <span class="mr-2">
             <TheoremLink label={axiomDependency} theoremNumber={dependencyNumber}></TheoremLink>
           </span>
         {/each}
       </div>
       <span class="font-bold">This theorem depends on definitions: </span>
-      {#if definitionDependencies.length === 0}
+      {#if pageData.definitionDependencies.length === 0}
         (None)
       {/if}
       <div class="text-justify">
-        {#each definitionDependencies as [definitionDependency, dependencyNumber]}
+        {#each pageData.definitionDependencies as [definitionDependency, dependencyNumber]}
           <span class="mr-2">
             <TheoremLink label={definitionDependency} theoremNumber={dependencyNumber}></TheoremLink>
           </span>
