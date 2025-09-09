@@ -249,11 +249,12 @@ pub async fn axiom_autocomplete(
             .database_header
             .find_theorem_by_label(query)
             .is_some_and(|theorem| {
-                theorem.calc_theorem_type().is_axiom() && !items.contains(&&*theorem.label)
+                theorem.calc_theorem_type(&app_state.settings).is_axiom()
+                    && !items.contains(&&*theorem.label)
             }),
         find_theorem_labels(&metamath_data.database_header, query, 5, |theorem| {
             theorem.label != query
-                && theorem.calc_theorem_type().is_axiom()
+                && theorem.calc_theorem_type(&app_state.settings).is_axiom()
                 && !items.contains(&&*theorem.label)
         }),
     ))
@@ -276,11 +277,16 @@ pub async fn definition_autocomplete(
             .database_header
             .find_theorem_by_label(query)
             .is_some_and(|theorem| {
-                theorem.calc_theorem_type().is_definition() && !items.contains(&&*theorem.label)
+                theorem
+                    .calc_theorem_type(&app_state.settings)
+                    .is_definition()
+                    && !items.contains(&&*theorem.label)
             }),
         find_theorem_labels(&metamath_data.database_header, query, 5, |theorem| {
             theorem.label != query
-                && theorem.calc_theorem_type().is_definition()
+                && theorem
+                    .calc_theorem_type(&app_state.settings)
+                    .is_definition()
                 && !items.contains(&&*theorem.label)
         }),
     ))

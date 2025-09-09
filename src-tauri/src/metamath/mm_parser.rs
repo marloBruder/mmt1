@@ -13,7 +13,7 @@ use crate::{
         Statement, SymbolNumberMapping, Theorem, TheoremParseTrees, Variable, VariableColor,
     },
     util::{self, earley_parser_optimized::Grammar},
-    AppState, Error,
+    AppState, Error, Settings,
 };
 
 pub mod html_validation;
@@ -30,12 +30,13 @@ pub async fn open_metamath_database(
     let database_id = app_state.id_manager.get_next_id();
     app_state.stop_temp_database_calculations = Arc::new(std::sync::Mutex::new(false));
     let stop = app_state.stop_temp_database_calculations.clone();
+    let settings = app_state.settings.clone();
     drop(app_state);
 
     let mut mm_parser = MmParser::new(mm_file_path, Some(app), Some(stop))?;
     mm_parser.process_all_statements()?;
     let (metamath_data, invalid_html, invalid_description_html) =
-        mm_parser.consume_early_before_grammar_calculations(database_id)?;
+        mm_parser.consume_early_before_grammar_calculations(database_id, &settings)?;
 
     let mut app_state = state.lock().await;
     app_state.temp_metamath_data = Some(metamath_data);
@@ -411,6 +412,7 @@ impl MmParser {
     fn consume_early_before_grammar_calculations(
         self,
         database_id: u32,
+        settings: &Settings,
     ) -> Result<(MetamathData, Vec<HtmlRepresentation>, Vec<(String, String)>), Error> {
         if let Some(ref app_handle) = self.app {
             app_handle.emit("mm-parser-progress", 100).ok();
@@ -442,6 +444,7 @@ impl MmParser {
             &self.html_allowed_tags_and_attributes,
             &self.css_allowed_properties,
             self.stop,
+            settings,
         )?;
 
         if let Some(ref app_handle) = self.app {

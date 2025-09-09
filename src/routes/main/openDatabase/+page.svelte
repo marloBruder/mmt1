@@ -6,7 +6,7 @@
   import ScrollableContainer from "$lib/components/util/ScrollableContainer.svelte";
   import { setEditorSyntaxHighlighting } from "$lib/monaco/monaco";
   import { explorerData } from "$lib/sharedState/explorerData.svelte";
-  import { globalState } from "$lib/sharedState/globalState.svelte";
+  import { DatabaseState, globalState } from "$lib/sharedState/globalState.svelte";
   import { htmlData } from "$lib/sharedState/htmlData.svelte";
   import type { ColorInformation, HeaderRepresentation, HtmlRepresentation } from "$lib/sharedState/model.svelte";
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
@@ -93,10 +93,9 @@
       emit("mm-db-opened");
       await tabManager.getOpenTab()?.onTabOpen();
       await goto("/main");
-      globalState.databaseBeingOpened = "";
+      globalState.databaseState = new DatabaseState(databaseId, globalState.databaseBeingOpened, theoremAmount);
       globalState.databaseState.grammarCalculationsProgress = lastGrammarCalculationsProgress;
-      globalState.databaseState.databaseId = databaseId;
-      globalState.databaseState.theoremAmount = theoremAmount;
+      globalState.databaseBeingOpened = "";
     }
   };
 </script>

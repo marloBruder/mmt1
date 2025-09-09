@@ -7,11 +7,12 @@
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
 
-  onMount(() => {
+  onMount(async () => {
     setupTheoremNumberStyleSheet();
     setupShortcuts();
-    settingsData.setupSettings();
-    invoke("setup_main_window");
+    await settingsData.setupSettings();
+    await invoke("set_settings", { settings: settingsData.settings });
+    await invoke("setup_main_window");
   });
 </script>
 

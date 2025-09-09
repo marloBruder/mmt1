@@ -9,6 +9,8 @@
 
     unsavedChanges = $derived(JSON.stringify(settingsData.settings) !== JSON.stringify(this.settings));
 
+    databaseReloadRequired = $derived(settingsData.settings.definitionsStartWith !== this.settings.definitionsStartWith);
+
     async loadData(): Promise<void> {
       this.settings = settingsData.cloneSettings();
     }
@@ -38,12 +40,16 @@
 <script lang="ts">
   import { Tab } from "$lib/sharedState/tabManager.svelte";
   import { util } from "$lib/sharedState/util.svelte";
+  import { invoke } from "@tauri-apps/api/core";
   import HorizontalSplit from "../util/HorizontalSplit.svelte";
   import RoundButton from "../util/RoundButton.svelte";
   import ScrollableContainer from "../util/ScrollableContainer.svelte";
   import VerticalSplit from "../util/VerticalSplit.svelte";
   import GeneralSettingsTabComponent from "./settingsTabs/GeneralSettingsTabComponent.svelte";
   import type { Component } from "svelte";
+  import { globalState } from "$lib/sharedState/globalState.svelte";
+  import { goto } from "$app/navigation";
+  import { confirm } from "@tauri-apps/plugin-dialog";
 
   let { tab }: { tab: Tab } = $props();
 
@@ -68,9 +74,21 @@
     currentTabIndex = index;
   };
 
-  let saveChanges = () => {
+  let saveChanges = async () => {
+    const databaseReloadRequired = settingsTab.databaseReloadRequired;
+
+    if (databaseReloadRequired && globalState.databaseState !== null && !(await confirm("Are you sure you want to reload the database to save your settings?"))) {
+      return;
+    }
+
     settingsData.settings = util.clone(settingsTab.settings) as Settings;
-    settingsData.settingsStore?.set("settings", settingsTab.settings);
+    await settingsData.settingsStore?.set("settings", settingsTab.settings);
+    await invoke("set_settings", { settings: settingsTab.settings });
+
+    if (databaseReloadRequired && globalState.databaseState !== null) {
+      globalState.databaseBeingOpened = globalState.databaseState.databasePath;
+      goto("/main/openDatabase");
+    }
   };
 </script>
 
@@ -106,6 +124,9 @@
               Unsaved Changes
             {:else}
               No Unsaved Changes
+            {/if}
+            {#if settingsTab.databaseReloadRequired}
+              (Database reload required)
             {/if}
           </div>
           <div class="px-6">

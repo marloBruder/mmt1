@@ -4,12 +4,20 @@
   import type { SettingsTab } from "../SettingsTabComponent.svelte";
 
   let { settingsTab }: { settingsTab: SettingsTab } = $props();
+
+  let parseTreeProgress = $derived.by(() => {
+    if (globalState.databaseState !== null) {
+      return globalState.databaseState.grammarCalculationsProgress;
+    } else {
+      return 0;
+    }
+  });
 </script>
 
 <div class="p-2">
   <div class="pb-2">
     Progress calculating parse trees:
-    <ProgressBar progress={globalState.databaseState.grammarCalculationsProgress}></ProgressBar>
+    <ProgressBar progress={parseTreeProgress}></ProgressBar>
   </div>
   <div class="py-2">
     <hr />

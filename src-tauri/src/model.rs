@@ -22,7 +22,7 @@ use crate::{
             VariableIterator, VariableLocateAfterIterator,
         },
     },
-    Error,
+    Error, Settings,
 };
 use Statement::*;
 
@@ -386,13 +386,14 @@ impl MetamathData {
         allowed_tags_and_attributes: &HashMap<String, HashSet<String>>,
         allowed_css_properties: &HashSet<String>,
         stop: Option<Arc<std::sync::Mutex<bool>>>,
+        settings: &Settings,
     ) -> Result<Vec<(String, String)>, Error> {
         let mut last_reported_progress = 0;
 
         let mut invalid_description_html = Vec::new();
 
         for (i, theorem) in self.database_header.theorem_iter().enumerate() {
-            let theorem_type = theorem.calc_theorem_type();
+            let theorem_type = theorem.calc_theorem_type(settings);
 
             let (axiom_dependencies, definition_dependencies) = theorem
                 .calc_dependencies_and_add_references(&mut self.optimized_data, i, &theorem_type);
@@ -1551,12 +1552,12 @@ impl Theorem {
         (ax_result, df_result)
     }
 
-    pub fn calc_theorem_type(&self) -> TheoremType {
+    pub fn calc_theorem_type(&self, settings: &Settings) -> TheoremType {
         if self.proof.is_some() {
             TheoremType::Theorem
         } else if !self.assertion.starts_with("|- ") {
             TheoremType::SyntaxAxiom
-        } else if self.label.starts_with("df-") {
+        } else if self.label.starts_with(&settings.definitons_start_with) {
             TheoremType::Definition
         } else {
             TheoremType::Axiom

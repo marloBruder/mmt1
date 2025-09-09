@@ -22,7 +22,13 @@
 
   let { theoremNumber, normalTextSize = false }: { theoremNumber: number; normalTextSize?: boolean } = $props();
 
-  let hsvCode = $derived(Math.floor((theoremNumber * 325) / globalState.databaseState.theoremAmount));
+  let hsvCode = $derived.by(() => {
+    if (globalState.databaseState !== null) {
+      return Math.floor((theoremNumber * 325) / globalState.databaseState.theoremAmount);
+    } else {
+      return "";
+    }
+  });
 </script>
 
 <small class={(normalTextSize ? "text-base" : "text-xs ") + " hsv" + hsvCode + " "}>

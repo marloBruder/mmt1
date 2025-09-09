@@ -1,6 +1,7 @@
 use std::{fmt, sync::Arc};
 
 use model::MetamathData;
+use serde::Deserialize;
 use tauri::{async_runtime::Mutex, App, AppHandle, Emitter, Listener, Manager};
 
 use crate::model::IdManager;
@@ -22,6 +23,13 @@ pub struct AppState {
     stop_temp_database_calculations: Arc<std::sync::Mutex<bool>>,
     id_manager: IdManager,
     open_folder: Option<String>,
+    settings: Settings,
+}
+
+#[derive(Deserialize, Default, Clone)]
+pub struct Settings {
+    #[serde(rename = "definitionsStartWith")]
+    definitons_start_with: String,
 }
 
 fn app_setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
@@ -32,6 +40,7 @@ fn app_setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         stop_temp_database_calculations: Arc::new(std::sync::Mutex::new(false)),
         id_manager: IdManager::new(),
         open_folder: None,
+        settings: Settings::default(),
     }));
     // app.manage::<Mutex<Option<AppState>>>(Mutex::new(None));
     Ok(())
@@ -44,6 +53,18 @@ fn setup_main_window(window: tauri::Window, app: AppHandle) {
         app.emit("external-window-close", ()).ok();
     });
     window.get_webview_window("main").unwrap().show().unwrap();
+}
+
+#[tauri::command]
+async fn set_settings(
+    state: tauri::State<'_, Mutex<AppState>>,
+    settings: Settings,
+) -> Result<(), ()> {
+    let mut app_state = state.lock().await;
+
+    app_state.settings = settings;
+
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -63,6 +84,7 @@ pub fn run() {
             // editor::set_in_progress_theorem,
             // editor::delete_in_progress_theorem,
             setup_main_window,
+            set_settings,
             explorer::add_header,
             explorer::quick_search,
             search::search_theorems,

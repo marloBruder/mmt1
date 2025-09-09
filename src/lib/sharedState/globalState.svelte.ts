@@ -1,21 +1,28 @@
 import { listen } from "@tauri-apps/api/event";
 
 class GlobalState {
-  databaseState: DatabaseState = new DatabaseState();
+  databaseState: DatabaseState | null = $state(null);
   databaseBeingOpened: string = $state("");
 }
 
-class DatabaseState {
-  databaseId: number | null = $state(null);
+export class DatabaseState {
+  databaseId: number = $state(0);
+  databasePath: string = $state("");
   grammarCalculationsProgress: number = $state(0);
   theoremAmount: number = $state(0);
+
+  constructor(databaseId: number, databasePath: string, theoremAmount: number) {
+    this.databaseId = databaseId;
+    this.databasePath = databasePath;
+    this.theoremAmount = theoremAmount;
+  }
 }
 
 let globalState = new GlobalState();
 
 listen("grammar-calculations-progress", (e) => {
   let [progress, databaseId] = e.payload as [number, number];
-  if (globalState.databaseState.databaseId === databaseId && progress > globalState.databaseState.grammarCalculationsProgress) {
+  if (globalState.databaseState !== null && globalState.databaseState.databaseId === databaseId && progress > globalState.databaseState.grammarCalculationsProgress) {
     globalState.databaseState.grammarCalculationsProgress = progress;
   }
 });
