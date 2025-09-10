@@ -1,18 +1,45 @@
-import type { SearchParameters } from "./model.svelte";
+export interface SearchParameters {
+  page: number;
+  label: string;
+  searchBySubstitution: SearchBySubstitutionCondition[];
+  allAxiomDependencies: string[];
+  anyAxiomDependencies: string[];
+  avoidAxiomDependencies: string[];
+  allDefinitionDependencies: string[];
+  anyDefinitionDependencies: string[];
+  avoidDefinitionDependencies: string[];
+  allowTheorems: boolean;
+  allowAxioms: boolean;
+  allowDefinitions: boolean;
+  allowSyntaxAxioms: boolean;
+}
+
+export interface SearchBySubstitutionCondition {
+  searchTarget: "anyHypothesis" | "allHpotheses" | "assertion";
+  match: "matches" | "contains";
+  search: string;
+}
 
 const defaultSearchParameters: SearchParameters = {
   label: "",
   page: 0,
-  allowTheorems: true,
-  allowAxioms: true,
-  allowDefinitions: true,
-  allowSyntaxAxioms: true,
+  searchBySubstitution: [],
   allAxiomDependencies: [],
   anyAxiomDependencies: [],
   avoidAxiomDependencies: [],
   allDefinitionDependencies: [],
   anyDefinitionDependencies: [],
   avoidDefinitionDependencies: [],
+  allowTheorems: true,
+  allowAxioms: true,
+  allowDefinitions: true,
+  allowSyntaxAxioms: true,
+};
+
+const defaultSearchBySubstitutionCondition: SearchBySubstitutionCondition = {
+  searchTarget: "anyHypothesis",
+  match: "matches",
+  search: "",
 };
 
 let getNewDefaultSearchParamters = () => {
@@ -54,4 +81,4 @@ let searchInputValues: SearchInputValues = $state({
 
 let searchData = new SearchData();
 
-export { searchData, searchInputValues, defaultSearchParameters };
+export { searchData, searchInputValues, defaultSearchParameters, defaultSearchBySubstitutionCondition };

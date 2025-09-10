@@ -11,14 +11,6 @@ use crate::{
 pub struct SearchParameters {
     pub page: u32,
     pub label: String,
-    #[serde(rename = "allowTheorems")]
-    pub allow_theorems: bool,
-    #[serde(rename = "allowAxioms")]
-    pub allow_axioms: bool,
-    #[serde(rename = "allowDefinitions")]
-    pub allow_definitions: bool,
-    #[serde(rename = "allowSyntaxAxioms")]
-    pub allow_syntax_axioms: bool,
     #[serde(rename = "allAxiomDependencies")]
     pub all_axiom_dependencies: Vec<String>,
     #[serde(rename = "anyAxiomDependencies")]
@@ -31,6 +23,14 @@ pub struct SearchParameters {
     pub any_definition_dependencies: Vec<String>,
     #[serde(rename = "avoidDefinitionDependencies")]
     pub avoid_definition_dependencies: Vec<String>,
+    #[serde(rename = "allowTheorems")]
+    pub allow_theorems: bool,
+    #[serde(rename = "allowAxioms")]
+    pub allow_axioms: bool,
+    #[serde(rename = "allowDefinitions")]
+    pub allow_definitions: bool,
+    #[serde(rename = "allowSyntaxAxioms")]
+    pub allow_syntax_axioms: bool,
 }
 
 #[tauri::command]

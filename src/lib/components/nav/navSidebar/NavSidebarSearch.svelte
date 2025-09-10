@@ -4,10 +4,12 @@
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import AutocompleteListInput from "./search/AutocompleteListInput.svelte";
-  import { searchData, searchInputValues } from "$lib/sharedState/searchData.svelte";
+  import { defaultSearchBySubstitutionCondition, searchData, searchInputValues, type SearchParameters } from "$lib/sharedState/searchData.svelte";
   import SearchAccordion from "./search/SearchAccordion.svelte";
-  import type { SearchParameters } from "$lib/sharedState/model.svelte";
   import { confirm } from "@tauri-apps/plugin-dialog";
+  import SelectDropdown from "$lib/components/util/SelectDropdown.svelte";
+  import { util } from "$lib/sharedState/util.svelte";
+  import CloseIcon from "$lib/icons/titleBar/CloseIcon.svelte";
 
   let searchParameters = $derived(searchData.searchParameters);
 
@@ -19,6 +21,25 @@
     if (await confirm("Are you sure that you want to reset all search parameters?")) {
       searchData.resetSearchParameters();
     }
+  };
+
+  let searchBySubstituionSearchTargetOptions = [
+    { label: "any hypothesis,", value: "anyHypothesis" },
+    { label: "all hypotheses,", value: "allHpotheses" },
+    { label: "the assertion,", value: "assertion" },
+  ];
+
+  let searchBySubstitutionMatchOptions = [
+    { label: "matching", value: "matches" },
+    { label: "containing", value: "contains" },
+  ];
+
+  let removeSearchBySubstitutionCondition = (i: number) => {
+    searchParameters.searchBySubstitution.splice(i, 1);
+  };
+
+  let addSearchBySubstitutionCondition = () => {
+    searchParameters.searchBySubstitution.push(util.clone(defaultSearchBySubstitutionCondition));
   };
 
   let axiomDependenciesAutocomplete = async (query: string, items: string[]) => {
@@ -43,6 +64,27 @@
         <label for="search-input">Label:</label>
         <br />
         <input id="search-input" class="border border-gray-300 rounded custom-bg-input-color w-full" bind:value={searchParameters.label} autocomplete="off" spellcheck="false" />
+      </div>
+    </SearchAccordion>
+    <SearchAccordion title="SEARCH BY SUBSTITUTION" active={!searchParameters.allowTheorems || !searchParameters.allowAxioms || !searchParameters.allowDefinitions || !searchParameters.allowSyntaxAxioms}>
+      <div class="p-2">
+        {#each searchParameters.searchBySubstitution as searchBySubstitutionCondition, i}
+          <div class="pb-2 border rounded-lg mb-2">
+            <div class="border-b flex flex-row-reverse">
+              <button onclick={() => removeSearchBySubstitutionCondition(i)}><CloseIcon></CloseIcon></button>
+            </div>
+            <div class="p-2">
+              In
+              <SelectDropdown bind:value={searchBySubstitutionCondition.searchTarget} options={searchBySubstituionSearchTargetOptions}></SelectDropdown>
+              search for expressions
+              <SelectDropdown bind:value={searchBySubstitutionCondition.match} options={searchBySubstitutionMatchOptions}></SelectDropdown>
+            </div>
+            <div class="px-2">
+              <input class="w-full custom-bg-input-color border rounded" bind:value={searchBySubstitutionCondition.search} autocomplete="off" spellcheck="false" />
+            </div>
+          </div>
+        {/each}
+        <RoundButton additionalClasses="w-full" onclick={addSearchBySubstitutionCondition}>Add new condition</RoundButton>
       </div>
     </SearchAccordion>
     <SearchAccordion title="AXIOM DEPENDENCIES" active={searchParameters.allAxiomDependencies.length + searchParameters.anyAxiomDependencies.length + searchParameters.avoidAxiomDependencies.length != 0}>

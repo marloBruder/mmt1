@@ -1,6 +1,6 @@
 <script lang="ts" module>
   import SearchTabComponent from "$lib/components/tabs/SearchTabComponent.svelte";
-  import type { SearchParameters, TheoremListData } from "$lib/sharedState/model.svelte";
+  import type { TheoremListData } from "$lib/sharedState/model.svelte";
 
   export class SearchTab extends Tab {
     component = SearchTabComponent;
@@ -49,7 +49,7 @@
   import { Tab, tabManager } from "$lib/sharedState/tabManager.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import TheoremList from "../util/TheoremList.svelte";
-  import { defaultSearchParameters } from "$lib/sharedState/searchData.svelte";
+  import { defaultSearchParameters, type SearchParameters } from "$lib/sharedState/searchData.svelte";
 
   let { tab }: { tab: Tab } = $props();
 

@@ -223,21 +223,6 @@ export interface TheoremListEntry {
   discriminator: "TheoremListEntry";
 }
 
-export interface SearchParameters {
-  page: number;
-  label: string;
-  allowTheorems: boolean;
-  allowAxioms: boolean;
-  allowDefinitions: boolean;
-  allowSyntaxAxioms: boolean;
-  allAxiomDependencies: string[];
-  anyAxiomDependencies: string[];
-  avoidAxiomDependencies: string[];
-  allDefinitionDependencies: string[];
-  anyDefinitionDependencies: string[];
-  avoidDefinitionDependencies: string[];
-}
-
 export interface Folder {
   name: string;
   content: { fileNames: string[]; subfolders: Folder[] } | null;
