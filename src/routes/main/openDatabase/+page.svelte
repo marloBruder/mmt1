@@ -9,6 +9,7 @@
   import { DatabaseState, globalState } from "$lib/sharedState/globalState.svelte";
   import { htmlData } from "$lib/sharedState/htmlData.svelte";
   import type { ColorInformation, HeaderRepresentation, HtmlRepresentation } from "$lib/sharedState/model.svelte";
+  import { searchData } from "$lib/sharedState/searchData.svelte";
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
@@ -91,11 +92,12 @@
       htmlData.loadLocal(htmlReps, colorInformation);
       setEditorSyntaxHighlighting(colorInformation);
       emit("mm-db-opened");
-      await tabManager.getOpenTab()?.onTabOpen();
-      await goto("/main");
       globalState.databaseState = new DatabaseState(databaseId, globalState.databaseBeingOpened, theoremAmount);
       globalState.databaseState.grammarCalculationsProgress = lastGrammarCalculationsProgress;
       globalState.databaseBeingOpened = "";
+      searchData.resetSearchParameters();
+      await tabManager.getOpenTab()?.onTabOpen();
+      await goto("/main");
     }
   };
 </script>

@@ -89,6 +89,7 @@ pub fn run() {
             explorer::add_header,
             explorer::quick_search,
             search::search_theorems,
+            search::search_by_parse_tree_syntax_check,
             search::axiom_autocomplete,
             search::definition_autocomplete,
             editor::open_folder,

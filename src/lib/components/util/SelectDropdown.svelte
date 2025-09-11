@@ -30,8 +30,8 @@
   {#snippet dropdownContent()}
     <div>
       {#each options as option, i}
-        <div class="px-2 hover:bg-purple-500">
-          <button onclick={() => onDropdownClick(i)}>{option.label}</button>
+        <div class="hover:bg-purple-500">
+          <button class="px-2 w-full text-left" onclick={() => onDropdownClick(i)}>{option.label}</button>
         </div>
       {/each}
     </div>

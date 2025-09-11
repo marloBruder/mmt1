@@ -11,6 +11,7 @@ use crate::{
 pub struct SearchParameters {
     pub page: u32,
     pub label: String,
+    pub search_by_parse_tree: Vec<SearchByParseTreeCondition>,
     #[serde(rename = "allAxiomDependencies")]
     pub all_axiom_dependencies: Vec<String>,
     #[serde(rename = "anyAxiomDependencies")]
@@ -31,6 +32,15 @@ pub struct SearchParameters {
     pub allow_definitions: bool,
     #[serde(rename = "allowSyntaxAxioms")]
     pub allow_syntax_axioms: bool,
+}
+
+#[derive(Deserialize)]
+pub struct SearchByParseTreeCondition {
+    #[serde(rename = "searchTarget")]
+    search_target: String, // "anyHypothesis" | "allHpotheses" | "assertion" | "anyExpressions" | "allExpressions"
+    #[serde(rename = "searchCondition")]
+    search_condition: String, // "matches" | "contains"
+    search: String,
 }
 
 #[tauri::command]
@@ -230,6 +240,25 @@ fn ordered_list_disjoint_from_other_ordered_list(
     }
 
     true
+}
+
+#[tauri::command]
+pub async fn search_by_parse_tree_syntax_check(
+    state: tauri::State<'_, Mutex<AppState>>,
+    search: &str,
+) -> Result<bool, Error> {
+    let app_state = state.lock().await;
+    let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
+
+    Ok(metamath_data
+        .optimized_data
+        .symbol_number_mapping
+        .expression_to_parse_tree(
+            search,
+            &metamath_data.optimized_data.grammar,
+            &metamath_data.optimized_data.floating_hypotheses,
+        )
+        .is_ok())
 }
 
 // If successful, returns a tuple (a,b) where:

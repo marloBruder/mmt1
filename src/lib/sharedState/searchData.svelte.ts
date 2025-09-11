@@ -1,7 +1,9 @@
+import { util } from "./util.svelte";
+
 export interface SearchParameters {
   page: number;
   label: string;
-  searchBySubstitution: SearchBySubstitutionCondition[];
+  searchByParseTree: SearchByParseTreeCondition[];
   allAxiomDependencies: string[];
   anyAxiomDependencies: string[];
   avoidAxiomDependencies: string[];
@@ -14,16 +16,16 @@ export interface SearchParameters {
   allowSyntaxAxioms: boolean;
 }
 
-export interface SearchBySubstitutionCondition {
-  searchTarget: "anyHypothesis" | "allHpotheses" | "assertion";
-  match: "matches" | "contains";
+export interface SearchByParseTreeCondition {
+  searchTarget: "anyHypothesis" | "allHpotheses" | "assertion" | "anyExpressions" | "allExpressions";
+  searchCondition: "matches" | "contains";
   search: string;
 }
 
 const defaultSearchParameters: SearchParameters = {
   label: "",
   page: 0,
-  searchBySubstitution: [],
+  searchByParseTree: [],
   allAxiomDependencies: [],
   anyAxiomDependencies: [],
   avoidAxiomDependencies: [],
@@ -36,32 +38,14 @@ const defaultSearchParameters: SearchParameters = {
   allowSyntaxAxioms: true,
 };
 
-const defaultSearchBySubstitutionCondition: SearchBySubstitutionCondition = {
+const defaultSearchByParseTreeCondition: SearchByParseTreeCondition = {
   searchTarget: "anyHypothesis",
-  match: "matches",
+  searchCondition: "matches",
   search: "",
 };
 
-let getNewDefaultSearchParamters = () => {
-  // Clones the object
-  return JSON.parse(JSON.stringify(defaultSearchParameters)) as SearchParameters;
-};
-
-class SearchData {
-  searchParameters: SearchParameters = $state(getNewDefaultSearchParamters());
-  nextSearchNumber = $state(1);
-
-  resetSearchParameters() {
-    this.searchParameters = getNewDefaultSearchParamters();
-  }
-
-  getNextSearchNumber(): number {
-    this.nextSearchNumber += 1;
-    return this.nextSearchNumber - 1;
-  }
-}
-
-interface SearchInputValues {
+interface SearchInputData {
+  searchByParseTreeValidInputs: boolean[];
   allAxiomDependenciesInputValue: string;
   anyAxiomDependenciesInputValue: string;
   avoidAxiomDependenciesInputValue: string;
@@ -70,15 +54,32 @@ interface SearchInputValues {
   avoidDefinitionDependenciesInputValue: string;
 }
 
-let searchInputValues: SearchInputValues = $state({
+let defaultSearchInputData: SearchInputData = {
+  searchByParseTreeValidInputs: [],
   allAxiomDependenciesInputValue: "",
   anyAxiomDependenciesInputValue: "",
   avoidAxiomDependenciesInputValue: "",
   allDefinitionDependenciesInputValue: "",
   anyDefinitionDependenciesInputValue: "",
   avoidDefinitionDependenciesInputValue: "",
-});
+};
+
+class SearchData {
+  searchParameters: SearchParameters = $state(util.clone(defaultSearchParameters));
+  searchInputData: SearchInputData = $state(util.clone(defaultSearchInputData));
+  nextSearchNumber = $state(1);
+
+  resetSearchParameters() {
+    this.searchParameters = util.clone(defaultSearchParameters);
+    this.searchInputData = util.clone(defaultSearchInputData);
+  }
+
+  getNextSearchNumber(): number {
+    this.nextSearchNumber += 1;
+    return this.nextSearchNumber - 1;
+  }
+}
 
 let searchData = new SearchData();
 
-export { searchData, searchInputValues, defaultSearchParameters, defaultSearchBySubstitutionCondition };
+export { searchData, defaultSearchParameters, defaultSearchByParseTreeCondition };

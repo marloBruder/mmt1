@@ -3,7 +3,7 @@
   import ChevronDownIcon from "$lib/icons/arrows/ChevronDownIcon.svelte";
   import type { Snippet } from "svelte";
 
-  let { children, title, active }: { children: Snippet; title: string; active: boolean } = $props();
+  let { children, title, active, valid = true }: { children: Snippet; title: string; active: boolean; valid?: boolean } = $props();
 
   let open: boolean = $state(false);
 
@@ -15,7 +15,7 @@
 <div class="w-full border-y">
   <button class="w-full text-left custom-bg-hover-color" onclick={toggleOpen}>
     <div class="flex flex-row">
-      <div class={"flex-auto pl-1 text-nowrap overflow-hidden custom-max-width " + (active ? " font-bold " : "")}>
+      <div class={"flex-auto pl-1 text-nowrap overflow-hidden custom-max-width " + (active ? " font-bold " : "") + (valid ? "" : " text-red-500 ")}>
         {title}
       </div>
       <div class="flex-initial w-6">
