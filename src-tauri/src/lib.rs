@@ -257,6 +257,8 @@ pub enum Error {
     UnificationError,           // Returned from unification algorithm when a line can't be unified
 
     MissingExpressionError, // Returned when converting str to number vec and skipping the first, but the str is empty
+    InvalidTypecodeError,
+    SyntaxTypecodeWithoutFloatHypsError,
 
     AddingToInnerScopeError,
 

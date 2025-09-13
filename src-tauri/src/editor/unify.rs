@@ -529,14 +529,7 @@ pub fn statement_strs_to_mmp_info_structured_for_unify<'a>(
                     return Err(Error::MissingMmpStepExpressionError);
                 }
 
-                let parse_tree = mm_data
-                    .optimized_data
-                    .symbol_number_mapping
-                    .expression_to_parse_tree(
-                        expression,
-                        &mm_data.optimized_data.grammar,
-                        &mm_data.optimized_data.floating_hypotheses,
-                    )?;
+                let parse_tree = mm_data.expression_to_parse_tree(expression)?;
 
                 statements.push(MmpStatement::ProofLine);
                 proof_lines.push(ProofLine {

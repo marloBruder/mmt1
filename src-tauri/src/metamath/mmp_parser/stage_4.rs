@@ -171,14 +171,7 @@ pub fn stage_4(
         // Calculate parse_tree
         let mut parse_tree = None;
 
-        match mm_data
-            .optimized_data
-            .symbol_number_mapping
-            .expression_to_parse_tree(
-                proof_line.expression,
-                &mm_data.optimized_data.grammar,
-                &mm_data.optimized_data.floating_hypotheses,
-            ) {
+        match mm_data.expression_to_parse_tree(proof_line.expression) {
             Ok(pt) => parse_tree = Some(pt),
             Err(Error::MissingExpressionError) => {
                 // let last_non_whitespace_pos = stage_2::last_non_whitespace_pos(statement_str);

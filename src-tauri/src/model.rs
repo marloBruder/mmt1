@@ -34,6 +34,8 @@ pub struct MetamathData {
     pub optimized_data: OptimizedMetamathData,
     pub grammar_calculations_done: bool,
     pub database_path: String,
+    pub syntax_typecodes: Vec<SyntaxTypecode>,
+    pub logical_typecodes: Vec<LogicalTypecode>,
     pub variable_colors: Vec<VariableColor>,
     pub alt_variable_colors: Vec<VariableColor>,
 }
@@ -183,6 +185,17 @@ pub struct HeaderContentRepresentation {
     //Should only ever be "CommentStatement" or "ConstantStatement" or "VariableStatement" or "FloatingHypohesisStatement" or "TheoremStatement";
     pub content_type: String,
     pub title: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct SyntaxTypecode {
+    pub typecode: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct LogicalTypecode {
+    pub typecode: String,
+    pub syntax_typecode: String,
 }
 
 #[derive(Debug)]
@@ -378,6 +391,18 @@ impl MetamathData {
                 .iter()
                 .any(|fh| fh.variable == str)
         }
+    }
+
+    pub fn expression_to_parse_tree(&self, expression: &str) -> Result<ParseTree, Error> {
+        self.optimized_data
+            .symbol_number_mapping
+            .expression_to_parse_tree(
+                expression,
+                &self.optimized_data.grammar,
+                &self.optimized_data.floating_hypotheses,
+                &self.syntax_typecodes,
+                &self.logical_typecodes,
+            )
     }
 
     pub fn calc_optimized_theorem_data(
@@ -1093,14 +1118,55 @@ impl SymbolNumberMapping {
         expression: &str,
         grammar: &Grammar,
         floating_hypotheses: &Vec<FloatingHypothesis>,
+        syntax_typecodes: &Vec<SyntaxTypecode>,
+        logical_typecodes: &Vec<LogicalTypecode>,
     ) -> Result<ParseTree, Error> {
         let expression_input_vec =
             self.expression_to_input_vec_skip_first(expression, floating_hypotheses)?;
 
-        let expression_parse_tree_node = earley_parser_optimized::earley_parse(
+        let typecode_str = expression
+            .split_ascii_whitespace()
+            .next()
+            .ok_or(Error::InternalLogicError)?;
+
+        let typecode = *self
+            .numbers
+            .get(typecode_str)
+            .ok_or(Error::NonSymbolInExpressionError)?;
+
+        let is_syntax_typecode = syntax_typecodes
+            .iter()
+            .any(|st| st.typecode == typecode_str);
+
+        let logical_typecode_syntax_typecode_option = logical_typecodes.iter().find_map(|lt| {
+            if lt.typecode == typecode_str {
+                Some(&*lt.syntax_typecode)
+            } else {
+                None
+            }
+        });
+
+        let syntax_typecode = if is_syntax_typecode {
+            typecode_str
+        } else if let Some(logical_typecode_syntax_typecode) =
+            logical_typecode_syntax_typecode_option
+        {
+            logical_typecode_syntax_typecode
+        } else {
+            return Err(Error::InvalidTypecodeError);
+        };
+
+        let syntax_typecode_number = *self
+            .numbers
+            .get(&format!("${}", syntax_typecode))
+            .ok_or(Error::SyntaxTypecodeWithoutFloatHypsError)?;
+
+        let top_node = earley_parser_optimized::earley_parse(
             grammar,
             &expression_input_vec,
-            vec![Symbol { symbol_i: 1 }],
+            vec![Symbol {
+                symbol_i: syntax_typecode_number,
+            }],
             self,
         )?
         .ok_or(Error::ExpressionParseError)?
@@ -1108,20 +1174,7 @@ impl SymbolNumberMapping {
         .next()
         .ok_or(Error::InternalLogicError)?;
 
-        let parse_tree = ParseTree {
-            typecode: *self
-                .numbers
-                .get(
-                    expression
-                        .split_ascii_whitespace()
-                        .next()
-                        .ok_or(Error::InternalLogicError)?,
-                )
-                .ok_or(Error::NonSymbolInExpressionError)?,
-            top_node: expression_parse_tree_node,
-        };
-
-        Ok(parse_tree)
+        Ok(ParseTree { typecode, top_node })
     }
 
     pub fn is_typecode(&self, number: u32) -> bool {
@@ -1154,6 +1207,8 @@ impl Grammar {
         database_header: &'a Header,
         symbol_number_mapping: &SymbolNumberMapping,
         floating_hypotheses: &Vec<FloatingHypothesis>,
+        syntax_typecodes: &Vec<SyntaxTypecode>,
+        logical_typecodes: &Vec<LogicalTypecode>,
         theorem_amount: u32,
         database_id: u32,
         app: Option<AppHandle>,
@@ -1276,6 +1331,8 @@ impl Grammar {
                     &grammar,
                     symbol_number_mapping,
                     floating_hypotheses,
+                    syntax_typecodes,
+                    logical_typecodes,
                 )?;
 
                 parse_trees.push((theorem.label.as_str(), assertion_parsed, hypotheses_parsed));
@@ -1433,6 +1490,8 @@ impl Theorem {
         grammar: &Grammar,
         symbol_number_mapping: &SymbolNumberMapping,
         floating_hypotheses: &Vec<FloatingHypothesis>,
+        syntax_typecodes: &Vec<SyntaxTypecode>,
+        logical_typecodes: &Vec<LogicalTypecode>,
     ) -> Result<(ParseTree, Vec<ParseTree>), Error> {
         let hypotheses_parsed = self
             .hypotheses
@@ -1442,6 +1501,8 @@ impl Theorem {
                     &h.expression,
                     grammar,
                     floating_hypotheses,
+                    syntax_typecodes,
+                    logical_typecodes,
                 )
             })
             .collect::<Result<Vec<ParseTree>, Error>>()?;
@@ -1450,6 +1511,8 @@ impl Theorem {
             &self.assertion,
             grammar,
             floating_hypotheses,
+            syntax_typecodes,
+            logical_typecodes,
         )?;
 
         // for hyp in &hypotheses_parsed {

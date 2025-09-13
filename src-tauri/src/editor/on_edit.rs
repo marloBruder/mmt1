@@ -906,14 +906,7 @@ pub fn statement_strs_to_mmp_info_structured_for_unify_with_error_info<'a>(
                         },
                     };
 
-                    match mm_data
-                        .optimized_data
-                        .symbol_number_mapping
-                        .expression_to_parse_tree(
-                            expression,
-                            &mm_data.optimized_data.grammar,
-                            &mm_data.optimized_data.floating_hypotheses,
-                        ) {
+                    match mm_data.expression_to_parse_tree(expression) {
                         Ok(pt) => parse_tree = pt,
                         Err(Error::MissingExpressionError) => {
                             errors.push(DetailedError {

@@ -9,8 +9,9 @@ use tauri::{async_runtime::Mutex, AppHandle, Emitter};
 use crate::{
     model::{
         ColorInformation, Comment, Constant, FloatingHypothesis, Header, HeaderPath,
-        HeaderRepresentation, HtmlRepresentation, Hypothesis, MetamathData, OptimizedMetamathData,
-        Statement, SymbolNumberMapping, Theorem, TheoremParseTrees, Variable, VariableColor,
+        HeaderRepresentation, HtmlRepresentation, Hypothesis, LogicalTypecode, MetamathData,
+        OptimizedMetamathData, Statement, SymbolNumberMapping, SyntaxTypecode, Theorem,
+        TheoremParseTrees, Variable, VariableColor,
     },
     util::{self, earley_parser_optimized::Grammar},
     AppState, Error, Settings,
@@ -138,6 +139,8 @@ pub async fn perform_grammar_calculations(
     let stop = app_state.stop_temp_database_calculations.clone();
     let theorem_amount = mm_data.optimized_data.theorem_amount;
     let database_header = mm_data.database_header.clone();
+    let syntax_typecodes = mm_data.syntax_typecodes.clone();
+    let logical_typecodes = mm_data.logical_typecodes.clone();
     let floating_hypotheses = mm_data.optimized_data.floating_hypotheses.clone();
 
     drop(app_state);
@@ -148,6 +151,8 @@ pub async fn perform_grammar_calculations(
         &database_header,
         &symbol_number_mapping,
         &floating_hypotheses,
+        &syntax_typecodes,
+        &logical_typecodes,
         theorem_amount,
         database_id,
         Some(app),
@@ -203,9 +208,6 @@ pub struct MmParser {
     next_token_i: usize,
     database_path: String,
     database_header: Header,
-    html_representations: Vec<HtmlRepresentation>,
-    variable_colors: Vec<VariableColor>,
-    alt_variable_colors: Vec<VariableColor>,
     curr_header_path: HeaderPath,
     scope: usize,
     active_consts: HashSet<String>,
@@ -221,12 +223,17 @@ pub struct MmParser {
     curr_line_amount: u32,
     total_line_amount: u32,
     last_progress_reported: u8,
-    app: Option<AppHandle>,
-    // Only used when using the process_all_statements or consume_early_before_grammar_calculations functions
-    stop: Option<Arc<std::sync::Mutex<bool>>>,
+    syntax_typecodes: Vec<SyntaxTypecode>,
+    logical_typecodes: Vec<LogicalTypecode>,
+    variable_colors: Vec<VariableColor>,
+    alt_variable_colors: Vec<VariableColor>,
+    html_representations: Vec<HtmlRepresentation>,
     invalid_html: Vec<HtmlRepresentation>,
     html_allowed_tags_and_attributes: HashMap<String, HashSet<String>>,
     css_allowed_properties: HashSet<String>,
+    app: Option<AppHandle>,
+    // Only used when using the process_all_statements or consume_early_before_grammar_calculations functions
+    stop: Option<Arc<std::sync::Mutex<bool>>>,
 }
 
 pub enum StatementProcessed {
@@ -264,9 +271,6 @@ impl MmParser {
             next_token_i: 0,
             database_header: Header::default(),
             database_path: file_path.to_string(),
-            html_representations: Vec::new(),
-            variable_colors: Vec::new(),
-            alt_variable_colors: Vec::new(),
             curr_header_path: HeaderPath::default(),
             scope: 0,
             active_consts: HashSet::new(),
@@ -282,11 +286,16 @@ impl MmParser {
             curr_line_amount: 0,
             total_line_amount,
             last_progress_reported: 0,
-            app,
-            stop,
+            syntax_typecodes: Vec::new(),
+            logical_typecodes: Vec::new(),
+            variable_colors: Vec::new(),
+            alt_variable_colors: Vec::new(),
+            html_representations: Vec::new(),
             invalid_html: Vec::new(),
             html_allowed_tags_and_attributes,
             css_allowed_properties,
+            app,
+            stop,
         })
     }
 
@@ -435,6 +444,8 @@ impl MmParser {
                 grammar: Grammar::default(),
             },
             grammar_calculations_done: false,
+            syntax_typecodes: self.syntax_typecodes,
+            logical_typecodes: self.logical_typecodes,
             variable_colors: self.variable_colors,
             alt_variable_colors: self.alt_variable_colors,
         };
@@ -599,6 +610,30 @@ impl MmParser {
                     }
 
                     variable_colors.push(VariableColor { typecode, color });
+                }
+                "syntax" => {
+                    if statement_tokens.len() == 4 && statement_tokens[2] == "as" {
+                        let typecode = super::get_str_in_quotes(statement_tokens[1])
+                            .ok_or(Error::AdditionalInfoCommentFormatError)?;
+                        let syntax_typecode = super::get_str_in_quotes(statement_tokens[3])
+                            .ok_or(Error::AdditionalInfoCommentFormatError)?;
+
+                        self.logical_typecodes.push(LogicalTypecode {
+                            typecode,
+                            syntax_typecode,
+                        });
+                    } else {
+                        if statement_tokens.len() == 1 {
+                            return Err(Error::AdditionalInfoCommentFormatError);
+                        }
+
+                        for token in statement_tokens.iter().skip(1) {
+                            self.syntax_typecodes.push(SyntaxTypecode {
+                                typecode: super::get_str_in_quotes(token)
+                                    .ok_or(Error::AdditionalInfoCommentFormatError)?,
+                            });
+                        }
+                    }
                 }
                 _ => {}
             }

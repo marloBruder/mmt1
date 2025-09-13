@@ -250,15 +250,7 @@ pub async fn search_by_parse_tree_syntax_check(
     let app_state = state.lock().await;
     let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
-    Ok(metamath_data
-        .optimized_data
-        .symbol_number_mapping
-        .expression_to_parse_tree(
-            search,
-            &metamath_data.optimized_data.grammar,
-            &metamath_data.optimized_data.floating_hypotheses,
-        )
-        .is_ok())
+    Ok(metamath_data.expression_to_parse_tree(search).is_ok())
 }
 
 // If successful, returns a tuple (a,b) where:
