@@ -1,8 +1,14 @@
+use std::collections::HashMap;
+
 use serde::Deserialize;
 use tauri::async_runtime::Mutex;
 
 use crate::{
-    model::{Header, ListEntry, MetamathData, Theorem, TheoremListData},
+    model::{
+        Header, ListEntry, MetamathData, ParseTree, ParseTreeNode, Theorem, TheoremListData,
+        TheoremParseTrees,
+    },
+    util::earley_parser_optimized::WorkVariable,
     AppState, Error,
 };
 
@@ -11,6 +17,7 @@ use crate::{
 pub struct SearchParameters {
     pub page: u32,
     pub label: String,
+    #[serde(rename = "searchByParseTree")]
     pub search_by_parse_tree: Vec<SearchByParseTreeCondition>,
     #[serde(rename = "allAxiomDependencies")]
     pub all_axiom_dependencies: Vec<String>,
@@ -105,14 +112,21 @@ pub async fn search_theorems(
                 .unwrap();
 
             theorem.label.contains(&search_parameters.label)
-                && (search_parameters.allow_theorems
-                    || !optimized_theorem_data.theorem_type.is_theorem())
-                && (search_parameters.allow_axioms
-                    || !optimized_theorem_data.theorem_type.is_axiom())
-                && (search_parameters.allow_definitions
-                    || !optimized_theorem_data.theorem_type.is_definition())
-                && (search_parameters.allow_syntax_axioms
-                    || !optimized_theorem_data.theorem_type.is_syntax_axiom())
+                && (search_parameters.search_by_parse_tree.len() == 0
+                    || optimized_theorem_data.parse_trees.as_ref().is_some_and(
+                        |theorem_parse_trees| {
+                            search_parameters
+                                .search_by_parse_tree
+                                .iter()
+                                .all(|condition| {
+                                    check_search_by_parse_tree_condition(
+                                        condition,
+                                        theorem_parse_trees,
+                                        metamath_data,
+                                    )
+                                })
+                        },
+                    ))
                 && ordered_list_contained_in_other_ordered_list(
                     &all_axiom_dependencies_indexes,
                     &optimized_theorem_data.axiom_dependencies,
@@ -139,6 +153,14 @@ pub async fn search_theorems(
                     &avoid_definition_dependencies_indexes,
                     &optimized_theorem_data.definition_dependencies,
                 )
+                && (search_parameters.allow_theorems
+                    || !optimized_theorem_data.theorem_type.is_theorem())
+                && (search_parameters.allow_axioms
+                    || !optimized_theorem_data.theorem_type.is_axiom())
+                && (search_parameters.allow_definitions
+                    || !optimized_theorem_data.theorem_type.is_definition())
+                && (search_parameters.allow_syntax_axioms
+                    || !optimized_theorem_data.theorem_type.is_syntax_axiom())
         })
         .for_each(|(theorem_number, theorem)| {
             last_theorem_number = Some((theorem_number + 1) as u32);
@@ -190,6 +212,208 @@ fn calc_theorem_label_vec_to_ordered_theorem_i_vec_if_non_empty(
     } else {
         Vec::new()
     }
+}
+
+fn check_search_by_parse_tree_condition(
+    condition: &SearchByParseTreeCondition,
+    parse_trees: &TheoremParseTrees,
+    metamath_data: &MetamathData,
+) -> bool {
+    let search_parse_tree = metamath_data
+        .expression_to_parse_tree(&condition.search)
+        // Safe unwrap due to syntax check
+        .unwrap();
+
+    let (parse_trees_vec, and) = match condition.search_target.as_str() {
+        "anyHypothesis" => (parse_trees.hypotheses_parsed.clone(), false),
+        "allHypotheses" => (parse_trees.hypotheses_parsed.clone(), true),
+        "assertion" => (vec![parse_trees.assertion_parsed.clone()], false),
+        "anyExpressions" => (parse_trees.to_cloned_parse_tree_vec(), false),
+        "allExpressions" => (parse_trees.to_cloned_parse_tree_vec(), true),
+        _ => return false,
+    };
+
+    let check_parse_tree_pair_closure =
+        |parse_tree: &ParseTree| match condition.search_condition.as_str() {
+            "matches" => parse_tree_matches(
+                &search_parse_tree.top_node,
+                search_parse_tree.typecode,
+                &parse_tree.top_node,
+                parse_tree.typecode,
+                metamath_data,
+            ),
+            "contains" => parse_tree_contains(&search_parse_tree, parse_tree, metamath_data),
+            _ => false,
+        };
+
+    if and {
+        parse_trees_vec.iter().all(check_parse_tree_pair_closure)
+    } else {
+        parse_trees_vec.iter().any(check_parse_tree_pair_closure)
+    }
+}
+
+fn parse_tree_matches(
+    search_parse_tree: &ParseTreeNode,
+    search_parse_tree_typecode: u32,
+    parse_tree: &ParseTreeNode,
+    parse_tree_typecode: u32,
+    metamath_data: &MetamathData,
+) -> bool {
+    if search_parse_tree_typecode != parse_tree_typecode {
+        return false;
+    }
+
+    let mut work_variable_substitutions: HashMap<WorkVariable, &ParseTreeNode> = HashMap::new();
+    let mut floating_hypothesis_substitutions: HashMap<u32, u32> = HashMap::new();
+
+    let mut nodes_to_check = vec![(search_parse_tree, parse_tree)];
+
+    while let Some((search_node, node)) = nodes_to_check.pop() {
+        let ParseTreeNode::Node { rule_i, sub_nodes } = node else {
+            // Should never happen
+            return false;
+        };
+
+        match search_node {
+            ParseTreeNode::Node {
+                rule_i: search_rule_i,
+                sub_nodes: search_sub_nodes,
+            } => {
+                let Some(rule) = metamath_data
+                    .optimized_data
+                    .grammar
+                    .rules
+                    .get(*rule_i as usize)
+                else {
+                    // Should never happen
+                    return false;
+                };
+                let Some(search_rule) = metamath_data
+                    .optimized_data
+                    .grammar
+                    .rules
+                    .get(*search_rule_i as usize)
+                else {
+                    // Should never happen
+                    return false;
+                };
+
+                match (
+                    rule.is_floating_hypothesis,
+                    search_rule.is_floating_hypothesis,
+                ) {
+                    (true, true) => match floating_hypothesis_substitutions.get(search_rule_i) {
+                        Some(sub_rule_i) => {
+                            if sub_rule_i != rule_i {
+                                println!("test");
+                                return false;
+                            }
+                        }
+                        None => {
+                            floating_hypothesis_substitutions.insert(*search_rule_i, *rule_i);
+                        }
+                    },
+                    (true, false) | (false, true) => return false,
+                    (false, false) => {
+                        if rule_i != search_rule_i {
+                            return false;
+                        }
+                    }
+                }
+
+                nodes_to_check.extend(search_sub_nodes.iter().zip(sub_nodes.iter()));
+            }
+            ParseTreeNode::WorkVariable(work_variable) => {
+                match work_variable_substitutions.get(work_variable) {
+                    Some(substitution) => {
+                        if node != *substitution {
+                            println!("test");
+                            return false;
+                        }
+                    }
+                    None => {
+                        work_variable_substitutions.insert(*work_variable, node);
+                    }
+                }
+            }
+        }
+    }
+
+    true
+}
+
+fn parse_tree_contains(
+    search_parse_tree: &ParseTree,
+    parse_tree: &ParseTree,
+    metamath_data: &MetamathData,
+) -> bool {
+    if parse_tree_matches(
+        &search_parse_tree.top_node,
+        search_parse_tree.typecode,
+        &parse_tree.top_node,
+        parse_tree.typecode,
+        metamath_data,
+    ) {
+        return true;
+    }
+
+    let mut nodes_to_check = vec![&parse_tree.top_node];
+
+    while let Some(node) = nodes_to_check.pop() {
+        let ParseTreeNode::Node { rule_i, sub_nodes } = node else {
+            // should never happen
+            return false;
+        };
+
+        let Some(rule) = metamath_data
+            .optimized_data
+            .grammar
+            .rules
+            .get(*rule_i as usize)
+        else {
+            // should never happen
+            return false;
+        };
+
+        let typecode_with_dollar_i = rule.left_side.symbol_i;
+
+        let Some(typecode_with_dollar) = metamath_data
+            .optimized_data
+            .symbol_number_mapping
+            .symbols
+            .get(&typecode_with_dollar_i)
+        else {
+            // should never happen
+            return false;
+        };
+
+        let typecode = &typecode_with_dollar[1..];
+
+        let Some(typecode_i) = metamath_data
+            .optimized_data
+            .symbol_number_mapping
+            .numbers
+            .get(typecode)
+        else {
+            // should never happen
+            return false;
+        };
+
+        if parse_tree_matches(
+            &search_parse_tree.top_node,
+            search_parse_tree.typecode,
+            node,
+            *typecode_i,
+            metamath_data,
+        ) {
+            return true;
+        }
+
+        nodes_to_check.extend(sub_nodes.iter());
+    }
+
+    false
 }
 
 fn ordered_list_contained_in_other_ordered_list(
@@ -249,6 +473,10 @@ pub async fn search_by_parse_tree_syntax_check(
 ) -> Result<bool, Error> {
     let app_state = state.lock().await;
     let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
+
+    let _ = metamath_data
+        .expression_to_parse_tree(search)
+        .inspect(|pt| println!("{:?}", pt));
 
     Ok(metamath_data.expression_to_parse_tree(search).is_ok())
 }

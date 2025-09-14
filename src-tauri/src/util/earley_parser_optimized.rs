@@ -25,6 +25,7 @@ pub struct GrammarRule {
     pub is_floating_hypothesis: bool,
 }
 
+#[derive(Debug)]
 pub enum InputSymbol {
     Symbol(Symbol),
     WorkVariable(WorkVariable),
@@ -367,6 +368,10 @@ pub fn earley_parse(
         });
 
     // if ret.is_none() {
+    // if expression
+    //     .iter()
+    //     .any(|symbol| matches!(symbol, InputSymbol::WorkVariable(_)))
+    // {
     //     println!("\n\nEarley parser for: {:?}", expression);
     //     for k in 0..(expression.len()) {
     //         println!("{}:", k);
@@ -374,8 +379,13 @@ pub fn earley_parse(
     //             if let State::Single(single_state) = state {
     //                 println!(
     //                     "{} ::= {:?}",
-    //                     single_state.rule(&extended_grammar).left_side,
-    //                     single_state.rule(&extended_grammar).right_side
+    //                     single_state.rule(&extended_grammar).left_side.symbol_i,
+    //                     single_state
+    //                         .rule(&extended_grammar)
+    //                         .right_side
+    //                         .iter()
+    //                         .map(|symbol| symbol.symbol_i)
+    //                         .collect::<Vec<u32>>()
     //                 );
     //                 print!("{:?} ", single_state.rule(&extended_grammar).label);
     //             }
@@ -526,14 +536,27 @@ fn completer(
                         .get(state.rule(extended_grammar).left_side.symbol_i as usize - 1)
                         .ok_or(Error::InternalLogicError)?
                     {
-                        let mut new_parse_trees = Vec::new();
-                        if state.rule_i < 0 {
-                            return Err(Error::InternalLogicError);
-                        }
-                        new_parse_trees.push(ParseTreeNode::Node {
-                            rule_i: state.rule_i as u32,
-                            sub_nodes: state.parse_trees.clone(),
-                        });
+                        let new_parse_trees = if state
+                            .rule(extended_grammar)
+                            .right_side
+                            .first()
+                            .ok_or(Error::InternalLogicError)?
+                            .symbol_i
+                            != 0
+                        {
+                            vec![ParseTreeNode::Node {
+                                rule_i: state.rule_i as u32,
+                                sub_nodes: state.parse_trees.clone(),
+                            }]
+                        } else {
+                            // Special case where the state has a work variable rule:
+                            // Instead of creating a new Node with that rule, clone the work variable being caried by the state
+                            vec![state
+                                .parse_trees
+                                .first()
+                                .ok_or(Error::InternalLogicError)?
+                                .clone()]
+                        };
 
                         new_states.push(State::Single(SingleState {
                             rule_i: rule_i as i32,

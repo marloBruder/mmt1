@@ -9,9 +9,9 @@
 
   let searchByParseTreeSearchTargetOptions = [
     { label: "any hypothesis,", value: "anyHypothesis" },
-    { label: "all hypotheses,", value: "allHpotheses" },
+    { label: "all hypotheses,", value: "allHypotheses" },
     { label: "the assertion,", value: "assertion" },
-    { label: "any hypothesis or the assertion,", value: "anyExpression" },
+    { label: "any hypothesis or the assertion,", value: "anyExpressions" },
     { label: "all hypotheses and the assertion,", value: "allExpressions" },
   ];
 

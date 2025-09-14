@@ -586,6 +586,14 @@ impl TheoremType {
     }
 }
 
+impl TheoremParseTrees {
+    pub fn to_cloned_parse_tree_vec(&self) -> Vec<ParseTree> {
+        let mut parse_trees_vec = self.hypotheses_parsed.clone();
+        parse_trees_vec.push(self.assertion_parsed.clone());
+        parse_trees_vec
+    }
+}
+
 impl Statement {
     pub fn write_mm_string(&self, target: &mut String) {
         match self {

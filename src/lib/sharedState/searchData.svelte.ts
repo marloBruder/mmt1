@@ -17,7 +17,7 @@ export interface SearchParameters {
 }
 
 export interface SearchByParseTreeCondition {
-  searchTarget: "anyHypothesis" | "allHpotheses" | "assertion" | "anyExpressions" | "allExpressions";
+  searchTarget: "anyHypothesis" | "allHypotheses" | "assertion" | "anyExpressions" | "allExpressions";
   searchCondition: "matches" | "contains";
   search: string;
 }
