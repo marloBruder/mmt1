@@ -5,11 +5,11 @@
   let { folderPath, fileName }: { folderPath: string; fileName: string } = $props();
 
   let explorerClick = () => {
-    tabManager.openTab(new EditorTab(folderPath + "\\" + fileName));
+    tabManager.openTab(new EditorTab(folderPath + fileName));
   };
 
   let explorerDblClick = () => {
-    tabManager.makeSameTempTabPermanent(new EditorTab(folderPath + "\\" + fileName));
+    tabManager.makeSameTempTabPermanent(new EditorTab(folderPath + fileName));
   };
 </script>
 

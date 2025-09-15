@@ -97,7 +97,7 @@
 {#if folder.content != null}
   <div class="pl-3">
     {#each folder.content.subfolders as subfolder}
-      <FolderHeader folder={subfolder} folderPath={folderPath + "\\" + subfolder.name}></FolderHeader>
+      <FolderHeader folder={subfolder} folderPath={folderPath + subfolder.name + "\\"}></FolderHeader>
     {/each}
     {#if addingSubfolder}
       <input id="subheaderName" type="text" bind:value={newSubfolderTitle} onfocusout={onFocusOutSubheaderTitle} onkeydown={onkeyDownSubheaderTitle} disabled={!addingSubfolder} autocomplete="off" class="disabled:bg-gray-300" />

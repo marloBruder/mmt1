@@ -1,5 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
+    fs::File,
+    path::PathBuf,
     sync::Arc,
 };
 
@@ -330,6 +332,11 @@ pub struct TheoremListEntry {
     pub hypotheses: Vec<String>,
     pub assertion: String,
     pub description_parsed: Vec<ParsedDescriptionSegment>,
+}
+
+pub struct FolderData {
+    pub path: PathBuf,
+    pub file_handles: HashMap<String, File>,
 }
 
 impl MetamathData {

@@ -27,7 +27,7 @@
     }
 
     async loadData(): Promise<void> {
-      let text = (await invoke("read_file", { relativePath: this.#filePath })) as string;
+      let text = (await invoke("open_file", { relativePath: this.#filePath })) as string;
       this.#monacoModel = monaco.editor.createModel(text, "mmp");
       this.#monacoModel.onDidChangeContent(async () => {
         this.textChanged = true;
@@ -40,6 +40,7 @@
       this.textChanged = false;
       this.#monacoModel?.dispose();
       this.#monacoModel = null;
+      invoke("close_file", { relativePath: this.#filePath });
     }
 
     name(): string {

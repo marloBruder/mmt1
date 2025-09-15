@@ -1,8 +1,13 @@
-use std::fs;
+use std::{
+    collections::HashMap,
+    fs::{self, OpenOptions},
+    io::{Read, Seek, SeekFrom, Write},
+    path::{Path, PathBuf},
+};
 
 use tauri::async_runtime::Mutex;
 
-use crate::{AppState, Error};
+use crate::{model::FolderData, AppState, Error};
 
 pub mod external_window;
 pub mod format;
@@ -23,9 +28,14 @@ pub async fn open_folder(
 ) -> Result<FolderRepresentation, Error> {
     let mut app_state = state.lock().await;
 
-    let folder = get_folder(folder_path).await?;
+    let path = Path::new(folder_path);
 
-    app_state.open_folder = Some(folder_path.to_string());
+    let folder = get_folder(path).await?;
+
+    app_state.open_folder_data = Some(FolderData {
+        path: PathBuf::from(path),
+        file_handles: HashMap::new(),
+    });
 
     Ok(folder)
 }
@@ -34,7 +44,7 @@ pub async fn open_folder(
 pub async fn close_folder(state: tauri::State<'_, Mutex<AppState>>) -> Result<(), ()> {
     let mut app_state = state.lock().await;
 
-    app_state.open_folder = None;
+    app_state.open_folder_data = None;
 
     Ok(())
 }
@@ -45,19 +55,18 @@ pub async fn get_subfolder(
     relative_path: &str,
 ) -> Result<FolderRepresentation, Error> {
     let app_state = state.lock().await;
-    let mut open_folder = app_state
-        .open_folder
+    let open_folder_data = app_state
+        .open_folder_data
         .as_ref()
-        .ok_or(Error::NoOpenFolderError)?
-        .clone();
+        .ok_or(Error::NoOpenFolderError)?;
 
-    open_folder.push('/');
-    open_folder.push_str(relative_path);
+    let mut path = open_folder_data.path.clone();
+    path.push(relative_path);
 
-    get_folder(&open_folder).await
+    get_folder(Path::new(&path)).await
 }
 
-pub async fn get_folder(full_path: &str) -> Result<FolderRepresentation, Error> {
+pub async fn get_folder(full_path: &Path) -> Result<FolderRepresentation, Error> {
     let mut file_names = Vec::new();
     let mut subfolder_names = Vec::new();
 
@@ -88,21 +97,35 @@ pub async fn get_folder(full_path: &str) -> Result<FolderRepresentation, Error> 
 }
 
 #[tauri::command]
-pub async fn read_file(
+pub async fn open_file(
     state: tauri::State<'_, Mutex<AppState>>,
     relative_path: &str,
 ) -> Result<String, Error> {
-    let app_state = state.lock().await;
+    let mut app_state = state.lock().await;
+    let open_folder_data = app_state
+        .open_folder_data
+        .as_mut()
+        .ok_or(Error::NoOpenFolderError)?;
 
-    let mut file_path = app_state
-        .open_folder
-        .as_ref()
-        .ok_or(Error::NoOpenFolderError)?
-        .clone();
-    file_path.push('/');
-    file_path.push_str(relative_path);
+    let mut path = open_folder_data.path.clone();
+    path.push(relative_path);
 
-    Ok(fs::read_to_string(file_path).or(Err(Error::FileReadError))?)
+    let mut file_handle = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&path)
+        .map_err(|_| Error::FileOpenError)?;
+
+    let mut file_content = String::new();
+    file_handle
+        .read_to_string(&mut file_content)
+        .map_err(|_| Error::FileReadError)?;
+
+    open_folder_data
+        .file_handles
+        .insert(relative_path.to_string(), file_handle);
+
+    Ok(file_content)
 }
 
 #[tauri::command]
@@ -111,17 +134,38 @@ pub async fn save_file(
     relative_path: &str,
     content: &str,
 ) -> Result<(), Error> {
-    let app_state = state.lock().await;
+    let mut app_state = state.lock().await;
+    let open_folder_data = app_state
+        .open_folder_data
+        .as_mut()
+        .ok_or(Error::NoOpenFolderError)?;
 
-    let mut file_path = app_state
-        .open_folder
-        .as_ref()
-        .ok_or(Error::NoOpenFolderError)?
-        .clone();
-    file_path.push('/');
-    file_path.push_str(relative_path);
+    if let Some(file_handle) = open_folder_data.file_handles.get_mut(relative_path) {
+        file_handle
+            .seek(SeekFrom::Start(0))
+            .map_err(|_| Error::FileWriteError)?;
+        file_handle.set_len(0).map_err(|_| Error::FileWriteError)?;
+        file_handle
+            .write_all(content.as_bytes())
+            .map_err(|_| Error::FileWriteError)?;
+        file_handle.flush().map_err(|_| Error::FileWriteError)?;
+    }
 
-    fs::write(file_path, content).or(Err(Error::FileWriteError))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn close_file(
+    state: tauri::State<'_, Mutex<AppState>>,
+    relative_path: &str,
+) -> Result<(), Error> {
+    let mut app_state = state.lock().await;
+    let open_folder_data = app_state
+        .open_folder_data
+        .as_mut()
+        .ok_or(Error::NoOpenFolderError)?;
+
+    open_folder_data.file_handles.remove(relative_path);
 
     Ok(())
 }

@@ -4,7 +4,7 @@ use model::MetamathData;
 use serde::Deserialize;
 use tauri::{async_runtime::Mutex, App, AppHandle, Emitter, Listener, Manager};
 
-use crate::model::IdManager;
+use crate::model::{FolderData, IdManager};
 
 mod editor;
 mod explorer;
@@ -22,7 +22,7 @@ pub struct AppState {
     stop_database_calculations: Arc<std::sync::Mutex<bool>>,
     stop_temp_database_calculations: Arc<std::sync::Mutex<bool>>,
     id_manager: IdManager,
-    open_folder: Option<String>,
+    open_folder_data: Option<FolderData>,
     settings: Settings,
 }
 
@@ -39,7 +39,7 @@ fn app_setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         stop_database_calculations: Arc::new(std::sync::Mutex::new(false)),
         stop_temp_database_calculations: Arc::new(std::sync::Mutex::new(false)),
         id_manager: IdManager::new(),
-        open_folder: None,
+        open_folder_data: None,
         settings: Settings::default(),
     }));
     // app.manage::<Mutex<Option<AppState>>>(Mutex::new(None));
@@ -95,8 +95,9 @@ pub fn run() {
             editor::open_folder,
             editor::close_folder,
             editor::get_subfolder,
-            editor::read_file,
+            editor::open_file,
             editor::save_file,
+            editor::close_file,
             editor::external_window::open_external_window,
             editor::external_window::close_external_window,
             editor::external_window::set_up_external_window_close_listener,
@@ -185,6 +186,7 @@ pub enum Error {
 
     NoOpenFolderError,
     FolderReadError,
+    FileOpenError,
     FileReadError,
     FileWriteError,
 

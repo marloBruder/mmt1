@@ -306,7 +306,6 @@ fn parse_tree_matches(
                     (true, true) => match floating_hypothesis_substitutions.get(search_rule_i) {
                         Some(sub_rule_i) => {
                             if sub_rule_i != rule_i {
-                                println!("test");
                                 return false;
                             }
                         }
@@ -328,7 +327,6 @@ fn parse_tree_matches(
                 match work_variable_substitutions.get(work_variable) {
                     Some(substitution) => {
                         if node != *substitution {
-                            println!("test");
                             return false;
                         }
                     }
@@ -473,10 +471,6 @@ pub async fn search_by_parse_tree_syntax_check(
 ) -> Result<bool, Error> {
     let app_state = state.lock().await;
     let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
-
-    let _ = metamath_data
-        .expression_to_parse_tree(search)
-        .inspect(|pt| println!("{:?}", pt));
 
     Ok(metamath_data.expression_to_parse_tree(search).is_ok())
 }
