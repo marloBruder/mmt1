@@ -1,5 +1,6 @@
 <script lang="ts">
   import { EditorTab } from "$lib/components/tabs/EditorTabComponent.svelte";
+  import ContextMenuElement from "$lib/components/util/ContextMenuElement.svelte";
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
 
   let { folderPath, fileName }: { folderPath: string; fileName: string } = $props();
@@ -13,6 +14,24 @@
   };
 </script>
 
-<div>
-  <button class="w-full text-left pl-2 custom-bg-hover-color" onclick={explorerClick} ondblclick={explorerDblClick}>{fileName}</button>
-</div>
+<ContextMenuElement>
+  {#snippet element()}
+    <div>
+      <button class="w-full text-left pl-2 custom-bg-hover-color" onclick={explorerClick} ondblclick={explorerDblClick}>{fileName}</button>
+    </div>
+  {/snippet}
+  {#snippet contextMenu()}
+    <div>
+      <button>lalalallala</button>
+    </div>
+    <div>
+      <button>lalalallala</button>
+    </div>
+    <div>
+      <button>lalalallala</button>
+    </div>
+    <div>
+      <button>lalalallala</button>
+    </div>
+  {/snippet}
+</ContextMenuElement>
