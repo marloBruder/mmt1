@@ -14,24 +14,8 @@
   };
 </script>
 
-<ContextMenuElement>
-  {#snippet element()}
-    <div>
-      <button class="w-full text-left pl-2 custom-bg-hover-color" onclick={explorerClick} ondblclick={explorerDblClick}>{fileName}</button>
-    </div>
-  {/snippet}
-  {#snippet contextMenu()}
-    <div>
-      <button>lalalallala</button>
-    </div>
-    <div>
-      <button>lalalallala</button>
-    </div>
-    <div>
-      <button>lalalallala</button>
-    </div>
-    <div>
-      <button>lalalallala</button>
-    </div>
-  {/snippet}
+<ContextMenuElement context="fileButton">
+  <div>
+    <button class="w-full text-left pl-2 custom-bg-hover-color" onclick={explorerClick} ondblclick={explorerDblClick}>{fileName}</button>
+  </div>
 </ContextMenuElement>
