@@ -60,19 +60,14 @@
     document.removeEventListener("keydown", handleKeydown);
   });
 
-  function portal(node: HTMLElement, targetSelector = "body") {
+  function portal(node: HTMLElement) {
     let target: Element | null = null;
 
     onMount(() => {
-      target = document.querySelector(targetSelector);
+      target = document.querySelector("body");
+
       if (!target) {
         return;
-      }
-
-      const originalParent = node.parentNode;
-      const anchor = document.createComment("svelte-portal-anchor");
-      if (originalParent) {
-        originalParent.insertBefore(anchor, node);
       }
 
       target.appendChild(node);

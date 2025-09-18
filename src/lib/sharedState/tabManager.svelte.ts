@@ -174,6 +174,14 @@ class TabManager {
     this.closeTabWithIndex(this.#openTabIndex);
   }
 
+  closeTabsWithCondition(condition: (tab: Tab) => boolean) {
+    for (let [i, tab] of this.#tabs.toReversed().entries()) {
+      if (condition(tab)) {
+        this.closeTabWithIndex(i);
+      }
+    }
+  }
+
   resetTabs() {
     this.#tabs = [];
     this.#openTabIndex = -1;

@@ -165,6 +165,10 @@
       return this.#filePath;
     }
 
+    set filePath(newFilePath: string) {
+      this.#filePath = newFilePath;
+    }
+
     get fileName() {
       return this.#fileName;
     }

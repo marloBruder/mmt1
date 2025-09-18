@@ -17,6 +17,27 @@ class FileExplorerData {
     };
   }
 
+  async reloadFolder(folder: Folder, folderPath: string) {
+    let folderRep = (await invoke("get_subfolder", { relativePath: folderPath })) as FolderRepresentation;
+
+    if (folder.content !== null) {
+      folder.content = {
+        fileNames: folderRep.fileNames,
+        subfolders: folderRep.subfolderNames.map((subfolderName) => {
+          let subfolder: Folder | undefined = folder.content!.subfolders.find((subfolder) => subfolder.name === subfolderName);
+          if (subfolder !== undefined) {
+            return subfolder;
+          } else {
+            return {
+              name: subfolderName,
+              content: null,
+            };
+          }
+        }),
+      };
+    }
+  }
+
   closeFolder(folder: Folder) {
     folder.content = null;
   }

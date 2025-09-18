@@ -1,12 +1,8 @@
 <script lang="ts">
-  import { invoke } from "@tauri-apps/api/core";
   import FolderHeader from "./FolderHeader.svelte";
   import type { Folder, HeaderPath, NameListHeader } from "$lib/sharedState/model.svelte";
   import ChevronDownIcon from "$lib/icons/arrows/ChevronDownIcon.svelte";
   import ChevronRightIcon from "$lib/icons/arrows/ChevronRightIcon.svelte";
-  import PlusIcon from "$lib/icons/PlusIcon.svelte";
-  import { page } from "$app/stores";
-  import { explorerData } from "$lib/sharedState/explorerData.svelte";
   import FileButton from "./FileButton.svelte";
   import { fileExplorerData } from "$lib/sharedState/fileExplorerData.svelte";
 
@@ -75,6 +71,18 @@
       abortAddingSubfolder();
     }
   };
+
+  let reloadFolder = () => {
+    fileExplorerData.reloadFolder(folder, folderPath);
+  };
+
+  let nameExists = (name: string): boolean => {
+    if (folder.content !== null) {
+      return folder.content.fileNames.some((fileName) => fileName === name) || folder.content.subfolders.some((subfolder) => subfolder.name === name);
+    } else {
+      return false;
+    }
+  };
 </script>
 
 <div class="h-6 custom-bg-hover-color">
@@ -93,14 +101,14 @@
 </div>
 {#if folder.content != null}
   <div class="pl-3">
-    {#each folder.content.subfolders as subfolder}
+    {#each folder.content.subfolders as subfolder (subfolder.name)}
       <FolderHeader folder={subfolder} folderPath={folderPath + subfolder.name + "\\"}></FolderHeader>
     {/each}
     {#if addingSubfolder}
       <input id="subheaderName" type="text" bind:value={newSubfolderTitle} onfocusout={onFocusOutSubheaderTitle} onkeydown={onkeyDownSubheaderTitle} disabled={!addingSubfolder} autocomplete="off" class="disabled:bg-gray-300" />
     {/if}
-    {#each folder.content.fileNames as fileName}
-      <FileButton {folderPath} {fileName}></FileButton>
+    {#each folder.content.fileNames as fileName (fileName)}
+      <FileButton {folderPath} {fileName} {reloadFolder} {nameExists}></FileButton>
     {/each}
   </div>
 {/if}

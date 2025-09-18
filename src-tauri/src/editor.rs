@@ -170,6 +170,72 @@ pub async fn close_file(
     Ok(())
 }
 
+#[tauri::command]
+pub async fn rename_file(
+    state: tauri::State<'_, Mutex<AppState>>,
+    folder_path: &str,
+    file_name: &str,
+    new_file_name: &str,
+) -> Result<bool, Error> {
+    let mut app_state = state.lock().await;
+    let open_folder_data = app_state
+        .open_folder_data
+        .as_mut()
+        .ok_or(Error::NoOpenFolderError)?;
+
+    let mut path = open_folder_data.path.clone();
+    path.push(folder_path);
+
+    let mut rename_path = path.clone();
+
+    path.push(file_name);
+    rename_path.push(new_file_name);
+
+    let path_str = path.to_str().ok_or(Error::InternalLogicError)?;
+    let rename_path_str = rename_path.to_str().ok_or(Error::InternalLogicError)?;
+
+    if let Some(file_handle) = open_folder_data.file_handles.remove(path_str) {
+        open_folder_data
+            .file_handles
+            .insert(rename_path_str.to_string(), file_handle);
+    }
+
+    Ok(fs::rename(path, rename_path).is_ok())
+}
+
+#[tauri::command]
+pub async fn delete_file(
+    state: tauri::State<'_, Mutex<AppState>>,
+    relative_path: &str,
+) -> Result<bool, Error> {
+    let mut app_state = state.lock().await;
+    let open_folder_data = app_state
+        .open_folder_data
+        .as_mut()
+        .ok_or(Error::NoOpenFolderError)?;
+
+    open_folder_data.file_handles.remove(relative_path);
+
+    let mut path = open_folder_data.path.clone();
+    path.push(relative_path);
+
+    Ok(fs::remove_file(path).is_ok())
+}
+
+#[tauri::command]
+pub async fn get_opened_folder_path(
+    state: tauri::State<'_, Mutex<AppState>>,
+) -> Result<String, ()> {
+    let app_state = state.lock().await;
+
+    Ok(app_state
+        .open_folder_data
+        .as_ref()
+        .and_then(|fd| fd.path.to_str())
+        .map(|str| str.to_string())
+        .unwrap_or(String::new()))
+}
+
 impl serde::Serialize for FolderRepresentation {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
