@@ -64,9 +64,9 @@
 
 <ContextMenuElement>
   {#snippet element()}
-    <div class="pl-2">
+    <div class={"pl-2 " + (renaming ? "" : " custom-bg-hover-color ")}>
       <HiddenInput bind:visible={renaming} validInput={validNewName} previousValue={fileName} onconfirm={onRenameConfirm}>
-        <button class="w-full text-left custom-bg-hover-color text-nowrap overflow-hidden" onclick={explorerClick} ondblclick={explorerDblClick}>{fileName}</button>
+        <button class="w-full text-left text-nowrap overflow-hidden" onclick={explorerClick} ondblclick={explorerDblClick}>{fileName}</button>
       </HiddenInput>
     </div>
   {/snippet}
