@@ -38,6 +38,37 @@ class FileExplorerData {
     }
   }
 
+  async reloadFolderWithRename(folder: Folder, folderPath: string, oldFolderName: string, newFolderName: string) {
+    let folderRep = (await invoke("get_subfolder", { relativePath: folderPath })) as FolderRepresentation;
+
+    if (folder.content !== null) {
+      folder.content = {
+        fileNames: folderRep.fileNames,
+        subfolders: folderRep.subfolderNames.map((subfolderName) => {
+          let subfolder: Folder | undefined = folder.content!.subfolders.find((subfolder) => subfolder.name === subfolderName);
+
+          if (subfolder !== undefined) {
+            return subfolder;
+          }
+
+          if (subfolderName == newFolderName) {
+            let oldSubFolder: Folder | undefined = folder.content!.subfolders.find((subfolder) => subfolder.name === oldFolderName);
+
+            if (oldSubFolder !== undefined) {
+              oldSubFolder.name = newFolderName;
+              return oldSubFolder;
+            }
+          }
+
+          return {
+            name: subfolderName,
+            content: null,
+          };
+        }),
+      };
+    }
+  }
+
   closeFolder(folder: Folder) {
     folder.content = null;
   }

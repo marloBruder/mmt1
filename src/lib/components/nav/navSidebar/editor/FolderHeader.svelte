@@ -1,12 +1,32 @@
 <script lang="ts">
   import FolderHeader from "./FolderHeader.svelte";
-  import type { Folder, HeaderPath, NameListHeader } from "$lib/sharedState/model.svelte";
+  import type { Folder } from "$lib/sharedState/model.svelte";
   import ChevronDownIcon from "$lib/icons/arrows/ChevronDownIcon.svelte";
   import ChevronRightIcon from "$lib/icons/arrows/ChevronRightIcon.svelte";
   import FileButton from "./FileButton.svelte";
   import { fileExplorerData } from "$lib/sharedState/fileExplorerData.svelte";
+  import ContextMenuElement from "$lib/components/util/ContextMenuElement.svelte";
+  import { invoke } from "@tauri-apps/api/core";
+  import HiddenInput from "$lib/components/util/HiddenInput.svelte";
+  import { tabManager } from "$lib/sharedState/tabManager.svelte";
+  import { EditorTab } from "$lib/components/tabs/EditorTabComponent.svelte";
+  import { confirm } from "@tauri-apps/plugin-dialog";
 
-  let { folder, folderPath }: { folder: Folder; folderPath: string } = $props();
+  let {
+    folder,
+    folderPath,
+    folderName,
+    nameExistsInParent,
+    reloadParentFolder,
+    noRenameOrDelete = false,
+  }: {
+    folder: Folder;
+    folderPath: string;
+    folderName: string;
+    nameExistsInParent: (name: string) => boolean;
+    reloadParentFolder: (rename?: [string, string]) => void;
+    noRenameOrDelete?: boolean;
+  } = $props();
 
   let toggleOpen = async () => {
     if (folder.content === null) {
@@ -18,62 +38,92 @@
 
   let addingSubfolder = $state(false);
 
-  let newSubfolderTitle = $state("");
-
-  $effect(() => {
-    if (addingSubfolder) {
-      let input = document.getElementById("subheaderName");
-      if (input) {
-        input.focus();
-      }
-    }
-  });
-
   let openAddSubfolderInput = async () => {
     if (folder.content == null) {
       await fileExplorerData.openFolder(folder, folderPath);
     }
     addingSubfolder = true;
-    newSubfolderTitle = "";
   };
 
-  let addSubfolder = async () => {
-    if (newSubfolderTitle === "") {
-      // TODO: check whether name exists already
-      throw Error("Invalid Name");
+  let validNewName = (name: string) => !nameExists(name);
+
+  let addSubfolder = async (newSubfolderName: string) => {
+    let successful = (await invoke("create_folder", { relativePath: folderPath + newSubfolderName })) as boolean;
+    if (successful) {
+      await fileExplorerData.reloadFolder(folder, folderPath);
     }
-    addingSubfolder = false;
-    // await invoke("add_header", { title: newSubheaderTitle, insertPath: calcNewPath(header.subHeaders.length) });
-    // header.subHeaders.push({ title: newSubheaderTitle, opened: true, theoremNames: [], subHeaders: [] });
   };
 
-  let abortAddingSubfolder = () => {
-    addingSubfolder = false;
-    newSubfolderTitle = "";
+  let addingFile = $state(false);
+
+  let openAddFileInput = async () => {
+    if (folder.content == null) {
+      await fileExplorerData.openFolder(folder, folderPath);
+    }
+    addingFile = true;
   };
 
-  let onFocusOutSubheaderTitle = async () => {
-    if (addingSubfolder) {
-      try {
-        await addSubfolder();
-      } catch (error) {
-        abortAddingSubfolder();
+  let addFile = async (newFileName: string) => {
+    let successful = (await invoke("create_file", { relativePath: folderPath + newFileName })) as boolean;
+    if (successful) {
+      await fileExplorerData.reloadFolder(folder, folderPath);
+      await tabManager.openTab(new EditorTab(folderPath + newFileName), true);
+    }
+  };
+
+  let copyPath = async () => {
+    let openedFolderPath = (await invoke("get_opened_folder_path")) as string;
+    navigator.clipboard.writeText(openedFolderPath + "\\" + folderPath);
+  };
+
+  let copyRelativePath = () => {
+    navigator.clipboard.writeText(folderPath);
+  };
+
+  let renaming = $state(false);
+
+  let openRenameInput = async () => {
+    renaming = true;
+  };
+
+  let validNewNameInParent = (name: string) => !nameExistsInParent(name);
+
+  let renameFolder = async (newFolderName: string) => {
+    let [successful, filePathRenames] = (await invoke("rename_folder", { folderPath, newFolderName })) as [boolean, [string, string][]];
+    if (successful) {
+      reloadParentFolder([folderName, newFolderName]);
+      tabManager.tabs.forEach((tab) => {
+        if (tab instanceof EditorTab) {
+          let rename = filePathRenames.find(([oldPath, _]) => oldPath === tab.filePath);
+          if (rename !== undefined) {
+            let [_, newPath] = rename;
+            tab.filePath = newPath;
+          }
+        }
+      });
+    }
+  };
+
+  let deleteFolder = async () => {
+    let openedFolderPath = (await invoke("get_opened_folder_path")) as string;
+    if (await confirm("Are you sure you want to delete '" + openedFolderPath + "\\" + folderPath + "'? This is irreversible!", { okLabel: "Delete" })) {
+      let successful = (await invoke("delete_folder", { relativePath: folderPath })) as boolean;
+      if (successful) {
+        reloadParentFolder();
+        await tabManager.closeTabsWithCondition((tab) => {
+          return tab instanceof EditorTab && tab.filePath.startsWith(folderPath);
+        });
       }
     }
   };
 
-  let onkeyDownSubheaderTitle = (event: KeyboardEvent) => {
-    if (event.key == "Enter") {
-      try {
-        addSubfolder();
-      } catch (error) {}
-    } else if (event.key == "Escape") {
-      abortAddingSubfolder();
+  let reloadFolder = (rename?: [string, string]) => {
+    if (rename === undefined) {
+      fileExplorerData.reloadFolder(folder, folderPath);
+    } else {
+      let [oldFolderName, newFolderName] = rename;
+      fileExplorerData.reloadFolderWithRename(folder, folderPath, oldFolderName, newFolderName);
     }
-  };
-
-  let reloadFolder = () => {
-    fileExplorerData.reloadFolder(folder, folderPath);
   };
 
   let nameExists = (name: string): boolean => {
@@ -85,28 +135,43 @@
   };
 </script>
 
-<div class="h-6 custom-bg-hover-color">
-  <button class="h-full w-full text-left flex flex-row" onclick={toggleOpen}>
-    <div class="h-6 w-6">
-      {#if folder.content != null}
-        <ChevronDownIcon></ChevronDownIcon>
-      {:else}
-        <ChevronRightIcon></ChevronRightIcon>
-      {/if}
+<ContextMenuElement>
+  {#snippet element()}
+    <div class="h-6 custom-bg-hover-color">
+      <button class="h-full w-full text-left flex flex-row" onclick={toggleOpen}>
+        <div class="h-6 w-6">
+          {#if folder.content != null}
+            <ChevronDownIcon></ChevronDownIcon>
+          {:else}
+            <ChevronRightIcon></ChevronRightIcon>
+          {/if}
+        </div>
+        <div class="text-nowrap overflow-hidden">
+          <HiddenInput bind:visible={renaming} previousValue={folderName} validInput={validNewNameInParent} onconfirm={renameFolder}>
+            {folder.name}
+          </HiddenInput>
+        </div>
+      </button>
     </div>
-    <div class="whitespace-nowrap overflow-hidden">
-      {folder.name}
-    </div>
-  </button>
-</div>
+  {/snippet}
+  {#snippet contextMenu()}
+    <div><button class="w-full px-2 text-left hover:bg-purple-500" onclick={openAddFileInput}>New File</button></div>
+    <div><button class="w-full px-2 text-left hover:bg-purple-500" onclick={openAddSubfolderInput}>New Folder</button></div>
+    <div class="py-1"><hr /></div>
+    <div><button class="w-full px-2 text-left hover:bg-purple-500" onclick={copyPath}>Copy Path</button></div>
+    <div><button class="w-full px-2 text-left hover:bg-purple-500" onclick={copyRelativePath}>Copy Relative Path</button></div>
+    <div class="py-1"><hr /></div>
+    <div><button class="w-full px-2 text-left hover:enabled:bg-purple-500 disabled:text-gray-400" onclick={openRenameInput} disabled={noRenameOrDelete}>Rename</button></div>
+    <div><button class="w-full px-2 text-left hover:enabled:bg-purple-500 disabled:text-gray-400" onclick={deleteFolder} disabled={noRenameOrDelete}>Delete</button></div>
+  {/snippet}
+</ContextMenuElement>
 {#if folder.content != null}
   <div class="pl-3">
+    <HiddenInput bind:visible={addingSubfolder} previousValue="" validInput={validNewName} onconfirm={addSubfolder}></HiddenInput>
     {#each folder.content.subfolders as subfolder (subfolder.name)}
-      <FolderHeader folder={subfolder} folderPath={folderPath + subfolder.name + "\\"}></FolderHeader>
+      <FolderHeader folder={subfolder} folderPath={folderPath + subfolder.name + "\\"} folderName={subfolder.name} reloadParentFolder={reloadFolder} nameExistsInParent={nameExists}></FolderHeader>
     {/each}
-    {#if addingSubfolder}
-      <input id="subheaderName" type="text" bind:value={newSubfolderTitle} onfocusout={onFocusOutSubheaderTitle} onkeydown={onkeyDownSubheaderTitle} disabled={!addingSubfolder} autocomplete="off" class="disabled:bg-gray-300" />
-    {/if}
+    <HiddenInput bind:visible={addingFile} previousValue="" validInput={validNewName} onconfirm={addFile}></HiddenInput>
     {#each folder.content.fileNames as fileName (fileName)}
       <FileButton {folderPath} {fileName} {reloadFolder} {nameExists}></FileButton>
     {/each}

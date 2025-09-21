@@ -97,6 +97,111 @@ pub async fn get_folder(full_path: &Path) -> Result<FolderRepresentation, Error>
 }
 
 #[tauri::command]
+pub async fn create_folder(
+    state: tauri::State<'_, Mutex<AppState>>,
+    relative_path: &str,
+) -> Result<bool, Error> {
+    let app_state = state.lock().await;
+    let open_folder_data = app_state
+        .open_folder_data
+        .as_ref()
+        .ok_or(Error::NoOpenFolderError)?;
+
+    let mut path = open_folder_data.path.clone();
+    path.push(relative_path);
+
+    Ok(fs::create_dir(path).is_ok())
+}
+
+#[tauri::command]
+pub async fn rename_folder(
+    state: tauri::State<'_, Mutex<AppState>>,
+    folder_path: &str,
+    new_folder_name: &str,
+) -> Result<(bool, Vec<(String, String)>), Error> {
+    let mut app_state = state.lock().await;
+    let open_folder_data = app_state
+        .open_folder_data
+        .as_mut()
+        .ok_or(Error::NoOpenFolderError)?;
+
+    let mut path = open_folder_data.path.clone();
+    path.push(folder_path);
+
+    let mut new_path = path.clone();
+    new_path.pop();
+    new_path.push(new_folder_name);
+
+    let new_path_str = new_path.to_str().ok_or(Error::InternalLogicError)?;
+    let open_folder_path_len = open_folder_data
+        .path
+        .to_str()
+        .ok_or(Error::InternalLogicError)?
+        .len();
+
+    let open_file_path_renames: Vec<(String, String)> = open_folder_data
+        .file_handles
+        .keys()
+        .filter(|file_path| file_path.starts_with(folder_path))
+        .map(|file_path| {
+            (
+                file_path.clone(),
+                format!(
+                    "{}\\{}",
+                    new_path_str,
+                    file_path.split_at(folder_path.len()).1
+                )
+                .split_at(open_folder_path_len + 1)
+                .1
+                .to_string(),
+            )
+        })
+        .collect();
+
+    open_file_path_renames.iter().for_each(|(file_path, _)| {
+        open_folder_data.file_handles.remove(file_path);
+    });
+
+    let rename_successful = fs::rename(path, &new_path).is_ok();
+
+    for (_, file_path) in &open_file_path_renames {
+        let mut path = open_folder_data.path.clone();
+        path.push(file_path);
+
+        let file_handle = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&path)
+            .map_err(|_| Error::FileOpenError)?;
+
+        open_folder_data
+            .file_handles
+            .insert(file_path.clone(), file_handle);
+    }
+
+    Ok((rename_successful, open_file_path_renames))
+}
+
+#[tauri::command]
+pub async fn delete_folder(
+    state: tauri::State<'_, Mutex<AppState>>,
+    relative_path: &str,
+) -> Result<bool, Error> {
+    let mut app_state = state.lock().await;
+    let open_folder_data = app_state
+        .open_folder_data
+        .as_mut()
+        .ok_or(Error::NoOpenFolderError)?;
+
+    // open_folder_data.file_handles doesn't have to be updated, since it will be when the tabs are closed
+
+    let mut path = open_folder_data.path.clone();
+    path.push(relative_path);
+
+    Ok(fs::remove_dir_all(path).is_ok())
+}
+
+#[tauri::command]
 pub async fn open_file(
     state: tauri::State<'_, Mutex<AppState>>,
     relative_path: &str,
@@ -171,6 +276,23 @@ pub async fn close_file(
 }
 
 #[tauri::command]
+pub async fn create_file(
+    state: tauri::State<'_, Mutex<AppState>>,
+    relative_path: &str,
+) -> Result<bool, Error> {
+    let app_state = state.lock().await;
+    let open_folder_data = app_state
+        .open_folder_data
+        .as_ref()
+        .ok_or(Error::NoOpenFolderError)?;
+
+    let mut path = open_folder_data.path.clone();
+    path.push(relative_path);
+
+    Ok(fs::File::create_new(path).is_ok())
+}
+
+#[tauri::command]
 pub async fn rename_file(
     state: tauri::State<'_, Mutex<AppState>>,
     folder_path: &str,
@@ -191,13 +313,13 @@ pub async fn rename_file(
     path.push(file_name);
     rename_path.push(new_file_name);
 
-    let path_str = path.to_str().ok_or(Error::InternalLogicError)?;
-    let rename_path_str = rename_path.to_str().ok_or(Error::InternalLogicError)?;
+    let path_str = format!("{}{}", folder_path, file_name);
+    let rename_path_str = format!("{}{}", folder_path, new_file_name);
 
-    if let Some(file_handle) = open_folder_data.file_handles.remove(path_str) {
+    if let Some(file_handle) = open_folder_data.file_handles.remove(&path_str) {
         open_folder_data
             .file_handles
-            .insert(rename_path_str.to_string(), file_handle);
+            .insert(rename_path_str, file_handle);
     }
 
     Ok(fs::rename(path, rename_path).is_ok())

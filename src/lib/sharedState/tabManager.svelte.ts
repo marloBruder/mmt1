@@ -174,12 +174,25 @@ class TabManager {
     this.closeTabWithIndex(this.#openTabIndex);
   }
 
-  closeTabsWithCondition(condition: (tab: Tab) => boolean) {
-    for (let [i, tab] of this.#tabs.toReversed().entries()) {
+  async closeTabsWithCondition(condition: (tab: Tab) => boolean) {
+    for (let [i, tab] of this.#tabs.entries().toArray().toReversed()) {
       if (condition(tab)) {
-        this.closeTabWithIndex(i);
+        if (i < this.#openTabIndex || (i == this.#openTabIndex && i == this.#tabs.length - 1)) {
+          this.#openTabIndex--;
+        }
+
+        if (i < this.#tempTabIndex) {
+          this.#tempTabIndex--;
+        } else if (i == this.#tempTabIndex) {
+          this.#tempTabIndex = -1;
+        }
+
+        this.#tabs[i].unloadData();
+        this.#tabs.splice(i, 1);
       }
     }
+
+    await this.#tabs[this.#openTabIndex]?.onTabOpen();
   }
 
   resetTabs() {

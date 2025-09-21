@@ -4,5 +4,5 @@
 </script>
 
 <div class="pt-2">
-  <FolderHeader folder={fileExplorerData.folder} folderPath=""></FolderHeader>
+  <FolderHeader folder={fileExplorerData.folder} folderPath="" folderName="" reloadParentFolder={() => {}} nameExistsInParent={() => false} noRenameOrDelete></FolderHeader>
 </div>
