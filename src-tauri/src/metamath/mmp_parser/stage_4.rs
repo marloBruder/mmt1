@@ -152,6 +152,19 @@ pub fn stage_4(
             {
                 theorem = Some(theorem_ref);
                 reference_numbers.push(Some((theorem_i + 1) as u32));
+
+                if hypotheses_parsed.len() > theorem_ref.hypotheses.len() {
+                    preview_error.1 = true;
+                    errors.push(DetailedError {
+                        error_type: Error::TooManyHypothesesError,
+                        start_line_number: line_number,
+                        start_column: step_prefix_len
+                            - proof_line.step_ref.len() as u32
+                            - proof_line.hypotheses.len() as u32,
+                        end_line_number: line_number,
+                        end_column: step_prefix_len - proof_line.step_ref.len() as u32,
+                    });
+                }
             } else {
                 errors.push(DetailedError {
                     error_type: Error::MmpStepRefNotALabelError,

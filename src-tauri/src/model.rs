@@ -562,6 +562,28 @@ impl MetamathData {
 
         color_information
     }
+
+    pub fn syntax_typecode_of_logical_typecode(&self, logical_typecode_i: u32) -> Option<u32> {
+        let logical_typecode = self
+            .optimized_data
+            .symbol_number_mapping
+            .symbols
+            .get(&logical_typecode_i)?;
+
+        let syntax_typecode = &self
+            .logical_typecodes
+            .iter()
+            .find(|lt| lt.typecode == *logical_typecode)?
+            .syntax_typecode;
+
+        let syntax_typecode_i = *self
+            .optimized_data
+            .symbol_number_mapping
+            .numbers
+            .get(syntax_typecode)?;
+
+        Some(syntax_typecode_i)
+    }
 }
 
 impl IdManager {
@@ -597,6 +619,12 @@ impl TheoremParseTrees {
     pub fn to_cloned_parse_tree_vec(&self) -> Vec<ParseTree> {
         let mut parse_trees_vec = self.hypotheses_parsed.clone();
         parse_trees_vec.push(self.assertion_parsed.clone());
+        parse_trees_vec
+    }
+
+    pub fn to_ref_parse_tree_vec(&self) -> Vec<&ParseTree> {
+        let mut parse_trees_vec: Vec<&ParseTree> = self.hypotheses_parsed.iter().collect();
+        parse_trees_vec.push(&self.assertion_parsed);
         parse_trees_vec
     }
 }

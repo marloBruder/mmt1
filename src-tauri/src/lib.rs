@@ -229,6 +229,7 @@ pub enum Error {
     InvalidMmpStepNameStartsWithHError, // Returned if there is a mmp step name that is invalid because it starts with h
     HypNameDoesntExistError, // Returned if there is an mmp step with an hypothesis name not belonging to any previous step
     MissingMmpStepRefError,  // Returned if there is an mmp step with an empty ref
+    TooManyHypothesesError,  // Returned if a proof step withg a theoerm ref has too many hypotheses
     MmpStepRefNotALabelError, // Returned if there is an mmp step which ref is not a valid label
     InvalidMmpStepForAxiomError, // Returned when adding an axiom and the mmp steps do not follow the required format
     MissingMmpStepsError,        // Returned if there are no mmp steps when adding theorem/axiom

@@ -149,6 +149,9 @@ export function getErrorMessage(errorType: string): string {
     case "MmpStepRefNotALabelError": {
       return "Not the label of a previous theorem or axiom.";
     }
+    case "TooManyHypothesesError": {
+      return "Too many hypotheses for the provided theorem.";
+    }
   }
 
   return "You should not be seeing this error message. Please post a Github issue with your editor content.";
