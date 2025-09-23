@@ -5,6 +5,8 @@ pub mod earley_parser;
 pub mod earley_parser_optimized;
 pub mod header_iterators;
 pub mod last_curr_next_iterator;
+pub mod parse_tree_node_iterator;
+pub mod work_variable_manager;
 
 pub fn spaces(num: u32) -> &'static str {
     &"                                                                                "
