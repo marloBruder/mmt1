@@ -19,29 +19,37 @@ impl WorkVariableManager {
             .map(|(typecode_i, default_var_i)| WorkVariable {
                 typecode_i: *typecode_i,
                 variable_i: *default_var_i,
-                number: 0,
+                number: 1,
             })
             .collect();
 
         let mut nodes: Vec<&ParseTreeNode> = parse_trees.iter().map(|pt| &pt.top_node).collect();
 
         while let Some(node) = nodes.pop() {
-            if let ParseTreeNode::WorkVariable(work_var_in_pt) = node {
-                if work_var_in_pt.variable_i
-                    == symbol_number_mapping
-                        .get_typecode_default_variable_i(work_var_in_pt.typecode_i)
-                        .ok_or(Error::InternalLogicError)?
-                {
-                    let Some(work_var) = next_vars
-                        .iter_mut()
-                        .find(|work_var| work_var.typecode_i == work_var_in_pt.typecode_i)
-                    else {
-                        return Err(Error::InternalLogicError);
-                    };
+            match node {
+                ParseTreeNode::WorkVariable(work_var_in_pt) => {
+                    if work_var_in_pt.variable_i
+                        == symbol_number_mapping
+                            .get_typecode_default_variable_i(work_var_in_pt.typecode_i)
+                            .ok_or(Error::InternalLogicError)?
+                    {
+                        let Some(work_var) = next_vars
+                            .iter_mut()
+                            .find(|work_var| work_var.typecode_i == work_var_in_pt.typecode_i)
+                        else {
+                            return Err(Error::InternalLogicError);
+                        };
 
-                    if work_var.number < work_var_in_pt.number + 1 {
-                        work_var.number = work_var_in_pt.number + 1;
+                        if work_var.number < work_var_in_pt.number + 1 {
+                            work_var.number = work_var_in_pt.number + 1;
+                        }
                     }
+                }
+                ParseTreeNode::Node {
+                    rule_i: _,
+                    sub_nodes,
+                } => {
+                    nodes.extend(sub_nodes.iter());
                 }
             }
         }

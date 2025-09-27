@@ -215,10 +215,12 @@ impl MmpParserStage4Success {
     }
 }
 
+#[derive(Debug)]
 pub struct MmpParserStage5 {
     pub unify_result: Vec<UnifyLine>,
 }
 
+#[derive(Debug)]
 pub struct UnifyLine {
     pub new_line: bool,
     pub step_name: Option<String>,

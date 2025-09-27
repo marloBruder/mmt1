@@ -153,6 +153,25 @@ pub fn stage_4(
                 theorem = Some(theorem_ref);
                 reference_numbers.push(Some((theorem_i + 1) as u32));
 
+                if mm_data
+                    .optimized_data
+                    .theorem_data
+                    .get(&theorem_ref.label)
+                    .ok_or(Error::InternalLogicError)?
+                    .parse_trees
+                    .is_none()
+                {
+                    errors.push(DetailedError {
+                        error_type: Error::SyntaxTheoremUsedError,
+                        start_line_number: line_number,
+                        start_column: step_prefix_len - proof_line.step_ref.len() as u32 + 1,
+                        end_line_number: line_number,
+                        end_column: step_prefix_len + 1,
+                    });
+
+                    preview_error.2 = true;
+                }
+
                 if hypotheses_parsed.len() > theorem_ref.hypotheses.len() {
                     preview_error.1 = true;
                     errors.push(DetailedError {

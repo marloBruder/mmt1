@@ -152,6 +152,9 @@ export function getErrorMessage(errorType: string): string {
     case "TooManyHypothesesError": {
       return "Too many hypotheses for the provided theorem.";
     }
+    case "SyntaxTheoremUsedError": {
+      return "Can't use syntax theorems in mmp files.";
+    }
   }
 
   return "You should not be seeing this error message. Please post a Github issue with your editor content.";

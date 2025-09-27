@@ -23,6 +23,9 @@ use crate::{
             HeaderIterator, HeaderLocateAfterIterator, TheoremIterator, TheoremLocateAfterIterator,
             VariableIterator, VariableLocateAfterIterator,
         },
+        parse_tree_node_iterator::ParseTreeNodeIterator,
+        work_variable_manager::WorkVariableManager,
+        StrIterToSpaceSeperatedString,
     },
     Error, Settings,
 };
@@ -580,7 +583,7 @@ impl MetamathData {
             .optimized_data
             .symbol_number_mapping
             .numbers
-            .get(syntax_typecode)?;
+            .get(&format!("${}", syntax_typecode))?;
 
         Some(syntax_typecode_i)
     }
@@ -620,6 +623,38 @@ impl TheoremParseTrees {
         let mut parse_trees_vec = self.hypotheses_parsed.clone();
         parse_trees_vec.push(self.assertion_parsed.clone());
         parse_trees_vec
+    }
+
+    pub fn to_cloned_parse_tree_vec_replace_floating_hypotheses(
+        &self,
+        symbol_number_mapping: &SymbolNumberMapping,
+        grammar: &Grammar,
+        work_variable_manager: &mut WorkVariableManager,
+    ) -> Result<Vec<ParseTree>, Error> {
+        let mut substitutions: HashMap<u32, WorkVariable> = HashMap::new();
+
+        let mut parse_tree_vec = self
+            .hypotheses_parsed
+            .iter()
+            .map(|pt| {
+                pt.clone_and_replace_floating_hypotheses(
+                    symbol_number_mapping,
+                    grammar,
+                    &mut substitutions,
+                    work_variable_manager,
+                )
+            })
+            .collect::<Result<Vec<ParseTree>, Error>>()?;
+        parse_tree_vec.push(
+            self.assertion_parsed
+                .clone_and_replace_floating_hypotheses(
+                    symbol_number_mapping,
+                    grammar,
+                    &mut substitutions,
+                    work_variable_manager,
+                )?,
+        );
+        Ok(parse_tree_vec)
     }
 
     pub fn to_ref_parse_tree_vec(&self) -> Vec<&ParseTree> {
@@ -831,10 +866,7 @@ impl ParseTree {
         grammar: &Grammar,
         symbol_number_mapping: &SymbolNumberMapping,
     ) -> Result<bool, Error> {
-        if trees.len() != other_trees.len()
-            || trees.iter().any(|t| t.has_work_variables())
-            || other_trees.iter().any(|t| t.has_work_variables())
-        {
+        if trees.len() != other_trees.len() || trees.iter().any(|t| t.has_work_variables()) {
             return Ok(false);
         }
 
@@ -850,44 +882,66 @@ impl ParseTree {
             let ParseTreeNode::Node { rule_i, sub_nodes } = subtree else {
                 return Err(Error::InternalLogicError);
             };
-            let ParseTreeNode::Node {
-                rule_i: other_rule_i,
-                sub_nodes: other_sub_nodes,
-            } = other_subtree
-            else {
-                return Err(Error::InternalLogicError);
-            };
-
             let subtree_rule = grammar
                 .rules
                 .get(*rule_i as usize)
                 .ok_or(Error::InternalLogicError)?;
-            let other_subtree_rule = grammar
-                .rules
-                .get(*other_rule_i as usize)
-                .ok_or(Error::InternalLogicError)?;
 
-            if subtree_rule.is_floating_hypothesis {
-                match substitutions.get(rule_i) {
-                    Some(&sub) => {
-                        if sub != other_subtree {
+            match other_subtree {
+                ParseTreeNode::Node {
+                    rule_i: other_rule_i,
+                    sub_nodes: other_sub_nodes,
+                } => {
+                    let other_subtree_rule = grammar
+                        .rules
+                        .get(*other_rule_i as usize)
+                        .ok_or(Error::InternalLogicError)?;
+
+                    if subtree_rule.is_floating_hypothesis {
+                        match substitutions.get(rule_i) {
+                            Some(&sub) => {
+                                if sub != other_subtree {
+                                    return Ok(false);
+                                }
+                            }
+                            None => {
+                                if subtree_rule.left_side == other_subtree_rule.left_side {
+                                    substitutions.insert(*rule_i, other_subtree);
+                                } else {
+                                    return Ok(false);
+                                }
+                            }
+                        }
+                    } else {
+                        if *rule_i != *other_rule_i || sub_nodes.len() != other_sub_nodes.len() {
                             return Ok(false);
                         }
-                    }
-                    None => {
-                        if subtree_rule.left_side == other_subtree_rule.left_side {
-                            substitutions.insert(*rule_i, other_subtree);
-                        } else {
-                            return Ok(false);
+                        for (node, other_node) in sub_nodes.iter().zip(other_sub_nodes.iter()) {
+                            check.push((node, other_node));
                         }
                     }
                 }
-            } else {
-                if *rule_i != *other_rule_i || sub_nodes.len() != other_sub_nodes.len() {
-                    return Ok(false);
-                }
-                for (node, other_node) in sub_nodes.iter().zip(other_sub_nodes.iter()) {
-                    check.push((node, other_node));
+                ParseTreeNode::WorkVariable(work_variable) => {
+                    if subtree_rule.is_floating_hypothesis {
+                        match substitutions.get(rule_i) {
+                            Some(&sub) => {
+                                if sub != other_subtree {
+                                    return Ok(false);
+                                }
+                            }
+                            None => {
+                                println!("{}", subtree_rule.left_side.symbol_i);
+                                println!("{}", work_variable.typecode_i);
+                                if subtree_rule.left_side.symbol_i == work_variable.typecode_i {
+                                    substitutions.insert(*rule_i, other_subtree);
+                                } else {
+                                    return Ok(false);
+                                }
+                            }
+                        }
+                    } else {
+                        return Ok(false);
+                    }
                 }
             }
         }
@@ -984,6 +1038,156 @@ impl ParseTree {
 
         false
     }
+
+    // Clones the parse tree and replaces all floating hypotheses rules (variables) with work variables
+    pub fn clone_and_replace_floating_hypotheses(
+        &self,
+        symbol_number_mapping: &SymbolNumberMapping,
+        grammar: &Grammar,
+        substitutions: &mut HashMap<u32, WorkVariable>,
+        work_variable_manager: &mut WorkVariableManager,
+    ) -> Result<ParseTree, Error> {
+        Ok(ParseTree {
+            typecode: self.typecode,
+            top_node: ParseTree::clone_and_replace_floating_hypotheses_helper(
+                &self.top_node,
+                symbol_number_mapping,
+                grammar,
+                substitutions,
+                work_variable_manager,
+            )?,
+        })
+    }
+
+    fn clone_and_replace_floating_hypotheses_helper(
+        parse_tree_node: &ParseTreeNode,
+        symbol_number_mapping: &SymbolNumberMapping,
+        grammar: &Grammar,
+        substitutions: &mut HashMap<u32, WorkVariable>,
+        work_variable_manager: &mut WorkVariableManager,
+    ) -> Result<ParseTreeNode, Error> {
+        Ok(match parse_tree_node {
+            ParseTreeNode::Node { rule_i, sub_nodes } => {
+                let rule = grammar
+                    .rules
+                    .get(*rule_i as usize)
+                    .ok_or(Error::InternalLogicError)?;
+
+                if rule.is_floating_hypothesis {
+                    let work_variable = match substitutions.get(rule_i) {
+                        Some(work_variable) => *work_variable,
+                        None => {
+                            let floating_hypothesis_variable_symbol_i = rule
+                                .right_side
+                                .first()
+                                .ok_or(Error::InternalLogicError)?
+                                .symbol_i;
+
+                            let variable_typecode_i = symbol_number_mapping
+                                .variable_typecodes
+                                .get(&floating_hypothesis_variable_symbol_i)
+                                .ok_or(Error::InternalLogicError)?;
+
+                            let work_variable = work_variable_manager
+                                .next_var(*variable_typecode_i)
+                                .ok_or(Error::InternalLogicError)?;
+
+                            substitutions.insert(*rule_i, work_variable);
+
+                            work_variable
+                        }
+                    };
+                    ParseTreeNode::WorkVariable(work_variable)
+                } else {
+                    ParseTreeNode::Node {
+                        rule_i: *rule_i,
+                        sub_nodes: sub_nodes
+                            .iter()
+                            .map(|sub_node| {
+                                ParseTree::clone_and_replace_floating_hypotheses_helper(
+                                    sub_node,
+                                    symbol_number_mapping,
+                                    grammar,
+                                    substitutions,
+                                    work_variable_manager,
+                                )
+                            })
+                            .collect::<Result<Vec<ParseTreeNode>, Error>>()?,
+                    }
+                }
+            }
+            ParseTreeNode::WorkVariable(work_var) => ParseTreeNode::WorkVariable(*work_var),
+        })
+    }
+
+    pub fn to_expression(
+        &self,
+        symbol_number_mapping: &SymbolNumberMapping,
+        grammar: &Grammar,
+    ) -> Result<String, Error> {
+        let mut symbol_vec: Vec<InputSymbol> = vec![InputSymbol::Symbol(Symbol {
+            symbol_i: self.typecode,
+        })];
+
+        let mut node_stack: Vec<(usize, usize, &ParseTreeNode)> = vec![(0, 0, &self.top_node)];
+
+        while let Some((next_symbol_i, next_sub_node_i, top_node)) = node_stack.last_mut() {
+            match top_node {
+                ParseTreeNode::Node { rule_i, sub_nodes } => {
+                    let rule = grammar
+                        .rules
+                        .get(*rule_i as usize)
+                        .ok_or(Error::InternalLogicError)?;
+
+                    if let Some(symbol) = rule.right_side.get(*next_symbol_i) {
+                        if symbol_number_mapping.is_typecode(symbol.symbol_i) {
+                            let next_sub_node_index = *next_sub_node_i as usize;
+                            *next_sub_node_i += 1;
+                            *next_symbol_i += 1;
+                            node_stack.push((
+                                0,
+                                0,
+                                sub_nodes
+                                    .get(next_sub_node_index)
+                                    .ok_or(Error::InternalLogicError)?,
+                            ));
+                        } else {
+                            *next_symbol_i += 1;
+                            symbol_vec.push(InputSymbol::Symbol(*symbol));
+                        }
+                    } else {
+                        node_stack.pop();
+                    }
+                }
+                ParseTreeNode::WorkVariable(work_variable) => {
+                    symbol_vec.push(InputSymbol::WorkVariable(*work_variable));
+                    node_stack.pop();
+                }
+            }
+        }
+
+        Ok(symbol_vec
+            .into_iter()
+            .map(|input_symbol| match input_symbol {
+                InputSymbol::Symbol(symbol) => symbol_number_mapping
+                    .symbols
+                    .get(&symbol.symbol_i)
+                    .map(|s| s.clone())
+                    .unwrap_or(String::new()),
+                InputSymbol::WorkVariable(work_var) => {
+                    format!(
+                        "{}${}",
+                        symbol_number_mapping
+                            .symbols
+                            .get(&work_var.variable_i)
+                            .map(|s| s.clone())
+                            .unwrap_or(String::new()),
+                        work_var.number
+                    )
+                }
+            })
+            .fold_to_space_seperated_string())
+    }
 }
 
 impl ParseTreeNode {
@@ -1008,6 +1212,117 @@ impl ParseTreeNode {
         }
 
         Ok(rules)
+    }
+
+    pub fn work_variable_occurs_in(&self, work_variable: WorkVariable) -> bool {
+        for node in self {
+            if let ParseTreeNode::WorkVariable(work_var) = node {
+                if *work_var == work_variable {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
+    pub fn any_work_variable_occurs_in(&self, work_variables: &HashSet<WorkVariable>) -> bool {
+        for node in self {
+            if let ParseTreeNode::WorkVariable(work_var) = node {
+                if work_variables.contains(work_var) {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
+    // Clones the parse tree node and replaces all instances of the provided work variable with thge provided parse tree node
+    pub fn clone_and_replace_work_variable(
+        &self,
+        work_variable: WorkVariable,
+        replacement_parse_tree: &ParseTreeNode,
+    ) -> ParseTreeNode {
+        ParseTreeNode::clone_and_replace_work_variable_helper(
+            self,
+            work_variable,
+            replacement_parse_tree,
+        )
+    }
+
+    fn clone_and_replace_work_variable_helper(
+        parse_tree_node: &ParseTreeNode,
+        work_variable: WorkVariable,
+        replacement_parse_tree_node: &ParseTreeNode,
+    ) -> ParseTreeNode {
+        match parse_tree_node {
+            ParseTreeNode::Node { rule_i, sub_nodes } => ParseTreeNode::Node {
+                rule_i: *rule_i,
+                sub_nodes: sub_nodes
+                    .iter()
+                    .map(|sub_node| {
+                        ParseTreeNode::clone_and_replace_work_variable_helper(
+                            sub_node,
+                            work_variable,
+                            replacement_parse_tree_node,
+                        )
+                    })
+                    .collect(),
+            },
+            ParseTreeNode::WorkVariable(work_var) => {
+                if *work_var == work_variable {
+                    replacement_parse_tree_node.clone()
+                } else {
+                    ParseTreeNode::WorkVariable(*work_var)
+                }
+            }
+        }
+    }
+
+    pub fn clone_and_apply_substitutions(
+        &self,
+        substitutions: &HashMap<WorkVariable, ParseTreeNode>,
+    ) -> ParseTreeNode {
+        ParseTreeNode::clone_and_apply_substitutions_helper(self, substitutions)
+    }
+
+    fn clone_and_apply_substitutions_helper(
+        parse_tree_node: &ParseTreeNode,
+        substitutions: &HashMap<WorkVariable, ParseTreeNode>,
+    ) -> ParseTreeNode {
+        match parse_tree_node {
+            ParseTreeNode::Node { rule_i, sub_nodes } => ParseTreeNode::Node {
+                rule_i: *rule_i,
+                sub_nodes: sub_nodes
+                    .iter()
+                    .map(|sub_node| {
+                        ParseTreeNode::clone_and_apply_substitutions_helper(sub_node, substitutions)
+                    })
+                    .collect(),
+            },
+            ParseTreeNode::WorkVariable(work_var) => {
+                if let Some(parse_tree) = substitutions.get(work_var) {
+                    parse_tree.clone()
+                } else {
+                    ParseTreeNode::WorkVariable(*work_var)
+                }
+            }
+        }
+    }
+
+    pub fn iter(&self) -> ParseTreeNodeIterator {
+        ParseTreeNodeIterator::new(self)
+    }
+}
+
+impl<'a> IntoIterator for &'a ParseTreeNode {
+    type Item = &'a ParseTreeNode;
+
+    type IntoIter = ParseTreeNodeIterator<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 

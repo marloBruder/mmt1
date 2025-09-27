@@ -1,6 +1,6 @@
 use crate::model::ParseTreeNode;
 
-struct ParseTreeNodeIterator<'a> {
+pub struct ParseTreeNodeIterator<'a> {
     nodes_to_check: Vec<&'a ParseTreeNode>,
 }
 

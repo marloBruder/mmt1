@@ -166,7 +166,7 @@ pub async fn on_edit(
             stage_4_success.preview_errors,
             stage_4_success.preview_confirmations,
             stage_4_success.preview_confirmations_recursive,
-            Some(&stage_5),
+            Some(stage_5),
         ),
         errors: Vec::new(),
     })
@@ -202,10 +202,10 @@ pub fn calc_theorem_page_data(
     stage_2_success: &MmpParserStage2Success,
     stage_3_theorem: MmpParserStage3Theorem,
     reference_numbers: Vec<Option<u32>>,
-    preview_errors: Vec<(bool, bool, bool, bool)>,
-    preview_confirmations: Vec<bool>,
-    preview_confirmations_recursive: Vec<bool>,
-    stage_5: Option<&MmpParserStage5>,
+    mut preview_errors: Vec<(bool, bool, bool, bool)>,
+    mut preview_confirmations: Vec<bool>,
+    mut preview_confirmations_recursive: Vec<bool>,
+    stage_5: Option<MmpParserStage5>,
 ) -> Option<DatabaseElementPageData> {
     let (html_allowed_tags_and_attributes, css_allowed_properties) =
         html_validation::create_rule_structs();
@@ -213,36 +213,119 @@ pub fn calc_theorem_page_data(
     let mut proof_lines: Vec<model::ProofLine> = Vec::new();
     let mut preview_unify_markers: Vec<(bool, bool, bool, bool)> = Vec::new();
 
-    for (i, ((pl, &indention), ref_number)) in stage_2_success
-        .proof_lines
-        .iter()
-        .zip(stage_3_theorem.indention.iter())
-        .zip(reference_numbers.into_iter())
-        .enumerate()
-    {
-        let mut unify_markers = (false, false, false, false);
+    // for ((pl, &indention), ref_number) in stage_2_success
+    //     .proof_lines
+    //     .iter()
+    //     .zip(stage_3_theorem.indention.iter())
+    //     .zip(reference_numbers.into_iter())
+    // {
+    //     let mut unify_markers = (false, false, false, false);
 
-        let unify_result = stage_5.and_then(|s5| s5.unify_result.get(i));
-        let unify_step_ref = unify_result.and_then(|ur| ur.step_ref.as_ref());
+    //     let mut unify_result = stage_5.and_then(|s5| s5.unify_result.get(i));
 
-        proof_lines.push(model::ProofLine {
-            step_name: pl.step_name.to_string(),
-            hypotheses: if pl.hypotheses.len() != 0 {
-                pl.hypotheses.split(',').map(|s| s.to_string()).collect()
-            } else {
-                Vec::new()
-            },
-            reference: if let Some(step_ref) = unify_step_ref {
-                unify_markers.2 = true;
-                step_ref.clone()
-            } else {
-                pl.step_ref.to_string()
-            },
-            reference_number: ref_number,
-            assertion: util::str_to_space_seperated_string(pl.expression),
-            indention,
-        });
-        preview_unify_markers.push(unify_markers);
+    //     while unify_result.is_some_and(|ul| ul.new_line) {
+    //         let unify_line = unify_result.unwrap();
+
+    //         preview_unify_markers.push((true, true, true, true));
+    //         preview_errors.insert(i, (false, false, false, false));
+    //         preview_confirmations.insert(i, false);
+    //         preview_confirmations_recursive.insert(i, false);
+
+    //         let hypotheses_string = unify_line.hypotheses.clone().unwrap_or(String::new());
+
+    //         proof_lines.push(model::ProofLine {
+    //             step_name: unify_line.step_name.clone().unwrap_or(String::new()),
+    //             hypotheses: if hypotheses_string.len() != 0 {
+    //                 hypotheses_string
+    //                     .split(',')
+    //                     .map(|s| s.to_string())
+    //                     .collect()
+    //             } else {
+    //                 Vec::new()
+    //             },
+    //             reference: unify_line.step_ref.clone().unwrap_or(String::new()),
+    //             reference_number: None,
+    //             indention: 1,
+    //             assertion: unify_line.expression.clone().unwrap_or(String::new()),
+    //         });
+
+    //         i += 1;
+    //         unify_result = stage_5.and_then(|s5| s5.unify_result.get(i));
+    //     }
+
+    //     let unify_step_ref = unify_result.and_then(|ur| ur.step_ref.as_ref());
+
+    //     proof_lines.push(model::ProofLine {
+    //         step_name: pl.step_name.to_string(),
+    //         hypotheses: if pl.hypotheses.len() != 0 {
+    //             pl.hypotheses.split(',').map(|s| s.to_string()).collect()
+    //         } else {
+    //             Vec::new()
+    //         },
+    //         reference: if let Some(step_ref) = unify_step_ref {
+    //             unify_markers.2 = true;
+    //             step_ref.clone()
+    //         } else {
+    //             pl.step_ref.to_string()
+    //         },
+    //         reference_number: ref_number,
+    //         assertion: util::str_to_space_seperated_string(pl.expression),
+    //         indention,
+    //     });
+    //     preview_unify_markers.push(unify_markers);
+    //     i += 1;
+    // }
+    if let Some(stage_5) = stage_5 {
+        for (i, ul) in stage_5.unify_result.into_iter().enumerate() {
+            let mut unify_markers = (false, false, false, false);
+
+            if ul.new_line {
+                unify_markers = (true, true, true, true);
+                preview_errors.insert(i, (false, false, false, false));
+                preview_confirmations.insert(i, false);
+                preview_confirmations_recursive.insert(i, false);
+            }
+
+            let hypotheses_string = ul.hypotheses.unwrap_or(String::new());
+
+            proof_lines.push(model::ProofLine {
+                step_name: ul.step_name.unwrap_or(String::new()),
+                hypotheses: if hypotheses_string.len() != 0 {
+                    hypotheses_string
+                        .split(',')
+                        .map(|s| s.to_string())
+                        .collect()
+                } else {
+                    Vec::new()
+                },
+                reference: ul.step_ref.unwrap_or(String::new()),
+                indention: 1,
+                reference_number: None,
+                assertion: ul.expression.unwrap_or(String::new()),
+            });
+            preview_unify_markers.push(unify_markers);
+        }
+    } else {
+        for ((pl, &indention), ref_number) in stage_2_success
+            .proof_lines
+            .iter()
+            .zip(stage_3_theorem.indention.iter())
+            .zip(reference_numbers.into_iter())
+        {
+            preview_unify_markers.push((false, false, false, false));
+            proof_lines.push(model::ProofLine {
+                step_name: pl.step_name.to_string(),
+                hypotheses: if pl.hypotheses.len() != 0 {
+                    pl.hypotheses.split(',').map(|s| s.to_string()).collect()
+                } else {
+                    Vec::new()
+                },
+                reference: pl.step_ref.to_string(),
+                reference_number: ref_number,
+                assertion: util::str_to_space_seperated_string(pl.expression),
+                indention,
+            });
+        }
     }
 
     let description = stage_2_success
