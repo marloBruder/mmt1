@@ -209,9 +209,10 @@ impl MmpParserStage4Success {
     pub fn next_stage(
         &self,
         stage_2: &MmpParserStage2Success,
+        stage_3: &MmpParserStage3Theorem,
         mm_data: &MetamathData,
     ) -> Result<MmpParserStage5, Error> {
-        stage_5::stage_5(stage_2, self, mm_data)
+        stage_5::stage_5(stage_2, stage_3, self, mm_data)
     }
 }
 

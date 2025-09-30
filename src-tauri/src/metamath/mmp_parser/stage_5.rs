@@ -2,8 +2,8 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{
     metamath::mmp_parser::{
-        LocateAfterRef, MmpParserStage2Success, MmpParserStage4Success, MmpParserStage5, ProofLine,
-        UnifyLine,
+        LocateAfterRef, MmpParserStage2Success, MmpParserStage3Theorem, MmpParserStage4Success,
+        MmpParserStage5, ProofLine, UnifyLine,
     },
     model::{MetamathData, ParseTree, ParseTreeNode},
     util::{
@@ -15,6 +15,7 @@ use crate::{
 
 pub fn stage_5(
     stage_2: &MmpParserStage2Success,
+    stage_3: &MmpParserStage3Theorem,
     stage_4: &MmpParserStage4Success,
     mm_data: &MetamathData,
 ) -> Result<MmpParserStage5, Error> {
@@ -28,6 +29,9 @@ pub fn stage_5(
     )?;
 
     let mut step_name_manager = StepNameManager::new(&stage_2.proof_lines);
+
+    let mut hypotheses_name_manager =
+        HypothesesNameManager::new(stage_3.label, &stage_2.proof_lines);
 
     let mut unify_lines: Vec<UnifyLine> = stage_2
         .proof_lines
@@ -93,11 +97,21 @@ pub fn stage_5(
 
                     unify_line.hypotheses = hypotheses;
 
-                    new_unify_lines.extend(new_lines.into_iter());
+                    new_unify_lines.extend(new_lines.into_iter().map(|mut nl| {
+                        nl.parse_tree = nl.parse_tree.map(|pt| ParseTree {
+                            typecode: pt.typecode,
+                            top_node: pt.top_node.clone_and_apply_substitutions(&substitutions),
+                        });
+                        nl
+                    }));
                 }
                 Err(Error::UnificationError) => {}
                 Err(error) => return Err(error),
             }
+        }
+
+        if unify_line.step_name == "" {
+            unify_line.step_name = step_name_manager.next_step_name();
         }
 
         new_unify_lines.push(unify_line);
@@ -114,6 +128,7 @@ pub fn stage_5(
                 mm_data,
                 stage_2.locate_after,
                 &stage_4.distinct_variable_pairs,
+                &mut hypotheses_name_manager,
             )? {
                 unify_line.step_ref = new_step_ref;
 
@@ -127,32 +142,6 @@ pub fn stage_5(
     }
 
     unify_lines = new_unify_lines;
-
-    // let unify_result = in_progress_unify_lines
-    //     .into_iter()
-    //     .map(|ip_ul| {
-    //         Ok(UnifyLine {
-    //             new_line: ip_ul.new_line,
-    //             step_name: Some(ip_ul.step_name),
-    //             hypotheses: Some(
-    //                 ip_ul
-    //                     .hypotheses
-    //                     .into_iter()
-    //                     .fold_to_delimiter_seperated_string(","),
-    //             ),
-    //             step_ref: Some(ip_ul.step_ref),
-    //             expression: ip_ul
-    //                 .parse_tree
-    //                 .map(|pt| {
-    //                     pt.to_expression(
-    //                         &mm_data.optimized_data.symbol_number_mapping,
-    //                         &mm_data.optimized_data.grammar,
-    //                     )
-    //                 })
-    //                 .transpose()?,
-    //         })
-    //     })
-    //     .collect::<Result<Vec<UnifyLine>, Error>>()?;
 
     Ok(MmpParserStage5 {
         unify_result: unify_lines,
@@ -421,59 +410,64 @@ fn derive_step_ref(
     mm_data: &MetamathData,
     locate_after: Option<LocateAfterRef>,
     distinct_variable_pairs: &HashSet<(String, String)>,
+    hypotheses_name_manager: &mut HypothesesNameManager,
 ) -> Result<Option<(String, Option<Vec<String>>)>, Error> {
     if !unify_line.advanced_unification {
-        let proof_line_parse_trees_res = unify_line
-            .hypotheses
-            .iter()
-            .map(|hyp| match hyp.as_str() {
-                "?" => Err(None),
-                hyp_name => Ok(previous_unify_lines
-                    .iter()
-                    .find(|ul| &ul.step_name == hyp_name)
-                    .ok_or(Some(Error::InternalLogicError))?
-                    .parse_tree
-                    .as_ref()
-                    .ok_or(None)?),
-            })
-            .collect::<Result<Vec<&ParseTree>, Option<Error>>>();
+        if !unify_line.is_hypothesis {
+            let proof_line_parse_trees_res = unify_line
+                .hypotheses
+                .iter()
+                .map(|hyp| match hyp.as_str() {
+                    "?" => Err(None),
+                    hyp_name => Ok(previous_unify_lines
+                        .iter()
+                        .find(|ul| &ul.step_name == hyp_name)
+                        .ok_or(Some(Error::InternalLogicError))?
+                        .parse_tree
+                        .as_ref()
+                        .ok_or(None)?),
+                })
+                .collect::<Result<Vec<&ParseTree>, Option<Error>>>();
 
-        match proof_line_parse_trees_res {
-            // If one of the hyps was "?", nothing to do
-            Err(None) => return Ok(None),
-            // Return potential InternalLogicError
-            Err(Some(err)) => return Err(err),
-            Ok(mut proof_line_parse_trees) => {
-                if let Some(ref parse_tree) = unify_line.parse_tree {
-                    proof_line_parse_trees.push(parse_tree);
+            match proof_line_parse_trees_res {
+                // If one of the hyps was "?", nothing to do
+                Err(None) => return Ok(None),
+                // Return potential InternalLogicError
+                Err(Some(err)) => return Err(err),
+                Ok(mut proof_line_parse_trees) => {
+                    if let Some(ref parse_tree) = unify_line.parse_tree {
+                        proof_line_parse_trees.push(parse_tree);
 
-                    for theorem in mm_data
-                        .database_header
-                        .theorem_locate_after_iter(locate_after)
-                    {
-                        let theorem_data = mm_data
-                            .optimized_data
-                            .theorem_data
-                            .get(&theorem.label)
-                            .ok_or(Error::InternalLogicError)?;
+                        for theorem in mm_data
+                            .database_header
+                            .theorem_locate_after_iter(locate_after)
+                        {
+                            let theorem_data = mm_data
+                                .optimized_data
+                                .theorem_data
+                                .get(&theorem.label)
+                                .ok_or(Error::InternalLogicError)?;
 
-                        if let Some(parse_trees) = theorem_data.parse_trees.as_ref() {
-                            let theorem_parse_trees = parse_trees.to_ref_parse_tree_vec();
+                            if let Some(parse_trees) = theorem_data.parse_trees.as_ref() {
+                                let theorem_parse_trees = parse_trees.to_ref_parse_tree_vec();
 
-                            if ParseTree::are_substitutions(
-                                &theorem_parse_trees,
-                                &proof_line_parse_trees,
-                                &theorem_data.distinct_variable_pairs,
-                                distinct_variable_pairs,
-                                &mm_data.optimized_data.grammar,
-                                &mm_data.optimized_data.symbol_number_mapping,
-                            )? {
-                                return Ok(Some((theorem.label.clone(), None)));
+                                if ParseTree::are_substitutions(
+                                    &theorem_parse_trees,
+                                    &proof_line_parse_trees,
+                                    &theorem_data.distinct_variable_pairs,
+                                    distinct_variable_pairs,
+                                    &mm_data.optimized_data.grammar,
+                                    &mm_data.optimized_data.symbol_number_mapping,
+                                )? {
+                                    return Ok(Some((theorem.label.clone(), None)));
+                                }
                             }
                         }
                     }
                 }
             }
+        } else {
+            return Ok(Some((hypotheses_name_manager.next_hypothesis_name(), None)));
         }
     } else {
         let proof_line_hypotheses_parse_trees_res = unify_line
@@ -914,5 +908,46 @@ impl StepNameManager {
     fn next_step_name(&mut self) -> String {
         self.next_step_name_num += 1;
         format!("d{}", self.next_step_name_num - 1)
+    }
+}
+
+struct HypothesesNameManager {
+    theorem_label: String,
+    next_step_name_num: u32,
+}
+
+impl HypothesesNameManager {
+    fn new(theorem_label: &str, proof_lines: &Vec<ProofLine>) -> HypothesesNameManager {
+        let mut next_step_name_num = 1;
+
+        for proof_line in proof_lines {
+            if proof_line.is_hypothesis {
+                if proof_line
+                    .step_ref
+                    .starts_with(&format!("{}.", theorem_label))
+                {
+                    if let Some((_, step_num_str)) = proof_line
+                        .step_ref
+                        .split_at_checked(theorem_label.len() + 1)
+                    {
+                        if let Ok(step_num) = step_num_str.parse::<u32>() {
+                            if step_num >= next_step_name_num {
+                                next_step_name_num = step_num + 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        HypothesesNameManager {
+            theorem_label: theorem_label.to_string(),
+            next_step_name_num,
+        }
+    }
+
+    fn next_hypothesis_name(&mut self) -> String {
+        self.next_step_name_num += 1;
+        format!("{}.{}", self.theorem_label, self.next_step_name_num - 1)
     }
 }

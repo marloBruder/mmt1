@@ -155,6 +155,9 @@ export function getErrorMessage(errorType: string): string {
     case "SyntaxTheoremUsedError": {
       return "Can't use syntax theorems in mmp files.";
     }
+    case "HypothesisWithHypsError": {
+      return "Hypotheses lines can't have hypotheses.";
+    }
   }
 
   return "You should not be seeing this error message. Please post a Github issue with your editor content.";

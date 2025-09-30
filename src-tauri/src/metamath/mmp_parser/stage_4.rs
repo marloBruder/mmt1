@@ -60,11 +60,12 @@ pub fn stage_4(
         let mut preview_error = (false, false, false, false);
 
         // Check duplicate step names
-        if stage_2
-            .proof_lines
-            .iter()
-            .take(i)
-            .any(|pl| pl.step_name == proof_line.step_name)
+        if proof_line.step_name != ""
+            && stage_2
+                .proof_lines
+                .iter()
+                .take(i)
+                .any(|pl| pl.step_name == proof_line.step_name)
         {
             errors.push(DetailedError {
                 error_type: Error::DuplicateStepNameError,
@@ -102,8 +103,8 @@ pub fn stage_4(
                         .enumerate()
                         .find(|(_, pl)| pl.step_name == hyp)
                     {
-                        Some((i, _)) => hypotheses_parsed.push(Some(i)),
-                        None => {
+                        Some((i, _)) if hyp != "" => hypotheses_parsed.push(Some(i)),
+                        _ => {
                             errors.push(DetailedError {
                                 error_type: Error::HypNameDoesntExistError,
                                 start_line_number: line_number,
@@ -118,6 +119,21 @@ pub fn stage_4(
                 }
                 start_column += hyp.len() as u32 + 1;
             }
+        }
+
+        // Check that hypothesis lines don't have hypotheses
+        if proof_line.is_hypothesis && proof_line.hypotheses != "" {
+            errors.push(DetailedError {
+                error_type: Error::HypothesisWithHypsError,
+                start_line_number: line_number,
+                start_column: step_prefix_len
+                    - proof_line.step_ref.len() as u32
+                    - proof_line.hypotheses.len() as u32,
+                end_line_number: line_number,
+                end_column: step_prefix_len - proof_line.step_ref.len() as u32,
+            });
+
+            preview_error.1 = true;
         }
 
         // Check duplicate hypothesis names
@@ -328,7 +344,10 @@ pub fn stage_4(
                         }
                     }
                 }
-            } else if proof_line.is_hypothesis {
+            } else if proof_line.is_hypothesis
+                && proof_line.step_ref != ""
+                && proof_line.expression != ""
+            {
                 preview_confirmation = true;
                 preview_confirmation_recursive = true;
             }

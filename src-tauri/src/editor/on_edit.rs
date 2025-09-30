@@ -155,7 +155,7 @@ pub async fn on_edit(
             }
         };
 
-    let stage_5 = stage_4_success.next_stage(&stage_2_success, mm_data)?;
+    let stage_5 = stage_4_success.next_stage(&stage_2_success, &stage_3_theorem, mm_data)?;
 
     Ok(OnEditData {
         page_data: Some(calc_theorem_page_data(
