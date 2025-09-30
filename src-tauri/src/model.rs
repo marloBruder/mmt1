@@ -930,8 +930,6 @@ impl ParseTree {
                                 }
                             }
                             None => {
-                                println!("{}", subtree_rule.left_side.symbol_i);
-                                println!("{}", work_variable.typecode_i);
                                 if subtree_rule.left_side.symbol_i == work_variable.typecode_i {
                                     substitutions.insert(*rule_i, other_subtree);
                                 } else {

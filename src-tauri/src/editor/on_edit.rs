@@ -140,7 +140,7 @@ pub async fn on_edit(
             MmpParserStage4::Success(success) => success,
             MmpParserStage4::Fail(fail) => {
                 return Ok(OnEditData {
-                    page_data: calc_theorem_page_data(
+                    page_data: Some(calc_theorem_page_data(
                         mm_data,
                         &stage_2_success,
                         stage_3_theorem,
@@ -149,7 +149,7 @@ pub async fn on_edit(
                         fail.preview_confirmations,
                         fail.preview_confirmations_recursive,
                         None,
-                    ),
+                    )?),
                     errors: fail.errors,
                 })
             }
@@ -158,7 +158,7 @@ pub async fn on_edit(
     let stage_5 = stage_4_success.next_stage(&stage_2_success, mm_data)?;
 
     Ok(OnEditData {
-        page_data: calc_theorem_page_data(
+        page_data: Some(calc_theorem_page_data(
             mm_data,
             &stage_2_success,
             stage_3_theorem,
@@ -167,7 +167,7 @@ pub async fn on_edit(
             stage_4_success.preview_confirmations,
             stage_4_success.preview_confirmations_recursive,
             Some(stage_5),
-        ),
+        )?),
         errors: Vec::new(),
     })
 
@@ -206,7 +206,7 @@ pub fn calc_theorem_page_data(
     mut preview_confirmations: Vec<bool>,
     mut preview_confirmations_recursive: Vec<bool>,
     stage_5: Option<MmpParserStage5>,
-) -> Option<DatabaseElementPageData> {
+) -> Result<DatabaseElementPageData, Error> {
     let (html_allowed_tags_and_attributes, css_allowed_properties) =
         html_validation::create_rule_structs();
 
@@ -286,22 +286,22 @@ pub fn calc_theorem_page_data(
                 preview_confirmations_recursive.insert(i, false);
             }
 
-            let hypotheses_string = ul.hypotheses.unwrap_or(String::new());
-
             proof_lines.push(model::ProofLine {
-                step_name: ul.step_name.unwrap_or(String::new()),
-                hypotheses: if hypotheses_string.len() != 0 {
-                    hypotheses_string
-                        .split(',')
-                        .map(|s| s.to_string())
-                        .collect()
-                } else {
-                    Vec::new()
-                },
-                reference: ul.step_ref.unwrap_or(String::new()),
+                step_name: ul.step_name,
+                hypotheses: ul.hypotheses,
+                reference: ul.step_ref,
                 indention: 1,
                 reference_number: None,
-                assertion: ul.expression.unwrap_or(String::new()),
+                assertion: ul
+                    .parse_tree
+                    .map(|pt| {
+                        pt.to_expression(
+                            &mm_data.optimized_data.symbol_number_mapping,
+                            &mm_data.optimized_data.grammar,
+                        )
+                    })
+                    .transpose()?
+                    .unwrap_or(String::new()),
             });
             preview_unify_markers.push(unify_markers);
         }
@@ -334,7 +334,7 @@ pub fn calc_theorem_page_data(
         .map(|s| s.to_string())
         .unwrap_or(String::new());
 
-    Some(DatabaseElementPageData::Theorem(TheoremPageData {
+    Ok(DatabaseElementPageData::Theorem(TheoremPageData {
         description_parsed: description_parser::parse_description(
             &description,
             &mm_data.database_header,

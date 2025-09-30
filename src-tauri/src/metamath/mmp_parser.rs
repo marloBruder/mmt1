@@ -223,8 +223,10 @@ pub struct MmpParserStage5 {
 #[derive(Debug)]
 pub struct UnifyLine {
     pub new_line: bool,
-    pub step_name: Option<String>,
-    pub hypotheses: Option<String>,
-    pub step_ref: Option<String>,
-    pub expression: Option<String>,
+    pub advanced_unification: bool,
+    pub is_hypothesis: bool,
+    pub step_name: String,
+    pub hypotheses: Vec<String>,
+    pub step_ref: String,
+    pub parse_tree: Option<ParseTree>,
 }
