@@ -270,6 +270,7 @@ pub struct TheoremPageData {
     pub theorem_number: u32,
     pub proof_lines: Vec<ProofLine>,
     pub preview_errors: Option<Vec<(bool, bool, bool, bool)>>,
+    pub preview_deleted_markers: Option<Vec<bool>>,
     pub preview_confirmations: Option<Vec<bool>>,
     pub preview_confirmations_recursive: Option<Vec<bool>>,
     pub preview_unify_markers: Option<Vec<(bool, bool, bool, bool)>>,
@@ -2487,6 +2488,7 @@ impl serde::Serialize for TheoremPageData {
         state.serialize_field("theoremNumber", &self.theorem_number)?;
         state.serialize_field("proofLines", &self.proof_lines)?;
         state.serialize_field("previewErrors", &self.preview_errors)?;
+        state.serialize_field("previewDeletedMarkers", &self.preview_deleted_markers)?;
         state.serialize_field("previewConfirmations", &self.preview_confirmations)?;
         state.serialize_field(
             "previewConfirmationsRecursive",

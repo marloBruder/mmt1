@@ -69,9 +69,11 @@
     }
 
     async unify(): Promise<void> {
-      let resultText = (await invoke("unify", { text: this.monacoModel!.getValue() })) as string;
+      let resultText = (await invoke("unify", { text: this.monacoModel!.getValue() })) as string | null;
 
-      editor.executeEdits("unifier", [{ range: new monaco.Range(1, 1, 10000, 1), text: resultText, forceMoveMarkers: true }]);
+      if (resultText !== null) {
+        editor.executeEdits("unifier", [{ range: new monaco.Range(1, 1, 10000, 1), text: resultText, forceMoveMarkers: true }]);
+      }
     }
 
     unifyDisabled(): boolean {

@@ -113,6 +113,7 @@ export interface TheoremPageData {
   theoremNumber: number;
   proofLines: ProofLine[];
   previewErrors: [boolean, boolean, boolean, boolean][] | null;
+  previewDeletedMarkers: [boolean][] | null;
   previewConfirmations: boolean[] | null;
   previewConfirmationsRecursive: boolean[] | null;
   previewUnifyMarkers: [boolean, boolean, boolean, boolean][] | null;

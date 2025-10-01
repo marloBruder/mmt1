@@ -15,7 +15,7 @@ pub fn spaces(num: u32) -> &'static str {
 
 pub fn str_to_space_seperated_string(str: &str) -> String {
     str.split_ascii_whitespace()
-        .fold_to_delimiter_seperated_string(" ")
+        .fold_to_space_seperated_string()
 }
 
 pub trait StrIterToDelimiterSeperatedString

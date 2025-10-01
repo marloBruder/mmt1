@@ -229,6 +229,7 @@ pub struct MmpParserStage5 {
 #[derive(Debug)]
 pub struct UnifyLine {
     pub new_line: bool,
+    pub deleted_line: bool,
     pub advanced_unification: bool,
     pub is_hypothesis: bool,
     pub step_name: String,

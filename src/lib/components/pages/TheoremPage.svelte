@@ -18,15 +18,25 @@
     return false;
   };
 
-  let proofLineBackground = (i: number): string => {
-    if (pageData.previewConfirmationsRecursive && pageData.previewConfirmationsRecursive[i]) {
-      return "custom-confirmation-recursive-color";
-      // return "bg-green-300";
+  let proofLineBackground = (row: number, cell: number): string => {
+    if (pageData.previewErrors && pageData.previewErrors[row][cell]) {
+      return "bg-red-400";
     }
 
-    if (pageData.previewConfirmations && pageData.previewConfirmations[i]) {
+    if (pageData.previewDeletedMarkers && pageData.previewDeletedMarkers[row]) {
+      return "bg-red-950";
+    }
+
+    if (pageData.previewConfirmationsRecursive && pageData.previewConfirmationsRecursive[row]) {
+      return "custom-confirmation-recursive-color";
+    }
+
+    if (pageData.previewConfirmations && pageData.previewConfirmations[row]) {
       return "custom-confirmation-color";
-      // return "bg-green-200";
+    }
+
+    if (pageData.previewUnifyMarkers && pageData.previewUnifyMarkers[row][cell]) {
+      return "bg-blue-400";
     }
 
     return "";
@@ -104,23 +114,23 @@
         </thead>
         <tbody>
           {#each pageData.proofLines as proofLine, i}
-            <tr class={proofLineBackground(i)}>
-              <td class={"border border-gray-600 py-1 px-2 " + (pageData.previewErrors ? (pageData.previewErrors[i][0] ? " bg-red-400 " : "") : "") + (pageData.previewUnifyMarkers ? (pageData.previewUnifyMarkers[i][0] ? " bg-blue-400 " : "") : "")}>
+            <tr>
+              <td class={"border border-gray-600 py-1 px-2 " + proofLineBackground(i, 0)}>
                 {proofLine.stepName}
               </td>
-              <td class={"border border-gray-600 py-1 px-2 " + (pageData.previewErrors ? (pageData.previewErrors[i][1] ? " bg-red-400 " : "") : "") + (pageData.previewUnifyMarkers ? (pageData.previewUnifyMarkers[i][1] ? " bg-blue-400 " : "") : "")}>
+              <td class={"border border-gray-600 py-1 px-2 " + proofLineBackground(i, 1)}>
                 {#each proofLine.hypotheses as hypothesis, index}
                   {hypothesis + (index != proofLine.hypotheses.length - 1 ? ", " : "")}
                 {/each}
               </td>
-              <td class={"border border-gray-600 py-1 px-2 " + (pageData.previewErrors ? (pageData.previewErrors[i][2] ? " bg-red-400 " : "") : "") + (pageData.previewUnifyMarkers ? (pageData.previewUnifyMarkers[i][2] ? " bg-blue-400 " : "") : "")}>
+              <td class={"border border-gray-600 py-1 px-2 " + proofLineBackground(i, 2)}>
                 {#if !isHypothesisName(proofLine.reference) && proofLine.referenceNumber !== null}
                   <TheoremLink label={proofLine.reference} theoremNumber={proofLine.referenceNumber}></TheoremLink>
                 {:else}
                   {proofLine.reference}
                 {/if}
               </td>
-              <td class={"border border-gray-600 py-1 pr-2" + (pageData.previewErrors ? (pageData.previewErrors[i][3] ? " bg-red-400 " : "") : "") + (pageData.previewUnifyMarkers ? (pageData.previewUnifyMarkers[i][3] ? " bg-blue-400 " : "") : "")}>
+              <td class={"border border-gray-600 py-1 pr-2 " + proofLineBackground(i, 3)}>
                 <span class="text-xs text-gray-300">
                   {#each { length: proofLine.indention - 1 } as _}
                     {". "}

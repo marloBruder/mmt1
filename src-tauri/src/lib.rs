@@ -264,8 +264,8 @@ pub enum Error {
     LocateAfterOutOfPlaceError, // Returned if there is a locate after statement when there shouldn't be
     ProofLinesOutOfPlaceError,  // Returned if there are proof lines when there shouldn't be
     InvalidWorkVariableError,   // Returned if a work variable's syntax is not correct
-    UnificationError,           // Returned from unification algorithm when a line can't be unified
-    SyntaxTheoremUsedError,     // Returned if a step ref references a syntax theorem
+    UnificationError, // Returned from unification algorithm when a line can't be unified or from the unification command
+    SyntaxTheoremUsedError, // Returned if a step ref references a syntax theorem
 
     MissingExpressionError, // Returned when converting str to number vec and skipping the first, but the str is empty
     InvalidTypecodeError,

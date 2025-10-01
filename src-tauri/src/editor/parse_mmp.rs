@@ -9,12 +9,10 @@ use crate::{
         Comment, Constant, DatabaseElement, FloatingHypothesis, Header, HeaderPath, Hypothesis,
         MetamathData, Statement, Theorem, Variable,
     },
-    util::earley_parser_optimized::earley_parse,
     AppState, Error,
 };
 use tauri::async_runtime::Mutex;
 
-use super::unify::LocateAfterRef;
 struct MmpStructuredInfo<'a> {
     pub constants: Vec<Constant>,
     pub variables: Vec<Vec<Variable>>,
@@ -29,11 +27,12 @@ struct MmpStructuredInfo<'a> {
     pub comments: Vec<Comment>,
 }
 
-// pub enum LocateAfter {
-//     LocateAfter(String),
-//     LocateAfterConst(String),
-//     LocateAfterVar(String),
-// }
+#[derive(Debug, Clone, Copy)]
+pub enum LocateAfterRef<'a> {
+    LocateAfter(&'a str),
+    LocateAfterConst(&'a str),
+    LocateAfterVar(&'a str),
+}
 
 #[tauri::command]
 pub async fn add_to_database(

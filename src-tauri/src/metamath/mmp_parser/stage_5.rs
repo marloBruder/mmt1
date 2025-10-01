@@ -41,6 +41,7 @@ pub fn stage_5(
         .rev()
         .map(|((pl, pl_p), pl_s)| UnifyLine {
             new_line: false,
+            deleted_line: false,
             advanced_unification: pl.advanced_unification,
             is_hypothesis: pl.is_hypothesis,
             step_name: pl.step_name.to_string(),
@@ -163,8 +164,6 @@ pub fn stage_5(
     while let Some(mut unify_line) = unify_lines.pop() {
         set_unify_status_recursively_correct(&mut unify_line, &new_unify_lines);
 
-        let mut duplicate = false;
-
         if let Some(other_unify_line) = new_unify_lines
             .iter()
             .find(|oul| oul.parse_tree == unify_line.parse_tree)
@@ -172,7 +171,7 @@ pub fn stage_5(
             if !(unify_line_is_recursively_correct(&unify_line)
                 && !unify_line_is_recursively_correct(other_unify_line))
             {
-                duplicate = true;
+                unify_line.deleted_line = true;
                 for ul in &mut unify_lines {
                     let mut hypothesis_replaced = false;
                     for hyp in &mut ul.hypotheses {
@@ -188,9 +187,7 @@ pub fn stage_5(
             }
         }
 
-        if !duplicate {
-            new_unify_lines.push(unify_line);
-        }
+        new_unify_lines.push(unify_line);
     }
 
     unify_lines = new_unify_lines;
@@ -331,6 +328,7 @@ fn unify_step_with_reference(
                         None => {
                             new_lines.push(UnifyLine {
                                 new_line: true,
+                                deleted_line: false,
                                 advanced_unification: true,
                                 is_hypothesis: false,
                                 step_name: step_name_manager.next_step_name(),
