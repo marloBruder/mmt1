@@ -1,6 +1,6 @@
 use crate::{
     editor::on_edit::DetailedError,
-    metamath::mmp_parser::MmpStatement,
+    metamath::mmp_parser::{MmpStatement, ProofLineStatus},
     model::{MetamathData, ParseTree, SymbolNumberMapping, Theorem},
     util, Error,
 };
@@ -20,17 +20,13 @@ pub fn stage_4(
         return Ok(MmpParserStage4::Fail(MmpParserStage4Fail {
             errors: Vec::new(),
             reference_numbers: vec![None; stage_2.proof_lines.len()],
-            preview_errors: vec![(false, false, false, false); stage_2.proof_lines.len()],
-            preview_confirmations: vec![false; stage_2.proof_lines.len()],
-            preview_confirmations_recursive: vec![false; stage_2.proof_lines.len()],
+            proof_line_statuses: vec![ProofLineStatus::None; stage_2.proof_lines.len()],
         }));
     }
 
     let mut errors: Vec<DetailedError> = Vec::new();
     let mut reference_numbers = Vec::new();
-    let mut preview_errors: Vec<(bool, bool, bool, bool)> = Vec::new();
-    let mut preview_confirmations: Vec<bool> = Vec::new();
-    let mut preview_confirmations_recursive: Vec<bool> = Vec::new();
+    let mut proof_line_statuses: Vec<ProofLineStatus> = Vec::new();
 
     let mut proof_lines_parsed: Vec<ProofLineParsed> = Vec::new();
 
@@ -57,7 +53,7 @@ pub fn stage_4(
             .ok_or(Error::InternalLogicError)?
             .len() as u32;
 
-        let mut preview_error = (false, false, false, false);
+        let mut error_status = (false, false, false, false);
 
         // Check duplicate step names
         if proof_line.step_name != ""
@@ -80,7 +76,7 @@ pub fn stage_4(
                     + proof_line.step_name.len() as u32,
             });
 
-            preview_error.0 = true;
+            error_status.0 = true;
         }
 
         // Calculate hypotheses_parsed
@@ -113,7 +109,7 @@ pub fn stage_4(
                                 end_column: start_column + hyp.len() as u32,
                             });
 
-                            preview_error.1 = true;
+                            error_status.1 = true;
                         }
                     }
                 }
@@ -133,7 +129,7 @@ pub fn stage_4(
                 end_column: step_prefix_len - proof_line.step_ref.len() as u32,
             });
 
-            preview_error.1 = true;
+            error_status.1 = true;
         }
 
         // Check duplicate hypothesis names
@@ -153,7 +149,7 @@ pub fn stage_4(
                 end_column: step_prefix_len + 1,
             });
 
-            preview_error.2 = true;
+            error_status.2 = true;
         }
 
         // Check if non-empty and non-hypothesis refs are valid theorem labels and save the theorem
@@ -185,11 +181,11 @@ pub fn stage_4(
                         end_column: step_prefix_len + 1,
                     });
 
-                    preview_error.2 = true;
+                    error_status.2 = true;
                 }
 
                 if hypotheses_parsed.len() > theorem_ref.hypotheses.len() {
-                    preview_error.1 = true;
+                    error_status.1 = true;
                     errors.push(DetailedError {
                         error_type: Error::TooManyHypothesesError,
                         start_line_number: line_number,
@@ -209,7 +205,7 @@ pub fn stage_4(
                     end_column: step_prefix_len + 1,
                 });
 
-                preview_error.2 = true;
+                error_status.2 = true;
                 reference_numbers.push(None);
             }
         } else {
@@ -245,7 +241,7 @@ pub fn stage_4(
                     ),
                 );
 
-                preview_error.3 = true;
+                error_status.3 = true;
             }
             Err(Error::ExpressionParseError) => {
                 let last_non_whitespace_pos = stage_2::last_non_whitespace_pos(statement_str);
@@ -258,7 +254,7 @@ pub fn stage_4(
                     end_column: last_non_whitespace_pos.1 + 2,
                 });
 
-                preview_error.3 = true;
+                error_status.3 = true;
             }
             Err(Error::InvalidWorkVariableError) => {
                 errors.append(
@@ -271,7 +267,7 @@ pub fn stage_4(
                     ),
                 );
 
-                preview_error.3 = true;
+                error_status.3 = true;
             }
             Err(_) => {
                 return Err(Error::InternalLogicError);
@@ -279,10 +275,10 @@ pub fn stage_4(
         }
 
         //calc previw_confirmation
-        let mut preview_confirmation = false;
-        let mut preview_confirmation_recursive = false;
+        let mut correct = false;
+        let mut correct_recursively = false;
 
-        if !preview_error.0 && !preview_error.1 && !preview_error.2 && !preview_error.3 {
+        if !error_status.0 && !error_status.1 && !error_status.2 && !error_status.3 {
             if let Some(theorem_ref) = theorem {
                 // map hypotheses_parsed to the parse trees of the hypotheses
                 // if a hypothesis-parsed is "?" (hyp == None), return Err(None)
@@ -328,16 +324,21 @@ pub fn stage_4(
                                     &mm_data.optimized_data.grammar,
                                     &mm_data.optimized_data.symbol_number_mapping,
                                 )? {
-                                    preview_confirmation = true;
+                                    correct = true;
 
                                     if hypotheses_parsed.iter().all(|hyp| {
                                         hyp.is_some_and(|index| {
-                                            preview_confirmations_recursive
-                                                .get(index)
-                                                .is_some_and(|&pre_con_rec| pre_con_rec)
+                                            proof_line_statuses.get(index).is_some_and(
+                                                |pre_con_rec| {
+                                                    matches!(
+                                                        pre_con_rec,
+                                                        ProofLineStatus::CorrectRecursively
+                                                    )
+                                                },
+                                            )
                                         })
                                     }) {
-                                        preview_confirmation_recursive = true;
+                                        correct_recursively = true;
                                     }
                                 }
                             }
@@ -348,8 +349,8 @@ pub fn stage_4(
                 && proof_line.step_ref != ""
                 && proof_line.expression != ""
             {
-                preview_confirmation = true;
-                preview_confirmation_recursive = true;
+                correct = true;
+                correct_recursively = true;
             }
         }
 
@@ -357,9 +358,15 @@ pub fn stage_4(
             hypotheses_parsed,
             parse_tree,
         });
-        preview_errors.push(preview_error);
-        preview_confirmations.push(preview_confirmation);
-        preview_confirmations_recursive.push(preview_confirmation_recursive);
+        proof_line_statuses.push(if correct_recursively {
+            ProofLineStatus::CorrectRecursively
+        } else if correct {
+            ProofLineStatus::Correct
+        } else if error_status.0 || error_status.1 || error_status.2 || error_status.3 {
+            ProofLineStatus::Err(error_status)
+        } else {
+            ProofLineStatus::None
+        });
     }
 
     Ok(if errors.is_empty() {
@@ -367,17 +374,13 @@ pub fn stage_4(
             distinct_variable_pairs,
             proof_lines_parsed,
             reference_numbers,
-            preview_errors,
-            preview_confirmations,
-            preview_confirmations_recursive,
+            proof_line_statuses,
         })
     } else {
         MmpParserStage4::Fail(MmpParserStage4Fail {
             errors,
             reference_numbers,
-            preview_errors,
-            preview_confirmations,
-            preview_confirmations_recursive,
+            proof_line_statuses,
         })
     })
 }

@@ -4,6 +4,7 @@ use crate::{
         mmp_parser::{
             self, MmpParserStage1, MmpParserStage2, MmpParserStage2Success, MmpParserStage3,
             MmpParserStage3Success, MmpParserStage3Theorem, MmpParserStage4, MmpParserStage5,
+            ProofLineStatus,
         },
     },
     model::{
@@ -145,9 +146,7 @@ pub async fn on_edit(
                         &stage_2_success,
                         stage_3_theorem,
                         fail.reference_numbers,
-                        fail.preview_errors,
-                        fail.preview_confirmations,
-                        fail.preview_confirmations_recursive,
+                        fail.proof_line_statuses,
                         None,
                     )?),
                     errors: fail.errors,
@@ -163,9 +162,7 @@ pub async fn on_edit(
             &stage_2_success,
             stage_3_theorem,
             stage_4_success.reference_numbers,
-            stage_4_success.preview_errors,
-            stage_4_success.preview_confirmations,
-            stage_4_success.preview_confirmations_recursive,
+            stage_4_success.proof_line_statuses,
             Some(stage_5),
         )?),
         errors: Vec::new(),
@@ -202,15 +199,16 @@ pub fn calc_theorem_page_data(
     stage_2_success: &MmpParserStage2Success,
     stage_3_theorem: MmpParserStage3Theorem,
     reference_numbers: Vec<Option<u32>>,
-    mut preview_errors: Vec<(bool, bool, bool, bool)>,
-    mut preview_confirmations: Vec<bool>,
-    mut preview_confirmations_recursive: Vec<bool>,
+    proof_line_statuses: Vec<ProofLineStatus>,
     stage_5: Option<MmpParserStage5>,
 ) -> Result<DatabaseElementPageData, Error> {
     let (html_allowed_tags_and_attributes, css_allowed_properties) =
         html_validation::create_rule_structs();
 
     let mut proof_lines: Vec<model::ProofLine> = Vec::new();
+    let mut preview_errors: Vec<(bool, bool, bool, bool)> = Vec::new();
+    let mut preview_confirmations: Vec<bool> = Vec::new();
+    let mut preview_confirmations_recursive: Vec<bool> = Vec::new();
     let mut preview_unify_markers: Vec<(bool, bool, bool, bool)> = Vec::new();
 
     // for ((pl, &indention), ref_number) in stage_2_success
@@ -276,15 +274,14 @@ pub fn calc_theorem_page_data(
     //     i += 1;
     // }
     if let Some(stage_5) = stage_5 {
-        for (i, ul) in stage_5.unify_result.into_iter().enumerate() {
-            let mut unify_markers = (false, false, false, false);
-
-            if ul.new_line {
-                unify_markers = (true, true, true, true);
-                preview_errors.insert(i, (false, false, false, false));
-                preview_confirmations.insert(i, false);
-                preview_confirmations_recursive.insert(i, false);
-            }
+        for ul in stage_5.unify_result {
+            update_preview_markers(
+                ul.status,
+                &mut preview_errors,
+                &mut preview_confirmations,
+                &mut preview_confirmations_recursive,
+                &mut preview_unify_markers,
+            );
 
             proof_lines.push(model::ProofLine {
                 step_name: ul.step_name,
@@ -303,16 +300,23 @@ pub fn calc_theorem_page_data(
                     .transpose()?
                     .unwrap_or(String::new()),
             });
-            preview_unify_markers.push(unify_markers);
         }
     } else {
-        for ((pl, &indention), ref_number) in stage_2_success
+        for (((pl, &indention), ref_number), status) in stage_2_success
             .proof_lines
             .iter()
             .zip(stage_3_theorem.indention.iter())
             .zip(reference_numbers.into_iter())
+            .zip(proof_line_statuses.into_iter())
         {
-            preview_unify_markers.push((false, false, false, false));
+            update_preview_markers(
+                status,
+                &mut preview_errors,
+                &mut preview_confirmations,
+                &mut preview_confirmations_recursive,
+                &mut preview_unify_markers,
+            );
+
             proof_lines.push(model::ProofLine {
                 step_name: pl.step_name.to_string(),
                 hypotheses: if pl.hypotheses.len() != 0 {
@@ -383,6 +387,47 @@ pub fn calc_theorem_page_data(
         definition_dependencies: stage_3_theorem.definition_dependencies,
         references: Vec::new(),
     }))
+}
+
+fn update_preview_markers(
+    status: ProofLineStatus,
+    preview_errors: &mut Vec<(bool, bool, bool, bool)>,
+    preview_confirmations: &mut Vec<bool>,
+    preview_confirmations_recursive: &mut Vec<bool>,
+    preview_unify_markers: &mut Vec<(bool, bool, bool, bool)>,
+) {
+    match status {
+        ProofLineStatus::None => {
+            preview_errors.push((false, false, false, false));
+            preview_confirmations.push(false);
+            preview_confirmations_recursive.push(false);
+            preview_unify_markers.push((false, false, false, false));
+        }
+        ProofLineStatus::Err(err) => {
+            preview_errors.push(err);
+            preview_confirmations.push(false);
+            preview_confirmations_recursive.push(false);
+            preview_unify_markers.push((false, false, false, false));
+        }
+        ProofLineStatus::Correct => {
+            preview_errors.push((false, false, false, false));
+            preview_confirmations.push(true);
+            preview_confirmations_recursive.push(false);
+            preview_unify_markers.push((false, false, false, false));
+        }
+        ProofLineStatus::CorrectRecursively => {
+            preview_errors.push((false, false, false, false));
+            preview_confirmations.push(false);
+            preview_confirmations_recursive.push(true);
+            preview_unify_markers.push((false, false, false, false));
+        }
+        ProofLineStatus::Unified(unified, _) => {
+            preview_errors.push((false, false, false, false));
+            preview_confirmations.push(false);
+            preview_confirmations_recursive.push(false);
+            preview_unify_markers.push(unified);
+        }
+    }
 }
 
 pub fn statement_strs_to_mmp_info_structured_for_unify_with_error_info<'a>(

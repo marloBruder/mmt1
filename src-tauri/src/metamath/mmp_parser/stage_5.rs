@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use crate::{
     metamath::mmp_parser::{
         LocateAfterRef, MmpParserStage2Success, MmpParserStage3Theorem, MmpParserStage4Success,
-        MmpParserStage5, ProofLine, UnifyLine,
+        MmpParserStage5, ProofLine, ProofLineStatus, UnifyLine,
     },
     model::{MetamathData, ParseTree, ParseTreeNode},
     util::{
@@ -37,8 +37,9 @@ pub fn stage_5(
         .proof_lines
         .iter()
         .zip(stage_4.proof_lines_parsed.iter())
+        .zip(stage_4.proof_line_statuses.iter())
         .rev()
-        .map(|(pl, pl_p)| UnifyLine {
+        .map(|((pl, pl_p), pl_s)| UnifyLine {
             new_line: false,
             advanced_unification: pl.advanced_unification,
             is_hypothesis: pl.is_hypothesis,
@@ -50,6 +51,7 @@ pub fn stage_5(
             },
             step_ref: pl.step_ref.to_string(),
             parse_tree: pl_p.parse_tree.clone(),
+            status: *pl_s,
         })
         .collect();
 
@@ -77,25 +79,31 @@ pub fn stage_5(
                             ul.parse_tree = Some(ParseTree {
                                 typecode: pt.typecode,
                                 top_node: pt.top_node.clone_and_apply_substitutions(&substitutions),
-                            })
-                        } else {
-                            if let Some(ref pt) = ul.parse_tree {
-                                if pt
-                                    .top_node
-                                    .any_work_variable_occurs_in(&work_variables_to_substitute)
-                                {
-                                    ul.parse_tree = Some(ParseTree {
-                                        typecode: pt.typecode,
-                                        top_node: pt
-                                            .top_node
-                                            .clone_and_apply_substitutions(&substitutions),
-                                    });
-                                }
+                            });
+
+                            set_unify_status(&mut ul.status, 3)?;
+                        } else if let Some(ref pt) = ul.parse_tree {
+                            if pt
+                                .top_node
+                                .any_work_variable_occurs_in(&work_variables_to_substitute)
+                            {
+                                ul.parse_tree = Some(ParseTree {
+                                    typecode: pt.typecode,
+                                    top_node: pt
+                                        .top_node
+                                        .clone_and_apply_substitutions(&substitutions),
+                                });
+
+                                set_unify_status(&mut ul.status, 3)?;
                             }
                         }
                     }
 
-                    unify_line.hypotheses = hypotheses;
+                    if unify_line.hypotheses != hypotheses {
+                        unify_line.hypotheses = hypotheses;
+
+                        set_unify_status(&mut unify_line.status, 1)?;
+                    }
 
                     new_unify_lines.extend(new_lines.into_iter().map(|mut nl| {
                         nl.parse_tree = nl.parse_tree.map(|pt| ParseTree {
@@ -112,6 +120,8 @@ pub fn stage_5(
 
         if unify_line.step_name == "" {
             unify_line.step_name = step_name_manager.next_step_name();
+
+            set_unify_status(&mut unify_line.status, 0)?;
         }
 
         new_unify_lines.push(unify_line);
@@ -132,8 +142,12 @@ pub fn stage_5(
             )? {
                 unify_line.step_ref = new_step_ref;
 
+                set_unify_status(&mut unify_line.status, 2)?;
+
                 if let Some(new_hyps) = option_new_hypotheses {
                     unify_line.hypotheses = new_hyps;
+
+                    set_unify_status(&mut unify_line.status, 1)?;
                 }
             }
         }
@@ -142,10 +156,91 @@ pub fn stage_5(
     }
 
     unify_lines = new_unify_lines;
+    new_unify_lines = Vec::new();
+
+    unify_lines.reverse();
+
+    while let Some(mut unify_line) = unify_lines.pop() {
+        set_unify_status_recursively_correct(&mut unify_line, &new_unify_lines);
+
+        let mut duplicate = false;
+
+        if let Some(other_unify_line) = new_unify_lines
+            .iter()
+            .find(|oul| oul.parse_tree == unify_line.parse_tree)
+        {
+            if !(unify_line_is_recursively_correct(&unify_line)
+                && !unify_line_is_recursively_correct(other_unify_line))
+            {
+                duplicate = true;
+                for ul in &mut unify_lines {
+                    let mut hypothesis_replaced = false;
+                    for hyp in &mut ul.hypotheses {
+                        if *hyp == unify_line.step_name {
+                            *hyp = other_unify_line.step_name.clone();
+                            hypothesis_replaced = true;
+                        }
+                    }
+                    if hypothesis_replaced {
+                        set_unify_status(&mut ul.status, 1)?;
+                    }
+                }
+            }
+        }
+
+        if !duplicate {
+            new_unify_lines.push(unify_line);
+        }
+    }
+
+    unify_lines = new_unify_lines;
 
     Ok(MmpParserStage5 {
         unify_result: unify_lines,
     })
+}
+
+fn set_unify_status(status: &mut ProofLineStatus, position: u32) -> Result<(), Error> {
+    match status {
+        ProofLineStatus::Unified(unified_status, _) => match position {
+            0 => unified_status.0 = true,
+            1 => unified_status.1 = true,
+            2 => unified_status.2 = true,
+            3 => unified_status.3 = true,
+            _ => return Err(Error::InternalLogicError),
+        },
+        ProofLineStatus::None | ProofLineStatus::Correct | ProofLineStatus::CorrectRecursively => {
+            *status = ProofLineStatus::Unified(
+                match position {
+                    0 => (true, false, false, false),
+                    1 => (false, true, false, false),
+                    2 => (false, false, true, false),
+                    3 => (false, false, false, true),
+                    _ => return Err(Error::InternalLogicError),
+                },
+                false,
+            )
+        }
+        _ => return Err(Error::InternalLogicError),
+    }
+
+    Ok(())
+}
+
+fn set_unify_status_recursively_correct(
+    unify_line: &mut UnifyLine,
+    previous_unify_lines: &Vec<UnifyLine>,
+) {
+    if let ProofLineStatus::Unified(_, recursively_correct) = &mut unify_line.status {
+        if unify_line.hypotheses.iter().all(|hyp| {
+            previous_unify_lines
+                .iter()
+                .find(|ul| ul.step_name == *hyp)
+                .is_some_and(|pul| unify_line_is_recursively_correct(pul))
+        }) {
+            *recursively_correct = true;
+        }
+    }
 }
 
 fn unify_step_with_reference(
@@ -242,6 +337,7 @@ fn unify_step_with_reference(
                                 hypotheses: Vec::new(),
                                 step_ref: String::new(),
                                 parse_tree: Some(pt.clone()),
+                                status: ProofLineStatus::Unified((true, true, true, true), false),
                             });
                         }
                     }
@@ -880,6 +976,16 @@ fn check_hypothesis<'a>(
     }
 
     Ok(None)
+}
+
+fn unify_line_is_recursively_correct(unify_line: &UnifyLine) -> bool {
+    match unify_line.status {
+        ProofLineStatus::None => false,
+        ProofLineStatus::Err(_) => false,
+        ProofLineStatus::Correct => false,
+        ProofLineStatus::CorrectRecursively => true,
+        ProofLineStatus::Unified(_, correct_recursively) => correct_recursively,
+    }
 }
 
 struct StepNameManager {
