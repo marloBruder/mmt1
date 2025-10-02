@@ -9,6 +9,7 @@ use crate::{
     util::{
         earley_parser_optimized::{Grammar, WorkVariable},
         work_variable_manager::WorkVariableManager,
+        StrIterToSpaceSeperatedString,
     },
     Error,
 };
@@ -52,6 +53,15 @@ pub fn stage_5(
             },
             step_ref: pl.step_ref.to_string(),
             parse_tree: pl_p.parse_tree.clone(),
+            old_assertion: if pl.expression.split_ascii_whitespace().next().is_some() {
+                Some(
+                    pl.expression
+                        .split_ascii_whitespace()
+                        .fold_to_space_seperated_string(),
+                )
+            } else {
+                None
+            },
             status: *pl_s,
         })
         .collect();
@@ -336,6 +346,7 @@ fn unify_step_with_reference(
                                 step_ref: String::new(),
                                 parse_tree: Some(pt.clone()),
                                 status: ProofLineStatus::Unified((true, true, true, true), false),
+                                old_assertion: None,
                             });
                         }
                     }

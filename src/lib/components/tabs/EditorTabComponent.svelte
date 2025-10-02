@@ -72,7 +72,7 @@
       let resultText = (await invoke("unify", { text: this.monacoModel!.getValue() })) as string | null;
 
       if (resultText !== null) {
-        editor.executeEdits("unifier", [{ range: new monaco.Range(1, 1, 10000, 1), text: resultText, forceMoveMarkers: true }]);
+        editor.executeEdits("unifier", [{ range: new monaco.Range(1, 1, 1000000, 1), text: resultText, forceMoveMarkers: true }]);
       }
     }
 
@@ -101,7 +101,7 @@
     async format() {
       let resultText = (await invoke("format", { text: this.#monacoModel!.getValue() })) as string | null;
       if (resultText !== null) {
-        editor.executeEdits("format", [{ range: new monaco.Range(1, 1, 10000, 1), text: resultText, forceMoveMarkers: true }]);
+        editor.executeEdits("format", [{ range: new monaco.Range(1, 1, 1000000, 1), text: resultText, forceMoveMarkers: true }]);
       }
     }
 

@@ -289,6 +289,7 @@ pub struct ProofLine {
     pub reference_number: Option<u32>,
     pub indention: u32,
     pub assertion: String,
+    pub old_assertion: Option<String>,
 }
 
 pub struct TheoremListData {
@@ -2518,8 +2519,9 @@ impl serde::Serialize for ProofLine {
         state.serialize_field("hypotheses", &self.hypotheses)?;
         state.serialize_field("reference", &self.reference)?;
         state.serialize_field("referenceNumber", &self.reference_number)?;
-        state.serialize_field("assertion", &self.assertion)?;
         state.serialize_field("indention", &self.indention)?;
+        state.serialize_field("assertion", &self.assertion)?;
+        state.serialize_field("oldAssertion", &self.old_assertion)?;
         state.end()
     }
 }

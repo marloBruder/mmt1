@@ -133,6 +133,7 @@ export interface ProofLine {
   referenceNumber: number | null;
   indention: number;
   assertion: string;
+  oldAssertion: string | null;
 }
 
 export type ParsedDescriptionSegment = DescriptionText | DescriptionMathMode | DescriptionLabel | DescriptionLink | DescriptionItalic | DescriptionSubscript | DescriptionHtml | DescriptionHtmlCharacterRef;

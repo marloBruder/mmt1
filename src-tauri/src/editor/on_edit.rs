@@ -198,22 +198,29 @@ pub fn calc_theorem_page_data(
                     &mut preview_unify_markers,
                 );
 
+                let assertion = ul
+                    .parse_tree
+                    .map(|pt| {
+                        pt.to_expression(
+                            &mm_data.optimized_data.symbol_number_mapping,
+                            &mm_data.optimized_data.grammar,
+                        )
+                    })
+                    .transpose()?
+                    .unwrap_or(String::new());
+
                 proof_lines.push(model::ProofLine {
                     step_name: ul.step_name,
                     hypotheses: ul.hypotheses,
                     reference: ul.step_ref,
                     indention: 1,
                     reference_number: None,
-                    assertion: ul
-                        .parse_tree
-                        .map(|pt| {
-                            pt.to_expression(
-                                &mm_data.optimized_data.symbol_number_mapping,
-                                &mm_data.optimized_data.grammar,
-                            )
-                        })
-                        .transpose()?
-                        .unwrap_or(String::new()),
+                    old_assertion: if ul.old_assertion.as_ref().is_none_or(|oa| *oa == assertion) {
+                        None
+                    } else {
+                        ul.old_assertion
+                    },
+                    assertion,
                 });
             }
         }
@@ -244,8 +251,9 @@ pub fn calc_theorem_page_data(
                 },
                 reference: pl.step_ref.to_string(),
                 reference_number: ref_number,
-                assertion: util::str_to_space_seperated_string(pl.expression),
                 indention,
+                assertion: util::str_to_space_seperated_string(pl.expression),
+                old_assertion: None,
             });
         }
     }

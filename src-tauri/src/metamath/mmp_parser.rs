@@ -236,5 +236,6 @@ pub struct UnifyLine {
     pub hypotheses: Vec<String>,
     pub step_ref: String,
     pub parse_tree: Option<ParseTree>,
+    pub old_assertion: Option<String>,
     pub status: ProofLineStatus,
 }

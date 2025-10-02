@@ -586,6 +586,7 @@ pub fn calc_theorem_page_data(
                     reference_number: step.label_theorem_number,
                     indention: 1,
                     assertion: stack[stack.len() - 1].statement.clone(),
+                    old_assertion: None,
                 });
                 stack.last_mut().unwrap().display_step_number = next_hypotheses_num;
                 next_hypotheses_num += 1;

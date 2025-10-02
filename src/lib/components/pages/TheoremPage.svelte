@@ -130,14 +130,30 @@
                   {proofLine.reference}
                 {/if}
               </td>
-              <td class={"border border-gray-600 py-1 pr-2 " + proofLineBackground(i, 3)}>
-                <span class="text-xs text-gray-300">
-                  {#each { length: proofLine.indention - 1 } as _}
-                    {". "}
-                  {/each}
-                  {proofLine.indention}
-                </span>
-                <MetamathExpression expression={proofLine.assertion}></MetamathExpression>
+              <td class="border border-gray-600 p-0">
+                {#snippet indentionPoints(indention: number)}
+                  <span class="text-xs text-gray-300">
+                    {#each { length: indention - 1 } as _}
+                      {". "}
+                    {/each}
+                    {indention}
+                  </span>
+                {/snippet}
+                {#if proofLine.oldAssertion === null || proofLine.oldAssertion === proofLine.assertion}
+                  <div class={"py-1 pr-2 pl-1 " + proofLineBackground(i, 3)}>
+                    {@render indentionPoints(proofLine.indention)}
+                    <MetamathExpression expression={proofLine.assertion}></MetamathExpression>
+                  </div>
+                {:else}
+                  <div class="py-1 pr-2 pl-1 border-b">
+                    {@render indentionPoints(proofLine.indention)}
+                    <MetamathExpression expression={proofLine.oldAssertion}></MetamathExpression>
+                  </div>
+                  <div class={"py-1 pr-2 pl-1 " + proofLineBackground(i, 3)}>
+                    {@render indentionPoints(proofLine.indention)}
+                    <MetamathExpression expression={proofLine.assertion}></MetamathExpression>
+                  </div>
+                {/if}
               </td>
             </tr>
           {/each}
