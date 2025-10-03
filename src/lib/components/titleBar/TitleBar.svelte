@@ -1,7 +1,7 @@
 <script lang="ts">
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { invoke } from "@tauri-apps/api/core";
-  import { open, save } from "@tauri-apps/plugin-dialog";
+  import { confirm, open, save } from "@tauri-apps/plugin-dialog";
   import type { FolderRepresentation } from "$lib/sharedState/model.svelte";
   import { fileExplorerData } from "$lib/sharedState/fileExplorerData.svelte";
   import CloseIcon from "$lib/icons/titleBar/CloseIcon.svelte";
@@ -18,7 +18,7 @@
 
   const appWindow = getCurrentWindow();
 
-  let disableTitleBar = $derived(globalState.databaseBeingOpened != "");
+  let disableTitleBar = $derived(globalState.databaseBeingOpened !== "");
 
   let dropdown1Open = $state(false);
   let dropdown2Open = $state(false);
@@ -32,7 +32,13 @@
     appWindow.toggleMaximize();
   };
 
-  let closeClick = () => {
+  let closeClick = async () => {
+    if (tabManager.tabs.some((tab) => tab.showUnsavedChanges())) {
+      if (!(await confirm("You have unsaved changes. Are you sure you want to close mmt1?", { okLabel: "Close mmt1", kind: "warning" }))) {
+        return;
+      }
+    }
+
     appWindow.close();
   };
 

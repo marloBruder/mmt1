@@ -31,7 +31,7 @@
       return true;
     }
 
-    showDot(): boolean {
+    showUnsavedChanges(): boolean {
       return this.unsavedChanges;
     }
   }
@@ -130,7 +130,7 @@
             {/if}
           </div>
           <div class="px-6">
-            <RoundButton onclick={saveChanges} disabled={!settingsTab.unsavedChanges}>Save changes</RoundButton>
+            <RoundButton onclick={saveChanges} disabled={!settingsTab.showUnsavedChanges}>Save changes</RoundButton>
           </div>
         </div>
       </div>

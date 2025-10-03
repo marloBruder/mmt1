@@ -262,7 +262,7 @@ export abstract class Tab {
 
   async onTabOpen(): Promise<void> {}
 
-  showDot(): boolean {
+  showUnsavedChanges(): boolean {
     return false;
   }
 

@@ -55,7 +55,7 @@
       await this.onMonacoChange();
     }
 
-    showDot(): boolean {
+    showUnsavedChanges(): boolean {
       return this.textChanged;
     }
 
