@@ -12,6 +12,7 @@
       let segments = this.#filePath.split("\\");
       return segments[segments.length - 1];
     });
+    #isMmpFile: boolean = $derived(this.#fileName.endsWith(".mmp"));
 
     textChanged: boolean = $state(false);
 
@@ -28,7 +29,7 @@
 
     async loadData(): Promise<void> {
       let text = (await invoke("open_file", { relativePath: this.#filePath })) as string;
-      this.#monacoModel = monaco.editor.createModel(text, "mmp");
+      this.#monacoModel = monaco.editor.createModel(text, this.#isMmpFile ? "mmp" : "text");
       this.#monacoModel.onDidChangeContent(async () => {
         this.textChanged = true;
         tabManager.makeOpenTempTabPermanent();
@@ -69,6 +70,10 @@
     }
 
     async unify(): Promise<void> {
+      if (!this.#isMmpFile) {
+        return;
+      }
+
       let resultText = (await invoke("unify", { text: this.monacoModel!.getValue() })) as string | null;
 
       if (resultText !== null) {
@@ -77,10 +82,14 @@
     }
 
     unifyDisabled(): boolean {
-      return false;
+      return !this.#isMmpFile;
     }
 
     async addToDatabase() {
+      if (!this.#isMmpFile) {
+        return;
+      }
+
       await invoke("add_to_database", { text: this.monacoModel!.getValue() });
 
       // let dataUnknown = await invoke("turn_into_theorem", { inProgressTheorem: this.#inProgressTheorem, positionName: placeAfter });
@@ -91,14 +100,18 @@
     }
 
     addToDatabaseDisabled(): boolean {
-      return false;
+      return !this.#isMmpFile;
     }
 
     formatDisabled(): boolean {
-      return false;
+      return !this.#isMmpFile;
     }
 
     async format() {
+      if (!this.#isMmpFile) {
+        return;
+      }
+
       let resultText = (await invoke("format", { text: this.#monacoModel!.getValue() })) as string | null;
       if (resultText !== null) {
         editor.executeEdits("format", [{ range: new monaco.Range(1, 1, 1000000, 1), text: resultText, forceMoveMarkers: true }]);
@@ -106,10 +119,14 @@
     }
 
     renumberDisabled(): boolean {
-      return false;
+      return !this.#isMmpFile;
     }
 
     async renumber() {
+      if (!this.#isMmpFile) {
+        return;
+      }
+
       let resultText = (await invoke("renumber", { text: this.#monacoModel!.getValue() })) as string | null;
       if (resultText !== null) {
         editor.executeEdits("renumber", [{ range: new monaco.Range(1, 1, 10000, 1), text: resultText, forceMoveMarkers: true }]);
@@ -122,6 +139,10 @@
     }
 
     async onMonacoChange() {
+      if (!this.#isMmpFile) {
+        return;
+      }
+
       monaco.editor.removeAllMarkers("on_edit");
       invoke("on_edit", { text: this.monacoModel!.getValue() }).then(async (onEditDataUnkown) => {
         interface OnEditData {
