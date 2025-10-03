@@ -4,7 +4,7 @@
   import TheoremLink from "./TheoremLink.svelte";
   import type { ParsedDescriptionSegment } from "$lib/sharedState/model.svelte";
 
-  let { descriptionParsed }: { descriptionParsed: ParsedDescriptionSegment[] } = $props();
+  let { descriptionParsed, openLinksInNewTab = false }: { descriptionParsed: ParsedDescriptionSegment[]; openLinksInNewTab?: boolean } = $props();
 
   let openLink = (url: string) => {
     open(url);
@@ -23,7 +23,7 @@
     {:else if descriptionParsedSegement.discriminator == "DescriptionMathMode"}
       <MetamathExpression expression={descriptionParsedSegement.expression}></MetamathExpression>
     {:else if descriptionParsedSegement.discriminator == "DescriptionLabel"}
-      <TheoremLink label={descriptionParsedSegement.label} theoremNumber={descriptionParsedSegement.theoremNumber}></TheoremLink>
+      <TheoremLink label={descriptionParsedSegement.label} theoremNumber={descriptionParsedSegement.theoremNumber} openInNewTab={openLinksInNewTab}></TheoremLink>
     {:else if descriptionParsedSegement.discriminator == "DescriptionLink"}
       <button class="text-blue-400 underline" onclick={() => openLink(descriptionParsedSegement.url)}>{descriptionParsedSegement.url}</button>
     {:else if descriptionParsedSegement.discriminator == "DescriptionItalic"}
