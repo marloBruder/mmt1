@@ -248,7 +248,8 @@ export abstract class Tab {
   readonly splitComponent: Component<{ pageData: DatabaseElementPageData | null }> | null = null;
   splitViewPageData: DatabaseElementPageData | null = $state(null);
 
-  scrollTop: number = 0;
+  scrollTop: number = $state(0);
+  splitViewScrollTop: number = $state(0);
   previousTab: Tab | null = null;
   nextTab: Tab | null = null;
 

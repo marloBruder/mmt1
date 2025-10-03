@@ -5,19 +5,28 @@
 
   let openTab = $derived(tabManager.getOpenTab());
   let scrollTop = $state(0);
-
-  let setScroll: (scrollTop: number) => void;
+  let splitViewScrollTop = $state(0);
 
   // Triggers only when openTab changes
   $effect(() => {
     if (openTab) {
+      // make sure scrollTop and splitViewScrollTop change
+      scrollTop = -1;
       scrollTop = openTab.scrollTop;
+      splitViewScrollTop = -1;
+      splitViewScrollTop = openTab.splitViewScrollTop;
     }
   });
 
   let onscrollTab = (newScrollTop: number) => {
     if (openTab) {
       openTab.scrollTop = newScrollTop;
+    }
+  };
+
+  let onscrollSplitView = (newScrollTop: number) => {
+    if (openTab) {
+      openTab.splitViewScrollTop = newScrollTop;
     }
   };
 
@@ -34,7 +43,7 @@
     </div>
     {#if (verticalSplit || horizontalSplit) && openTab.splitComponent !== null}
       <div class="{horizontalSplit ? 'h-1/2' : 'h-full'} {verticalSplit ? 'w-1/2' : 'w-full'}">
-        <ScrollableContainer>
+        <ScrollableContainer onscroll={onscrollSplitView} scrollTop={splitViewScrollTop}>
           <openTab.splitComponent pageData={openTab.splitViewPageData}></openTab.splitComponent>
         </ScrollableContainer>
       </div>
