@@ -13,7 +13,6 @@
     setupShortcuts();
     setupLinkIntercepter();
     await settingsData.setupSettings();
-    await invoke("set_settings", { settings: settingsData.settings });
     await invoke("setup_main_window");
   });
 </script>

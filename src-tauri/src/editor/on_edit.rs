@@ -2,11 +2,9 @@ use crate::{
     metamath::{
         mm_parser::html_validation,
         mmp_parser::{
-            self,
-            calc_indention::{calc_indention, CalcIndention},
-            MmpParserStage1, MmpParserStage2, MmpParserStage2Success, MmpParserStage3,
-            MmpParserStage3Success, MmpParserStage3Theorem, MmpParserStage4, MmpParserStage5,
-            ProofLineStatus,
+            self, calc_indention::calc_indention, MmpParserStage1, MmpParserStage2,
+            MmpParserStage2Success, MmpParserStage3, MmpParserStage3Success,
+            MmpParserStage3Theorem, MmpParserStage4, MmpParserStage5, ProofLineStatus,
         },
     },
     model::{
@@ -15,7 +13,7 @@ use crate::{
         TheoremPageData, VariablesPageData,
     },
     util::{self, description_parser},
-    AppState, Error,
+    AppState, Error, Settings,
 };
 use serde::{ser::SerializeStruct, Serialize};
 use tauri::async_runtime::Mutex;
@@ -40,6 +38,7 @@ pub async fn on_edit(
 ) -> Result<OnEditData, Error> {
     let app_state = state.lock().await;
     let mm_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
+    let settings = &app_state.settings;
 
     let stage_0 = mmp_parser::new(text);
 
@@ -148,6 +147,7 @@ pub async fn on_edit(
                         fail.reference_numbers,
                         fail.proof_line_statuses,
                         None,
+                        settings,
                     )?),
                     errors: fail.errors,
                 })
@@ -164,6 +164,7 @@ pub async fn on_edit(
             stage_4_success.reference_numbers,
             stage_4_success.proof_line_statuses,
             Some(stage_5),
+            settings,
         )?),
         errors: Vec::new(),
     })
@@ -176,6 +177,7 @@ pub fn calc_theorem_page_data(
     reference_numbers: Vec<Option<u32>>,
     proof_line_statuses: Vec<ProofLineStatus>,
     stage_5: Option<MmpParserStage5>,
+    settings: &Settings,
 ) -> Result<DatabaseElementPageData, Error> {
     let (html_allowed_tags_and_attributes, css_allowed_properties) =
         html_validation::create_rule_structs();
@@ -187,7 +189,9 @@ pub fn calc_theorem_page_data(
     let mut preview_confirmations_recursive: Vec<bool> = Vec::new();
     let mut preview_unify_markers: Vec<(bool, bool, bool, bool)> = Vec::new();
 
-    if let Some(stage_5) = stage_5 {
+    if stage_5.is_some() && settings.show_unify_result_in_unicode_preview {
+        let stage_5 = stage_5.ok_or(Error::InternalLogicError)?;
+
         let indention_vec = calc_indention(&stage_5.unify_result)?;
 
         for ((ul, reference_number), indention) in stage_5

@@ -62,4 +62,8 @@
       <div>The unifier will make a change in this cell.</div>
     </div>
   </div>
+  <div>
+    <input type="checkbox" bind:checked={settingsTab.settings.showUnifyResultInUnicodePreview} />
+    Show unify result in Unicode preview
+  </div>
 </div>

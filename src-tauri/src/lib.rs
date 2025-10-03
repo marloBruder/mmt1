@@ -30,6 +30,11 @@ pub struct AppState {
 pub struct Settings {
     #[serde(rename = "definitionsStartWith")]
     definitons_start_with: String,
+    #[serde(rename = "colorUnicodePreview")]
+    _color_unicode_preview: bool,
+    #[serde(rename = "showUnifyResultInUnicodePreview")]
+    show_unify_result_in_unicode_preview: bool,
+    // show: bool,
 }
 
 fn app_setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
