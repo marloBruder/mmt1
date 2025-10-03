@@ -202,8 +202,20 @@ pub fn stage_5(
 
     unify_lines = new_unify_lines;
 
+    let unify_reference_numbers = unify_lines
+        .iter()
+        .map(|ul| {
+            mm_data
+                .database_header
+                .theorem_iter()
+                .position(|t| t.label == ul.step_ref)
+                .map(|i| (i + 1) as u32)
+        })
+        .collect();
+
     Ok(MmpParserStage5 {
         unify_result: unify_lines,
+        unify_reference_numbers,
     })
 }
 

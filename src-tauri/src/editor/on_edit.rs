@@ -2,7 +2,9 @@ use crate::{
     metamath::{
         mm_parser::html_validation,
         mmp_parser::{
-            self, MmpParserStage1, MmpParserStage2, MmpParserStage2Success, MmpParserStage3,
+            self,
+            calc_indention::{calc_indention, CalcIndention},
+            MmpParserStage1, MmpParserStage2, MmpParserStage2Success, MmpParserStage3,
             MmpParserStage3Success, MmpParserStage3Theorem, MmpParserStage4, MmpParserStage5,
             ProofLineStatus,
         },
@@ -186,7 +188,14 @@ pub fn calc_theorem_page_data(
     let mut preview_unify_markers: Vec<(bool, bool, bool, bool)> = Vec::new();
 
     if let Some(stage_5) = stage_5 {
-        for ul in stage_5.unify_result {
+        let indention_vec = calc_indention(&stage_5.unify_result)?;
+
+        for ((ul, reference_number), indention) in stage_5
+            .unify_result
+            .into_iter()
+            .zip(stage_5.unify_reference_numbers.into_iter())
+            .zip(indention_vec.into_iter())
+        {
             if !(ul.deleted_line && ul.new_line) {
                 update_preview_markers(
                     ul.status,
@@ -213,8 +222,8 @@ pub fn calc_theorem_page_data(
                     step_name: ul.step_name,
                     hypotheses: ul.hypotheses,
                     reference: ul.step_ref,
-                    indention: 1,
-                    reference_number: None,
+                    indention,
+                    reference_number,
                     old_assertion: if ul.old_assertion.as_ref().is_none_or(|oa| *oa == assertion) {
                         None
                     } else {
@@ -225,10 +234,12 @@ pub fn calc_theorem_page_data(
             }
         }
     } else {
-        for (((pl, &indention), ref_number), status) in stage_2_success
+        let indention_vec = calc_indention(&stage_2_success.proof_lines)?;
+
+        for (((pl, indention), ref_number), status) in stage_2_success
             .proof_lines
             .iter()
-            .zip(stage_3_theorem.indention.iter())
+            .zip(indention_vec.into_iter())
             .zip(reference_numbers.into_iter())
             .zip(proof_line_statuses.into_iter())
         {

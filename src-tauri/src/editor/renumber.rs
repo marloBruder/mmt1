@@ -2,8 +2,8 @@ use tauri::async_runtime::Mutex;
 
 use crate::{
     metamath::mmp_parser::{
-        self, MmpParserStage1, MmpParserStage2, MmpParserStage3, MmpParserStage3Success,
-        MmpParserStage4, MmpStatement,
+        self, calc_indention::calc_indention, MmpParserStage1, MmpParserStage2, MmpParserStage3,
+        MmpParserStage3Success, MmpParserStage4, MmpStatement,
     },
     util::{self, StrIterToDelimiterSeperatedString},
     AppState, Error,
@@ -47,6 +47,8 @@ pub async fn renumber(
 
     let mut proof_line_i = 0;
 
+    let indention_vec = calc_indention(&stage_2_success.proof_lines)?;
+
     for (&statement, (statement_type, _)) in stage_1_success
         .statements
         .iter()
@@ -61,8 +63,7 @@ pub async fn renumber(
                 .proof_lines_parsed
                 .get(proof_line_i)
                 .ok_or(Error::InternalLogicError)?;
-            let indention = *stage_3_theorem
-                .indention
+            let indention = indention_vec
                 .get(proof_line_i)
                 .ok_or(Error::InternalLogicError)?;
 

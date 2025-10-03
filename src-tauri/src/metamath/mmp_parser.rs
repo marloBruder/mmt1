@@ -6,6 +6,7 @@ use crate::{
     Error,
 };
 
+pub mod calc_indention;
 mod stage_1;
 mod stage_2;
 mod stage_3;
@@ -157,7 +158,7 @@ pub struct MmpParserStage3Theorem<'a> {
     // pub proof_lines: Vec<ProofLineParsed<'a>>,
     // pub locate_after: Option<LocateAfterRef<'a>>,
     // pub description: &'a str,
-    pub indention: Vec<u32>,
+    // pub indention: Vec<u32>,
     pub axiom_dependencies: Vec<(String, u32)>,
     pub definition_dependencies: Vec<(String, u32)>,
 }
@@ -224,6 +225,7 @@ impl MmpParserStage4Success {
 #[derive(Debug)]
 pub struct MmpParserStage5 {
     pub unify_result: Vec<UnifyLine>,
+    pub unify_reference_numbers: Vec<Option<u32>>,
 }
 
 #[derive(Debug)]
