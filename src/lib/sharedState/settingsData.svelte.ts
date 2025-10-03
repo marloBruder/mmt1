@@ -3,10 +3,12 @@ import { util } from "./util.svelte";
 
 export interface Settings {
   definitionsStartWith: string;
+  colorUnicodePreview: boolean;
 }
 
 let defaultSettings: Settings = {
   definitionsStartWith: "df-",
+  colorUnicodePreview: true,
 };
 
 class SettingsData {
@@ -23,7 +25,7 @@ class SettingsData {
     }
   }
 
-  cloneSettings() {
+  cloneSettings(): Settings {
     return util.clone(this.settings) as Settings;
   }
 }

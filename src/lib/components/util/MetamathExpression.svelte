@@ -27,7 +27,7 @@
   {/if}
   {#if htmlRep}
     <span class={"math " + (htmlRep[1] !== 0 ? " custom-variable-color-" + htmlRep[1] : "")}>
-      <span>{@html htmlRep[0]}</span>{" "}
+      <span>{@html htmlRep[0]}</span>
     </span>
   {:else}
     {symbols[i]}

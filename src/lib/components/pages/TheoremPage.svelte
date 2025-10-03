@@ -4,8 +4,9 @@
   import MetamathExpression from "../util/MetamathExpression.svelte";
   import TheoremLink from "../util/TheoremLink.svelte";
   import TheoremNumber from "../util/TheoremNumber.svelte";
+  import { settingsData } from "$lib/sharedState/settingsData.svelte";
 
-  let { pageData }: { pageData: TheoremPageData } = $props();
+  let { pageData, editorPreview = false }: { pageData: TheoremPageData; editorPreview?: boolean } = $props();
 
   let theorem = $derived(pageData.theorem);
 
@@ -19,12 +20,16 @@
   };
 
   let proofLineBackground = (row: number, cell: number): string => {
+    if (!editorPreview || !settingsData.settings.colorUnicodePreview) {
+      return "";
+    }
+
     if (pageData.previewErrors && pageData.previewErrors[row][cell]) {
-      return "bg-red-400";
+      return "bg-red-950";
     }
 
     if (pageData.previewDeletedMarkers && pageData.previewDeletedMarkers[row]) {
-      return "bg-red-950";
+      return "bg-red-900";
     }
 
     if (pageData.previewConfirmationsRecursive && pageData.previewConfirmationsRecursive[row]) {
@@ -36,7 +41,7 @@
     }
 
     if (pageData.previewUnifyMarkers && pageData.previewUnifyMarkers[row][cell]) {
-      return "bg-blue-400";
+      return "bg-blue-950";
     }
 
     return "";
@@ -44,30 +49,34 @@
 </script>
 
 <div class="text-center pb-4 flex">
-  <div class="w-1/5 pt-2">
-    <TheoremLink text={"< Previous"} label={pageData.lastTheoremLabel ? pageData.lastTheoremLabel : ""} disabled={pageData.lastTheoremLabel === null} noUnderline></TheoremLink>
-  </div>
-  <div class="w-3/5 pt-4">
+  {#if !editorPreview}
+    <div class="w-1/5 pt-2">
+      <TheoremLink text={"< Previous"} label={pageData.lastTheoremLabel ? pageData.lastTheoremLabel : ""} disabled={pageData.lastTheoremLabel === null} noUnderline></TheoremLink>
+    </div>
+  {/if}
+  <div class={"pt-4 " + (editorPreview ? " w-full " : " w-3/5 ")}>
     <h1 class="text-3xl">
       {#if theorem.proof}Theorem
       {:else}Axiom
       {/if}
       {theorem.label}
-      {#if pageData.theoremNumber != 0}
+      {#if !editorPreview}
         <TheoremNumber theoremNumber={pageData.theoremNumber} normalTextSize></TheoremNumber>
       {/if}
     </h1>
   </div>
-  <div class="w-1/5 pt-2">
-    <TheoremLink text={"Next >"} label={pageData.nextTheoremLabel ? pageData.nextTheoremLabel : ""} disabled={pageData.nextTheoremLabel === null} noUnderline></TheoremLink>
-  </div>
+  {#if !editorPreview}
+    <div class="w-1/5 pt-2">
+      <TheoremLink text={"Next >"} label={pageData.nextTheoremLabel ? pageData.nextTheoremLabel : ""} disabled={pageData.nextTheoremLabel === null} noUnderline></TheoremLink>
+    </div>
+  {/if}
 </div>
 <div class="text-center">
   {#if theorem.hypotheses.length != 0}
-    <div class="pb-4">
-      <h2>Hyptheses:</h2>
+    <div class="pb-4 px-4">
+      <h2 class="font-bold">Hyptheses:</h2>
       <div class="flex justify-center">
-        <table>
+        <table class="text-left">
           <tbody>
             {#each theorem.hypotheses as hypothesis}
               <tr>
@@ -80,16 +89,23 @@
       </div>
     </div>
   {/if}
-  <div class="pb-4">
-    <h2>Assertion:</h2>
+  <div class="pb-4 px-4">
+    <h2 class="font-bold">Assertion:</h2>
     <p><MetamathExpression expression={theorem.assertion}></MetamathExpression></p>
   </div>
   {#if theorem.distincts.length != 0}
     <div class="pb-4">
-      <h2>Distinct variables:</h2>
-      {#each theorem.distincts as distinct}
-        <p><MetamathExpression expression={distinct}></MetamathExpression></p>
-      {/each}
+      <h2 class="font-bold">Distinct variables:</h2>
+      <div class="flex flex-wrap justify-center">
+        {#each theorem.distincts as distinct}
+          <span class="mx-2 text-nowrap">
+            {#each distinct.split(" ") as distinctVar, i}
+              {#if i !== 0}{","}{/if}
+              <MetamathExpression expression={distinctVar}></MetamathExpression>
+            {/each}
+          </span>
+        {/each}
+      </div>
     </div>
   {/if}
   <div class="pb-4 px-8">
@@ -102,7 +118,7 @@
       <p>{theorem.proof}</p>
     </div> -->
     <div class="pb-4">
-      <h2>Proof</h2>
+      <h2 class="font-bold">Proof</h2>
       <table class="mx-auto border text-left border-collapse">
         <thead>
           <tr>
@@ -139,21 +155,16 @@
                     {indention}
                   </span>
                 {/snippet}
-                {#if proofLine.oldAssertion === null || proofLine.oldAssertion === proofLine.assertion}
-                  <div class={"py-1 pr-2 pl-1 " + proofLineBackground(i, 3)}>
-                    {@render indentionPoints(proofLine.indention)}
-                    <MetamathExpression expression={proofLine.assertion}></MetamathExpression>
-                  </div>
-                {:else}
+                {#if proofLine.oldAssertion !== null && proofLine.oldAssertion !== proofLine.assertion}
                   <div class="py-1 pr-2 pl-1 border-b">
                     {@render indentionPoints(proofLine.indention)}
                     <MetamathExpression expression={proofLine.oldAssertion}></MetamathExpression>
                   </div>
-                  <div class={"py-1 pr-2 pl-1 " + proofLineBackground(i, 3)}>
-                    {@render indentionPoints(proofLine.indention)}
-                    <MetamathExpression expression={proofLine.assertion}></MetamathExpression>
-                  </div>
                 {/if}
+                <div class={"py-1 pr-2 pl-1 " + proofLineBackground(i, 3)}>
+                  {@render indentionPoints(proofLine.indention)}
+                  <MetamathExpression expression={proofLine.assertion}></MetamathExpression>
+                </div>
               </td>
             </tr>
           {/each}
@@ -164,7 +175,7 @@
   <div class="p-8">
     <hr />
   </div>
-  <div class="text-left px-4">
+  <div class="text-left px-4 pb-2">
     {#if theorem.proof !== null}
       <span class="font-bold">This theorem was proved from axioms: </span>
       {#if pageData.axiomDependencies.length === 0}
@@ -189,25 +200,18 @@
         {/each}
       </div>
     {/if}
-    <span class="font-bold">This theorem is referenced by:</span>
-    {#if pageData.references.length === 0}
-      (None)
+    {#if !editorPreview}
+      <span class="font-bold">This theorem is referenced by:</span>
+      {#if pageData.references.length === 0}
+        (None)
+      {/if}
+      <div class="text-justify">
+        {#each pageData.references as [reference, referenceNumber]}
+          <span class="mr-2">
+            <TheoremLink label={reference} theoremNumber={referenceNumber}></TheoremLink>
+          </span>
+        {/each}
+      </div>
     {/if}
-    <div class="text-justify">
-      {#each pageData.references as [reference, referenceNumber]}
-        <span class="mr-2">
-          <TheoremLink label={reference} theoremNumber={referenceNumber}></TheoremLink>
-        </span>
-      {/each}
-    </div>
   </div>
 </div>
-
-<style>
-  .custom-confirmation-recursive-color {
-    background-color: #005030;
-  }
-  .custom-confirmation-color {
-    background-color: #003d30;
-  }
-</style>

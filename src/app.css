@@ -66,6 +66,13 @@
   background-color: #463465;
 }
 
+.custom-confirmation-recursive-color {
+  background-color: #005030;
+}
+.custom-confirmation-color {
+  background-color: #003d30;
+}
+
 input:focus,
 select:focus,
 textarea:focus,

@@ -237,7 +237,7 @@
 
   onMount(async () => {
     editorContainer = document.getElementById("editor-area")!;
-    editor = monaco.editor.create(editorContainer, { automaticLayout: true, fixedOverflowWidgets: true, theme: "mmp-theme", minimap: { enabled: false } });
+    editor = monaco.editor.create(editorContainer, { automaticLayout: true, fixedOverflowWidgets: true, theme: "mmp-theme", minimap: { enabled: false }, stickyScroll: { enabled: false } });
 
     editor.addAction({
       id: "unify-action",

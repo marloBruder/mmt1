@@ -237,7 +237,7 @@ fn set_unify_status(status: &mut ProofLineStatus, position: u32) -> Result<(), E
                     3 => (false, false, false, true),
                     _ => return Err(Error::InternalLogicError),
                 },
-                false,
+                matches!(status, ProofLineStatus::CorrectRecursively),
             )
         }
         _ => return Err(Error::InternalLogicError),

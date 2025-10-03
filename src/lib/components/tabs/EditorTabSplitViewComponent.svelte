@@ -27,7 +27,7 @@
       {:else if pageData.discriminator == "FloatingHypothesisPageData"}
         <FloatingHypothesisPage {pageData}></FloatingHypothesisPage>
       {:else if pageData.discriminator == "TheoremPageData"}
-        <TheoremPage {pageData}></TheoremPage>
+        <TheoremPage {pageData} editorPreview></TheoremPage>
       {/if}
     {:else}
       <div class="p-2">Resolve most errors to show the unicode preview.</div>
