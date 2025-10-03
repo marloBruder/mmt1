@@ -34,7 +34,9 @@
     let secondElement = document.getElementById(secondId)!;
     let buttonContainerElement = document.getElementById(buttonContainerId)!;
 
-    position = Math.max(200, Math.min(containerElement.clientWidth - 200, position));
+    if (position !== 60) {
+      position = Math.max(200, Math.min(containerElement.clientWidth - 200, position));
+    }
 
     firstElement.style.width = position + "px";
     secondElement.style.width = Math.max(containerElement.clientWidth - position, 0) + "px";
