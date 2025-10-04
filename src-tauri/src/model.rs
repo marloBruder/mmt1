@@ -818,48 +818,6 @@ impl Statement {
 }
 
 impl ParseTree {
-    pub fn calc_proof(&self, grammar: &Grammar) -> Result<Option<String>, Error> {
-        let mut proof = String::new();
-
-        let mut trees = vec![(&self.top_node, 0)];
-
-        while let Some((tree, next_node_i)) = trees.last_mut() {
-            match tree {
-                ParseTreeNode::Node { rule_i, sub_nodes } => {
-                    if let Some(&node_i) = grammar
-                        .rules
-                        .get(*rule_i as usize)
-                        .ok_or(Error::InternalLogicError)?
-                        .var_order
-                        .get(*next_node_i as usize)
-                    {
-                        let node = sub_nodes
-                            .get(node_i as usize)
-                            .ok_or(Error::InternalLogicError)?;
-
-                        *next_node_i += 1;
-                        trees.push((node, 0));
-                    } else {
-                        proof.push_str(
-                            &grammar
-                                .rules
-                                .get(*rule_i as usize)
-                                .ok_or(Error::InternalLogicError)?
-                                .label,
-                        );
-                        proof.push(' ');
-                        trees.pop();
-                    }
-                }
-                ParseTreeNode::WorkVariable(_) => return Ok(None),
-            }
-        }
-
-        proof.pop();
-
-        Ok(Some(proof))
-    }
-
     pub fn are_substitutions(
         trees: &Vec<&ParseTree>,
         other_trees: &Vec<&ParseTree>,
@@ -868,19 +826,38 @@ impl ParseTree {
         grammar: &Grammar,
         symbol_number_mapping: &SymbolNumberMapping,
     ) -> Result<bool, Error> {
+        ParseTree::calc_substitutions(
+            trees,
+            other_trees,
+            distinct_vars,
+            other_distinct_vars,
+            grammar,
+            symbol_number_mapping,
+        )
+        .map(|subs| subs.is_some())
+    }
+
+    pub fn calc_substitutions<'a>(
+        trees: &Vec<&ParseTree>,
+        other_trees: &Vec<&'a ParseTree>,
+        distinct_vars: &HashSet<(String, String)>,
+        other_distinct_vars: &HashSet<(String, String)>,
+        grammar: &Grammar,
+        symbol_number_mapping: &SymbolNumberMapping,
+    ) -> Result<Option<HashMap<u32, &'a ParseTreeNode>>, Error> {
         if trees.len() != other_trees.len() || trees.iter().any(|t| t.has_work_variables()) {
-            return Ok(false);
+            return Ok(None);
         }
 
         let mut substitutions: HashMap<u32, &ParseTreeNode> = HashMap::new();
 
-        let mut check: Vec<(&ParseTreeNode, &ParseTreeNode)> = trees
+        let mut nodes_to_check: Vec<(&ParseTreeNode, &ParseTreeNode)> = trees
             .iter()
             .zip(other_trees.iter())
             .map(|(t, o)| (&t.top_node, &o.top_node))
             .collect();
 
-        while let Some((subtree, other_subtree)) = check.pop() {
+        while let Some((subtree, other_subtree)) = nodes_to_check.pop() {
             let ParseTreeNode::Node { rule_i, sub_nodes } = subtree else {
                 return Err(Error::InternalLogicError);
             };
@@ -903,23 +880,23 @@ impl ParseTree {
                         match substitutions.get(rule_i) {
                             Some(&sub) => {
                                 if sub != other_subtree {
-                                    return Ok(false);
+                                    return Ok(None);
                                 }
                             }
                             None => {
                                 if subtree_rule.left_side == other_subtree_rule.left_side {
                                     substitutions.insert(*rule_i, other_subtree);
                                 } else {
-                                    return Ok(false);
+                                    return Ok(None);
                                 }
                             }
                         }
                     } else {
                         if *rule_i != *other_rule_i || sub_nodes.len() != other_sub_nodes.len() {
-                            return Ok(false);
+                            return Ok(None);
                         }
                         for (node, other_node) in sub_nodes.iter().zip(other_sub_nodes.iter()) {
-                            check.push((node, other_node));
+                            nodes_to_check.push((node, other_node));
                         }
                     }
                 }
@@ -928,19 +905,19 @@ impl ParseTree {
                         match substitutions.get(rule_i) {
                             Some(&sub) => {
                                 if sub != other_subtree {
-                                    return Ok(false);
+                                    return Ok(None);
                                 }
                             }
                             None => {
                                 if subtree_rule.left_side.symbol_i == work_variable.typecode_i {
                                     substitutions.insert(*rule_i, other_subtree);
                                 } else {
-                                    return Ok(false);
+                                    return Ok(None);
                                 }
                             }
                         }
                     } else {
-                        return Ok(false);
+                        return Ok(None);
                     }
                 }
             }
@@ -990,7 +967,7 @@ impl ParseTree {
                                         .clone(),
                                     ))
                                 {
-                                    return Ok(false);
+                                    return Ok(None);
                                 }
                             }
                         }
@@ -999,7 +976,7 @@ impl ParseTree {
             }
         }
 
-        Ok(true)
+        Ok(Some(substitutions))
     }
 
     fn get_floating_hypothesis_rule_variable_symbol<'a>(
@@ -1191,6 +1168,52 @@ impl ParseTree {
 }
 
 impl ParseTreeNode {
+    pub fn calc_proof(&self, grammar: &Grammar) -> Result<String, Error> {
+        let mut proof = String::new();
+
+        let mut trees = vec![(self, 0)];
+
+        while let Some((tree, next_node_i)) = trees.last_mut() {
+            match tree {
+                ParseTreeNode::Node { rule_i, sub_nodes } => {
+                    if let Some(&node_i) = grammar
+                        .rules
+                        .get(*rule_i as usize)
+                        .ok_or(Error::InternalLogicError)?
+                        .var_order
+                        .get(*next_node_i as usize)
+                    {
+                        let node = sub_nodes
+                            .get(node_i as usize)
+                            .ok_or(Error::InternalLogicError)?;
+
+                        *next_node_i += 1;
+                        trees.push((node, 0));
+                    } else {
+                        proof.push_str(
+                            &grammar
+                                .rules
+                                .get(*rule_i as usize)
+                                .ok_or(Error::InternalLogicError)?
+                                .label,
+                        );
+                        proof.push(' ');
+                        trees.pop();
+                    }
+                }
+                ParseTreeNode::WorkVariable(work_var) => {
+                    proof.push_str(&format!("{}${}", work_var.variable_i, work_var.number));
+                    proof.push(' ');
+                    trees.pop();
+                }
+            }
+        }
+
+        proof.pop();
+
+        Ok(proof)
+    }
+
     pub fn get_floating_hypotheses_rules(&self, grammar: &Grammar) -> Result<HashSet<u32>, Error> {
         let mut rules: HashSet<u32> = HashSet::new();
 

@@ -12,6 +12,7 @@ mod stage_2;
 mod stage_3;
 mod stage_4;
 mod stage_5;
+mod stage_6;
 
 pub fn new(text: &str) -> MmpParserStage0 {
     MmpParserStage0 { text }
@@ -240,4 +241,18 @@ pub struct UnifyLine {
     pub parse_tree: Option<ParseTree>,
     pub old_assertion: Option<String>,
     pub status: ProofLineStatus,
+}
+
+impl MmpParserStage5 {
+    pub fn next_stage(
+        &self,
+        stage_4: &MmpParserStage4Success,
+        mm_data: &MetamathData,
+    ) -> Result<MmpParserStage6, Error> {
+        stage_6::stage_6(stage_4, self, mm_data)
+    }
+}
+
+pub struct MmpParserStage6 {
+    pub proof: Option<String>,
 }

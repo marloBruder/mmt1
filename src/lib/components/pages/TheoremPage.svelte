@@ -104,10 +104,12 @@
     <DescriptionParsed descriptionParsed={pageData.descriptionParsed} openLinksInNewTab={editorPreview}></DescriptionParsed>
   </div>
   {#if theorem.proof != null}
-    <!-- <div class="pb-4">
-      <h2>Raw Proof:</h2>
-      <p>{theorem.proof}</p>
-    </div> -->
+    {#if editorPreview}
+      <div class="pb-4">
+        <h2>Raw Proof:</h2>
+        <p>{theorem.proof}</p>
+      </div>
+    {/if}
     <div class="pb-4">
       <h2 class="font-bold">Proof</h2>
       <table class="mx-auto border text-left border-collapse">

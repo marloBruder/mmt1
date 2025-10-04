@@ -4,7 +4,8 @@ use crate::{
         mmp_parser::{
             self, calc_indention::calc_indention, MmpParserStage1, MmpParserStage2,
             MmpParserStage2Success, MmpParserStage3, MmpParserStage3Success,
-            MmpParserStage3Theorem, MmpParserStage4, MmpParserStage5, ProofLineStatus,
+            MmpParserStage3Theorem, MmpParserStage4, MmpParserStage5, MmpParserStage6,
+            ProofLineStatus,
         },
     },
     model::{
@@ -147,6 +148,7 @@ pub async fn on_edit(
                         fail.reference_numbers,
                         fail.proof_line_statuses,
                         None,
+                        None,
                         settings,
                     )?),
                     errors: fail.errors,
@@ -156,6 +158,8 @@ pub async fn on_edit(
 
     let stage_5 = stage_4_success.next_stage(&stage_2_success, &stage_3_theorem, mm_data)?;
 
+    let stage_6 = stage_5.next_stage(&stage_4_success, mm_data)?;
+
     Ok(OnEditData {
         page_data: Some(calc_theorem_page_data(
             mm_data,
@@ -164,6 +168,7 @@ pub async fn on_edit(
             stage_4_success.reference_numbers,
             stage_4_success.proof_line_statuses,
             Some(stage_5),
+            Some(stage_6),
             settings,
         )?),
         errors: Vec::new(),
@@ -177,6 +182,7 @@ pub fn calc_theorem_page_data(
     reference_numbers: Vec<Option<u32>>,
     proof_line_statuses: Vec<ProofLineStatus>,
     stage_5: Option<MmpParserStage5>,
+    stage_6: Option<MmpParserStage6>,
     settings: &Settings,
 ) -> Result<DatabaseElementPageData, Error> {
     let (html_allowed_tags_and_attributes, css_allowed_properties) =
@@ -312,6 +318,8 @@ pub fn calc_theorem_page_data(
                 .unwrap_or(String::new()),
             proof: if stage_3_theorem.is_axiom {
                 None
+            } else if let Some(proof) = stage_6.and_then(|s6| s6.proof) {
+                Some(proof)
             } else {
                 Some("Proof not yet complete".to_string())
             },
