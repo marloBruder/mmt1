@@ -11,8 +11,6 @@ pub fn stage_6(
     stage_5: &MmpParserStage5,
     mm_data: &MetamathData,
 ) -> Result<MmpParserStage6, Error> {
-    let mut proofs: Vec<String> = Vec::new();
-
     let Some(qed_step_i) = stage_5
         .unify_result
         .iter()
@@ -21,10 +19,17 @@ pub fn stage_6(
         return Ok(MmpParserStage6 { proof: None });
     };
 
+    let mut proofs: Vec<Option<String>> = Vec::new();
+
     for (i, unify_line) in stage_5.unify_result.iter().enumerate() {
         if unify_line.is_hypothesis {
-            proofs.push(unify_line.step_ref.to_string());
+            proofs.push(Some(unify_line.step_ref.to_string()));
         } else {
+            if unify_line.step_ref == "" {
+                proofs.push(None);
+                continue;
+            }
+
             let Some(unify_line_hypotheses_parsed) = unify_line
                 .hypotheses
                 .iter()
@@ -41,7 +46,8 @@ pub fn stage_6(
                 })
                 .collect::<Option<Vec<usize>>>()
             else {
-                return Ok(MmpParserStage6 { proof: None });
+                proofs.push(None);
+                continue;
             };
 
             let Some(unify_line_parse_trees) = unify_line_hypotheses_parsed
@@ -57,12 +63,9 @@ pub fn stage_6(
                 .chain(vec![Ok(unify_line.parse_tree.as_ref())])
                 .collect::<Result<Option<Vec<&ParseTree>>, Error>>()?
             else {
-                return Ok(MmpParserStage6 { proof: None });
+                proofs.push(None);
+                continue;
             };
-
-            if unify_line.step_ref == "" {
-                return Ok(MmpParserStage6 { proof: None });
-            }
 
             let theorem_data = mm_data
                 .optimized_data
@@ -85,7 +88,8 @@ pub fn stage_6(
                 &mm_data.optimized_data.symbol_number_mapping,
             )?
             else {
-                return Ok(MmpParserStage6 { proof: None });
+                proofs.push(None);
+                continue;
             };
 
             let mut var_proofs = substitutions
@@ -126,24 +130,30 @@ pub fn stage_6(
                     s
                 });
 
-            let mut proof = unify_line_hypotheses_parsed
+            let Some(mut proof) = unify_line_hypotheses_parsed
                 .into_iter()
                 .filter_map(|hyp_i| proofs.get(hyp_i))
-                .fold(vars_proof, |mut s, p| {
+                .fold(Some(vars_proof), |s, p| {
+                    let Some(mut s) = s else { return None };
+                    let Some(p) = p else { return None };
                     s.push_str(p);
                     s.push(' ');
-                    s
-                });
+                    Some(s)
+                })
+            else {
+                proofs.push(None);
+                continue;
+            };
 
             proof.push_str(&unify_line.step_ref);
 
-            proofs.push(proof);
+            proofs.push(Some(proof));
         }
 
         // println!("{}", proofs.last().unwrap());
     }
 
     Ok(MmpParserStage6 {
-        proof: Some(proofs.swap_remove(qed_step_i)),
+        proof: proofs.swap_remove(qed_step_i),
     })
 }

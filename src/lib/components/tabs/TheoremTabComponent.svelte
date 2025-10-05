@@ -11,6 +11,7 @@
     lastTheoremLabel: null,
     nextTheoremLabel: null,
     previewErrors: [],
+    previewDeletedMarkers: [],
     previewConfirmations: [],
     previewConfirmationsRecursive: [],
     previewUnifyMarkers: [],
