@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
-    metamath::mmp_parser::{MmpParserStage4Success, MmpParserStage5, MmpParserStage6},
-    model::{MetamathData, ParseTree},
+    metamath::mmp_parser::{MmpParserStage4Success, MmpParserStage5, MmpParserStage6, UnifyLine},
+    model::{MetamathData, ParseTree, ParseTreeNode},
     Error,
 };
 
@@ -11,21 +11,39 @@ pub fn stage_6(
     stage_5: &MmpParserStage5,
     mm_data: &MetamathData,
 ) -> Result<MmpParserStage6, Error> {
-    let Some(qed_step_i) = stage_5
-        .unify_result
-        .iter()
-        .position(|ul| ul.step_name == "qed")
+    let Some(uncompressed_proof) = calc_uncompressed_proof(
+        &stage_5.unify_result,
+        &stage_4.distinct_variable_pairs,
+        mm_data,
+    )?
     else {
         return Ok(MmpParserStage6 { proof: None });
     };
 
+    let compressed_proof =
+        calc_compressed_proof(&stage_5.unify_result, uncompressed_proof, mm_data);
+
+    Ok(MmpParserStage6 {
+        proof: Some(compressed_proof),
+    })
+}
+
+fn calc_uncompressed_proof(
+    unify_result: &Vec<UnifyLine>,
+    distinct_variable_pairs: &HashSet<(String, String)>,
+    mm_data: &MetamathData,
+) -> Result<Option<String>, Error> {
+    let Some(qed_step_i) = unify_result.iter().position(|ul| ul.step_name == "qed") else {
+        return Ok(None);
+    };
+
     let mut proofs: Vec<Option<String>> = Vec::new();
 
-    for (i, unify_line) in stage_5.unify_result.iter().enumerate() {
+    for (i, unify_line) in unify_result.iter().enumerate() {
         if unify_line.is_hypothesis {
             proofs.push(Some(unify_line.step_ref.to_string()));
         } else {
-            if unify_line.step_ref == "" {
+            if unify_line.step_ref == "" || unify_line.deleted_line {
                 proofs.push(None);
                 continue;
             }
@@ -37,8 +55,7 @@ pub fn stage_6(
                     if hyp == "?" {
                         None
                     } else {
-                        stage_5
-                            .unify_result
+                        unify_result
                             .iter()
                             .take(i)
                             .position(|ul| ul.step_name == *hyp)
@@ -53,8 +70,7 @@ pub fn stage_6(
             let Some(unify_line_parse_trees) = unify_line_hypotheses_parsed
                 .iter()
                 .map(|hyp_i| {
-                    Ok(stage_5
-                        .unify_result
+                    Ok(unify_result
                         .get(*hyp_i)
                         .ok_or(Error::InternalLogicError)?
                         .parse_tree
@@ -83,7 +99,7 @@ pub fn stage_6(
                 &theorem_parse_trees,
                 &unify_line_parse_trees,
                 &theorem_data.distinct_variable_pairs,
-                &stage_4.distinct_variable_pairs,
+                distinct_variable_pairs,
                 &mm_data.optimized_data.grammar,
                 &mm_data.optimized_data.symbol_number_mapping,
             )?
@@ -148,12 +164,115 @@ pub fn stage_6(
             proof.push_str(&unify_line.step_ref);
 
             proofs.push(Some(proof));
+
+            if unify_line.step_name == "qed" {
+                break;
+            }
         }
 
         // println!("{}", proofs.last().unwrap());
     }
 
-    Ok(MmpParserStage6 {
-        proof: proofs.swap_remove(qed_step_i),
-    })
+    Ok(proofs.swap_remove(qed_step_i))
+}
+
+fn calc_compressed_proof(
+    unify_result: &Vec<UnifyLine>,
+    uncompressed_proof: String,
+    mm_data: &MetamathData,
+) -> String {
+    let vars_in_theorem: HashSet<&str> = unify_result
+        .iter()
+        .filter(|ul| ul.is_hypothesis || ul.step_name == "qed")
+        // Should never filter
+        .filter_map(|ul| Some(ul.parse_tree.as_ref()?.top_node.iter()))
+        .flatten()
+        .filter_map(|ptn| {
+            if let ParseTreeNode::Node { rule_i, .. } = ptn {
+                let rule = mm_data.optimized_data.grammar.rules.get(*rule_i as usize)?;
+
+                if rule.is_floating_hypothesis {
+                    let symbol_i = rule.right_side.first()?.symbol_i;
+
+                    Some(
+                        mm_data
+                            .optimized_data
+                            .symbol_number_mapping
+                            .symbols
+                            .get(&symbol_i)?
+                            .as_str(),
+                    )
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    let floating_hypotheses: Vec<&str> = mm_data
+        .optimized_data
+        .floating_hypotheses
+        .iter()
+        .filter(|fh| vars_in_theorem.contains(&*fh.variable))
+        .map(|fh| &*fh.label)
+        .collect();
+
+    let hypotheses: Vec<&str> = unify_result
+        .iter()
+        .filter(|ul| ul.is_hypothesis)
+        .map(|ul| &*ul.step_ref)
+        .collect();
+
+    let mut previously_used_steps: Vec<&str> = Vec::new();
+
+    let mut compressed_steps = String::new();
+
+    for step in uncompressed_proof.split_ascii_whitespace() {
+        let number = match floating_hypotheses
+            .iter()
+            .chain(hypotheses.iter())
+            .chain(previously_used_steps.iter())
+            .position(|prev_step| *prev_step == step)
+        {
+            Some(i) => i,
+            None => {
+                previously_used_steps.push(step);
+                floating_hypotheses.len() + hypotheses.len() + previously_used_steps.len() - 1
+            }
+        };
+
+        let compressed_number = number_to_compressed_proof_format_number(number);
+
+        compressed_steps.push_str(&compressed_number);
+    }
+
+    let mut result = previously_used_steps
+        .iter()
+        .fold("( ".to_string(), |mut s, pus| {
+            s.push_str(pus);
+            s.push(' ');
+            s
+        });
+
+    result.push_str(") ");
+    result.push_str(&compressed_steps);
+
+    result
+}
+
+fn number_to_compressed_proof_format_number(mut number: usize) -> String {
+    let mut compressed_number = String::new();
+
+    compressed_number.push(('A' as u8 + (number % 20) as u8) as char);
+
+    number = number / 20;
+
+    while number != 0 {
+        compressed_number.push(('U' as u8 + ((number - 1) % 5) as u8) as char);
+        number = number / 6;
+    }
+
+    compressed_number.chars().rev().collect()
 }
