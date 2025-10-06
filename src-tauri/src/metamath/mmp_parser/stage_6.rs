@@ -236,10 +236,10 @@ fn calc_compressed_proof(
             .chain(previously_used_steps.iter())
             .position(|prev_step| *prev_step == step)
         {
-            Some(i) => i,
+            Some(i) => i + 1,
             None => {
                 previously_used_steps.push(step);
-                floating_hypotheses.len() + hypotheses.len() + previously_used_steps.len() - 1
+                floating_hypotheses.len() + hypotheses.len() + previously_used_steps.len()
             }
         };
 
@@ -263,15 +263,19 @@ fn calc_compressed_proof(
 }
 
 fn number_to_compressed_proof_format_number(mut number: usize) -> String {
+    if number == 0 {
+        return String::new();
+    }
+
     let mut compressed_number = String::new();
 
-    compressed_number.push(('A' as u8 + (number % 20) as u8) as char);
+    compressed_number.push(('A' as u8 + ((number - 1) % 20) as u8) as char);
 
-    number = number / 20;
+    number = (number - ((number - 1) % 20) + 1) / 20;
 
     while number != 0 {
         compressed_number.push(('U' as u8 + ((number - 1) % 5) as u8) as char);
-        number = number / 6;
+        number = (number - ((number - 1) % 5) + 1) / 5;
     }
 
     compressed_number.chars().rev().collect()
