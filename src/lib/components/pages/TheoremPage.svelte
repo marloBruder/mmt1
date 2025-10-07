@@ -5,8 +5,18 @@
   import TheoremLink from "../util/TheoremLink.svelte";
   import TheoremNumber from "../util/TheoremNumber.svelte";
   import { settingsData } from "$lib/sharedState/settingsData.svelte";
+  import RoundButton from "../util/RoundButton.svelte";
+  import type { TheoremTab } from "../tabs/TheoremTabComponent.svelte";
 
-  let { pageData, editorPreview = false }: { pageData: TheoremPageData; editorPreview?: boolean } = $props();
+  let {
+    pageData,
+    editorPreview = false,
+    theoremTab,
+  }: {
+    pageData: TheoremPageData;
+    editorPreview?: boolean;
+    theoremTab?: TheoremTab;
+  } = $props();
 
   let theorem = $derived(pageData.theorem);
 
@@ -36,6 +46,13 @@
     }
 
     return "";
+  };
+
+  let toggleShowAll = async () => {
+    if (theoremTab !== undefined) {
+      theoremTab.showAll = !theoremTab.showAll;
+      await theoremTab.loadData();
+    }
   };
 </script>
 
@@ -165,6 +182,9 @@
       </table>
     </div>
   {/if}
+  <div class="px-4">
+    <RoundButton onclick={toggleShowAll}>Toggle Show All Proof Steps</RoundButton>
+  </div>
   <div class="p-8">
     <hr />
   </div>

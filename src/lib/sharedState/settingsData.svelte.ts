@@ -6,12 +6,14 @@ export interface Settings {
   definitionsStartWith: string;
   colorUnicodePreview: boolean;
   showUnifyResultInUnicodePreview: boolean;
+  defaultShowAll: boolean;
 }
 
 let defaultSettings: Settings = {
   definitionsStartWith: "df-",
   colorUnicodePreview: true,
   showUnifyResultInUnicodePreview: true,
+  defaultShowAll: false,
 };
 
 class SettingsData {

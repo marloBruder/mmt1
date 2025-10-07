@@ -444,6 +444,7 @@ fn get_str_in_quotes(str: &str) -> Option<String> {
 pub fn calc_theorem_page_data(
     label: &str,
     metamath_data: &MetamathData,
+    show_all: bool,
 ) -> Result<TheoremPageData, Error> {
     let (theorem_i, (last_theorem, theorem, next_theorem)) = metamath_data
         .database_header
@@ -502,7 +503,8 @@ pub fn calc_theorem_page_data(
 
     let mut proof_lines = Vec::new();
 
-    let mut verifier = Verifier::new(theorem, metamath_data)?.ok_or(Error::InternalLogicError)?;
+    let mut verifier =
+        Verifier::new(theorem, metamath_data, show_all)?.ok_or(Error::InternalLogicError)?;
 
     loop {
         let step_result = verifier.proccess_next_step(metamath_data)?;
@@ -515,9 +517,9 @@ pub fn calc_theorem_page_data(
         }
     }
 
-    for pl in &proof_lines {
-        println!("{:#?}", pl);
-    }
+    // for pl in &proof_lines {
+    //     println!("{:#?}", pl);
+    // }
 
     calc_indention(&mut proof_lines)?;
 

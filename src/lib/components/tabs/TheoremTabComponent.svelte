@@ -5,7 +5,14 @@
   import { invoke } from "@tauri-apps/api/core";
 
   let theoremPageDataDefault: TheoremPageData = {
-    theorem: { label: "", description: "", distincts: [], hypotheses: [], assertion: "", proof: null },
+    theorem: {
+      label: "",
+      description: "",
+      distincts: [],
+      hypotheses: [],
+      assertion: "",
+      proof: null,
+    },
     theoremNumber: 0,
     proofLines: [],
     lastTheoremLabel: null,
@@ -27,14 +34,19 @@
 
     #theoremLabel: string;
     #pageData: TheoremPageData = $state(theoremPageDataDefault);
+    showAll: boolean = $state(false);
 
     constructor(theoremLabel: string) {
       super();
       this.#theoremLabel = theoremLabel;
+      this.showAll = settingsData.settings.defaultShowAll;
     }
 
     async loadData(): Promise<void> {
-      this.#pageData = await invoke("get_theorem_page_data_local", { label: this.#theoremLabel });
+      this.#pageData = await invoke("get_theorem_page_data_local", {
+        label: this.#theoremLabel,
+        showAll: this.showAll,
+      });
     }
 
     unloadData(): void {
@@ -61,6 +73,7 @@
 
 <script lang="ts">
   import TheoremPage from "../pages/TheoremPage.svelte";
+  import { settingsData } from "$lib/sharedState/settingsData.svelte";
 
   let { tab }: { tab: Tab } = $props();
 
@@ -74,4 +87,4 @@
   let pageData = $derived(theoremTab.pageData);
 </script>
 
-<TheoremPage {pageData}></TheoremPage>
+<TheoremPage {pageData} {theoremTab}></TheoremPage>
