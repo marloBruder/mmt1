@@ -1,24 +1,22 @@
 use crate::{
     local_state::{
         // constant::set_constants_local,
-        floating_hypothesis::{
-            get_floating_hypothesis_by_label, /*set_floating_hypotheses_local*/
-        },
         // html_representation::set_html_representations_local,
         // in_progress_theorem::delete_in_progress_theorem_local,
         theorem::{add_theorem_local, get_theorem_insert_position},
         // variable::set_variables_local,
     },
-    model::{Hypothesis, MetamathData, ProofLine, Theorem, TheoremPageData, TheoremPath},
+    metamath::verify::{StepResult, Verifier},
+    model::{Hypothesis, MetamathData, ProofLine, TheoremPageData, TheoremPath},
     util::last_curr_next_iterator::IntoLastCurrNextIterator,
     AppState, Error,
 };
-use std::collections::HashMap;
 use tauri::async_runtime::Mutex;
 
 pub mod export;
 pub mod mm_parser;
 pub mod mmp_parser;
+pub mod verify;
 
 #[tauri::command]
 pub async fn turn_into_theorem(
@@ -443,23 +441,6 @@ fn get_str_in_quotes(str: &str) -> Option<String> {
     Some(str[1..(str.len() - 1)].replace(replace, replace_with))
 }
 
-#[derive(Debug)]
-struct ProofStep {
-    pub label: String,
-    pub label_theorem_number: Option<u32>,
-    pub hypotheses: Vec<String>,
-    pub statement: String,
-    // dispaly_step_number is -1, if the proof step was not saved,
-    // else the display_step_num of the last stack_line when step was saved
-    pub display_step_number: i32,
-}
-
-#[derive(Debug)]
-struct StackLine {
-    pub statement: String,
-    pub display_step_number: i32,
-}
-
 pub fn calc_theorem_page_data(
     label: &str,
     metamath_data: &MetamathData,
@@ -500,7 +481,7 @@ pub fn calc_theorem_page_data(
 
     let description_parsed = optimized_theorem_data.description_parsed.clone();
 
-    if theorem.proof == None {
+    if theorem.proof.is_none() {
         return Ok(TheoremPageData {
             theorem: theorem.clone(),
             theorem_number,
@@ -518,100 +499,24 @@ pub fn calc_theorem_page_data(
             description_parsed,
         });
     }
+
     let mut proof_lines = Vec::new();
 
-    let mut proof_steps: Vec<ProofStep>;
-    // step numbers begin at 1
-    let step_numbers: Vec<(u32, bool)>;
+    let mut verifier = Verifier::new(theorem, metamath_data)?.ok_or(Error::InternalLogicError)?;
 
-    if theorem.proof.as_ref().unwrap().starts_with("( ") {
-        proof_steps = calc_proof_steps_compressed(theorem, metamath_data)?;
-        step_numbers = calc_proof_step_numbers_compressed(theorem)?;
-    } else {
-        (proof_steps, step_numbers) =
-            calc_proof_steps_and_numbers_uncompressed(theorem, metamath_data)?;
+    loop {
+        let step_result = verifier.proccess_next_step(metamath_data)?;
+        match step_result {
+            StepResult::VerifierFinished => break,
+            StepResult::NoProofLine => {}
+            StepResult::ProofLine(proof_line) => {
+                proof_lines.push(proof_line);
+            }
+        }
     }
 
-    // for (i, step) in proof_steps.iter().enumerate() {
-    //     println!("Step {}:\n{:?}", i + 1, step);
-    // }
-    // println!("\nNumbers:\n{:?}\n", step_numbers);
-
-    let mut stack: Vec<StackLine> = Vec::new();
-
-    let mut next_hypotheses_num = 1;
-
-    let step_numbers_len = step_numbers.len();
-
-    for (i, (step_num, save)) in step_numbers.into_iter().enumerate() {
-        let step = proof_steps
-            .get((step_num - 1) as usize)
-            .ok_or(Error::InvalidProofError)?;
-        let mut hypotheses_nums: Vec<i32> = Vec::new();
-
-        if step.hypotheses.len() == 0 {
-            stack.push(StackLine {
-                statement: step.statement.clone(),
-                display_step_number: -1,
-            });
-        } else {
-            let (next_step, display_hypotheses_num) =
-                calc_step_application(step, &stack, metamath_data)?;
-            for i in 0..step.hypotheses.len() {
-                if i < display_hypotheses_num {
-                    hypotheses_nums.push(
-                        stack
-                            .last()
-                            .ok_or(Error::InvalidProofError)?
-                            .display_step_number,
-                    );
-                }
-                stack.pop();
-            }
-            stack.push(StackLine {
-                statement: next_step,
-                display_step_number: -1,
-            });
-        }
-
-        if stack.last().unwrap().statement.split_whitespace().next() == Some("|-")
-            || i == step_numbers_len - 1
-        {
-            if step.display_step_number == -1 {
-                hypotheses_nums.reverse();
-                proof_lines.push(ProofLine {
-                    step_name: (proof_lines.len() + 1).to_string(),
-                    hypotheses: hypotheses_nums.iter().map(|&i| i.to_string()).collect(),
-                    reference: step.label.clone(),
-                    reference_number: step.label_theorem_number,
-                    indention: 1,
-                    assertion: stack[stack.len() - 1].statement.clone(),
-                    old_assertion: None,
-                });
-                stack.last_mut().unwrap().display_step_number = next_hypotheses_num;
-                next_hypotheses_num += 1;
-            } else {
-                stack.last_mut().unwrap().display_step_number = step.display_step_number;
-            }
-        }
-
-        if save {
-            proof_steps.push(ProofStep {
-                label: String::new(),
-                label_theorem_number: None,
-                hypotheses: Vec::new(),
-                statement: stack[stack.len() - 1].statement.clone(),
-                display_step_number: stack.last().unwrap().display_step_number,
-            });
-        }
-
-        // println!("\nStack:");
-        // for stack_line in &stack {
-        //     println!(
-        //         "{}: {}",
-        //         stack_line.display_step_number, stack_line.statement
-        //     )
-        // }
+    for pl in &proof_lines {
+        println!("{:#?}", pl);
     }
 
     calc_indention(&mut proof_lines)?;
@@ -689,335 +594,581 @@ fn calc_indention(proof_lines: &mut Vec<ProofLine>) -> Result<(), Error> {
     Ok(())
 }
 
-fn calc_step_application<'a>(
-    step: &'a ProofStep,
-    stack: &Vec<StackLine>,
-    metamath_data: &MetamathData,
-) -> Result<(String, usize), Error> {
-    if stack.len() < step.hypotheses.len() {
-        return Err(Error::InvalidProofError);
-    }
-    let mut var_map: HashMap<&str, String> = HashMap::new();
-    let mut display_hypotheses_num = 0;
+// #[derive(Debug)]
+// struct ProofStep {
+//     pub label: String,
+//     pub label_theorem_number: Option<u32>,
+//     pub hypotheses: Vec<String>,
+//     pub statement: String,
+//     // dispaly_step_number is -1, if the proof step was not saved,
+//     // else the display_step_num of the last stack_line when step was saved
+//     pub display_step_number: i32,
+// }
 
-    for (index, hypothesis) in (&step.hypotheses).iter().map(|s| s.as_str()).enumerate() {
-        let tokens: Vec<&str> = hypothesis.split_whitespace().collect();
-        let stack_str = stack[stack.len() - step.hypotheses.len() + index]
-            .statement
-            .as_str();
+// #[derive(Debug)]
+// struct StackLine {
+//     pub statement: String,
+//     pub display_step_number: i32,
+// }
 
-        if tokens.len() == 2 && tokens[0] != "|-" && metamath_data.is_variable(tokens[1]) {
-            if tokens[0] != stack_str.split_whitespace().next().unwrap() {
-                return Err(Error::InvalidProofError);
-            }
+// pub fn calc_theorem_page_data(
+//     label: &str,
+//     metamath_data: &MetamathData,
+// ) -> Result<TheoremPageData, Error> {
+//     let (theorem_i, (last_theorem, theorem, next_theorem)) = metamath_data
+//         .database_header
+//         .theorem_iter()
+//         .last_curr_next()
+//         .enumerate()
+//         .find(|(_, (_, curr_t, _))| curr_t.label == label)
+//         .ok_or(Error::NotFoundError)?;
 
-            let mapped = statement_as_string_without_typecode(stack_str);
-            var_map.insert(tokens[1], mapped);
-        } else {
-            display_hypotheses_num += 1;
-            if stack_str != calc_substitution(hypothesis, &var_map) {
-                return Err(Error::InvalidProofError);
-            }
-        }
-    }
-    Ok((
-        calc_substitution(&step.statement, &var_map),
-        display_hypotheses_num,
-    ))
-}
+//     let last_theorem_label = last_theorem.map(|t| t.label.clone());
+//     let next_theorem_label = next_theorem.map(|t| t.label.clone());
 
-fn calc_substitution(statement: &str, var_mapping: &HashMap<&str, String>) -> String {
-    let mut substitution = String::new();
-    for token in statement.split_whitespace() {
-        if !var_mapping.contains_key(token) {
-            substitution.push_str(token);
-        } else {
-            substitution.push_str(var_mapping.get(token).unwrap().as_str());
-        }
-        substitution.push(' ');
-    }
-    substitution.pop();
-    substitution
-}
+//     let theorem_number = (theorem_i + 1) as u32;
 
-fn statement_as_string_without_typecode(statement: &str) -> String {
-    let mut res = String::new();
-    let mut first = true;
+//     let optimized_theorem_data = metamath_data
+//         .optimized_data
+//         .theorem_data
+//         .get(label)
+//         .ok_or(Error::InternalLogicError)?;
 
-    for token in statement.split_whitespace() {
-        if !first {
-            res.push_str(token);
-            res.push(' ');
-        } else {
-            first = false;
-        }
-    }
+//     let axiom_dependencies = metamath_data
+//         .database_header
+//         .theorem_i_vec_to_theorem_label_vec(&optimized_theorem_data.axiom_dependencies)
+//         .map_err(|_| Error::InternalLogicError)?;
 
-    res.pop();
-    res
-}
+//     let definition_dependencies = metamath_data
+//         .database_header
+//         .theorem_i_vec_to_theorem_label_vec(&optimized_theorem_data.definition_dependencies)
+//         .map_err(|_| Error::InternalLogicError)?;
 
-fn calc_proof_steps_and_numbers_uncompressed(
-    theorem: &Theorem,
-    metamath_data: &MetamathData,
-) -> Result<(Vec<ProofStep>, Vec<(u32, bool)>), Error> {
-    let mut proof_steps: Vec<ProofStep> = Vec::new();
-    let mut proof_step_numbers: Vec<(u32, bool)> = Vec::new();
+//     let references = metamath_data
+//         .database_header
+//         .theorem_i_vec_to_theorem_label_vec(&optimized_theorem_data.references)
+//         .map_err(|_| Error::InternalLogicError)?;
 
-    if let Some(proof) = theorem.proof.as_ref() {
-        for token in proof.split_ascii_whitespace() {
-            if let Some((i, _)) = proof_steps
-                .iter()
-                .enumerate()
-                .find(|(_, ps)| ps.label == token)
-            {
-                proof_step_numbers.push(((i + 1) as u32, false));
-            } else {
-                proof_steps.push(calc_proof_step_from_label(token, theorem, metamath_data)?);
-                proof_step_numbers.push((proof_steps.len() as u32, false))
-            }
-        }
-    }
+//     let description_parsed = optimized_theorem_data.description_parsed.clone();
 
-    Ok((proof_steps, proof_step_numbers))
-}
+//     if theorem.proof == None {
+//         return Ok(TheoremPageData {
+//             theorem: theorem.clone(),
+//             theorem_number,
+//             proof_lines: Vec::new(),
+//             preview_errors: None,
+//             preview_deleted_markers: None,
+//             preview_confirmations: None,
+//             preview_confirmations_recursive: None,
+//             preview_unify_markers: None,
+//             last_theorem_label,
+//             next_theorem_label,
+//             axiom_dependencies,
+//             definition_dependencies,
+//             references,
+//             description_parsed,
+//         });
+//     }
+//     let mut proof_lines = Vec::new();
 
-fn calc_proof_step_from_label(
-    label: &str,
-    theorem: &Theorem,
-    metamath_data: &MetamathData,
-) -> Result<ProofStep, Error> {
-    if let Some(hyp) = theorem.hypotheses.iter().find(|h| h.label == label) {
-        return Ok(ProofStep {
-            label: label.to_string(),
-            label_theorem_number: None,
-            hypotheses: Vec::new(),
-            statement: hyp.expression.clone(),
-            display_step_number: -1,
-        });
-    }
+//     let mut proof_steps: Vec<ProofStep>;
+//     // step numbers begin at 1
+//     let step_numbers: Vec<(u32, bool)>;
 
-    if let Some(floating_hypothesis) = metamath_data
-        .database_header
-        .floating_hypohesis_iter()
-        .find(|fh| fh.label == label)
-    {
-        return Ok(ProofStep {
-            label: label.to_string(),
-            label_theorem_number: None,
-            hypotheses: Vec::new(),
-            statement: floating_hypothesis.to_assertions_string(),
-            display_step_number: -1,
-        });
-    }
+//     if theorem.proof.as_ref().unwrap().starts_with("( ") {
+//         proof_steps = calc_proof_steps_compressed(theorem, metamath_data)?;
+//         step_numbers = calc_proof_step_numbers_compressed(theorem)?;
+//     } else {
+//         (proof_steps, step_numbers) =
+//             calc_proof_steps_and_numbers_uncompressed(theorem, metamath_data)?;
+//     }
 
-    if let Some((theorem_i, theorem)) = metamath_data
-        .database_header
-        .find_theorem_and_index_by_label(label)
-    {
-        let label_theorem_hypotheses = calc_all_hypotheses_of_theorem(theorem, metamath_data);
-        return Ok(ProofStep {
-            label: label.to_string(),
-            label_theorem_number: Some((theorem_i + 1) as u32),
-            hypotheses: label_theorem_hypotheses
-                .into_iter()
-                .map(|(hyp, _label)| hyp)
-                .collect(),
-            statement: theorem.assertion.clone(),
-            display_step_number: -1,
-        });
-    }
+//     // for (i, step) in proof_steps.iter().enumerate() {
+//     //     println!("Step {}:\n{:?}", i + 1, step);
+//     // }
+//     // println!("\nNumbers:\n{:?}\n", step_numbers);
 
-    Err(Error::NotFoundError)
-}
+//     let mut stack: Vec<StackLine> = Vec::new();
 
-fn calc_proof_step_numbers_compressed(theorem: &Theorem) -> Result<Vec<(u32, bool)>, Error> {
-    let proof = match theorem.proof.as_ref() {
-        Some(proof) => &**proof,
-        None => return Ok(Vec::new()),
-    };
+//     let mut next_hypotheses_num = 1;
 
-    let mut passed_labels = false;
-    let mut compressed_steps = String::new();
+//     let step_numbers_len = step_numbers.len();
 
-    for token in proof.split_whitespace() {
-        match token {
-            ")" => passed_labels = true,
-            s if passed_labels => {
-                compressed_steps.push_str(s);
-            }
-            _ => {}
-        }
-    }
+//     for (i, (step_num, save)) in step_numbers.into_iter().enumerate() {
+//         let step = proof_steps
+//             .get((step_num - 1) as usize)
+//             .ok_or(Error::InvalidProofError)?;
+//         let mut hypotheses_nums: Vec<i32> = Vec::new();
 
-    let mut step_numbers = Vec::new();
+//         if step.hypotheses.len() == 0 {
+//             stack.push(StackLine {
+//                 statement: step.statement.clone(),
+//                 display_step_number: -1,
+//             });
+//         } else {
+//             let (next_step, display_hypotheses_num) =
+//                 calc_step_application(step, &stack, metamath_data)?;
+//             for i in 0..step.hypotheses.len() {
+//                 if i < display_hypotheses_num {
+//                     hypotheses_nums.push(
+//                         stack
+//                             .last()
+//                             .ok_or(Error::InvalidProofError)?
+//                             .display_step_number,
+//                     );
+//                 }
+//                 stack.pop();
+//             }
+//             stack.push(StackLine {
+//                 statement: next_step,
+//                 display_step_number: -1,
+//             });
+//         }
 
-    let mut char_iter = compressed_steps.chars();
+//         if stack.last().unwrap().statement.split_whitespace().next() == Some("|-")
+//             || i == step_numbers_len - 1
+//         {
+//             if step.display_step_number == -1 {
+//                 hypotheses_nums.reverse();
+//                 proof_lines.push(ProofLine {
+//                     step_name: (proof_lines.len() + 1).to_string(),
+//                     hypotheses: hypotheses_nums.iter().map(|&i| i.to_string()).collect(),
+//                     reference: step.label.clone(),
+//                     reference_number: step.label_theorem_number,
+//                     indention: 1,
+//                     assertion: stack[stack.len() - 1].statement.clone(),
+//                     old_assertion: None,
+//                 });
+//                 stack.last_mut().unwrap().display_step_number = next_hypotheses_num;
+//                 next_hypotheses_num += 1;
+//             } else {
+//                 stack.last_mut().unwrap().display_step_number = step.display_step_number;
+//             }
+//         }
 
-    let mut current_compressed_num = String::new();
+//         if save {
+//             proof_steps.push(ProofStep {
+//                 label: String::new(),
+//                 label_theorem_number: None,
+//                 hypotheses: Vec::new(),
+//                 statement: stack[stack.len() - 1].statement.clone(),
+//                 display_step_number: stack.last().unwrap().display_step_number,
+//             });
+//         }
 
-    while let Some(character) = char_iter.next() {
-        match character {
-            c @ 'A'..='T' => {
-                current_compressed_num.push(c);
-                step_numbers.push((compressed_num_to_num(&current_compressed_num)?, false));
-                current_compressed_num = String::new();
-            }
-            c @ 'U'..='Y' => current_compressed_num.push(c),
-            'Z' if step_numbers.len() != 0 => {
-                let len = step_numbers.len();
-                step_numbers[len - 1].1 = true;
-            }
-            _ => return Err(Error::InvalidFormatError),
-        }
-    }
+//         // println!("\nStack:");
+//         // for stack_line in &stack {
+//         //     println!(
+//         //         "{}: {}",
+//         //         stack_line.display_step_number, stack_line.statement
+//         //     )
+//         // }
+//     }
 
-    Ok(step_numbers)
-}
+//     calc_indention(&mut proof_lines)?;
 
-fn compressed_num_to_num(compressed_num: &str) -> Result<u32, Error> {
-    let mut first = true;
-    let mut num = 0;
-    let mut multiplier = 20;
-    for ch in compressed_num.chars().rev() {
-        match ch {
-            ch @ 'A'..='T' if first => {
-                num = (ch as u32) - 64;
-                first = false;
-            }
-            ch @ 'U'..='Y' if !first => {
-                num += ((ch as u32) - 84) * multiplier;
-                multiplier *= 5;
-            }
-            _ => return Err(Error::InvalidFormatError),
-        }
-    }
-    if num == 0 {
-        return Err(Error::InvalidFormatError);
-    }
-    Ok(num)
-}
+//     Ok(TheoremPageData {
+//         theorem: theorem.clone(),
+//         theorem_number,
+//         proof_lines,
+//         preview_errors: None,
+//         preview_deleted_markers: None,
+//         preview_confirmations: None,
+//         preview_confirmations_recursive: None,
+//         preview_unify_markers: None,
+//         last_theorem_label,
+//         next_theorem_label,
+//         axiom_dependencies,
+//         definition_dependencies,
+//         references,
+//         description_parsed,
+//     })
+// }
 
-fn calc_proof_steps_compressed(
-    theorem: &Theorem,
-    metamath_data: &MetamathData,
-) -> Result<Vec<ProofStep>, Error> {
-    let proof = match theorem.proof.as_ref() {
-        Some(proof) => &**proof,
-        None => return Ok(Vec::new()),
-    };
+// #[derive(Debug)]
+// struct Tree {
+//     pub label: i32,
+//     pub nodes: Vec<Tree>,
+// }
 
-    let mut steps = Vec::new();
+// fn calc_indention(proof_lines: &mut Vec<ProofLine>) -> Result<(), Error> {
+//     // calc tree rep
+//     let mut trees: Vec<Tree> = Vec::new();
+//     for (i, proof_line) in proof_lines.iter().enumerate() {
+//         let mut nodes: Vec<Tree> = Vec::new();
+//         for hypothesis in &proof_line.hypotheses {
+//             for tree_i in 0..trees.len() {
+//                 if trees[tree_i].label
+//                     == hypothesis
+//                         .parse::<i32>()
+//                         .or(Err(Error::InternalLogicError))?
+//                 {
+//                     nodes.push(trees.remove(tree_i));
+//                     break;
+//                 }
+//             }
+//         }
 
-    let hypotheses = calc_all_hypotheses_of_theorem(theorem, metamath_data);
+//         trees.push(Tree {
+//             label: (i + 1) as i32,
+//             nodes,
+//         })
+//     }
 
-    for (hypothesis, label) in hypotheses {
-        steps.push(ProofStep {
-            label,
-            label_theorem_number: None,
-            hypotheses: Vec::new(),
-            statement: hypothesis,
-            display_step_number: -1,
-        })
-    }
+//     // apply indention based on tree
+//     if trees.len() != 1 {
+//         println!("{:?}", trees);
+//         return Err(Error::InternalLogicError);
+//     }
 
-    for token in proof.split_whitespace() {
-        match token {
-            "(" => {}
-            ")" => break,
-            label => {
-                if let Some((theorem_i, theorem)) = metamath_data
-                    .database_header
-                    .find_theorem_and_index_by_label(label)
-                {
-                    let label_theorem_hypotheses =
-                        calc_all_hypotheses_of_theorem(theorem, metamath_data);
-                    steps.push(ProofStep {
-                        label: label.to_string(),
-                        label_theorem_number: Some((theorem_i + 1) as u32),
-                        hypotheses: label_theorem_hypotheses
-                            .into_iter()
-                            .map(|(hyp, _label)| hyp)
-                            .collect(),
-                        statement: theorem.assertion.clone(),
-                        display_step_number: -1,
-                    });
-                } else {
-                    let floating_hypothesis =
-                        get_floating_hypothesis_by_label(metamath_data, label)
-                            .ok_or(Error::NotFoundError)?;
+//     let mut indention = 1;
+//     let mut next_level: Vec<&Tree> = vec![trees.first().unwrap()];
+//     let mut current_level: Vec<&Tree>;
 
-                    steps.push(ProofStep {
-                        label: label.to_string(),
-                        label_theorem_number: None,
-                        hypotheses: Vec::new(),
-                        statement: floating_hypothesis.to_assertions_string(),
-                        display_step_number: -1,
-                    });
-                }
-            }
-        };
-    }
+//     while next_level.len() != 0 {
+//         current_level = next_level;
+//         next_level = Vec::new();
 
-    Ok(steps)
-}
+//         for tree in current_level {
+//             proof_lines[(tree.label - 1) as usize].indention = indention;
+//             next_level.extend(tree.nodes.iter());
+//         }
 
-fn calc_all_hypotheses_of_theorem(
-    theorem: &Theorem,
-    metamath_data: &MetamathData,
-) -> Vec<(String, String)> {
-    let mut hypotheses = Vec::new();
+//         indention += 1;
+//     }
 
-    // Calculate variables occuring in assertion and hypotheses
-    let variables = calc_variables_of_theorem(theorem, metamath_data);
+//     Ok(())
+// }
 
-    // Calculate proof steps of floating hypotheses
-    for floating_hypothesis in &metamath_data.optimized_data.floating_hypotheses {
-        for &variable in &variables {
-            if floating_hypothesis.variable == variable {
-                let mut statement = floating_hypothesis.typecode.clone();
-                statement.push(' ');
-                statement.push_str(&floating_hypothesis.variable);
-                hypotheses.push((statement, floating_hypothesis.label.clone()));
-                break;
-            }
-        }
-    }
+// fn calc_step_application<'a>(
+//     step: &'a ProofStep,
+//     stack: &Vec<StackLine>,
+//     metamath_data: &MetamathData,
+// ) -> Result<(String, usize), Error> {
+//     if stack.len() < step.hypotheses.len() {
+//         return Err(Error::InvalidProofError);
+//     }
+//     let mut var_map: HashMap<&str, String> = HashMap::new();
+//     let mut display_hypotheses_num = 0;
 
-    // Calculate proof steps of essential hypotheses
-    for hypothesis in &theorem.hypotheses {
-        hypotheses.push((hypothesis.expression.clone(), hypothesis.label.clone()));
-    }
+//     for (index, hypothesis) in (&step.hypotheses).iter().map(|s| s.as_str()).enumerate() {
+//         let tokens: Vec<&str> = hypothesis.split_whitespace().collect();
+//         let stack_str = stack[stack.len() - step.hypotheses.len() + index]
+//             .statement
+//             .as_str();
 
-    hypotheses
-}
+//         if tokens.len() == 2 && tokens[0] != "|-" && metamath_data.is_variable(tokens[1]) {
+//             if tokens[0] != stack_str.split_whitespace().next().unwrap() {
+//                 return Err(Error::InvalidProofError);
+//             }
 
-fn calc_variables_of_theorem<'a>(
-    theorem: &'a Theorem,
-    metamath_data: &MetamathData,
-) -> Vec<&'a str> {
-    let mut variables = get_variables_from_statement(&theorem.assertion, metamath_data);
+//             let mapped = statement_as_string_without_typecode(stack_str);
+//             var_map.insert(tokens[1], mapped);
+//         } else {
+//             display_hypotheses_num += 1;
+//             if stack_str != calc_substitution(hypothesis, &var_map) {
+//                 return Err(Error::InvalidProofError);
+//             }
+//         }
+//     }
+//     Ok((
+//         calc_substitution(&step.statement, &var_map),
+//         display_hypotheses_num,
+//     ))
+// }
 
-    for hypothesis in &theorem.hypotheses {
-        let hypothesis_vars = get_variables_from_statement(&hypothesis.expression, metamath_data);
-        for var in hypothesis_vars {
-            if !variables.contains(&var) {
-                variables.push(var);
-            }
-        }
-    }
-    variables
-}
+// fn calc_substitution(statement: &str, var_mapping: &HashMap<&str, String>) -> String {
+//     let mut substitution = String::new();
+//     for token in statement.split_whitespace() {
+//         if !var_mapping.contains_key(token) {
+//             substitution.push_str(token);
+//         } else {
+//             substitution.push_str(var_mapping.get(token).unwrap().as_str());
+//         }
+//         substitution.push(' ');
+//     }
+//     substitution.pop();
+//     substitution
+// }
 
-fn get_variables_from_statement<'a>(
-    statement: &'a str,
-    metamath_data: &MetamathData,
-) -> Vec<&'a str> {
-    let mut vars = Vec::new();
-    for token in statement.split_whitespace() {
-        if !vars.contains(&token) && metamath_data.is_variable(token) {
-            vars.push(token);
-        }
-    }
-    vars
-}
+// fn statement_as_string_without_typecode(statement: &str) -> String {
+//     let mut res = String::new();
+//     let mut first = true;
+
+//     for token in statement.split_whitespace() {
+//         if !first {
+//             res.push_str(token);
+//             res.push(' ');
+//         } else {
+//             first = false;
+//         }
+//     }
+
+//     res.pop();
+//     res
+// }
+
+// fn calc_proof_steps_and_numbers_uncompressed(
+//     theorem: &Theorem,
+//     metamath_data: &MetamathData,
+// ) -> Result<(Vec<ProofStep>, Vec<(u32, bool)>), Error> {
+//     let mut proof_steps: Vec<ProofStep> = Vec::new();
+//     let mut proof_step_numbers: Vec<(u32, bool)> = Vec::new();
+
+//     if let Some(proof) = theorem.proof.as_ref() {
+//         for token in proof.split_ascii_whitespace() {
+//             if let Some((i, _)) = proof_steps
+//                 .iter()
+//                 .enumerate()
+//                 .find(|(_, ps)| ps.label == token)
+//             {
+//                 proof_step_numbers.push(((i + 1) as u32, false));
+//             } else {
+//                 proof_steps.push(calc_proof_step_from_label(token, theorem, metamath_data)?);
+//                 proof_step_numbers.push((proof_steps.len() as u32, false))
+//             }
+//         }
+//     }
+
+//     Ok((proof_steps, proof_step_numbers))
+// }
+
+// fn calc_proof_step_from_label(
+//     label: &str,
+//     theorem: &Theorem,
+//     metamath_data: &MetamathData,
+// ) -> Result<ProofStep, Error> {
+//     if let Some(hyp) = theorem.hypotheses.iter().find(|h| h.label == label) {
+//         return Ok(ProofStep {
+//             label: label.to_string(),
+//             label_theorem_number: None,
+//             hypotheses: Vec::new(),
+//             statement: hyp.expression.clone(),
+//             display_step_number: -1,
+//         });
+//     }
+
+//     if let Some(floating_hypothesis) = metamath_data
+//         .database_header
+//         .floating_hypohesis_iter()
+//         .find(|fh| fh.label == label)
+//     {
+//         return Ok(ProofStep {
+//             label: label.to_string(),
+//             label_theorem_number: None,
+//             hypotheses: Vec::new(),
+//             statement: floating_hypothesis.to_assertions_string(),
+//             display_step_number: -1,
+//         });
+//     }
+
+//     if let Some((theorem_i, theorem)) = metamath_data
+//         .database_header
+//         .find_theorem_and_index_by_label(label)
+//     {
+//         let label_theorem_hypotheses = calc_all_hypotheses_of_theorem(theorem, metamath_data);
+//         return Ok(ProofStep {
+//             label: label.to_string(),
+//             label_theorem_number: Some((theorem_i + 1) as u32),
+//             hypotheses: label_theorem_hypotheses
+//                 .into_iter()
+//                 .map(|(hyp, _label)| hyp)
+//                 .collect(),
+//             statement: theorem.assertion.clone(),
+//             display_step_number: -1,
+//         });
+//     }
+
+//     Err(Error::NotFoundError)
+// }
+
+// fn calc_proof_step_numbers_compressed(theorem: &Theorem) -> Result<Vec<(u32, bool)>, Error> {
+//     let proof = match theorem.proof.as_ref() {
+//         Some(proof) => &**proof,
+//         None => return Ok(Vec::new()),
+//     };
+
+//     let mut passed_labels = false;
+//     let mut compressed_steps = String::new();
+
+//     for token in proof.split_whitespace() {
+//         match token {
+//             ")" => passed_labels = true,
+//             s if passed_labels => {
+//                 compressed_steps.push_str(s);
+//             }
+//             _ => {}
+//         }
+//     }
+
+//     let mut step_numbers = Vec::new();
+
+//     let mut char_iter = compressed_steps.chars();
+
+//     let mut current_compressed_num = String::new();
+
+//     while let Some(character) = char_iter.next() {
+//         match character {
+//             c @ 'A'..='T' => {
+//                 current_compressed_num.push(c);
+//                 step_numbers.push((compressed_num_to_num(&current_compressed_num)?, false));
+//                 current_compressed_num = String::new();
+//             }
+//             c @ 'U'..='Y' => current_compressed_num.push(c),
+//             'Z' if step_numbers.len() != 0 => {
+//                 let len = step_numbers.len();
+//                 step_numbers[len - 1].1 = true;
+//             }
+//             _ => return Err(Error::InvalidFormatError),
+//         }
+//     }
+
+//     Ok(step_numbers)
+// }
+
+// fn compressed_num_to_num(compressed_num: &str) -> Result<u32, Error> {
+//     let mut first = true;
+//     let mut num = 0;
+//     let mut multiplier = 20;
+//     for ch in compressed_num.chars().rev() {
+//         match ch {
+//             ch @ 'A'..='T' if first => {
+//                 num = (ch as u32) - 64;
+//                 first = false;
+//             }
+//             ch @ 'U'..='Y' if !first => {
+//                 num += ((ch as u32) - 84) * multiplier;
+//                 multiplier *= 5;
+//             }
+//             _ => return Err(Error::InvalidFormatError),
+//         }
+//     }
+//     if num == 0 {
+//         return Err(Error::InvalidFormatError);
+//     }
+//     Ok(num)
+// }
+
+// fn calc_proof_steps_compressed(
+//     theorem: &Theorem,
+//     metamath_data: &MetamathData,
+// ) -> Result<Vec<ProofStep>, Error> {
+//     let proof = match theorem.proof.as_ref() {
+//         Some(proof) => &**proof,
+//         None => return Ok(Vec::new()),
+//     };
+
+//     let mut steps = Vec::new();
+
+//     let hypotheses = calc_all_hypotheses_of_theorem(theorem, metamath_data);
+
+//     for (hypothesis, label) in hypotheses {
+//         steps.push(ProofStep {
+//             label,
+//             label_theorem_number: None,
+//             hypotheses: Vec::new(),
+//             statement: hypothesis,
+//             display_step_number: -1,
+//         })
+//     }
+
+//     for token in proof.split_whitespace() {
+//         match token {
+//             "(" => {}
+//             ")" => break,
+//             label => {
+//                 if let Some((theorem_i, theorem)) = metamath_data
+//                     .database_header
+//                     .find_theorem_and_index_by_label(label)
+//                 {
+//                     let label_theorem_hypotheses =
+//                         calc_all_hypotheses_of_theorem(theorem, metamath_data);
+//                     steps.push(ProofStep {
+//                         label: label.to_string(),
+//                         label_theorem_number: Some((theorem_i + 1) as u32),
+//                         hypotheses: label_theorem_hypotheses
+//                             .into_iter()
+//                             .map(|(hyp, _label)| hyp)
+//                             .collect(),
+//                         statement: theorem.assertion.clone(),
+//                         display_step_number: -1,
+//                     });
+//                 } else {
+//                     let floating_hypothesis =
+//                         get_floating_hypothesis_by_label(metamath_data, label)
+//                             .ok_or(Error::NotFoundError)?;
+
+//                     steps.push(ProofStep {
+//                         label: label.to_string(),
+//                         label_theorem_number: None,
+//                         hypotheses: Vec::new(),
+//                         statement: floating_hypothesis.to_assertions_string(),
+//                         display_step_number: -1,
+//                     });
+//                 }
+//             }
+//         };
+//     }
+
+//     Ok(steps)
+// }
+
+// fn calc_all_hypotheses_of_theorem(
+//     theorem: &Theorem,
+//     metamath_data: &MetamathData,
+// ) -> Vec<(String, String)> {
+//     let mut hypotheses = Vec::new();
+
+//     // Calculate variables occuring in assertion and hypotheses
+//     let variables = calc_variables_of_theorem(theorem, metamath_data);
+
+//     // Calculate proof steps of floating hypotheses
+//     for floating_hypothesis in &metamath_data.optimized_data.floating_hypotheses {
+//         for &variable in &variables {
+//             if floating_hypothesis.variable == variable {
+//                 let mut statement = floating_hypothesis.typecode.clone();
+//                 statement.push(' ');
+//                 statement.push_str(&floating_hypothesis.variable);
+//                 hypotheses.push((statement, floating_hypothesis.label.clone()));
+//                 break;
+//             }
+//         }
+//     }
+
+//     // Calculate proof steps of essential hypotheses
+//     for hypothesis in &theorem.hypotheses {
+//         hypotheses.push((hypothesis.expression.clone(), hypothesis.label.clone()));
+//     }
+
+//     hypotheses
+// }
+
+// fn calc_variables_of_theorem<'a>(
+//     theorem: &'a Theorem,
+//     metamath_data: &MetamathData,
+// ) -> Vec<&'a str> {
+//     let mut variables = get_variables_from_statement(&theorem.assertion, metamath_data);
+
+//     for hypothesis in &theorem.hypotheses {
+//         let hypothesis_vars = get_variables_from_statement(&hypothesis.expression, metamath_data);
+//         for var in hypothesis_vars {
+//             if !variables.contains(&var) {
+//                 variables.push(var);
+//             }
+//         }
+//     }
+//     variables
+// }
+
+// fn get_variables_from_statement<'a>(
+//     statement: &'a str,
+//     metamath_data: &MetamathData,
+// ) -> Vec<&'a str> {
+//     let mut vars = Vec::new();
+//     for token in statement.split_whitespace() {
+//         if !vars.contains(&token) && metamath_data.is_variable(token) {
+//             vars.push(token);
+//         }
+//     }
+//     vars
+// }

@@ -282,6 +282,7 @@ pub struct TheoremPageData {
     pub description_parsed: Vec<ParsedDescriptionSegment>,
 }
 
+#[derive(Debug)]
 pub struct ProofLine {
     pub step_name: String,
     pub hypotheses: Vec<String>,
