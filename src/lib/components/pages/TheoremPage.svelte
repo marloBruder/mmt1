@@ -118,7 +118,11 @@
   {/if}
   <div class="pb-4 px-8">
     <h2 class="font-bold">Description:</h2>
-    <DescriptionParsed descriptionParsed={pageData.descriptionParsed} openLinksInNewTab={editorPreview}></DescriptionParsed>
+    <div class="flex flex-col items-center w-full">
+      <div class="text-left">
+        <DescriptionParsed descriptionParsed={pageData.descriptionParsed} openLinksInNewTab={editorPreview}></DescriptionParsed>
+      </div>
+    </div>
   </div>
   {#if theorem.proof != null}
     {#if editorPreview}
@@ -129,62 +133,68 @@
     {/if}
     <div class="pb-4">
       <h2 class="font-bold">Proof</h2>
-      <table class="mx-auto border text-left border-collapse">
-        <thead>
-          <tr>
-            <th class="border border-gray-600 py-1 px-2">Step</th>
-            <th class="border border-gray-600 py-1 px-2">Hyp</th>
-            <th class="border border-gray-600 py-1 px-2">Ref</th>
-            <th class="border border-gray-600 py-1 px-2">Statement</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each pageData.proofLines as proofLine, i}
+      {#if !pageData.proofIncomplete}
+        <table class="mx-auto border text-left border-collapse">
+          <thead>
             <tr>
-              <td class={"border border-gray-600 py-1 px-2 " + proofLineBackground(i, 0)}>
-                {proofLine.stepName}
-              </td>
-              <td class={"border border-gray-600 py-1 px-2 " + proofLineBackground(i, 1)}>
-                {#each proofLine.hypotheses as hypothesis, index}
-                  {hypothesis + (index != proofLine.hypotheses.length - 1 ? ", " : "")}
-                {/each}
-              </td>
-              <td class={"border border-gray-600 py-1 px-2 " + proofLineBackground(i, 2)}>
-                {#if proofLine.referenceNumber !== null}
-                  <TheoremLink label={proofLine.reference} theoremNumber={proofLine.referenceNumber} openInNewTab={editorPreview}></TheoremLink>
-                {:else}
-                  {proofLine.reference}
-                {/if}
-              </td>
-              <td class="border border-gray-600 p-0">
-                {#snippet indentionPoints(indention: number)}
-                  <span class="text-xs text-gray-300">
-                    {#each { length: indention - 1 } as _}
-                      {". "}
-                    {/each}
-                    {indention}
-                  </span>
-                {/snippet}
-                {#if proofLine.oldAssertion !== null && proofLine.oldAssertion !== proofLine.assertion}
-                  <div class="py-1 pr-2 pl-1 border-b">
-                    {@render indentionPoints(proofLine.indention)}
-                    <MetamathExpression expression={proofLine.oldAssertion}></MetamathExpression>
-                  </div>
-                {/if}
-                <div class={"py-1 pr-2 pl-1 " + proofLineBackground(i, 3)}>
-                  {@render indentionPoints(proofLine.indention)}
-                  <MetamathExpression expression={proofLine.assertion}></MetamathExpression>
-                </div>
-              </td>
+              <th class="border border-gray-600 py-1 px-2">Step</th>
+              <th class="border border-gray-600 py-1 px-2">Hyp</th>
+              <th class="border border-gray-600 py-1 px-2">Ref</th>
+              <th class="border border-gray-600 py-1 px-2">Statement</th>
             </tr>
-          {/each}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {#each pageData.proofLines as proofLine, i}
+              <tr>
+                <td class={"border border-gray-600 py-1 px-2 " + proofLineBackground(i, 0)}>
+                  {proofLine.stepName}
+                </td>
+                <td class={"border border-gray-600 py-1 px-2 " + proofLineBackground(i, 1)}>
+                  {#each proofLine.hypotheses as hypothesis, index}
+                    {hypothesis + (index != proofLine.hypotheses.length - 1 ? ", " : "")}
+                  {/each}
+                </td>
+                <td class={"border border-gray-600 py-1 px-2 " + proofLineBackground(i, 2)}>
+                  {#if proofLine.referenceNumber !== null}
+                    <TheoremLink label={proofLine.reference} theoremNumber={proofLine.referenceNumber} openInNewTab={editorPreview}></TheoremLink>
+                  {:else}
+                    {proofLine.reference}
+                  {/if}
+                </td>
+                <td class="border border-gray-600 p-0">
+                  {#snippet indentionPoints(indention: number)}
+                    <span class="text-xs text-gray-300">
+                      {#each { length: indention - 1 } as _}
+                        {". "}
+                      {/each}
+                      {indention}
+                    </span>
+                  {/snippet}
+                  {#if proofLine.oldAssertion !== null && proofLine.oldAssertion !== proofLine.assertion}
+                    <div class="py-1 pr-2 pl-1 border-b">
+                      {@render indentionPoints(proofLine.indention)}
+                      <MetamathExpression expression={proofLine.oldAssertion}></MetamathExpression>
+                    </div>
+                  {/if}
+                  <div class={"py-1 pr-2 pl-1 " + proofLineBackground(i, 3)}>
+                    {@render indentionPoints(proofLine.indention)}
+                    <MetamathExpression expression={proofLine.assertion}></MetamathExpression>
+                  </div>
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {:else}
+        The proof is incomplete.
+      {/if}
     </div>
+    {#if !pageData.proofIncomplete}
+      <div class="px-4">
+        <RoundButton onclick={toggleShowAll}>Toggle Show All Proof Steps</RoundButton>
+      </div>
+    {/if}
   {/if}
-  <div class="px-4">
-    <RoundButton onclick={toggleShowAll}>Toggle Show All Proof Steps</RoundButton>
-  </div>
   <div class="p-8">
     <hr />
   </div>

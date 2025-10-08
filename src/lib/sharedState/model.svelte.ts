@@ -123,6 +123,7 @@ export interface TheoremPageData {
   definitionDependencies: [string, number][];
   references: [string, number][];
   descriptionParsed: ParsedDescriptionSegment[];
+  proofIncomplete: boolean;
   discriminator: "TheoremPageData";
 }
 

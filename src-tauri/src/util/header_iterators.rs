@@ -288,6 +288,41 @@ impl<'a, 'b> Iterator for HeaderLocateAfterIterator<'a, 'b> {
     }
 }
 
+pub struct FloatingHypothesisLocateAfterIter<'a, 'b> {
+    inner: FilterMap<
+        HeaderLocateAfterIterator<'a, 'b>,
+        Box<dyn FnMut(DatabaseElement) -> Option<&FloatingHypothesis>>,
+    >,
+}
+
+impl<'a, 'b> FloatingHypothesisLocateAfterIter<'a, 'b> {
+    pub fn new(
+        top_header: &'a Header,
+        locate_after: Option<LocateAfterRef<'b>>,
+    ) -> FloatingHypothesisLocateAfterIter<'a, 'b> {
+        FloatingHypothesisLocateAfterIter {
+            inner: top_header
+                .locate_after_iter(locate_after)
+                .filter_map(Box::new(|e| {
+                    if let DatabaseElement::Statement(s) = e {
+                        if let FloatingHypohesisStatement(floating_hypothesis) = s {
+                            return Some(floating_hypothesis);
+                        }
+                    }
+                    None
+                })),
+        }
+    }
+}
+
+impl<'a, 'b> Iterator for FloatingHypothesisLocateAfterIter<'a, 'b> {
+    type Item = &'a FloatingHypothesis;
+
+    fn next(&mut self) -> Option<&'a FloatingHypothesis> {
+        self.inner.next()
+    }
+}
+
 pub struct TheoremLocateAfterIterator<'a, 'b> {
     inner: FilterMap<
         HeaderLocateAfterIterator<'a, 'b>,

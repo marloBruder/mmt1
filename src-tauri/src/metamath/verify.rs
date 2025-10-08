@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
+    metamath::mmp_parser::LocateAfterRef,
     model::{self, MetamathData, Theorem},
     util::StrIterToSpaceSeperatedString,
     Error,
@@ -41,10 +42,22 @@ struct StackLine {
     pub display_step_number: Option<usize>,
 }
 
+pub enum VerifierCreationResult {
+    Verifier(Verifier),
+    IsAxiom,
+    IsIncomplete,
+}
+
 pub enum StepResult {
     VerifierFinished,
     NoProofLine,
     ProofLine(model::ProofLine),
+}
+
+pub enum VerificationResult {
+    Correct,
+    Incorrect,
+    Incomplete,
 }
 
 impl Verifier {
@@ -52,18 +65,22 @@ impl Verifier {
         theorem: &Theorem,
         metamath_data: &MetamathData,
         show_all: bool,
-    ) -> Result<Option<Verifier>, Error> {
-        let (proof_steps, step_numbers) = if let Some(proof) = theorem.proof.as_ref() {
+    ) -> Result<VerifierCreationResult, Error> {
+        let opt_proof_steps_and_numbers = if let Some(proof) = theorem.proof.as_ref() {
             if proof.starts_with("( ") {
                 Verifier::calc_proof_steps_and_numbers_compressed(theorem, metamath_data)?
             } else {
                 Verifier::calc_proof_steps_and_numbers_uncompressed(theorem, metamath_data)?
             }
         } else {
-            return Ok(None);
+            return Ok(VerifierCreationResult::IsAxiom);
         };
 
-        Ok(Some(Verifier {
+        let Some((proof_steps, step_numbers)) = opt_proof_steps_and_numbers else {
+            return Ok(VerifierCreationResult::IsIncomplete);
+        };
+
+        Ok(VerifierCreationResult::Verifier(Verifier {
             proof_steps,
             step_numbers,
             next_step_number_i: 0,
@@ -77,7 +94,7 @@ impl Verifier {
     fn calc_proof_steps_and_numbers_compressed(
         theorem: &Theorem,
         metamath_data: &MetamathData,
-    ) -> Result<(Vec<ProofStep>, Vec<ProofNumber>), Error> {
+    ) -> Result<Option<(Vec<ProofStep>, Vec<ProofNumber>)>, Error> {
         let Some(proof) = theorem.proof.as_ref() else {
             return Err(Error::InternalLogicError);
         };
@@ -95,6 +112,8 @@ impl Verifier {
             })
         }
 
+        let mut incomplete = false;
+
         let mut token_iter = proof.split_whitespace().skip(1);
 
         while let Some(label) = token_iter.next() {
@@ -102,9 +121,20 @@ impl Verifier {
                 break;
             }
 
+            if label == "?" {
+                incomplete = true;
+                continue;
+            }
+
+            if label == theorem.label {
+                return Err(Error::InvalidProofError);
+            }
+
             if let Some((theorem_i, theorem)) = metamath_data
                 .database_header
-                .find_theorem_and_index_by_label(label)
+                .theorem_locate_after_iter(Some(LocateAfterRef::LocateAfter(&theorem.label)))
+                .enumerate()
+                .find(|(_, t)| t.label == label)
             {
                 let theorem_hypotheses =
                     Verifier::calc_all_hypotheses_of_theorem(theorem, metamath_data);
@@ -119,9 +149,10 @@ impl Verifier {
                 });
             } else {
                 let floating_hypothesis = metamath_data
-                    .optimized_data
-                    .floating_hypotheses
-                    .iter()
+                    .database_header
+                    .floating_hypohesis_locate_after_iter(Some(LocateAfterRef::LocateAfter(
+                        &theorem.label,
+                    )))
                     .find(|fh| fh.label == label)
                     .ok_or(Error::NotFoundError)?;
 
@@ -161,7 +192,11 @@ impl Verifier {
             }
         }
 
-        Ok((steps, step_numbers))
+        Ok(if !incomplete {
+            Some((steps, step_numbers))
+        } else {
+            None
+        })
     }
 
     fn calc_all_hypotheses_of_theorem(
@@ -264,36 +299,49 @@ impl Verifier {
     fn calc_proof_steps_and_numbers_uncompressed(
         theorem: &Theorem,
         metamath_data: &MetamathData,
-    ) -> Result<(Vec<ProofStep>, Vec<ProofNumber>), Error> {
+    ) -> Result<Option<(Vec<ProofStep>, Vec<ProofNumber>)>, Error> {
+        let Some(proof) = theorem.proof.as_ref() else {
+            return Err(Error::InternalLogicError);
+        };
+
         let mut proof_steps: Vec<ProofStep> = Vec::new();
         let mut proof_step_numbers: Vec<ProofNumber> = Vec::new();
 
-        if let Some(proof) = theorem.proof.as_ref() {
-            for token in proof.split_ascii_whitespace() {
-                if let Some((i, _)) = proof_steps
-                    .iter()
-                    .enumerate()
-                    .find(|(_, ps)| ps.label == token)
-                {
-                    proof_step_numbers.push(ProofNumber {
-                        number: (i + 1) as u32,
-                        save: false,
-                    });
-                } else {
-                    proof_steps.push(Verifier::calc_proof_step_from_label(
-                        token,
-                        theorem,
-                        metamath_data,
-                    )?);
-                    proof_step_numbers.push(ProofNumber {
-                        number: proof_steps.len() as u32,
-                        save: false,
-                    })
-                }
+        let mut incomplete = false;
+
+        for token in proof.split_ascii_whitespace() {
+            if token == "?" {
+                incomplete = true;
+                continue;
+            }
+
+            if let Some((i, _)) = proof_steps
+                .iter()
+                .enumerate()
+                .find(|(_, ps)| ps.label == token)
+            {
+                proof_step_numbers.push(ProofNumber {
+                    number: (i + 1) as u32,
+                    save: false,
+                });
+            } else {
+                proof_steps.push(Verifier::calc_proof_step_from_label(
+                    token,
+                    theorem,
+                    metamath_data,
+                )?);
+                proof_step_numbers.push(ProofNumber {
+                    number: proof_steps.len() as u32,
+                    save: false,
+                })
             }
         }
 
-        Ok((proof_steps, proof_step_numbers))
+        Ok(if !incomplete {
+            Some((proof_steps, proof_step_numbers))
+        } else {
+            None
+        })
     }
 
     fn calc_proof_step_from_label(
@@ -312,7 +360,7 @@ impl Verifier {
 
         if let Some(floating_hypothesis) = metamath_data
             .database_header
-            .floating_hypohesis_iter()
+            .floating_hypohesis_locate_after_iter(Some(LocateAfterRef::LocateAfter(&theorem.label)))
             .find(|fh| fh.label == label)
         {
             return Ok(ProofStep {
@@ -323,9 +371,15 @@ impl Verifier {
             });
         }
 
+        if theorem.label == label {
+            return Err(Error::InvalidProofError);
+        }
+
         if let Some((theorem_i, theorem)) = metamath_data
             .database_header
-            .find_theorem_and_index_by_label(label)
+            .theorem_locate_after_iter(Some(LocateAfterRef::LocateAfter(&theorem.label)))
+            .enumerate()
+            .find(|(_, t)| t.label == label)
         {
             let label_theorem_hypotheses =
                 Verifier::calc_all_hypotheses_of_theorem(theorem, metamath_data);
@@ -508,5 +562,27 @@ impl Verifier {
                 }
             })
             .fold_to_space_seperated_string()
+    }
+
+    pub fn verify_proof(
+        theorem: &Theorem,
+        metamath_data: &MetamathData,
+    ) -> Result<VerificationResult, Error> {
+        let mut verifier = match Verifier::new(theorem, metamath_data, false) {
+            Ok(VerifierCreationResult::Verifier(v)) => v,
+            Ok(VerifierCreationResult::IsAxiom) => return Ok(VerificationResult::Correct),
+            Ok(VerifierCreationResult::IsIncomplete) => return Ok(VerificationResult::Incomplete),
+            Err(Error::InvalidProofError) => return Ok(VerificationResult::Incorrect),
+            Err(err) => return Err(err),
+        };
+
+        loop {
+            match verifier.proccess_next_step(metamath_data) {
+                Ok(StepResult::VerifierFinished) => return Ok(VerificationResult::Correct),
+                Ok(_) => {}
+                Err(Error::InvalidProofError) => return Ok(VerificationResult::Incorrect),
+                Err(err) => return Err(err),
+            }
+        }
     }
 }

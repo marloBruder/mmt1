@@ -336,6 +336,7 @@ pub fn calc_theorem_page_data(
         axiom_dependencies: stage_3_theorem.axiom_dependencies,
         definition_dependencies: stage_3_theorem.definition_dependencies,
         references: Vec::new(),
+        proof_incomplete: false,
     }))
 }
 

@@ -20,8 +20,9 @@ use crate::{
         },
         header_iterators::{
             ConstantIterator, ConstantLocateAfterIterator, FloatingHypothesisIterator,
-            HeaderIterator, HeaderLocateAfterIterator, TheoremIterator, TheoremLocateAfterIterator,
-            VariableIterator, VariableLocateAfterIterator,
+            FloatingHypothesisLocateAfterIter, HeaderIterator, HeaderLocateAfterIterator,
+            TheoremIterator, TheoremLocateAfterIterator, VariableIterator,
+            VariableLocateAfterIterator,
         },
         parse_tree_node_iterator::ParseTreeNodeIterator,
         work_variable_manager::WorkVariableManager,
@@ -280,6 +281,7 @@ pub struct TheoremPageData {
     pub definition_dependencies: Vec<(String, u32)>,
     pub references: Vec<(String, u32)>,
     pub description_parsed: Vec<ParsedDescriptionSegment>,
+    pub proof_incomplete: bool,
 }
 
 #[derive(Debug)]
@@ -2152,23 +2154,23 @@ impl Header {
     //     sum
     // }
 
-    pub fn iter(&self) -> HeaderIterator {
+    pub fn iter<'a>(&'a self) -> HeaderIterator<'a> {
         HeaderIterator::new(self)
     }
 
-    pub fn constant_iter(&self) -> ConstantIterator {
+    pub fn constant_iter<'a>(&'a self) -> ConstantIterator<'a> {
         ConstantIterator::new(self)
     }
 
-    pub fn variable_iter(&self) -> VariableIterator {
+    pub fn variable_iter<'a>(&'a self) -> VariableIterator<'a> {
         VariableIterator::new(self)
     }
 
-    pub fn floating_hypohesis_iter(&self) -> FloatingHypothesisIterator {
+    pub fn floating_hypohesis_iter<'a>(&'a self) -> FloatingHypothesisIterator<'a> {
         FloatingHypothesisIterator::new(self)
     }
 
-    pub fn theorem_iter(&self) -> TheoremIterator {
+    pub fn theorem_iter<'a>(&'a self) -> TheoremIterator<'a> {
         TheoremIterator::new(self)
     }
 
@@ -2191,6 +2193,13 @@ impl Header {
         locate_after: Option<LocateAfterRef<'b>>,
     ) -> VariableLocateAfterIterator<'a, 'b> {
         VariableLocateAfterIterator::new(self, locate_after)
+    }
+
+    pub fn floating_hypohesis_locate_after_iter<'a, 'b>(
+        &'a self,
+        locate_after: Option<LocateAfterRef<'b>>,
+    ) -> FloatingHypothesisLocateAfterIter<'a, 'b> {
+        FloatingHypothesisLocateAfterIter::new(self, locate_after)
     }
 
     pub fn theorem_locate_after_iter<'a, 'b>(
@@ -2526,6 +2535,7 @@ impl serde::Serialize for TheoremPageData {
         state.serialize_field("definitionDependencies", &self.definition_dependencies)?;
         state.serialize_field("references", &self.references)?;
         state.serialize_field("descriptionParsed", &self.description_parsed)?;
+        state.serialize_field("proofIncomplete", &self.proof_incomplete)?;
         state.serialize_field("discriminator", "TheoremPageData")?;
         state.end()
     }

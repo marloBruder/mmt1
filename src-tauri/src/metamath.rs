@@ -1,12 +1,6 @@
 use crate::{
-    local_state::{
-        // constant::set_constants_local,
-        // html_representation::set_html_representations_local,
-        // in_progress_theorem::delete_in_progress_theorem_local,
-        theorem::{add_theorem_local, get_theorem_insert_position},
-        // variable::set_variables_local,
-    },
-    metamath::verify::{StepResult, Verifier},
+    local_state::theorem::{add_theorem_local, get_theorem_insert_position},
+    metamath::verify::{StepResult, Verifier, VerifierCreationResult},
     model::{Hypothesis, MetamathData, ProofLine, TheoremPageData, TheoremPath},
     util::last_curr_next_iterator::IntoLastCurrNextIterator,
     AppState, Error,
@@ -482,29 +476,30 @@ pub fn calc_theorem_page_data(
 
     let description_parsed = optimized_theorem_data.description_parsed.clone();
 
-    if theorem.proof.is_none() {
-        return Ok(TheoremPageData {
-            theorem: theorem.clone(),
-            theorem_number,
-            proof_lines: Vec::new(),
-            preview_errors: None,
-            preview_deleted_markers: None,
-            preview_confirmations: None,
-            preview_confirmations_recursive: None,
-            preview_unify_markers: None,
-            last_theorem_label,
-            next_theorem_label,
-            axiom_dependencies,
-            definition_dependencies,
-            references,
-            description_parsed,
-        });
-    }
+    let mut verifier = match Verifier::new(theorem, metamath_data, show_all)? {
+        VerifierCreationResult::Verifier(v) => v,
+        res @ (VerifierCreationResult::IsAxiom | VerifierCreationResult::IsIncomplete) => {
+            return Ok(TheoremPageData {
+                theorem: theorem.clone(),
+                theorem_number,
+                proof_lines: Vec::new(),
+                preview_errors: None,
+                preview_deleted_markers: None,
+                preview_confirmations: None,
+                preview_confirmations_recursive: None,
+                preview_unify_markers: None,
+                last_theorem_label,
+                next_theorem_label,
+                axiom_dependencies,
+                definition_dependencies,
+                references,
+                description_parsed,
+                proof_incomplete: matches!(res, VerifierCreationResult::IsIncomplete),
+            })
+        }
+    };
 
     let mut proof_lines = Vec::new();
-
-    let mut verifier =
-        Verifier::new(theorem, metamath_data, show_all)?.ok_or(Error::InternalLogicError)?;
 
     loop {
         let step_result = verifier.proccess_next_step(metamath_data)?;
@@ -538,6 +533,7 @@ pub fn calc_theorem_page_data(
         definition_dependencies,
         references,
         description_parsed,
+        proof_incomplete: false,
     })
 }
 
