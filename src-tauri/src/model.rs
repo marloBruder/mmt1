@@ -169,6 +169,8 @@ pub struct FloatingHypothesis {
 pub struct Theorem {
     pub label: String,
     pub description: String,
+    pub temp_variables: Vec<Vec<Variable>>,
+    pub temp_floating_hypotheses: Vec<FloatingHypothesis>,
     pub distincts: Vec<String>,
     pub hypotheses: Vec<Hypothesis>,
     pub assertion: String,
@@ -2338,6 +2340,8 @@ impl serde::Serialize for Theorem {
         let mut state = serializer.serialize_struct("Theorem", 6)?;
         state.serialize_field("label", &self.label)?;
         state.serialize_field("description", &self.description)?;
+        state.serialize_field("tempVariables", &self.temp_variables)?;
+        state.serialize_field("tempFloatingHypotheses", &self.temp_floating_hypotheses)?;
         state.serialize_field("distincts", &self.distincts)?;
         state.serialize_field("hypotheses", &self.hypotheses)?;
         state.serialize_field("assertion", &self.assertion)?;

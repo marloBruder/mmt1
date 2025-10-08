@@ -296,6 +296,8 @@ pub fn calc_theorem_page_data(
         theorem: Theorem {
             label: stage_3_theorem.label.to_string(),
             description,
+            temp_variables: stage_3_theorem.temp_variable_statements,
+            temp_floating_hypotheses: stage_3_theorem.temp_floating_hypotheses,
             distincts: stage_2_success
                 .distinct_vars
                 .iter()

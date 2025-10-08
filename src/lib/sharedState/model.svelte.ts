@@ -19,6 +19,8 @@ export interface FloatingHypothesis {
 export interface Theorem {
   label: string;
   description: string;
+  tempVariables: Variable[];
+  tempFloatingHypotheses: FloatingHypothesis[];
   distincts: string[];
   hypotheses: Hypothesis[];
   assertion: string;

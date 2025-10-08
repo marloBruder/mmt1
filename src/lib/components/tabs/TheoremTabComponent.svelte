@@ -8,6 +8,8 @@
     theorem: {
       label: "",
       description: "",
+      tempVariables: [],
+      tempFloatingHypotheses: [],
       distincts: [],
       hypotheses: [],
       assertion: "",
@@ -27,6 +29,7 @@
     references: [],
     descriptionParsed: [],
     discriminator: "TheoremPageData",
+    proofIncomplete: false,
   };
 
   export class TheoremTab extends Tab {

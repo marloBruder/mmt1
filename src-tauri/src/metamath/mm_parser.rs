@@ -219,6 +219,9 @@ pub struct MmParser {
     prev_float_hyps: Vec<FloatingHypothesis>,
     next_label: Option<String>,
     next_description: Option<String>,
+    // holds the information for all variable statements outside the outermost scope
+    // the difference to active_vars is the the order is also saved
+    temp_active_vars: Vec<Vec<Vec<Variable>>>,
     theorem_amount: u32,
     curr_line_amount: u32,
     total_line_amount: u32,
@@ -282,6 +285,7 @@ impl MmParser {
             prev_float_hyps: Vec::new(),
             next_label: None,
             next_description: None,
+            temp_active_vars: Vec::new(),
             theorem_amount: 0,
             curr_line_amount: 0,
             total_line_amount,
@@ -770,6 +774,7 @@ impl MmParser {
         self.active_float_hyps.push(Vec::new());
         self.active_dists.push(Vec::new());
         self.active_hyps.push(Vec::new());
+        self.temp_active_vars.push(Vec::new());
 
         StatementProcessed::OpeningScopeStatement
     }
@@ -781,13 +786,12 @@ impl MmParser {
 
         self.scope -= 1;
 
-        self.active_vars
-            .pop()
-            .ok_or(Error::InternalLogicError)?
-            .into_iter()
-            .for_each(|s| {
-                self.prev_variables.insert(s);
-            });
+        self.prev_variables.extend(
+            self.active_vars
+                .pop()
+                .ok_or(Error::InternalLogicError)?
+                .into_iter(),
+        );
 
         self.prev_float_hyps.append(
             &mut self
@@ -798,6 +802,7 @@ impl MmParser {
 
         self.active_dists.pop();
         self.active_hyps.pop();
+        self.temp_active_vars.pop();
 
         Ok(StatementProcessed::ClosingScopeStatement)
     }
@@ -898,6 +903,8 @@ impl MmParser {
             self.curr_header()?
                 .content
                 .push(Statement::VariableStatement(variables));
+        } else {
+            self.temp_active_vars[self.scope - 1].push(variables);
         }
 
         Ok(StatementProcessed::VariableStatement)
@@ -1098,6 +1105,19 @@ impl MmParser {
             None => String::new(),
         };
 
+        let temp_variables = self
+            .temp_active_vars
+            .clone()
+            .into_iter()
+            .flatten()
+            .collect();
+        let temp_floating_hypotheses = self
+            .active_float_hyps
+            .iter()
+            .skip(1)
+            .flatten()
+            .map(|fh| fh.clone())
+            .collect();
         let distincts = self.active_dists.clone().into_iter().flatten().collect();
         let hypotheses = self.active_hyps.clone().into_iter().flatten().collect();
 
@@ -1116,6 +1136,8 @@ impl MmParser {
             .push(Statement::TheoremStatement(Theorem {
                 label,
                 description,
+                temp_variables,
+                temp_floating_hypotheses,
                 distincts,
                 hypotheses,
                 assertion,

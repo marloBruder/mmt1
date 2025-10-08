@@ -274,6 +274,119 @@ fn stage_3_theorem<'a>(
         ));
     }
 
+    let temp_variable_statements: Vec<Vec<Variable>> = stage_2
+        .variables
+        .iter()
+        .map(|var_statement_str| {
+            var_statement_str
+                .split_ascii_whitespace()
+                .map(|var| Variable {
+                    symbol: var.to_string(),
+                })
+                .collect()
+        })
+        .collect();
+
+    let mut temp_floating_hypotheses = Vec::new();
+
+    for (i, float_hyp_str) in stage_2.floating_hypotheses.iter().enumerate() {
+        let mut flaot_hyp_iter = float_hyp_str.split_ascii_whitespace();
+
+        let label = flaot_hyp_iter
+            .next()
+            .ok_or(Error::InternalLogicError)?
+            .to_string();
+        let typecode = flaot_hyp_iter
+            .next()
+            .ok_or(Error::InternalLogicError)?
+            .to_string();
+        let variable = flaot_hyp_iter
+            .next()
+            .ok_or(Error::InternalLogicError)?
+            .to_string();
+
+        let Some((statement_str, line_number)) = calc_statement_str_and_line_number(
+            &stage_1.statements,
+            &stage_2.statements,
+            MmpStatement::FloatingHypohesis,
+            i,
+        ) else {
+            return Err(Error::InternalLogicError);
+        };
+
+        if !metamath_data.symbols_not_already_taken(&vec![&label]) {
+            let second_token_start_pos = stage_2::nth_token_start_pos(statement_str, 1);
+            let second_token_end_pos = stage_2::nth_token_end_pos(statement_str, 1);
+
+            errors.push(DetailedError {
+                error_type: Error::LabelAlreadyExistsError,
+                start_line_number: line_number + second_token_start_pos.0 - 1,
+                start_column: second_token_start_pos.1,
+                end_line_number: line_number + second_token_end_pos.0 - 1,
+                end_column: second_token_end_pos.1 + 1,
+            });
+        }
+
+        if metamath_data
+            .database_header
+            .constant_locate_after_iter(stage_2.locate_after)
+            .all(|c| c.symbol != typecode)
+        {
+            let third_token_start_pos = stage_2::nth_token_start_pos(statement_str, 2);
+            let third_token_end_pos = stage_2::nth_token_end_pos(statement_str, 2);
+
+            errors.push(DetailedError {
+                error_type: Error::TypecodeNotAConstantError,
+                start_line_number: line_number + third_token_start_pos.0 - 1,
+                start_column: third_token_start_pos.1,
+                end_line_number: line_number + third_token_end_pos.0 - 1,
+                end_column: third_token_end_pos.1 + 1,
+            });
+        }
+
+        if metamath_data
+            .database_header
+            .variable_locate_after_iter(stage_2.locate_after)
+            .chain(temp_variable_statements.iter().flatten())
+            .all(|v| v.symbol != variable)
+        {
+            let fourth_token_start_pos = stage_2::nth_token_start_pos(statement_str, 3);
+            let fourth_token_end_pos = stage_2::nth_token_end_pos(statement_str, 3);
+
+            errors.push(DetailedError {
+                error_type: Error::ExpectedActiveVariableError,
+                start_line_number: line_number + fourth_token_start_pos.0 - 1,
+                start_column: fourth_token_start_pos.1,
+                end_line_number: line_number + fourth_token_end_pos.0 - 1,
+                end_column: fourth_token_end_pos.1 + 1,
+            });
+        }
+
+        if metamath_data
+            .database_header
+            .floating_hypohesis_iter()
+            .chain(temp_floating_hypotheses.iter())
+            .any(|fh| fh.variable == variable && fh.label != label)
+        {
+            let fourth_token_start_pos = stage_2::nth_token_start_pos(statement_str, 3);
+            let fourth_token_end_pos = stage_2::nth_token_end_pos(statement_str, 3);
+
+            errors.push(DetailedError {
+                error_type: Error::VariableTypecodeAlreadyDeclaredError,
+                start_line_number: line_number + fourth_token_start_pos.0 - 1,
+                start_column: fourth_token_start_pos.1,
+                end_line_number: line_number + fourth_token_end_pos.0 - 1,
+                end_column: fourth_token_end_pos.1 + 1,
+            });
+        }
+
+        temp_floating_hypotheses.push(FloatingHypothesis {
+            label,
+            typecode,
+            variable,
+        });
+    }
+
     let (axiom_dependencies, definition_dependencies) =
         calc_dependencies(&stage_2.proof_lines, metamath_data);
 
@@ -281,6 +394,8 @@ fn stage_3_theorem<'a>(
         MmpParserStage3::Success(MmpParserStage3Success::Theorem(MmpParserStage3Theorem {
             is_axiom,
             label,
+            temp_variable_statements,
+            temp_floating_hypotheses,
             axiom_dependencies,
             definition_dependencies,
         }))
@@ -427,22 +542,10 @@ fn stage_3_floating_hypothesis<'a>(
         &stage_1.statements,
         &stage_2.statements,
         MmpStatement::FloatingHypohesis,
+        0,
     ) else {
         return Err(Error::InternalLogicError);
     };
-
-    if !util::is_valid_label(&label) {
-        let second_token_start_pos = stage_2::nth_token_start_pos(statement_str, 1);
-        let second_token_end_pos = stage_2::nth_token_end_pos(statement_str, 1);
-
-        errors.push(DetailedError {
-            error_type: Error::InvalidLabelError,
-            start_line_number: line_number + second_token_start_pos.0 - 1,
-            start_column: second_token_start_pos.1,
-            end_line_number: line_number + second_token_end_pos.0 - 1,
-            end_column: second_token_end_pos.1 + 1,
-        });
-    }
 
     if !mm_data.symbols_not_already_taken(&vec![&label])
         && !mm_data
@@ -530,11 +633,13 @@ fn calc_statement_str_and_line_number<'a>(
     statement_strs: &Vec<&'a str>,
     statements: &Vec<(MmpStatement, u32)>,
     searched_for_statement_type: MmpStatement,
+    statement_i: usize,
 ) -> Option<(&'a str, u32)> {
     statement_strs
         .iter()
         .zip(statements.iter())
-        .find(|(_, (st, _))| *st == searched_for_statement_type)
+        .filter(|(_, (st, _))| *st == searched_for_statement_type)
+        .nth(statement_i)
         .map(|(s, (_, ln))| (*s, *ln))
 }
 
@@ -595,6 +700,7 @@ fn stage_3_variables<'a>(
         &stage_1.statements,
         &stage_2.statements,
         MmpStatement::Variable,
+        0,
     ) else {
         return Err(Error::InternalLogicError);
     };
@@ -736,6 +842,7 @@ fn stage_3_constants<'a>(
         &stage_1.statements,
         &stage_2.statements,
         MmpStatement::Constant,
+        0,
     ) else {
         return Err(Error::InternalLogicError);
     };

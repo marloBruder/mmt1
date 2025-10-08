@@ -1,101 +1,99 @@
 use crate::{
-    local_state::theorem::{add_theorem_local, get_theorem_insert_position},
     metamath::verify::{StepResult, Verifier, VerifierCreationResult},
-    model::{Hypothesis, MetamathData, ProofLine, TheoremPageData, TheoremPath},
+    model::{MetamathData, ProofLine, TheoremPageData},
     util::last_curr_next_iterator::IntoLastCurrNextIterator,
-    AppState, Error,
+    Error,
 };
-use tauri::async_runtime::Mutex;
 
 pub mod export;
 pub mod mm_parser;
 pub mod mmp_parser;
 pub mod verify;
 
-#[tauri::command]
-pub async fn turn_into_theorem(
-    state: tauri::State<'_, Mutex<AppState>>,
-    text: &str,
-    position_name: &str,
-) -> Result<TheoremPath, Error> {
-    if !text.is_ascii() {
-        return Err(Error::InvalidCharactersError);
-    }
+// #[tauri::command]
+// pub async fn turn_into_theorem(
+//     state: tauri::State<'_, Mutex<AppState>>,
+//     text: &str,
+//     position_name: &str,
+// ) -> Result<TheoremPath, Error> {
+//     if !text.is_ascii() {
+//         return Err(Error::InvalidCharactersError);
+//     }
 
-    let mut last_token: Option<&str> = None;
+//     let mut last_token: Option<&str> = None;
 
-    let mut name: Option<String> = None;
-    let mut description = String::from("");
-    let mut disjoints: Vec<String> = Vec::new();
-    let mut hypotheses: Vec<Hypothesis> = Vec::new();
-    let mut assertion: Option<String> = None;
-    let mut proof: Option<String> = None;
+//     let mut name: Option<String> = None;
+//     let mut description = String::from("");
+//     let mut disjoints: Vec<String> = Vec::new();
+//     let mut hypotheses: Vec<Hypothesis> = Vec::new();
+//     let mut assertion: Option<String> = None;
+//     let mut proof: Option<String> = None;
 
-    let mut token_iter = text.split_whitespace();
-    while let Some(token) = token_iter.next() {
-        match token {
-            "$(" => description = get_next_as_string_until(&mut token_iter, "$)"),
-            "$d" => {
-                let disjoint_cond = get_next_as_string_until(&mut token_iter, "$.");
-                disjoints.push(disjoint_cond);
-            }
-            "$e" => {
-                let label = last_token.ok_or(Error::InvalidFormatError)?.to_string();
-                let expression = get_next_as_string_until(&mut token_iter, "$.");
-                hypotheses.push(Hypothesis { label, expression })
-            }
-            "$a" => {
-                name = last_token.map(|s| s.to_string());
-                assertion = Some(get_next_as_string_until(&mut token_iter, "$."));
-            }
-            "$p" => {
-                name = last_token.map(|s| s.to_string());
-                assertion = Some(get_next_as_string_until(&mut token_iter, "$="));
-                proof = Some(get_next_as_string_until(&mut token_iter, "$."));
-            }
-            _ => {
-                last_token = Some(token);
-            }
-        }
-    }
+//     let mut token_iter = text.split_whitespace();
+//     while let Some(token) = token_iter.next() {
+//         match token {
+//             "$(" => description = get_next_as_string_until(&mut token_iter, "$)"),
+//             "$d" => {
+//                 let disjoint_cond = get_next_as_string_until(&mut token_iter, "$.");
+//                 disjoints.push(disjoint_cond);
+//             }
+//             "$e" => {
+//                 let label = last_token.ok_or(Error::InvalidFormatError)?.to_string();
+//                 let expression = get_next_as_string_until(&mut token_iter, "$.");
+//                 hypotheses.push(Hypothesis { label, expression })
+//             }
+//             "$a" => {
+//                 name = last_token.map(|s| s.to_string());
+//                 assertion = Some(get_next_as_string_until(&mut token_iter, "$."));
+//             }
+//             "$p" => {
+//                 name = last_token.map(|s| s.to_string());
+//                 assertion = Some(get_next_as_string_until(&mut token_iter, "$="));
+//                 proof = Some(get_next_as_string_until(&mut token_iter, "$."));
+//             }
+//             _ => {
+//                 last_token = Some(token);
+//             }
+//         }
+//     }
 
-    let name = name.ok_or(Error::InvalidFormatError)?;
-    let assertion = assertion.ok_or(Error::InvalidFormatError)?;
+//     let name = name.ok_or(Error::InvalidFormatError)?;
+//     let assertion = assertion.ok_or(Error::InvalidFormatError)?;
 
-    let mut app_state = state.lock().await;
-    let metamath_data = app_state.metamath_data.as_mut().ok_or(Error::NoMmDbError)?;
+//     let mut app_state = state.lock().await;
+//     let metamath_data = app_state.metamath_data.as_mut().ok_or(Error::NoMmDbError)?;
 
-    let insert_path = get_theorem_insert_position(metamath_data, position_name)?;
+//     let insert_path = get_theorem_insert_position(metamath_data, position_name)?;
 
-    add_theorem_local(
-        metamath_data,
-        &name,
-        &description,
-        &disjoints,
-        &hypotheses,
-        &assertion,
-        proof.as_deref(),
-        &insert_path,
-    )?;
+//     add_theorem_local(
+//         metamath_data,
+//         &name,
+//         &description,
+//         &disjoints,
+//         &hypotheses,
+//         &assertion,
+//         proof.as_deref(),
+//         &insert_path,
+//     )?;
 
-    //TODO: Add to database
+//     //TODO: Add to database
 
-    Ok(insert_path)
-}
+//     Ok(insert_path)
+// }
 
-fn get_next_as_string_until(iter: &mut std::str::SplitWhitespace, until: &str) -> String {
-    let mut result = String::new();
-    while let Some(token) = iter.next() {
-        if token == until {
-            break;
-        } else {
-            result.push_str(token);
-            result.push(' ');
-        }
-    }
-    result.pop();
-    result
-}
+// fn get_next_as_string_until(iter: &mut std::str::SplitWhitespace, until: &str) -> String {
+//     let mut result = String::new();
+//     while let Some(token) = iter.next() {
+//         if token == until {
+//             break;
+//         } else {
+//             result.push_str(token);
+//             result.push(' ');
+//         }
+//     }
+//     result.pop();
+//     result
+// }
 
 // #[tauri::command]
 // pub async fn text_to_constants(

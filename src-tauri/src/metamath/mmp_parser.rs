@@ -14,7 +14,7 @@ mod stage_4;
 mod stage_5;
 mod stage_6;
 
-pub fn new(text: &str) -> MmpParserStage0 {
+pub fn new<'a>(text: &'a str) -> MmpParserStage0<'a> {
     MmpParserStage0 { text }
 }
 
@@ -153,8 +153,8 @@ pub struct MmpParserStage3Theorem<'a> {
     pub is_axiom: bool,
     // pub allow_discouraged: bool,
     pub label: &'a str,
-    // pub temp_vars: Vec<Variable>,
-    // pub temp_floating_hypotheses: Vec<FloatingHypothesis>,
+    pub temp_variable_statements: Vec<Vec<Variable>>,
+    pub temp_floating_hypotheses: Vec<FloatingHypothesis>,
     // pub distinct_vars: Vec<&'a str>,
     // pub proof_lines: Vec<ProofLineParsed<'a>>,
     // pub locate_after: Option<LocateAfterRef<'a>>,

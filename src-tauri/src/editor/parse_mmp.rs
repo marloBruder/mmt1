@@ -271,6 +271,9 @@ fn add_theorem_to_database(
             .next()
             .map(|c| c.text)
             .unwrap_or(String::new()),
+        // todo: fix temp variables and floating hypotheses
+        temp_variables: Vec::new(),
+        temp_floating_hypotheses: Vec::new(),
         distincts: mmp_structured_info.distinct_vars,
         assertion,
         hypotheses,
@@ -510,6 +513,9 @@ fn add_axiom_to_database(
                 .next()
                 .map(|c| c.text)
                 .unwrap_or(String::new()),
+            // todo: fix temp variables and floating hypotheses
+            temp_variables: Vec::new(),
+            temp_floating_hypotheses: Vec::new(),
             distincts: mmp_structured_info.distinct_vars,
             assertion,
             hypotheses,
@@ -898,9 +904,9 @@ fn add_statement_at_end_file(file_path: &str, statement: &Statement) -> Result<(
     Ok(())
 }
 
-fn statements_to_mmp_structured_info(
-    statements: Vec<Vec<&str>>,
-) -> Result<MmpStructuredInfo, Error> {
+fn statements_to_mmp_structured_info<'a>(
+    statements: Vec<Vec<&'a str>>,
+) -> Result<MmpStructuredInfo<'a>, Error> {
     let mut constants: Vec<Constant> = Vec::new();
     let mut variables: Vec<Vec<Variable>> = Vec::new();
     let mut floating_hypotheses: Vec<FloatingHypothesis> = Vec::new();

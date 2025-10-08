@@ -118,7 +118,7 @@ pub fn run() {
             editor::parse_mmp::add_to_database,
             editor::renumber::renumber,
             editor::unify::unify,
-            metamath::turn_into_theorem,
+            // metamath::turn_into_theorem,
             // metamath::text_to_constants,
             // metamath::text_to_variables,
             // metamath::text_to_floating_hypotheses,

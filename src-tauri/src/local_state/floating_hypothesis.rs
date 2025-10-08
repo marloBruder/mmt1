@@ -1,7 +1,7 @@
 use tauri::async_runtime::Mutex;
 
 use crate::{
-    model::{FloatingHypothesis, FloatingHypothesisPageData, MetamathData},
+    model::{FloatingHypothesis, FloatingHypothesisPageData},
     AppState, Error,
 };
 
@@ -33,22 +33,3 @@ pub async fn get_floating_hypotheses_local(
 
     Ok(metamath_data.optimized_data.floating_hypotheses.clone())
 }
-
-pub fn get_floating_hypothesis_by_label<'a>(
-    metamath_data: &'a MetamathData,
-    label: &str,
-) -> Option<&'a FloatingHypothesis> {
-    for floating_hypothesis in &metamath_data.optimized_data.floating_hypotheses {
-        if floating_hypothesis.label == label {
-            return Some(floating_hypothesis);
-        }
-    }
-    return None;
-}
-
-// pub fn set_floating_hypotheses_local(
-//     metamath_data: &mut MetamathData,
-//     floating_hypotheses: &Vec<FloatingHypohesis>,
-// ) {
-//     metamath_data.optimized_data.floating_hypotheses = floating_hypotheses.clone();
-// }
