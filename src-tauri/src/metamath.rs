@@ -476,7 +476,7 @@ pub fn calc_theorem_page_data(
 
     let description_parsed = optimized_theorem_data.description_parsed.clone();
 
-    let mut verifier = match Verifier::new(theorem, metamath_data, show_all)? {
+    let mut verifier = match Verifier::new(theorem, metamath_data, show_all, None)? {
         VerifierCreationResult::Verifier(v) => v,
         res @ (VerifierCreationResult::IsAxiom | VerifierCreationResult::IsIncomplete) => {
             return Ok(TheoremPageData {

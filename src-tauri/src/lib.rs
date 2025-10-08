@@ -162,7 +162,7 @@ pub enum Error {
     NotFoundError,
 
     InvalidCharactersError,
-    InvalidFormatError,
+    InvalidFormatError, // can be removed
     InvalidProofError,
 
     // Importing Database Errors

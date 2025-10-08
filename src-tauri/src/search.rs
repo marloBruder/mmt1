@@ -492,12 +492,27 @@ pub async fn axiom_autocomplete(
             .database_header
             .find_theorem_by_label(query)
             .is_some_and(|theorem| {
-                theorem.calc_theorem_type(&app_state.settings).is_axiom()
-                    && !items.contains(&&*theorem.label)
+                let Some(theorem_data) = metamath_data
+                    .optimized_data
+                    .theorem_data
+                    .get(&theorem.label)
+                else {
+                    return false;
+                };
+
+                theorem_data.theorem_type.is_axiom() && !items.contains(&&*theorem.label)
             }),
         find_theorem_labels(&metamath_data.database_header, query, 5, |theorem| {
+            let Some(theorem_data) = metamath_data
+                .optimized_data
+                .theorem_data
+                .get(&theorem.label)
+            else {
+                return false;
+            };
+
             theorem.label != query
-                && theorem.calc_theorem_type(&app_state.settings).is_axiom()
+                && theorem_data.theorem_type.is_axiom()
                 && !items.contains(&&*theorem.label)
         }),
     ))
@@ -520,16 +535,27 @@ pub async fn definition_autocomplete(
             .database_header
             .find_theorem_by_label(query)
             .is_some_and(|theorem| {
-                theorem
-                    .calc_theorem_type(&app_state.settings)
-                    .is_definition()
-                    && !items.contains(&&*theorem.label)
+                let Some(theorem_data) = metamath_data
+                    .optimized_data
+                    .theorem_data
+                    .get(&theorem.label)
+                else {
+                    return false;
+                };
+
+                theorem_data.theorem_type.is_definition() && !items.contains(&&*theorem.label)
             }),
         find_theorem_labels(&metamath_data.database_header, query, 5, |theorem| {
+            let Some(theorem_data) = metamath_data
+                .optimized_data
+                .theorem_data
+                .get(&theorem.label)
+            else {
+                return false;
+            };
+
             theorem.label != query
-                && theorem
-                    .calc_theorem_type(&app_state.settings)
-                    .is_definition()
+                && theorem_data.theorem_type.is_definition()
                 && !items.contains(&&*theorem.label)
         }),
     ))

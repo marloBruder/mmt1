@@ -12,6 +12,7 @@ use crate::{
     metamath::{
         export::{write_text_wrapped, write_text_wrapped_no_whitespace},
         mmp_parser::LocateAfterRef,
+        verify::{VerificationResult, Verifier},
     },
     util::{
         self, description_parser,
@@ -72,10 +73,16 @@ pub struct OptimizedTheoremData {
 
 #[derive(Debug)]
 pub enum TheoremType {
-    Theorem,
+    Theorem(ProofType),
     Axiom,
     Definition,
     SyntaxAxiom,
+}
+
+#[derive(Debug)]
+pub enum ProofType {
+    Correct,
+    Incomplete,
 }
 
 #[derive(Debug)]
@@ -433,11 +440,6 @@ impl MetamathData {
         let mut invalid_description_html = Vec::new();
 
         for (i, theorem) in self.database_header.theorem_iter().enumerate() {
-            let theorem_type = theorem.calc_theorem_type(settings);
-
-            let (axiom_dependencies, definition_dependencies) = theorem
-                .calc_dependencies_and_add_references(&mut self.optimized_data, i, &theorem_type);
-
             let (description_parsed, invalid_html) = description_parser::parse_description(
                 &theorem.description,
                 &self.database_header,
@@ -451,9 +453,17 @@ impl MetamathData {
                     .map(|html| (theorem.label.clone(), html)),
             );
 
+            let distinct_variable_pairs = util::calc_distinct_variable_pairs(&theorem.distincts);
+
+            let theorem_type =
+                theorem.calc_theorem_type(&distinct_variable_pairs, &self, settings)?;
+
+            let (axiom_dependencies, definition_dependencies) = theorem
+                .calc_dependencies_and_add_references(&mut self.optimized_data, i, &theorem_type);
+
             let optimized_theorem_data = OptimizedTheoremData {
                 theorem_type,
-                distinct_variable_pairs: util::calc_distinct_variable_pairs(&theorem.distincts),
+                distinct_variable_pairs,
                 parse_trees: None,
                 axiom_dependencies,
                 definition_dependencies,
@@ -607,7 +617,7 @@ impl IdManager {
 
 impl TheoremType {
     pub fn is_theorem(&self) -> bool {
-        matches!(self, TheoremType::Theorem)
+        matches!(self, TheoremType::Theorem(_))
     }
 
     pub fn is_axiom(&self) -> bool {
@@ -1337,7 +1347,7 @@ impl ParseTreeNode {
         }
     }
 
-    pub fn iter(&self) -> ParseTreeNodeIterator {
+    pub fn iter<'a>(&'a self) -> ParseTreeNodeIterator<'a> {
         ParseTreeNodeIterator::new(self)
     }
 }
@@ -1643,14 +1653,16 @@ impl Grammar {
         grammar.recalc_earley_optimized_data(symbol_number_mapping)?;
 
         for theorem in database_header.theorem_iter() {
-            if theorem.proof == None
-                && theorem
-                    .assertion
-                    .split_ascii_whitespace()
-                    .next()
-                    .ok_or(Error::InternalLogicError)?
-                    != "|-"
-                && theorem.hypotheses.len() == 0
+            let assertion_typecode = theorem
+                .assertion
+                .split_ascii_whitespace()
+                .next()
+                .ok_or(Error::InternalLogicError)?;
+
+            if theorem.proof.is_none()
+                && syntax_typecodes
+                    .iter()
+                    .any(|st| st.typecode == assertion_typecode)
             {
                 let mut assertion_token_iter = theorem.assertion.split_ascii_whitespace();
                 let left_side = Symbol {
@@ -1999,16 +2011,42 @@ impl Theorem {
         (ax_result, df_result)
     }
 
-    pub fn calc_theorem_type(&self, settings: &Settings) -> TheoremType {
-        if self.proof.is_some() {
-            TheoremType::Theorem
-        } else if !self.assertion.starts_with("|- ") {
+    pub fn calc_theorem_type(
+        &self,
+        theorem_distinct_var_conditions: &HashSet<(String, String)>,
+        metamath_data: &MetamathData,
+        settings: &Settings,
+    ) -> Result<TheoremType, Error> {
+        let assertion_typecode = self
+            .assertion
+            .split_ascii_whitespace()
+            .next()
+            .ok_or(Error::InternalLogicError)?;
+
+        Ok(if self.proof.is_some() {
+            let verify_result =
+                Verifier::verify_proof(self, metamath_data, Some(theorem_distinct_var_conditions))?;
+
+            TheoremType::Theorem(match verify_result {
+                VerificationResult::Correct => ProofType::Correct,
+                VerificationResult::Incomplete => ProofType::Incomplete,
+                VerificationResult::Incorrect => {
+                    println!("Incorrect: {}", self.label);
+
+                    return Err(Error::InvalidProofError);
+                }
+            })
+        } else if metamath_data
+            .syntax_typecodes
+            .iter()
+            .any(|st| st.typecode == assertion_typecode)
+        {
             TheoremType::SyntaxAxiom
         } else if self.label.starts_with(&settings.definitons_start_with) {
             TheoremType::Definition
         } else {
             TheoremType::Axiom
-        }
+        })
     }
 }
 

@@ -7,22 +7,24 @@ use crate::{
     Error,
 };
 
-pub struct Verifier {
-    proof_steps: Vec<ProofStep>,
+pub struct Verifier<'a> {
+    proof_steps: Vec<ProofStep<'a>>,
     step_numbers: Vec<ProofNumber>,
     next_step_number_i: usize,
     stack: Vec<StackLine>,
+    theorem_distinct_var_conditions: &'a HashSet<(String, String)>,
     proof_lines_returned: usize,
     previous_proof_line_mapping: HashMap<String, usize>,
     show_all: bool,
 }
 
 #[derive(Debug)]
-struct ProofStep {
+struct ProofStep<'a> {
     pub label: String,
     pub label_theorem_number: Option<u32>,
     pub hypotheses: Vec<ProofStepHypothesis>,
     pub statement: String,
+    pub distinct_var_conditions: Option<&'a HashSet<(String, String)>>,
 }
 
 #[derive(Debug)]
@@ -42,8 +44,8 @@ struct StackLine {
     pub display_step_number: Option<usize>,
 }
 
-pub enum VerifierCreationResult {
-    Verifier(Verifier),
+pub enum VerifierCreationResult<'a> {
+    Verifier(Verifier<'a>),
     IsAxiom,
     IsIncomplete,
 }
@@ -60,12 +62,13 @@ pub enum VerificationResult {
     Incomplete,
 }
 
-impl Verifier {
+impl<'a> Verifier<'a> {
     pub fn new(
         theorem: &Theorem,
-        metamath_data: &MetamathData,
+        metamath_data: &'a MetamathData,
         show_all: bool,
-    ) -> Result<VerifierCreationResult, Error> {
+        theorem_distinct_var_conditions_opt: Option<&'a HashSet<(String, String)>>,
+    ) -> Result<VerifierCreationResult<'a>, Error> {
         let opt_proof_steps_and_numbers = if let Some(proof) = theorem.proof.as_ref() {
             if proof.starts_with("( ") {
                 Verifier::calc_proof_steps_and_numbers_compressed(theorem, metamath_data)?
@@ -80,21 +83,34 @@ impl Verifier {
             return Ok(VerifierCreationResult::IsIncomplete);
         };
 
+        let theorem_distinct_var_conditions = match theorem_distinct_var_conditions_opt {
+            Some(tdvc) => tdvc,
+            None => {
+                &metamath_data
+                    .optimized_data
+                    .theorem_data
+                    .get(&theorem.label)
+                    .ok_or(Error::InternalLogicError)?
+                    .distinct_variable_pairs
+            }
+        };
+
         Ok(VerifierCreationResult::Verifier(Verifier {
             proof_steps,
             step_numbers,
             next_step_number_i: 0,
             stack: Vec::new(),
+            theorem_distinct_var_conditions,
             proof_lines_returned: 0,
             previous_proof_line_mapping: HashMap::new(),
             show_all,
         }))
     }
 
-    fn calc_proof_steps_and_numbers_compressed(
+    fn calc_proof_steps_and_numbers_compressed<'b>(
         theorem: &Theorem,
-        metamath_data: &MetamathData,
-    ) -> Result<Option<(Vec<ProofStep>, Vec<ProofNumber>)>, Error> {
+        metamath_data: &'b MetamathData,
+    ) -> Result<Option<(Vec<ProofStep<'b>>, Vec<ProofNumber>)>, Error> {
         let Some(proof) = theorem.proof.as_ref() else {
             return Err(Error::InternalLogicError);
         };
@@ -109,6 +125,7 @@ impl Verifier {
                 label_theorem_number: None,
                 hypotheses: Vec::new(),
                 statement: hypothesis.statement,
+                distinct_var_conditions: None,
             })
         }
 
@@ -138,6 +155,13 @@ impl Verifier {
             {
                 let theorem_hypotheses =
                     Verifier::calc_all_hypotheses_of_theorem(theorem, metamath_data);
+
+                let theorem_data = metamath_data
+                    .optimized_data
+                    .theorem_data
+                    .get(&theorem.label)
+                    .ok_or(Error::InternalLogicError)?;
+
                 steps.push(ProofStep {
                     label: label.to_string(),
                     label_theorem_number: Some((theorem_i + 1) as u32),
@@ -146,6 +170,7 @@ impl Verifier {
                         .map(|(hyp, _label)| hyp)
                         .collect(),
                     statement: theorem.assertion.clone(),
+                    distinct_var_conditions: Some(&theorem_data.distinct_variable_pairs),
                 });
             } else {
                 let floating_hypothesis = metamath_data
@@ -154,13 +179,14 @@ impl Verifier {
                         &theorem.label,
                     )))
                     .find(|fh| fh.label == label)
-                    .ok_or(Error::NotFoundError)?;
+                    .ok_or(Error::InvalidProofError)?;
 
                 steps.push(ProofStep {
                     label: label.to_string(),
                     label_theorem_number: None,
                     hypotheses: Vec::new(),
                     statement: floating_hypothesis.to_assertions_string(),
+                    distinct_var_conditions: None,
                 });
             }
         }
@@ -238,10 +264,10 @@ impl Verifier {
         hypotheses
     }
 
-    fn calc_variables_of_theorem<'a>(
-        theorem: &'a Theorem,
+    fn calc_variables_of_theorem<'b>(
+        theorem: &'b Theorem,
         metamath_data: &MetamathData,
-    ) -> HashSet<&'a str> {
+    ) -> HashSet<&'b str> {
         let mut variables = HashSet::new();
 
         Verifier::add_variables_to_hashset_from_statement(
@@ -261,9 +287,9 @@ impl Verifier {
         variables
     }
 
-    fn add_variables_to_hashset_from_statement<'a>(
-        hashset: &mut HashSet<&'a str>,
-        statement: &'a str,
+    fn add_variables_to_hashset_from_statement<'b>(
+        hashset: &mut HashSet<&'b str>,
+        statement: &'b str,
         metamath_data: &MetamathData,
     ) {
         for token in statement.split_whitespace() {
@@ -287,19 +313,19 @@ impl Verifier {
                     num += ((ch as u32) - 84) * multiplier;
                     multiplier *= 5;
                 }
-                _ => return Err(Error::InvalidFormatError),
+                _ => return Err(Error::InvalidProofError),
             }
         }
         if num == 0 {
-            return Err(Error::InvalidFormatError);
+            return Err(Error::InvalidProofError);
         }
         Ok(num)
     }
 
-    fn calc_proof_steps_and_numbers_uncompressed(
+    fn calc_proof_steps_and_numbers_uncompressed<'b>(
         theorem: &Theorem,
-        metamath_data: &MetamathData,
-    ) -> Result<Option<(Vec<ProofStep>, Vec<ProofNumber>)>, Error> {
+        metamath_data: &'b MetamathData,
+    ) -> Result<Option<(Vec<ProofStep<'b>>, Vec<ProofNumber>)>, Error> {
         let Some(proof) = theorem.proof.as_ref() else {
             return Err(Error::InternalLogicError);
         };
@@ -344,17 +370,18 @@ impl Verifier {
         })
     }
 
-    fn calc_proof_step_from_label(
+    fn calc_proof_step_from_label<'b>(
         label: &str,
         theorem: &Theorem,
-        metamath_data: &MetamathData,
-    ) -> Result<ProofStep, Error> {
+        metamath_data: &'b MetamathData,
+    ) -> Result<ProofStep<'b>, Error> {
         if let Some(hyp) = theorem.hypotheses.iter().find(|h| h.label == label) {
             return Ok(ProofStep {
                 label: label.to_string(),
                 label_theorem_number: None,
                 hypotheses: Vec::new(),
                 statement: hyp.expression.clone(),
+                distinct_var_conditions: None,
             });
         }
 
@@ -368,6 +395,7 @@ impl Verifier {
                 label_theorem_number: None,
                 hypotheses: Vec::new(),
                 statement: floating_hypothesis.to_assertions_string(),
+                distinct_var_conditions: None,
             });
         }
 
@@ -383,6 +411,13 @@ impl Verifier {
         {
             let label_theorem_hypotheses =
                 Verifier::calc_all_hypotheses_of_theorem(theorem, metamath_data);
+
+            let theorem_data = metamath_data
+                .optimized_data
+                .theorem_data
+                .get(&theorem.label)
+                .ok_or(Error::InternalLogicError)?;
+
             return Ok(ProofStep {
                 label: label.to_string(),
                 label_theorem_number: Some((theorem_i + 1) as u32),
@@ -391,10 +426,11 @@ impl Verifier {
                     .map(|(hyp, _label)| hyp)
                     .collect(),
                 statement: theorem.assertion.clone(),
+                distinct_var_conditions: Some(&theorem_data.distinct_variable_pairs),
             });
         }
 
-        Err(Error::NotFoundError)
+        Err(Error::InvalidProofError)
     }
 
     pub fn proccess_next_step(
@@ -415,12 +451,18 @@ impl Verifier {
         let next_stack_statement = if step.hypotheses.len() == 0 {
             step.statement.clone()
         } else {
-            let (next_step, new_hypotheses_nums) =
-                Verifier::calc_step_application(step, &self.stack)?;
+            let (next_step, new_hypotheses_nums) = Verifier::calc_step_application(
+                step,
+                &self.stack,
+                self.theorem_distinct_var_conditions,
+                metamath_data,
+            )?;
             hypotheses_nums = new_hypotheses_nums;
+
             for _ in 0..step.hypotheses.len() {
                 self.stack.pop();
             }
+
             next_step
         };
 
@@ -468,6 +510,7 @@ impl Verifier {
                 label_theorem_number: None,
                 hypotheses: Vec::new(),
                 statement: next_stack_statement.clone(),
+                distinct_var_conditions: None,
             });
         }
 
@@ -479,7 +522,7 @@ impl Verifier {
         // println!("\nStack:");
         // for stack_line in &self.stack {
         //     println!(
-        //         "{}: {}",
+        //         "{:?}: {}",
         //         stack_line.display_step_number, stack_line.statement
         //     )
         // }
@@ -490,9 +533,11 @@ impl Verifier {
         })
     }
 
-    fn calc_step_application<'a>(
-        step: &'a ProofStep,
+    fn calc_step_application(
+        step: &ProofStep,
         stack: &Vec<StackLine>,
+        distinct_var_conditions: &HashSet<(String, String)>,
+        metamath_data: &MetamathData,
     ) -> Result<(String, Vec<usize>), Error> {
         if stack.len() < step.hypotheses.len() {
             return Err(Error::InvalidProofError);
@@ -545,6 +590,42 @@ impl Verifier {
                 }
             }
         }
+
+        let empty_hash_set: HashSet<(String, String)> = HashSet::new();
+
+        let step_distinct_var_conditions = step.distinct_var_conditions.unwrap_or(&empty_hash_set);
+
+        if !step_distinct_var_conditions.is_empty() {
+            let substitutions_variables: HashMap<&str, HashSet<&str>> = var_map
+                .iter()
+                .map(|(var, sub)| {
+                    (
+                        *var,
+                        sub.split_ascii_whitespace()
+                            .filter(|symbol| metamath_data.is_variable(symbol))
+                            .collect(),
+                    )
+                })
+                .collect();
+
+            for (var_1, var_2) in step_distinct_var_conditions {
+                if let Some(var_1_sub_vars) = substitutions_variables.get(&**var_1) {
+                    if let Some(var_2_sub_vars) = substitutions_variables.get(&**var_2) {
+                        for &var_1_var in var_1_sub_vars.iter() {
+                            for &var_2_var in var_2_sub_vars.iter() {
+                                if var_1_var == var_2_var
+                                    || !distinct_var_conditions
+                                        .contains(&(var_1_var.to_string(), var_2_var.to_string()))
+                                {
+                                    return Err(Error::InvalidProofError);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         Ok((
             Verifier::calc_substitution(&step.statement, &var_map),
             hypotheses_nums,
@@ -567,8 +648,14 @@ impl Verifier {
     pub fn verify_proof(
         theorem: &Theorem,
         metamath_data: &MetamathData,
+        theorem_distinct_var_conditions_opt: Option<&HashSet<(String, String)>>,
     ) -> Result<VerificationResult, Error> {
-        let mut verifier = match Verifier::new(theorem, metamath_data, false) {
+        let mut verifier = match Verifier::new(
+            theorem,
+            metamath_data,
+            false,
+            theorem_distinct_var_conditions_opt,
+        ) {
             Ok(VerifierCreationResult::Verifier(v)) => v,
             Ok(VerifierCreationResult::IsAxiom) => return Ok(VerificationResult::Correct),
             Ok(VerifierCreationResult::IsIncomplete) => return Ok(VerificationResult::Incomplete),
