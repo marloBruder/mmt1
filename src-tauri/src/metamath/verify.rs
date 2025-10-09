@@ -178,6 +178,7 @@ impl<'a> Verifier<'a> {
                     .floating_hypohesis_locate_after_iter(Some(LocateAfterRef::LocateAfter(
                         &theorem.label,
                     )))
+                    .chain(theorem.temp_floating_hypotheses.iter())
                     .find(|fh| fh.label == label)
                     .ok_or(Error::InvalidProofError)?;
 
@@ -235,7 +236,11 @@ impl<'a> Verifier<'a> {
         let variables = Verifier::calc_variables_of_theorem(theorem, metamath_data);
 
         // Calculate proof steps of floating hypotheses
-        for floating_hypothesis in &metamath_data.optimized_data.floating_hypotheses {
+        for floating_hypothesis in metamath_data
+            .database_header
+            .floating_hypohesis_locate_after_iter(Some(LocateAfterRef::LocateAfter(&theorem.label)))
+            .chain(theorem.temp_floating_hypotheses.iter())
+        {
             if variables.contains(&*floating_hypothesis.variable) {
                 hypotheses.push((
                     ProofStepHypothesis {
@@ -269,11 +274,18 @@ impl<'a> Verifier<'a> {
         metamath_data: &MetamathData,
     ) -> HashSet<&'b str> {
         let mut variables = HashSet::new();
+        let theorem_variables: HashSet<&str> = theorem
+            .temp_variables
+            .iter()
+            .flatten()
+            .map(|v| &*v.symbol)
+            .collect();
 
         Verifier::add_variables_to_hashset_from_statement(
             &mut variables,
             &theorem.assertion,
             metamath_data,
+            &theorem_variables,
         );
 
         for hypothesis in &theorem.hypotheses {
@@ -281,6 +293,7 @@ impl<'a> Verifier<'a> {
                 &mut variables,
                 &hypothesis.expression,
                 metamath_data,
+                &theorem_variables,
             );
         }
 
@@ -291,9 +304,10 @@ impl<'a> Verifier<'a> {
         hashset: &mut HashSet<&'b str>,
         statement: &'b str,
         metamath_data: &MetamathData,
+        theorem_variables: &HashSet<&str>,
     ) {
         for token in statement.split_whitespace() {
-            if metamath_data.is_variable(token) {
+            if metamath_data.is_variable(token) || theorem_variables.contains(token) {
                 hashset.insert(token);
             }
         }
@@ -388,6 +402,7 @@ impl<'a> Verifier<'a> {
         if let Some(floating_hypothesis) = metamath_data
             .database_header
             .floating_hypohesis_locate_after_iter(Some(LocateAfterRef::LocateAfter(&theorem.label)))
+            .chain(theorem.temp_floating_hypotheses.iter())
             .find(|fh| fh.label == label)
         {
             return Ok(ProofStep {
