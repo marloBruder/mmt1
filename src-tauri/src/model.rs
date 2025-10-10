@@ -12,7 +12,7 @@ use crate::{
     metamath::{
         export::{write_text_wrapped, write_text_wrapped_no_whitespace},
         mmp_parser::LocateAfterRef,
-        verify::{VerificationResult, Verifier},
+        verify::{ProofStep, VerificationResult, Verifier},
     },
     util::{
         self, description_parser,
@@ -53,6 +53,7 @@ pub struct IdManager {
 
 #[derive(Debug, Default)]
 pub struct OptimizedMetamathData {
+    pub variables: HashSet<String>,
     pub floating_hypotheses: Vec<FloatingHypothesis>,
     pub theorem_amount: u32,
     pub theorem_data: HashMap<String, OptimizedTheoremData>,
@@ -403,18 +404,7 @@ impl MetamathData {
     }
 
     pub fn is_variable(&self, str: &str) -> bool {
-        if self.grammar_calculations_done {
-            self.optimized_data
-                .symbol_number_mapping
-                .numbers
-                .get(str)
-                .is_some_and(|&n| self.optimized_data.symbol_number_mapping.is_variable(n))
-        } else {
-            self.optimized_data
-                .floating_hypotheses
-                .iter()
-                .any(|fh| fh.variable == str)
-        }
+        self.optimized_data.variables.contains(str)
     }
 
     pub fn expression_to_parse_tree(&self, expression: &str) -> Result<ParseTree, Error> {
@@ -455,13 +445,12 @@ impl MetamathData {
                     .map(|html| (theorem.label.clone(), html)),
             );
 
-            let distinct_variable_pairs = util::calc_distinct_variable_pairs(&theorem.distincts);
-
-            let theorem_type =
-                theorem.calc_theorem_type(&distinct_variable_pairs, &self, settings)?;
+            let theorem_type = theorem.calc_theorem_type_without_verification(&self, settings)?;
 
             let (axiom_dependencies, definition_dependencies) = theorem
                 .calc_dependencies_and_add_references(&mut self.optimized_data, i, &theorem_type);
+
+            let distinct_variable_pairs = util::calc_distinct_variable_pairs(&theorem.distincts);
 
             let optimized_theorem_data = OptimizedTheoremData {
                 theorem_type,
@@ -478,7 +467,7 @@ impl MetamathData {
                 .insert(theorem.label.to_string(), optimized_theorem_data);
 
             if let Some(app_handle) = app {
-                let progress = (i as u32 * 100) / self.optimized_data.theorem_amount;
+                let progress = (i as u32 * 100) / (self.optimized_data.theorem_amount * 2);
 
                 if progress > last_reported_progress {
                     app_handle
@@ -500,12 +489,149 @@ impl MetamathData {
             }
         }
 
+        let mut proof_steps: HashMap<&str, ProofStep> = HashMap::new();
+        let mut proof_types: Vec<ProofType> = Vec::new();
+        let mut theorem_i: usize = 0;
+        let mut prev_floating_hypotheses: Vec<FloatingHypothesis> = Vec::new();
+
+        for database_element in self.database_header.iter() {
+            match database_element {
+                DatabaseElement::Statement(s) => match s {
+                    Statement::CommentStatement(_) => {}
+                    Statement::ConstantStatement(_) => {}
+                    Statement::VariableStatement(_) => {}
+                    Statement::FloatingHypohesisStatement(fh) => {
+                        prev_floating_hypotheses.push(fh.clone());
+
+                        proof_steps.insert(
+                            &fh.label,
+                            ProofStep {
+                                label: Ok(&fh.label),
+                                label_theorem_number: None,
+                                hypotheses: Vec::new(),
+                                statement: Err(fh.to_assertions_string()),
+                                distinct_var_conditions: None,
+                            },
+                        );
+                    }
+                    Statement::TheoremStatement(theorem) => {
+                        let theorem_data = self
+                            .optimized_data
+                            .theorem_data
+                            .get(&theorem.label)
+                            .ok_or(Error::InternalLogicError)?;
+
+                        let label_theorem_hypotheses = Verifier::calc_all_hypotheses_of_theorem(
+                            theorem,
+                            self,
+                            Some(&prev_floating_hypotheses),
+                        )?;
+
+                        let compressed_infered_proof_steps = label_theorem_hypotheses
+                            .clone()
+                            .into_iter()
+                            .map(|(hypothesis, label)| ProofStep {
+                                label,
+                                label_theorem_number: None,
+                                hypotheses: Vec::new(),
+                                statement: hypothesis.statement,
+                                distinct_var_conditions: None,
+                            })
+                            .collect();
+
+                        proof_steps.insert(
+                            &theorem.label,
+                            ProofStep {
+                                label: Ok(&theorem.label),
+                                label_theorem_number: Some((theorem_i + 1) as u32),
+                                hypotheses: label_theorem_hypotheses
+                                    .into_iter()
+                                    .map(|(hyp, _label)| hyp)
+                                    .collect(),
+                                statement: Ok(&theorem.assertion),
+                                distinct_var_conditions: Some(
+                                    &theorem_data.distinct_variable_pairs,
+                                ),
+                            },
+                        );
+
+                        proof_types.push(match theorem_data.theorem_type {
+                            TheoremType::Theorem(_) => {
+                                let verify_result = Verifier::verify_proof(
+                                    theorem,
+                                    self,
+                                    Some(&proof_steps),
+                                    Some(&prev_floating_hypotheses),
+                                    Some(compressed_infered_proof_steps), // None,
+                                )?;
+
+                                match verify_result {
+                                    VerificationResult::Correct => ProofType::Correct,
+                                    VerificationResult::Incomplete => ProofType::Incomplete,
+                                    VerificationResult::Incorrect => {
+                                        println!("Incorrect: {}", theorem.label);
+                                        return Err(Error::InvalidProofError);
+                                    }
+                                }
+                                // ProofType::Correct
+                            }
+                            TheoremType::Axiom => ProofType::Correct,
+                            TheoremType::Definition => ProofType::Correct,
+                            TheoremType::SyntaxAxiom => ProofType::Correct,
+                        });
+
+                        if let Some(app_handle) = app {
+                            let progress =
+                                ((self.optimized_data.theorem_amount + theorem_i as u32) * 100)
+                                    / (self.optimized_data.theorem_amount * 2);
+
+                            if progress > last_reported_progress {
+                                app_handle
+                                    .emit("calc-optimized-theorem-data-progress", progress)
+                                    .ok();
+                                last_reported_progress = progress;
+                            }
+                        }
+
+                        if let Some(ref stop_arc) = stop {
+                            let stop_bool = stop_arc.lock().or(Err(Error::InternalLogicError))?;
+                            if *stop_bool {
+                                return Err(Error::OpenDatabaseStoppedEarlyError);
+                            }
+                        }
+
+                        if (theorem_i + 1) % 1000 == 0 {
+                            println!("Verifying: {}", (theorem_i + 1));
+                        }
+
+                        theorem_i += 1;
+                    }
+                },
+                DatabaseElement::Header(_, _) => {}
+            }
+        }
+
+        for (theorem, proof_type) in self
+            .database_header
+            .theorem_iter()
+            .zip(proof_types.into_iter())
+        {
+            let theorem_data = self
+                .optimized_data
+                .theorem_data
+                .get_mut(&theorem.label)
+                .ok_or(Error::InternalLogicError)?;
+
+            if let TheoremType::Theorem(proof_type_ref) = &mut theorem_data.theorem_type {
+                *proof_type_ref = proof_type;
+            }
+        }
+
         Ok(invalid_description_html)
     }
 
     pub fn recalc_optimized_floating_hypotheses_after_one_new(&mut self) -> Result<(), Error> {
-        let mut i: usize = 0;
-        for floating_hypothesis in self.database_header.floating_hypohesis_iter() {
+        for (i, floating_hypothesis) in self.database_header.floating_hypohesis_iter().enumerate() {
             let optimized_floating_hypothesis_option =
                 self.optimized_data.floating_hypotheses.get(i);
 
@@ -526,8 +652,6 @@ impl MetamathData {
                     return Ok(());
                 }
             }
-
-            i += 1;
         }
 
         Ok(())
@@ -2013,9 +2137,8 @@ impl Theorem {
         (ax_result, df_result)
     }
 
-    pub fn calc_theorem_type(
+    pub fn calc_theorem_type_without_verification(
         &self,
-        theorem_distinct_var_conditions: &HashSet<(String, String)>,
         metamath_data: &MetamathData,
         settings: &Settings,
     ) -> Result<TheoremType, Error> {
@@ -2026,18 +2149,7 @@ impl Theorem {
             .ok_or(Error::InternalLogicError)?;
 
         Ok(if self.proof.is_some() {
-            let verify_result =
-                Verifier::verify_proof(self, metamath_data, Some(theorem_distinct_var_conditions))?;
-
-            TheoremType::Theorem(match verify_result {
-                VerificationResult::Correct => ProofType::Correct,
-                VerificationResult::Incomplete => ProofType::Incomplete,
-                VerificationResult::Incorrect => {
-                    println!("Incorrect: {}", self.label);
-
-                    return Err(Error::InvalidProofError);
-                }
-            })
+            TheoremType::Theorem(ProofType::Correct)
         } else if metamath_data
             .syntax_typecodes
             .iter()

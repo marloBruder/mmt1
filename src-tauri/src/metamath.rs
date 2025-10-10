@@ -474,28 +474,29 @@ pub fn calc_theorem_page_data(
 
     let description_parsed = optimized_theorem_data.description_parsed.clone();
 
-    let mut verifier = match Verifier::new(theorem, metamath_data, show_all, None)? {
-        VerifierCreationResult::Verifier(v) => v,
-        res @ (VerifierCreationResult::IsAxiom | VerifierCreationResult::IsIncomplete) => {
-            return Ok(TheoremPageData {
-                theorem: theorem.clone(),
-                theorem_number,
-                proof_lines: Vec::new(),
-                preview_errors: None,
-                preview_deleted_markers: None,
-                preview_confirmations: None,
-                preview_confirmations_recursive: None,
-                preview_unify_markers: None,
-                last_theorem_label,
-                next_theorem_label,
-                axiom_dependencies,
-                definition_dependencies,
-                references,
-                description_parsed,
-                proof_incomplete: matches!(res, VerifierCreationResult::IsIncomplete),
-            })
-        }
-    };
+    let mut verifier =
+        match Verifier::new(theorem, metamath_data, show_all, false, None, None, None)? {
+            VerifierCreationResult::Verifier(v) => v,
+            res @ (VerifierCreationResult::IsAxiom | VerifierCreationResult::IsIncomplete) => {
+                return Ok(TheoremPageData {
+                    theorem: theorem.clone(),
+                    theorem_number,
+                    proof_lines: Vec::new(),
+                    preview_errors: None,
+                    preview_deleted_markers: None,
+                    preview_confirmations: None,
+                    preview_confirmations_recursive: None,
+                    preview_unify_markers: None,
+                    last_theorem_label,
+                    next_theorem_label,
+                    axiom_dependencies,
+                    definition_dependencies,
+                    references,
+                    description_parsed,
+                    proof_incomplete: matches!(res, VerifierCreationResult::IsIncomplete),
+                })
+            }
+        };
 
     let mut proof_lines = Vec::new();
 

@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{
     metamath::mmp_parser::LocateAfterRef,
-    model::{self, MetamathData, Theorem},
+    model::{self, FloatingHypothesis, MetamathData, Theorem},
     util::StrIterToSpaceSeperatedString,
     Error,
 };
@@ -16,20 +16,21 @@ pub struct Verifier<'a> {
     proof_lines_returned: usize,
     previous_proof_line_mapping: HashMap<String, usize>,
     show_all: bool,
+    only_show_last: bool,
 }
 
-#[derive(Debug)]
-struct ProofStep<'a> {
-    pub label: String,
+#[derive(Debug, Clone)]
+pub struct ProofStep<'a> {
+    pub label: Result<&'a str, String>,
     pub label_theorem_number: Option<u32>,
-    pub hypotheses: Vec<ProofStepHypothesis>,
-    pub statement: String,
+    pub hypotheses: Vec<ProofStepHypothesis<'a>>,
+    pub statement: Result<&'a str, String>,
     pub distinct_var_conditions: Option<&'a HashSet<(String, String)>>,
 }
 
-#[derive(Debug)]
-pub struct ProofStepHypothesis {
-    pub statement: String,
+#[derive(Debug, Clone)]
+pub struct ProofStepHypothesis<'a> {
+    pub statement: Result<&'a str, String>,
     pub is_floating_hypothesis: bool,
 }
 
@@ -64,16 +65,30 @@ pub enum VerificationResult {
 
 impl<'a> Verifier<'a> {
     pub fn new(
-        theorem: &Theorem,
+        theorem: &'a Theorem,
         metamath_data: &'a MetamathData,
         show_all: bool,
-        theorem_distinct_var_conditions_opt: Option<&'a HashSet<(String, String)>>,
+        only_show_last: bool,
+        already_calculated_proof_steps: Option<&'a HashMap<&'a str, ProofStep<'a>>>,
+        prev_flaoting_hypotheses: Option<&'a Vec<FloatingHypothesis>>,
+        compressed_infered_proof_steps: Option<Vec<ProofStep<'a>>>,
     ) -> Result<VerifierCreationResult<'a>, Error> {
         let opt_proof_steps_and_numbers = if let Some(proof) = theorem.proof.as_ref() {
             if proof.starts_with("( ") {
-                Verifier::calc_proof_steps_and_numbers_compressed(theorem, metamath_data)?
+                Verifier::calc_proof_steps_and_numbers_compressed(
+                    theorem,
+                    metamath_data,
+                    already_calculated_proof_steps,
+                    prev_flaoting_hypotheses,
+                    compressed_infered_proof_steps,
+                )?
             } else {
-                Verifier::calc_proof_steps_and_numbers_uncompressed(theorem, metamath_data)?
+                Verifier::calc_proof_steps_and_numbers_uncompressed(
+                    theorem,
+                    metamath_data,
+                    already_calculated_proof_steps,
+                    prev_flaoting_hypotheses,
+                )?
             }
         } else {
             return Ok(VerifierCreationResult::IsAxiom);
@@ -83,17 +98,12 @@ impl<'a> Verifier<'a> {
             return Ok(VerifierCreationResult::IsIncomplete);
         };
 
-        let theorem_distinct_var_conditions = match theorem_distinct_var_conditions_opt {
-            Some(tdvc) => tdvc,
-            None => {
-                &metamath_data
-                    .optimized_data
-                    .theorem_data
-                    .get(&theorem.label)
-                    .ok_or(Error::InternalLogicError)?
-                    .distinct_variable_pairs
-            }
-        };
+        let theorem_distinct_var_conditions = &metamath_data
+            .optimized_data
+            .theorem_data
+            .get(&theorem.label)
+            .ok_or(Error::InternalLogicError)?
+            .distinct_variable_pairs;
 
         Ok(VerifierCreationResult::Verifier(Verifier {
             proof_steps,
@@ -104,30 +114,45 @@ impl<'a> Verifier<'a> {
             proof_lines_returned: 0,
             previous_proof_line_mapping: HashMap::new(),
             show_all,
+            only_show_last,
         }))
     }
 
     fn calc_proof_steps_and_numbers_compressed<'b>(
-        theorem: &Theorem,
+        theorem: &'b Theorem,
         metamath_data: &'b MetamathData,
+        already_calculated_proof_steps: Option<&'b HashMap<&str, ProofStep>>,
+        prev_flaoting_hypotheses: Option<&'b Vec<FloatingHypothesis>>,
+        compressed_infered_proof_steps: Option<Vec<ProofStep<'b>>>,
     ) -> Result<Option<(Vec<ProofStep<'b>>, Vec<ProofNumber>)>, Error> {
         let Some(proof) = theorem.proof.as_ref() else {
             return Err(Error::InternalLogicError);
         };
 
-        let mut steps = Vec::new();
+        let mut steps = match compressed_infered_proof_steps {
+            None => {
+                let mut steps = Vec::new();
 
-        let hypotheses = Verifier::calc_all_hypotheses_of_theorem(theorem, metamath_data);
+                let hypotheses = Verifier::calc_all_hypotheses_of_theorem(
+                    theorem,
+                    metamath_data,
+                    prev_flaoting_hypotheses,
+                )?;
 
-        for (hypothesis, label) in hypotheses {
-            steps.push(ProofStep {
-                label,
-                label_theorem_number: None,
-                hypotheses: Vec::new(),
-                statement: hypothesis.statement,
-                distinct_var_conditions: None,
-            })
-        }
+                for (hypothesis, label) in hypotheses {
+                    steps.push(ProofStep {
+                        label,
+                        label_theorem_number: None,
+                        hypotheses: Vec::new(),
+                        statement: hypothesis.statement,
+                        distinct_var_conditions: None,
+                    })
+                }
+
+                steps
+            }
+            Some(steps) => steps,
+        };
 
         let mut incomplete = false;
 
@@ -143,52 +168,82 @@ impl<'a> Verifier<'a> {
                 continue;
             }
 
-            if label == theorem.label {
-                return Err(Error::InvalidProofError);
-            }
+            if let Some(proof_steps) = already_calculated_proof_steps {
+                if let Some(proof_step) = proof_steps.get(label) {
+                    steps.push(proof_step.clone());
+                } else {
+                    let floating_hypothesis = theorem
+                        .temp_floating_hypotheses
+                        .iter()
+                        .find(|fh| fh.label == label)
+                        .ok_or(Error::InvalidProofError)?;
 
-            if let Some((theorem_i, theorem)) = metamath_data
-                .database_header
-                .theorem_locate_after_iter(Some(LocateAfterRef::LocateAfter(&theorem.label)))
-                .enumerate()
-                .find(|(_, t)| t.label == label)
-            {
-                let theorem_hypotheses =
-                    Verifier::calc_all_hypotheses_of_theorem(theorem, metamath_data);
-
-                let theorem_data = metamath_data
-                    .optimized_data
-                    .theorem_data
-                    .get(&theorem.label)
-                    .ok_or(Error::InternalLogicError)?;
-
-                steps.push(ProofStep {
-                    label: label.to_string(),
-                    label_theorem_number: Some((theorem_i + 1) as u32),
-                    hypotheses: theorem_hypotheses
-                        .into_iter()
-                        .map(|(hyp, _label)| hyp)
-                        .collect(),
-                    statement: theorem.assertion.clone(),
-                    distinct_var_conditions: Some(&theorem_data.distinct_variable_pairs),
-                });
+                    steps.push(ProofStep {
+                        label: Ok(&floating_hypothesis.label),
+                        label_theorem_number: None,
+                        hypotheses: Vec::new(),
+                        statement: Err(floating_hypothesis.to_assertions_string()),
+                        distinct_var_conditions: None,
+                    });
+                }
             } else {
-                let floating_hypothesis = metamath_data
-                    .database_header
-                    .floating_hypohesis_locate_after_iter(Some(LocateAfterRef::LocateAfter(
-                        &theorem.label,
-                    )))
-                    .chain(theorem.temp_floating_hypotheses.iter())
-                    .find(|fh| fh.label == label)
-                    .ok_or(Error::InvalidProofError)?;
+                if label == theorem.label {
+                    return Err(Error::InvalidProofError);
+                }
 
-                steps.push(ProofStep {
-                    label: label.to_string(),
-                    label_theorem_number: None,
-                    hypotheses: Vec::new(),
-                    statement: floating_hypothesis.to_assertions_string(),
-                    distinct_var_conditions: None,
-                });
+                if let Some((step_theorem_i, step_theorem)) = metamath_data
+                    .database_header
+                    .theorem_locate_after_iter(Some(LocateAfterRef::LocateAfter(&theorem.label)))
+                    .enumerate()
+                    .find(|(_, t)| t.label == label)
+                {
+                    let theorem_hypotheses = Verifier::calc_all_hypotheses_of_theorem(
+                        step_theorem,
+                        metamath_data,
+                        prev_flaoting_hypotheses,
+                    )?;
+
+                    let theorem_data = metamath_data
+                        .optimized_data
+                        .theorem_data
+                        .get(&step_theorem.label)
+                        .ok_or(Error::InternalLogicError)?;
+
+                    steps.push(ProofStep {
+                        label: Ok(&step_theorem.label),
+                        label_theorem_number: Some((step_theorem_i + 1) as u32),
+                        hypotheses: theorem_hypotheses
+                            .into_iter()
+                            .map(|(hyp, _label)| hyp)
+                            .collect(),
+                        statement: Ok(&step_theorem.assertion),
+                        distinct_var_conditions: Some(&theorem_data.distinct_variable_pairs),
+                    });
+                } else {
+                    let floating_hypothesis = match prev_flaoting_hypotheses {
+                        None => metamath_data
+                            .database_header
+                            .floating_hypohesis_locate_after_iter(Some(
+                                LocateAfterRef::LocateAfter(&theorem.label),
+                            ))
+                            .chain(theorem.temp_floating_hypotheses.iter())
+                            .find(|fh| fh.label == label)
+                            .ok_or(Error::InvalidProofError)?,
+                        Some(floating_hypotheses) => floating_hypotheses
+                            .iter()
+                            .chain(theorem.temp_floating_hypotheses.iter())
+                            .find(|fh| fh.label == label)
+                            .ok_or(Error::InvalidProofError)?,
+                    };
+
+                    steps.push(ProofStep {
+                        label: Ok(&floating_hypothesis.label),
+                        label_theorem_number: None,
+                        hypotheses: Vec::new(),
+                        statement: Err(floating_hypothesis.to_assertions_string()),
+                        distinct_var_conditions: None,
+                    });
+                }
             }
         }
 
@@ -226,47 +281,71 @@ impl<'a> Verifier<'a> {
         })
     }
 
-    fn calc_all_hypotheses_of_theorem(
-        theorem: &Theorem,
-        metamath_data: &MetamathData,
-    ) -> Vec<(ProofStepHypothesis, String)> {
-        let mut hypotheses = Vec::new();
+    pub fn calc_all_hypotheses_of_theorem<'b>(
+        theorem: &'b Theorem,
+        metamath_data: &'b MetamathData,
+        prev_flaoting_hypotheses: Option<&Vec<FloatingHypothesis>>,
+    ) -> Result<Vec<(ProofStepHypothesis<'b>, Result<&'b str, String>)>, Error> {
+        let mut hypotheses: Vec<(ProofStepHypothesis, Result<&str, String>)> = Vec::new();
 
         // Calculate variables occuring in assertion and hypotheses
         let variables = Verifier::calc_variables_of_theorem(theorem, metamath_data);
 
         // Calculate proof steps of floating hypotheses
-        for floating_hypothesis in metamath_data
-            .database_header
-            .floating_hypohesis_locate_after_iter(Some(LocateAfterRef::LocateAfter(&theorem.label)))
-            .chain(theorem.temp_floating_hypotheses.iter())
-        {
-            if variables.contains(&*floating_hypothesis.variable) {
-                hypotheses.push((
-                    ProofStepHypothesis {
-                        statement: format!(
-                            "{} {}",
-                            floating_hypothesis.typecode, floating_hypothesis.variable
-                        ),
-                        is_floating_hypothesis: true,
-                    },
-                    floating_hypothesis.label.clone(),
-                ));
+        match prev_flaoting_hypotheses {
+            None => {
+                for floating_hypothesis in metamath_data
+                    .database_header
+                    .floating_hypohesis_locate_after_iter(Some(LocateAfterRef::LocateAfter(
+                        &theorem.label,
+                    )))
+                    .chain(theorem.temp_floating_hypotheses.iter())
+                {
+                    if variables.contains(&*floating_hypothesis.variable) {
+                        hypotheses.push((
+                            ProofStepHypothesis {
+                                statement: Err(floating_hypothesis.to_assertions_string()),
+                                is_floating_hypothesis: true,
+                            },
+                            Ok(&floating_hypothesis.label),
+                        ));
+                    }
+                }
             }
+            Some(floating_hyptheses) => {
+                for floating_hypothesis in floating_hyptheses
+                    .iter()
+                    .chain(theorem.temp_floating_hypotheses.iter())
+                {
+                    if variables.contains(&*floating_hypothesis.variable) {
+                        hypotheses.push((
+                            ProofStepHypothesis {
+                                statement: Err(floating_hypothesis.to_assertions_string()),
+                                is_floating_hypothesis: true,
+                            },
+                            Err(floating_hypothesis.label.clone()),
+                        ));
+                    }
+                }
+            }
+        }
+
+        if hypotheses.len() != variables.len() {
+            return Err(Error::InvalidProofError);
         }
 
         // Calculate proof steps of essential hypotheses
         for hypothesis in &theorem.hypotheses {
             hypotheses.push((
                 ProofStepHypothesis {
-                    statement: hypothesis.expression.clone(),
+                    statement: Ok(&hypothesis.expression),
                     is_floating_hypothesis: false,
                 },
-                hypothesis.label.clone(),
+                Ok(&hypothesis.label),
             ));
         }
 
-        hypotheses
+        Ok(hypotheses)
     }
 
     fn calc_variables_of_theorem<'b>(
@@ -337,8 +416,10 @@ impl<'a> Verifier<'a> {
     }
 
     fn calc_proof_steps_and_numbers_uncompressed<'b>(
-        theorem: &Theorem,
+        theorem: &'b Theorem,
         metamath_data: &'b MetamathData,
+        already_calculated_proof_steps: Option<&'b HashMap<&str, ProofStep>>,
+        prev_flaoting_hypotheses: Option<&'b Vec<FloatingHypothesis>>,
     ) -> Result<Option<(Vec<ProofStep<'b>>, Vec<ProofNumber>)>, Error> {
         let Some(proof) = theorem.proof.as_ref() else {
             return Err(Error::InternalLogicError);
@@ -358,17 +439,25 @@ impl<'a> Verifier<'a> {
             if let Some((i, _)) = proof_steps
                 .iter()
                 .enumerate()
-                .find(|(_, ps)| ps.label == token)
+                .find(|(_, ps)| ps.label.as_ref().map(|s| *s).unwrap_or_else(|s| s) == token)
             {
                 proof_step_numbers.push(ProofNumber {
                     number: (i + 1) as u32,
                     save: false,
                 });
             } else {
+                if let Some(computed_proof_steps) = already_calculated_proof_steps {
+                    if let Some(proof_step) = computed_proof_steps.get(token) {
+                        proof_steps.push(proof_step.clone());
+                        continue;
+                    }
+                }
+
                 proof_steps.push(Verifier::calc_proof_step_from_label(
                     token,
                     theorem,
                     metamath_data,
+                    prev_flaoting_hypotheses,
                 )?);
                 proof_step_numbers.push(ProofNumber {
                     number: proof_steps.len() as u32,
@@ -386,32 +475,54 @@ impl<'a> Verifier<'a> {
 
     fn calc_proof_step_from_label<'b>(
         label: &str,
-        theorem: &Theorem,
+        theorem: &'b Theorem,
         metamath_data: &'b MetamathData,
+        prev_flaoting_hypotheses: Option<&'b Vec<FloatingHypothesis>>,
     ) -> Result<ProofStep<'b>, Error> {
         if let Some(hyp) = theorem.hypotheses.iter().find(|h| h.label == label) {
             return Ok(ProofStep {
-                label: label.to_string(),
+                label: Ok(&hyp.label),
                 label_theorem_number: None,
                 hypotheses: Vec::new(),
-                statement: hyp.expression.clone(),
+                statement: Ok(&hyp.expression),
                 distinct_var_conditions: None,
             });
         }
 
-        if let Some(floating_hypothesis) = metamath_data
-            .database_header
-            .floating_hypohesis_locate_after_iter(Some(LocateAfterRef::LocateAfter(&theorem.label)))
-            .chain(theorem.temp_floating_hypotheses.iter())
-            .find(|fh| fh.label == label)
-        {
-            return Ok(ProofStep {
-                label: label.to_string(),
-                label_theorem_number: None,
-                hypotheses: Vec::new(),
-                statement: floating_hypothesis.to_assertions_string(),
-                distinct_var_conditions: None,
-            });
+        match prev_flaoting_hypotheses {
+            None => {
+                if let Some(floating_hypothesis) = metamath_data
+                    .database_header
+                    .floating_hypohesis_locate_after_iter(Some(LocateAfterRef::LocateAfter(
+                        &theorem.label,
+                    )))
+                    .chain(theorem.temp_floating_hypotheses.iter())
+                    .find(|fh| fh.label == label)
+                {
+                    return Ok(ProofStep {
+                        label: Ok(&floating_hypothesis.label),
+                        label_theorem_number: None,
+                        hypotheses: Vec::new(),
+                        statement: Err(floating_hypothesis.to_assertions_string()),
+                        distinct_var_conditions: None,
+                    });
+                }
+            }
+            Some(floating_hypotheses) => {
+                if let Some(floating_hypothesis) = floating_hypotheses
+                    .iter()
+                    .chain(theorem.temp_floating_hypotheses.iter())
+                    .find(|fh| fh.label == label)
+                {
+                    return Ok(ProofStep {
+                        label: Ok(&floating_hypothesis.label),
+                        label_theorem_number: None,
+                        hypotheses: Vec::new(),
+                        statement: Err(floating_hypothesis.to_assertions_string()),
+                        distinct_var_conditions: None,
+                    });
+                }
+            }
         }
 
         if theorem.label == label {
@@ -424,8 +535,11 @@ impl<'a> Verifier<'a> {
             .enumerate()
             .find(|(_, t)| t.label == label)
         {
-            let label_theorem_hypotheses =
-                Verifier::calc_all_hypotheses_of_theorem(theorem, metamath_data);
+            let label_theorem_hypotheses = Verifier::calc_all_hypotheses_of_theorem(
+                theorem,
+                metamath_data,
+                prev_flaoting_hypotheses,
+            )?;
 
             let theorem_data = metamath_data
                 .optimized_data
@@ -434,13 +548,13 @@ impl<'a> Verifier<'a> {
                 .ok_or(Error::InternalLogicError)?;
 
             return Ok(ProofStep {
-                label: label.to_string(),
+                label: Ok(&theorem.label),
                 label_theorem_number: Some((theorem_i + 1) as u32),
                 hypotheses: label_theorem_hypotheses
                     .into_iter()
                     .map(|(hyp, _label)| hyp)
                     .collect(),
-                statement: theorem.assertion.clone(),
+                statement: Ok(&theorem.assertion),
                 distinct_var_conditions: Some(&theorem_data.distinct_variable_pairs),
             });
         }
@@ -464,7 +578,10 @@ impl<'a> Verifier<'a> {
         let mut hypotheses_nums: Vec<usize> = Vec::new();
 
         let next_stack_statement = if step.hypotheses.len() == 0 {
-            step.statement.clone()
+            step.statement
+                .clone()
+                .map(|s| s.to_string())
+                .unwrap_or_else(|s| s)
         } else {
             let (next_step, new_hypotheses_nums) = Verifier::calc_step_application(
                 step,
@@ -485,6 +602,8 @@ impl<'a> Verifier<'a> {
 
         let mut display_step_number: Option<usize> = None;
 
+        let is_last_step = self.step_numbers.get(self.next_step_number_i).is_none();
+
         if self.show_all
             || next_stack_statement
                 .split_whitespace()
@@ -495,18 +614,23 @@ impl<'a> Verifier<'a> {
                         .iter()
                         .any(|lt| lt.typecode == t)
                 })
-            || self.step_numbers.get(self.next_step_number_i).is_none()
+            || is_last_step
         {
             match self.previous_proof_line_mapping.get(&next_stack_statement) {
-                Some(i) => {
+                Some(i) if !is_last_step => {
                     display_step_number = Some(*i);
                 }
-                None => {
+                _ if !self.only_show_last || is_last_step => {
                     self.proof_lines_returned += 1;
                     proof_line = Some(model::ProofLine {
                         step_name: self.proof_lines_returned.to_string(),
                         hypotheses: hypotheses_nums.iter().map(|&i| i.to_string()).collect(),
-                        reference: step.label.clone(),
+                        reference: step
+                            .label
+                            .as_ref()
+                            .map(|s| *s)
+                            .unwrap_or_else(|s| s)
+                            .to_string(),
                         reference_number: step.label_theorem_number,
                         indention: 1,
                         assertion: next_stack_statement.clone(),
@@ -516,15 +640,16 @@ impl<'a> Verifier<'a> {
                     self.previous_proof_line_mapping
                         .insert(next_stack_statement.clone(), self.proof_lines_returned);
                 }
+                _ => {}
             }
         }
 
         if next_step_number.save {
             self.proof_steps.push(ProofStep {
-                label: String::new(),
+                label: Ok(""),
                 label_theorem_number: None,
                 hypotheses: Vec::new(),
-                statement: next_stack_statement.clone(),
+                statement: Err(next_stack_statement.clone()),
                 distinct_var_conditions: None,
             });
         }
@@ -572,12 +697,12 @@ impl<'a> Verifier<'a> {
             }
 
             if hypothesis.is_floating_hypothesis {
-                let mut hypothesis_token_iter = hypothesis.statement.split_ascii_whitespace();
-                let hypothesis_typecode = hypothesis_token_iter
-                    .next()
-                    .ok_or(Error::InternalLogicError)?;
-                let hypothesis_variable = hypothesis_token_iter
-                    .next()
+                let (hypothesis_typecode, hypothesis_variable) = hypothesis
+                    .statement
+                    .as_ref()
+                    .map(|s| *s)
+                    .unwrap_or_else(|s| s)
+                    .split_once(' ')
                     .ok_or(Error::InternalLogicError)?;
 
                 if hypothesis_typecode
@@ -598,9 +723,15 @@ impl<'a> Verifier<'a> {
 
                 var_map.insert(hypothesis_variable, mapped);
             } else {
-                if stack_line.statement
-                    != Verifier::calc_substitution(&hypothesis.statement, &var_map)
-                {
+                if !Verifier::check_substitution(
+                    &stack_line.statement,
+                    hypothesis
+                        .statement
+                        .as_ref()
+                        .map(|s| *s)
+                        .unwrap_or_else(|s| s),
+                    &var_map,
+                ) {
                     return Err(Error::InvalidProofError);
                 }
             }
@@ -642,9 +773,43 @@ impl<'a> Verifier<'a> {
         }
 
         Ok((
-            Verifier::calc_substitution(&step.statement, &var_map),
+            Verifier::calc_substitution(
+                step.statement.as_ref().map(|s| *s).unwrap_or_else(|s| &s),
+                &var_map,
+            ),
             hypotheses_nums,
         ))
+    }
+
+    fn check_substitution(
+        stack_statement: &str,
+        theorem_statement: &str,
+        var_mapping: &HashMap<&str, &str>,
+    ) -> bool {
+        let mut stack_statement_iter = stack_statement.split_ascii_whitespace();
+
+        let mut theorem_statement_iter = theorem_statement
+            .split_ascii_whitespace()
+            .map(|t| {
+                if let Some(sub) = var_mapping.get(&t) {
+                    sub.split_ascii_whitespace()
+                } else {
+                    t.split_ascii_whitespace()
+                }
+            })
+            .flatten();
+
+        loop {
+            match (stack_statement_iter.next(), theorem_statement_iter.next()) {
+                (Some(stack_t), Some(theorem_t)) => {
+                    if stack_t != theorem_t {
+                        return false;
+                    }
+                }
+                (None, Some(_)) | (Some(_), None) => return false,
+                (None, None) => return true,
+            }
+        }
     }
 
     fn calc_substitution(statement: &str, var_mapping: &HashMap<&str, &str>) -> String {
@@ -663,13 +828,18 @@ impl<'a> Verifier<'a> {
     pub fn verify_proof(
         theorem: &Theorem,
         metamath_data: &MetamathData,
-        theorem_distinct_var_conditions_opt: Option<&HashSet<(String, String)>>,
+        already_calculated_proof_steps: Option<&HashMap<&str, ProofStep>>,
+        prev_flaoting_hypotheses: Option<&Vec<FloatingHypothesis>>,
+        compressed_infered_proof_steps: Option<Vec<ProofStep>>,
     ) -> Result<VerificationResult, Error> {
         let mut verifier = match Verifier::new(
             theorem,
             metamath_data,
             false,
-            theorem_distinct_var_conditions_opt,
+            true,
+            already_calculated_proof_steps,
+            prev_flaoting_hypotheses,
+            compressed_infered_proof_steps,
         ) {
             Ok(VerifierCreationResult::Verifier(v)) => v,
             Ok(VerifierCreationResult::IsAxiom) => return Ok(VerificationResult::Correct),
@@ -678,13 +848,26 @@ impl<'a> Verifier<'a> {
             Err(err) => return Err(err),
         };
 
+        let mut last_proof_line: Option<model::ProofLine> = None;
+
         loop {
             match verifier.proccess_next_step(metamath_data) {
-                Ok(StepResult::VerifierFinished) => return Ok(VerificationResult::Correct),
-                Ok(_) => {}
+                Ok(StepResult::VerifierFinished) => break,
+                Ok(StepResult::ProofLine(pl)) => last_proof_line = Some(pl),
+                Ok(StepResult::NoProofLine) => {}
                 Err(Error::InvalidProofError) => return Ok(VerificationResult::Incorrect),
                 Err(err) => return Err(err),
             }
         }
+
+        Ok(if let Some(pl) = last_proof_line {
+            if pl.assertion == theorem.assertion {
+                VerificationResult::Correct
+            } else {
+                VerificationResult::Incorrect
+            }
+        } else {
+            VerificationResult::Incorrect
+        })
     }
 }
