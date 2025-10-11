@@ -449,6 +449,10 @@ impl<'a> Verifier<'a> {
                 if let Some(computed_proof_steps) = already_calculated_proof_steps {
                     if let Some(proof_step) = computed_proof_steps.get(token) {
                         proof_steps.push(proof_step.clone());
+                        proof_step_numbers.push(ProofNumber {
+                            number: proof_steps.len() as u32,
+                            save: false,
+                        });
                         continue;
                     }
                 }
