@@ -5,6 +5,7 @@ use std::{
     sync::Arc,
 };
 
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
 
@@ -467,7 +468,7 @@ impl MetamathData {
                 .insert(theorem.label.to_string(), optimized_theorem_data);
 
             if let Some(app_handle) = app {
-                let progress = (i as u32 * 100) / (self.optimized_data.theorem_amount * 2);
+                let progress = (i as u32 * 100) / self.optimized_data.theorem_amount;
 
                 if progress > last_reported_progress {
                     app_handle
@@ -489,10 +490,18 @@ impl MetamathData {
             }
         }
 
+        if let Some(app_handle) = app {
+            app_handle
+                .emit("calc-optimized-theorem-data-progress", 100)
+                .ok();
+        }
+
         let mut proof_steps: HashMap<&str, ProofStep> = HashMap::new();
-        let mut proof_types: Vec<ProofType> = Vec::new();
         let mut theorem_i: usize = 0;
-        let mut prev_floating_hypotheses: Vec<FloatingHypothesis> = Vec::new();
+        let mut floating_hypothesis_i: usize = 0;
+        let mut theorem_vec: Vec<(&Theorem, usize, Vec<ProofStep>)> = Vec::new();
+
+        last_reported_progress = 0;
 
         for database_element in self.database_header.iter() {
             match database_element {
@@ -501,7 +510,7 @@ impl MetamathData {
                     Statement::ConstantStatement(_) => {}
                     Statement::VariableStatement(_) => {}
                     Statement::FloatingHypohesisStatement(fh) => {
-                        prev_floating_hypotheses.push(fh.clone());
+                        floating_hypothesis_i += 1;
 
                         proof_steps.insert(
                             &fh.label,
@@ -524,20 +533,21 @@ impl MetamathData {
                         let label_theorem_hypotheses = Verifier::calc_all_hypotheses_of_theorem(
                             theorem,
                             self,
-                            Some(&prev_floating_hypotheses),
+                            Some(&self.optimized_data.floating_hypotheses[..floating_hypothesis_i]),
                         )?;
 
-                        let compressed_infered_proof_steps = label_theorem_hypotheses
-                            .clone()
-                            .into_iter()
-                            .map(|(hypothesis, label)| ProofStep {
-                                label,
-                                label_theorem_number: None,
-                                hypotheses: Vec::new(),
-                                statement: hypothesis.statement,
-                                distinct_var_conditions: None,
-                            })
-                            .collect();
+                        let compressed_infered_proof_steps: Vec<ProofStep> =
+                            label_theorem_hypotheses
+                                .clone()
+                                .into_iter()
+                                .map(|(hypothesis, label)| ProofStep {
+                                    label,
+                                    label_theorem_number: None,
+                                    hypotheses: Vec::new(),
+                                    statement: hypothesis.statement,
+                                    distinct_var_conditions: None,
+                                })
+                                .collect();
 
                         proof_steps.insert(
                             &theorem.label,
@@ -555,43 +565,11 @@ impl MetamathData {
                             },
                         );
 
-                        proof_types.push(match theorem_data.theorem_type {
-                            TheoremType::Theorem(_) => {
-                                let verify_result = Verifier::verify_proof(
-                                    theorem,
-                                    self,
-                                    Some(&proof_steps),
-                                    Some(&prev_floating_hypotheses),
-                                    Some(compressed_infered_proof_steps), // None,
-                                )?;
-
-                                match verify_result {
-                                    VerificationResult::Correct => ProofType::Correct,
-                                    VerificationResult::Incomplete => ProofType::Incomplete,
-                                    VerificationResult::Incorrect => {
-                                        println!("Incorrect: {}", theorem.label);
-                                        return Err(Error::InvalidProofError);
-                                    }
-                                }
-                                // ProofType::Correct
-                            }
-                            TheoremType::Axiom => ProofType::Correct,
-                            TheoremType::Definition => ProofType::Correct,
-                            TheoremType::SyntaxAxiom => ProofType::Correct,
-                        });
-
-                        if let Some(app_handle) = app {
-                            let progress =
-                                ((self.optimized_data.theorem_amount + theorem_i as u32) * 100)
-                                    / (self.optimized_data.theorem_amount * 2);
-
-                            if progress > last_reported_progress {
-                                app_handle
-                                    .emit("calc-optimized-theorem-data-progress", progress)
-                                    .ok();
-                                last_reported_progress = progress;
-                            }
-                        }
+                        theorem_vec.push((
+                            theorem,
+                            floating_hypothesis_i,
+                            compressed_infered_proof_steps,
+                        ));
 
                         if let Some(ref stop_arc) = stop {
                             let stop_bool = stop_arc.lock().or(Err(Error::InternalLogicError))?;
@@ -600,8 +578,14 @@ impl MetamathData {
                             }
                         }
 
-                        if (theorem_i + 1) % 1000 == 0 {
-                            println!("Verifying: {}", (theorem_i + 1));
+                        if let Some(app_handle) = app {
+                            let progress = ((theorem_i as u32) * 100)
+                                / (self.optimized_data.theorem_amount * 2);
+
+                            if progress > last_reported_progress {
+                                app_handle.emit("verification-progress", progress).ok();
+                                last_reported_progress = progress;
+                            }
                         }
 
                         theorem_i += 1;
@@ -610,6 +594,72 @@ impl MetamathData {
                 DatabaseElement::Header(_, _) => {}
             }
         }
+
+        struct VerifictationProgress {
+            pub last_reported_progress: u32,
+            pub theorems_verified: u32,
+        }
+
+        let verification_progress: Arc<std::sync::Mutex<VerifictationProgress>> =
+            Arc::new(std::sync::Mutex::new(VerifictationProgress {
+                last_reported_progress,
+                theorems_verified: 0,
+            }));
+
+        let proof_types: Vec<ProofType> = theorem_vec
+            .into_par_iter()
+            .map(
+                |(theorem, prev_floating_hypotheses_num, compressed_infered_proof_steps)| {
+                    if let Some(ref stop_arc) = stop {
+                        let stop_bool = stop_arc.lock().or(Err(Error::InternalLogicError))?;
+                        if *stop_bool {
+                            return Err(Error::OpenDatabaseStoppedEarlyError);
+                        }
+                    }
+
+                    let verify_result = Verifier::verify_proof(
+                        theorem,
+                        self,
+                        Some(&proof_steps),
+                        Some(
+                            &self.optimized_data.floating_hypotheses
+                                [..prev_floating_hypotheses_num],
+                        ),
+                        Some(compressed_infered_proof_steps), // None,
+                    )?;
+
+                    let mut vp = verification_progress
+                        .lock()
+                        .map_err(|_| Error::InternalLogicError)?;
+
+                    vp.theorems_verified += 1;
+
+                    if vp.theorems_verified % 1000 == 0 {
+                        println!("Verifying: {}", vp.theorems_verified);
+                    }
+
+                    if let Some(app_handle) = app {
+                        let progress =
+                            ((self.optimized_data.theorem_amount + vp.theorems_verified) * 100)
+                                / (self.optimized_data.theorem_amount * 2);
+
+                        if progress > vp.last_reported_progress {
+                            app_handle.emit("verification-progress", progress).ok();
+                            vp.last_reported_progress = progress;
+                        }
+                    }
+
+                    Ok(match verify_result {
+                        VerificationResult::Correct => ProofType::Correct,
+                        VerificationResult::Incomplete => ProofType::Incomplete,
+                        VerificationResult::Incorrect => {
+                            println!("Incorrect: {}", theorem.label);
+                            return Err(Error::InvalidProofError);
+                        }
+                    })
+                },
+            )
+            .collect::<Result<Vec<ProofType>, Error>>()?;
 
         for (theorem, proof_type) in self
             .database_header

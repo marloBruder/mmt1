@@ -26,6 +26,7 @@
 
   let lastMmParserProgress = $state(0);
   let lastCalcOptimizedTheoremDataProgress = $state(0);
+  let lastVerificationProgress = $state(0);
   let lastGrammarCalculationsProgress = $state(0);
 
   let unlistenFns: UnlistenFn[] = [];
@@ -44,6 +45,14 @@
         let progress = e.payload as number;
         if (progress > lastCalcOptimizedTheoremDataProgress) {
           lastCalcOptimizedTheoremDataProgress = progress;
+        }
+      })
+    );
+    unlistenFns.push(
+      await listen("verification-progress", (e) => {
+        let progress = e.payload as number;
+        if (progress > lastVerificationProgress) {
+          lastVerificationProgress = progress;
         }
       })
     );
@@ -124,6 +133,14 @@
         <div class="flex flex-col items-center">
           <div>
             <ProgressBar progress={lastCalcOptimizedTheoremDataProgress}></ProgressBar>
+          </div>
+        </div>
+      </div>
+      <div class="my-4">
+        Verifying database:
+        <div class="flex flex-col items-center">
+          <div>
+            <ProgressBar progress={lastVerificationProgress}></ProgressBar>
           </div>
         </div>
       </div>

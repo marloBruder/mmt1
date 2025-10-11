@@ -467,12 +467,6 @@ impl MmParser {
             settings,
         )?;
 
-        if let Some(ref app_handle) = self.app {
-            app_handle
-                .emit("calc-optimized-theorem-data-progress", 100)
-                .ok();
-        }
-
         Ok((metamath_data, self.invalid_html, invalid_description_html))
     }
 

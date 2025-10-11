@@ -70,7 +70,7 @@ impl<'a> Verifier<'a> {
         show_all: bool,
         only_show_last: bool,
         already_calculated_proof_steps: Option<&'a HashMap<&'a str, ProofStep<'a>>>,
-        prev_flaoting_hypotheses: Option<&'a Vec<FloatingHypothesis>>,
+        prev_flaoting_hypotheses: Option<&'a [FloatingHypothesis]>,
         compressed_infered_proof_steps: Option<Vec<ProofStep<'a>>>,
     ) -> Result<VerifierCreationResult<'a>, Error> {
         let opt_proof_steps_and_numbers = if let Some(proof) = theorem.proof.as_ref() {
@@ -122,7 +122,7 @@ impl<'a> Verifier<'a> {
         theorem: &'b Theorem,
         metamath_data: &'b MetamathData,
         already_calculated_proof_steps: Option<&'b HashMap<&str, ProofStep>>,
-        prev_flaoting_hypotheses: Option<&'b Vec<FloatingHypothesis>>,
+        prev_flaoting_hypotheses: Option<&'b [FloatingHypothesis]>,
         compressed_infered_proof_steps: Option<Vec<ProofStep<'b>>>,
     ) -> Result<Option<(Vec<ProofStep<'b>>, Vec<ProofNumber>)>, Error> {
         let Some(proof) = theorem.proof.as_ref() else {
@@ -284,7 +284,7 @@ impl<'a> Verifier<'a> {
     pub fn calc_all_hypotheses_of_theorem<'b>(
         theorem: &'b Theorem,
         metamath_data: &'b MetamathData,
-        prev_flaoting_hypotheses: Option<&Vec<FloatingHypothesis>>,
+        prev_flaoting_hypotheses: Option<&[FloatingHypothesis]>,
     ) -> Result<Vec<(ProofStepHypothesis<'b>, Result<&'b str, String>)>, Error> {
         let mut hypotheses: Vec<(ProofStepHypothesis, Result<&str, String>)> = Vec::new();
 
@@ -419,7 +419,7 @@ impl<'a> Verifier<'a> {
         theorem: &'b Theorem,
         metamath_data: &'b MetamathData,
         already_calculated_proof_steps: Option<&'b HashMap<&str, ProofStep>>,
-        prev_flaoting_hypotheses: Option<&'b Vec<FloatingHypothesis>>,
+        prev_flaoting_hypotheses: Option<&'b [FloatingHypothesis]>,
     ) -> Result<Option<(Vec<ProofStep<'b>>, Vec<ProofNumber>)>, Error> {
         let Some(proof) = theorem.proof.as_ref() else {
             return Err(Error::InternalLogicError);
@@ -477,7 +477,7 @@ impl<'a> Verifier<'a> {
         label: &str,
         theorem: &'b Theorem,
         metamath_data: &'b MetamathData,
-        prev_flaoting_hypotheses: Option<&'b Vec<FloatingHypothesis>>,
+        prev_flaoting_hypotheses: Option<&'b [FloatingHypothesis]>,
     ) -> Result<ProofStep<'b>, Error> {
         if let Some(hyp) = theorem.hypotheses.iter().find(|h| h.label == label) {
             return Ok(ProofStep {
@@ -829,7 +829,7 @@ impl<'a> Verifier<'a> {
         theorem: &Theorem,
         metamath_data: &MetamathData,
         already_calculated_proof_steps: Option<&HashMap<&str, ProofStep>>,
-        prev_flaoting_hypotheses: Option<&Vec<FloatingHypothesis>>,
+        prev_flaoting_hypotheses: Option<&[FloatingHypothesis]>,
         compressed_infered_proof_steps: Option<Vec<ProofStep>>,
     ) -> Result<VerificationResult, Error> {
         let mut verifier = match Verifier::new(
