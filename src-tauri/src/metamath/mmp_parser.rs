@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use crate::{
     editor::on_edit::DetailedError,
     model::{Comment, Constant, FloatingHypothesis, HeaderPath, MetamathData, ParseTree, Variable},
-    Error,
+    Error, Settings,
 };
 
 pub mod calc_indention;
@@ -248,8 +248,9 @@ impl MmpParserStage5 {
         &self,
         stage_4: &MmpParserStage4Success,
         mm_data: &MetamathData,
+        settings: &Settings,
     ) -> Result<MmpParserStage6, Error> {
-        stage_6::stage_6(stage_4, self, mm_data)
+        stage_6::stage_6(stage_4, self, mm_data, settings)
     }
 }
 

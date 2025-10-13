@@ -34,7 +34,17 @@ pub struct Settings {
     _color_unicode_preview: bool,
     #[serde(rename = "showUnifyResultInUnicodePreview")]
     show_unify_result_in_unicode_preview: bool,
-    // show: bool,
+    #[serde(rename = "defaultShowAll")]
+    _default_show_all: bool,
+    #[serde(rename = "proofFormat")]
+    proof_format: ProofFormatOption,
+}
+
+#[derive(Default, Clone, Copy)]
+pub enum ProofFormatOption {
+    #[default]
+    Uncompressed,
+    Compressed,
 }
 
 fn app_setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
@@ -295,5 +305,20 @@ impl serde::Serialize for Error {
         S: serde::ser::Serializer,
     {
         serializer.serialize_str(self.to_string().as_ref())
+    }
+}
+
+impl<'de> Deserialize<'de> for ProofFormatOption {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        match String::deserialize(deserializer)?.as_str() {
+            "uncompressed" => Ok(ProofFormatOption::Uncompressed),
+            "compressed" => Ok(ProofFormatOption::Compressed),
+            _ => Err(serde::de::Error::custom(
+                "Expected uncompressed or compressed for proofFormat",
+            )),
+        }
     }
 }
