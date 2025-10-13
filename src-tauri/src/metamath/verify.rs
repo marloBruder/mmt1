@@ -15,8 +15,7 @@ pub struct Verifier<'a> {
     theorem_distinct_var_conditions: &'a HashSet<(String, String)>,
     proof_lines_returned: usize,
     previous_proof_line_mapping: HashMap<String, usize>,
-    show_all: bool,
-    only_show_last: bool,
+    show: Show,
 }
 
 #[derive(Debug, Clone)]
@@ -34,15 +33,21 @@ pub struct ProofStepHypothesis<'a> {
     pub is_floating_hypothesis: bool,
 }
 
-struct ProofNumber {
-    number: u32,
-    save: bool,
+pub struct ProofNumber {
+    pub number: u32,
+    pub save: bool,
 }
 
 #[derive(Debug)]
-struct StackLine {
+pub struct StackLine {
     pub statement: String,
     pub display_step_number: Option<usize>,
+}
+
+pub enum Show {
+    All,
+    Logical,
+    None,
 }
 
 pub enum VerifierCreationResult<'a> {
@@ -67,8 +72,8 @@ impl<'a> Verifier<'a> {
     pub fn new(
         theorem: &'a Theorem,
         metamath_data: &'a MetamathData,
-        show_all: bool,
-        only_show_last: bool,
+        show: Show,
+        theorem_distinct_var_conditions: Option<&'a HashSet<(String, String)>>,
         already_calculated_proof_steps: Option<&'a HashMap<&'a str, ProofStep<'a>>>,
         prev_flaoting_hypotheses: Option<&'a [FloatingHypothesis]>,
         compressed_infered_proof_steps: Option<Vec<ProofStep<'a>>>,
@@ -98,12 +103,17 @@ impl<'a> Verifier<'a> {
             return Ok(VerifierCreationResult::IsIncomplete);
         };
 
-        let theorem_distinct_var_conditions = &metamath_data
-            .optimized_data
-            .theorem_data
-            .get(&theorem.label)
-            .ok_or(Error::InternalLogicError)?
-            .distinct_variable_pairs;
+        let theorem_distinct_var_conditions = match theorem_distinct_var_conditions {
+            None => {
+                &metamath_data
+                    .optimized_data
+                    .theorem_data
+                    .get(&theorem.label)
+                    .ok_or(Error::InternalLogicError)?
+                    .distinct_variable_pairs
+            }
+            Some(tdvc) => tdvc,
+        };
 
         Ok(VerifierCreationResult::Verifier(Verifier {
             proof_steps,
@@ -113,8 +123,7 @@ impl<'a> Verifier<'a> {
             theorem_distinct_var_conditions,
             proof_lines_returned: 0,
             previous_proof_line_mapping: HashMap::new(),
-            show_all,
-            only_show_last,
+            show,
         }))
     }
 
@@ -607,24 +616,29 @@ impl<'a> Verifier<'a> {
         let mut display_step_number: Option<usize> = None;
 
         let is_last_step = self.step_numbers.get(self.next_step_number_i).is_none();
+        let show = match self.show {
+            Show::All => true,
+            Show::Logical => {
+                next_stack_statement
+                    .split_whitespace()
+                    .next()
+                    .is_some_and(|t| {
+                        metamath_data
+                            .logical_typecodes
+                            .iter()
+                            .any(|lt| lt.typecode == t)
+                    })
+                    || is_last_step
+            }
+            Show::None => false,
+        };
 
-        if self.show_all
-            || next_stack_statement
-                .split_whitespace()
-                .next()
-                .is_some_and(|t| {
-                    metamath_data
-                        .logical_typecodes
-                        .iter()
-                        .any(|lt| lt.typecode == t)
-                })
-            || is_last_step
-        {
+        if show {
             match self.previous_proof_line_mapping.get(&next_stack_statement) {
                 Some(i) if !is_last_step => {
                     display_step_number = Some(*i);
                 }
-                _ if !self.only_show_last || is_last_step => {
+                _ => {
                     self.proof_lines_returned += 1;
                     proof_line = Some(model::ProofLine {
                         step_name: self.proof_lines_returned.to_string(),
@@ -644,7 +658,6 @@ impl<'a> Verifier<'a> {
                     self.previous_proof_line_mapping
                         .insert(next_stack_statement.clone(), self.proof_lines_returned);
                 }
-                _ => {}
             }
         }
 
@@ -829,9 +842,14 @@ impl<'a> Verifier<'a> {
             .fold_to_space_seperated_string()
     }
 
+    fn get_stack(&self) -> &Vec<StackLine> {
+        &self.stack
+    }
+
     pub fn verify_proof(
         theorem: &Theorem,
         metamath_data: &MetamathData,
+        theorem_distinct_var_conditions: Option<&HashSet<(String, String)>>,
         already_calculated_proof_steps: Option<&HashMap<&str, ProofStep>>,
         prev_flaoting_hypotheses: Option<&[FloatingHypothesis]>,
         compressed_infered_proof_steps: Option<Vec<ProofStep>>,
@@ -839,8 +857,8 @@ impl<'a> Verifier<'a> {
         let mut verifier = match Verifier::new(
             theorem,
             metamath_data,
-            false,
-            true,
+            Show::None,
+            theorem_distinct_var_conditions,
             already_calculated_proof_steps,
             prev_flaoting_hypotheses,
             compressed_infered_proof_steps,
@@ -852,20 +870,18 @@ impl<'a> Verifier<'a> {
             Err(err) => return Err(err),
         };
 
-        let mut last_proof_line: Option<model::ProofLine> = None;
-
         loop {
             match verifier.proccess_next_step(metamath_data) {
                 Ok(StepResult::VerifierFinished) => break,
-                Ok(StepResult::ProofLine(pl)) => last_proof_line = Some(pl),
+                Ok(StepResult::ProofLine(_)) => {}
                 Ok(StepResult::NoProofLine) => {}
                 Err(Error::InvalidProofError) => return Ok(VerificationResult::Incorrect),
                 Err(err) => return Err(err),
             }
         }
 
-        Ok(if let Some(pl) = last_proof_line {
-            if pl.assertion == theorem.assertion {
+        Ok(if let Some(sl) = verifier.get_stack().last() {
+            if verifier.get_stack().len() == 1 && sl.statement == theorem.assertion {
                 VerificationResult::Correct
             } else {
                 VerificationResult::Incorrect

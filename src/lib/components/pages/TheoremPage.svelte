@@ -126,8 +126,8 @@
   </div>
   {#if theorem.proof != null}
     {#if editorPreview}
-      <div class="pb-4">
-        <h2>Raw Proof:</h2>
+      <div class="pb-4 break-words">
+        <h2 class="font-bold">Raw Proof:</h2>
         <p>{theorem.proof}</p>
       </div>
     {/if}
@@ -189,7 +189,7 @@
         The proof is incomplete.
       {/if}
     </div>
-    {#if !pageData.proofIncomplete}
+    {#if !pageData.proofIncomplete && !editorPreview}
       <div class="px-4">
         <RoundButton onclick={toggleShowAll}>Toggle Show All Proof Steps</RoundButton>
       </div>

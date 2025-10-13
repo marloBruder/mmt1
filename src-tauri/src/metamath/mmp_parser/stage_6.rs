@@ -1,8 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    metamath::mmp_parser::{MmpParserStage4Success, MmpParserStage5, MmpParserStage6, UnifyLine},
+    metamath::{
+        mmp_parser::{MmpParserStage4Success, MmpParserStage5, MmpParserStage6, UnifyLine},
+        verify::ProofNumber,
+    },
     model::{MetamathData, ParseTree, ParseTreeNode},
+    util::StrIterToSpaceSeperatedString,
     Error,
 };
 
@@ -11,7 +15,7 @@ pub fn stage_6(
     stage_5: &MmpParserStage5,
     mm_data: &MetamathData,
 ) -> Result<MmpParserStage6, Error> {
-    let Some(uncompressed_proof) = calc_uncompressed_proof(
+    let Some(proof_tree) = calc_proof_tree(
         &stage_5.unify_result,
         &stage_4.distinct_variable_pairs,
         mm_data,
@@ -20,28 +24,32 @@ pub fn stage_6(
         return Ok(MmpParserStage6 { proof: None });
     };
 
-    let compressed_proof =
-        calc_compressed_proof(&stage_5.unify_result, uncompressed_proof, mm_data);
+    // let uncompressed_proof = calc_uncompressed_proof(&proof_tree);
+
+    let compressed_proof = calc_compressed_proof(proof_tree, &stage_5.unify_result, mm_data)?;
 
     Ok(MmpParserStage6 {
         proof: Some(compressed_proof),
     })
 }
 
-fn calc_uncompressed_proof(
-    unify_result: &Vec<UnifyLine>,
+fn calc_proof_tree<'a>(
+    unify_result: &'a Vec<UnifyLine>,
     distinct_variable_pairs: &HashSet<(String, String)>,
-    mm_data: &MetamathData,
-) -> Result<Option<String>, Error> {
+    mm_data: &'a MetamathData,
+) -> Result<Option<ProofTree<'a>>, Error> {
     let Some(qed_step_i) = unify_result.iter().position(|ul| ul.step_name == "qed") else {
         return Ok(None);
     };
 
-    let mut proofs: Vec<Option<String>> = Vec::new();
+    let mut proofs: Vec<Option<ProofTree>> = Vec::new();
 
     for (i, unify_line) in unify_result.iter().enumerate() {
         if unify_line.is_hypothesis {
-            proofs.push(Some(unify_line.step_ref.to_string()));
+            proofs.push(Some(ProofTree {
+                label: &*unify_line.step_ref,
+                children: Vec::new(),
+            }));
         } else {
             if unify_line.step_ref == "" || unify_line.deleted_line {
                 proofs.push(None);
@@ -130,40 +138,33 @@ fn calc_uncompressed_proof(
 
                     Ok((
                         var_str,
-                        pt_node.calc_proof(&mm_data.optimized_data.grammar)?,
+                        pt_node.calc_proof_tree(&mm_data.optimized_data.grammar)?,
                     ))
                 })
-                .collect::<Result<HashMap<&str, String>, Error>>()?;
+                .collect::<Result<HashMap<&str, ProofTree>, Error>>()?;
 
-            let vars_proof = mm_data
+            let vars_proof_children: Vec<ProofTree> = mm_data
                 .optimized_data
                 .floating_hypotheses
                 .iter()
                 .filter_map(|fh| var_proofs.remove(&*fh.variable))
-                .fold(String::new(), |mut s, vp| {
-                    s.push_str(&vp);
-                    s.push(' ');
-                    s
-                });
+                .collect();
 
-            let Some(mut proof) = unify_line_hypotheses_parsed
+            let Some(mut essential_proof_children) = unify_line_hypotheses_parsed
                 .into_iter()
-                .filter_map(|hyp_i| proofs.get(hyp_i))
-                .fold(Some(vars_proof), |s, p| {
-                    let Some(mut s) = s else { return None };
-                    let Some(p) = p else { return None };
-                    s.push_str(p);
-                    s.push(' ');
-                    Some(s)
-                })
+                .map(|hyp_i| Ok((*proofs.get(hyp_i).ok_or(Error::InternalLogicError)?).clone()))
+                .collect::<Result<Option<Vec<ProofTree>>, Error>>()?
             else {
                 proofs.push(None);
                 continue;
             };
 
-            proof.push_str(&unify_line.step_ref);
+            let mut children = vars_proof_children;
+            children.append(&mut essential_proof_children);
 
-            proofs.push(Some(proof));
+            let label = &*unify_line.step_ref;
+
+            proofs.push(Some(ProofTree { label, children }));
 
             if unify_line.step_name == "qed" {
                 break;
@@ -176,11 +177,98 @@ fn calc_uncompressed_proof(
     Ok(proofs.swap_remove(qed_step_i))
 }
 
+fn calc_uncompressed_proof(proof_tree: &ProofTree) -> String {
+    proof_tree
+        .iter()
+        .map(|pt| pt.label)
+        .fold_to_space_seperated_string()
+}
+
 fn calc_compressed_proof(
+    proof_tree: ProofTree,
     unify_result: &Vec<UnifyLine>,
-    uncompressed_proof: String,
     mm_data: &MetamathData,
-) -> String {
+) -> Result<String, Error> {
+    // let mut saved_step_mapping: HashMap<&ProofTree, Option<usize>> = HashMap::new();
+    // let mut next_saved_step_i: usize = 0;
+
+    // let mut steps_seen: HashSet<&str> = HashSet::new();
+    // let mut total_number_steps: usize = 0;
+
+    // for node in proof_tree.iter() {
+    //     match saved_step_mapping.get(node) {
+    //         Some(Some(_)) => {}
+    //         Some(None) => {
+    //             if !node.children.is_empty() {
+    //                 saved_step_mapping.insert(node, Some(next_saved_step_i));
+    //                 next_saved_step_i += 1;
+    //             }
+    //         }
+    //         None => {
+    //             saved_step_mapping.insert(node, None);
+    //         }
+    //     }
+
+    //     if steps_seen.insert(node.label) {
+    //         total_number_steps += 1;
+    //     }
+    // }
+
+    // let mut compressed_steps_string = String::new();
+
+    // let mut nodes_seen: HashSet<&ProofTree> = HashSet::new();
+    // let mut steps: Vec<&str> = Vec::new();
+
+    // for node in proof_tree.iter() {
+    //     match (nodes_seen.get(node), saved_step_mapping.get(node)) {
+    //         (Some(_), Some(Some(additional_step_i))) => {
+    //             compressed_steps_string.push_str(&number_to_compressed_proof_format_number(
+    //                 total_number_steps + additional_step_i + 1,
+    //             ));
+    //         }
+    //         (None, Some(Some(_))) => {
+    //             match steps.iter().position(|s| *s == node.label) {
+    //                 Some(pos) => {
+    //                     compressed_steps_string
+    //                         .push_str(&number_to_compressed_proof_format_number(pos + 1));
+    //                 }
+    //                 None => {
+    //                     steps.push(node.label);
+    //                     compressed_steps_string
+    //                         .push_str(&number_to_compressed_proof_format_number(steps.len()));
+    //                 }
+    //             }
+    //             compressed_steps_string.push('Z');
+    //         }
+    //         (None, Some(None)) => match steps.iter().position(|s| *s == node.label) {
+    //             Some(pos) => {
+    //                 compressed_steps_string
+    //                     .push_str(&number_to_compressed_proof_format_number(pos + 1));
+    //             }
+    //             None => {
+    //                 steps.push(node.label);
+    //                 compressed_steps_string
+    //                     .push_str(&number_to_compressed_proof_format_number(steps.len()));
+    //             }
+    //         },
+    //         (Some(_), Some(None)) => {}
+    //         // should never happen
+    //         (_, None) => {}
+    //     }
+    //     nodes_seen.insert(node);
+    // }
+
+    // let mut result = steps.iter().fold("( ".to_string(), |mut s, pus| {
+    //     s.push_str(pus);
+    //     s.push(' ');
+    //     s
+    // });
+
+    // result.push_str(") ");
+    // result.push_str(&compressed_steps_string);
+
+    // result
+
     let vars_in_theorem: HashSet<&str> = unify_result
         .iter()
         .filter(|ul| ul.is_hypothesis || ul.step_name == "qed")
@@ -225,44 +313,304 @@ fn calc_compressed_proof(
         .map(|ul| &*ul.step_ref)
         .collect();
 
-    let mut previously_used_steps: Vec<&str> = Vec::new();
+    let mut nodes_seen: HashMap<&ProofTree<'_>, usize> = HashMap::new();
+    let compressed_proof_tree = compress_proof_tree(&proof_tree, &mut nodes_seen);
 
-    let mut compressed_steps = String::new();
+    let mut steps: Vec<&str> = Vec::new();
+    let mut compressed_steps: Vec<usize> = Vec::new();
 
-    for step in uncompressed_proof.split_ascii_whitespace() {
-        let number = match floating_hypotheses
-            .iter()
-            .chain(hypotheses.iter())
-            .chain(previously_used_steps.iter())
-            .position(|prev_step| *prev_step == step)
-        {
-            Some(i) => i + 1,
-            None => {
-                previously_used_steps.push(step);
-                floating_hypotheses.len() + hypotheses.len() + previously_used_steps.len()
+    for node in compressed_proof_tree.iter() {
+        match node {
+            CompressedProofTree::ProofTree(pt, _) => {
+                if floating_hypotheses
+                    .iter()
+                    .chain(hypotheses.iter())
+                    .chain(steps.iter())
+                    .find(|s| **s == pt.label)
+                    .is_none()
+                {
+                    steps.push(pt.label);
+                }
             }
-        };
-
-        let compressed_number = number_to_compressed_proof_format_number(number);
-
-        compressed_steps.push_str(&compressed_number);
+            CompressedProofTree::Compressed(compressed_i) => {
+                match compressed_steps.binary_search(compressed_i) {
+                    Ok(_) => {}
+                    Err(i) => compressed_steps.insert(i, *compressed_i),
+                }
+            }
+        }
     }
 
-    let mut result = previously_used_steps
-        .iter()
-        .fold("( ".to_string(), |mut s, pus| {
-            s.push_str(pus);
-            s.push(' ');
-            s
-        });
+    let mut compressed_steps_in_order: Vec<usize> = Vec::new();
+
+    for node in compressed_proof_tree.iter() {
+        if let CompressedProofTree::ProofTree(_, Some(compressed_i)) = node {
+            if compressed_steps.binary_search(compressed_i).is_ok() {
+                compressed_steps_in_order.push(*compressed_i);
+            }
+        }
+    }
+
+    let mut compressed_steps_string = String::new();
+
+    for node in compressed_proof_tree.iter() {
+        let step_num = match node {
+            CompressedProofTree::ProofTree(pt, i) => ProofNumber {
+                number: (floating_hypotheses
+                    .iter()
+                    .chain(hypotheses.iter())
+                    .chain(steps.iter())
+                    .position(|s| *s == pt.label)
+                    .ok_or(Error::InternalLogicError)?
+                    + 1) as u32,
+                save: i.is_some_and(|i| compressed_steps.binary_search(&i).is_ok()),
+            },
+            CompressedProofTree::Compressed(compressed_i) => ProofNumber {
+                number: (floating_hypotheses.len()
+                    + hypotheses.len()
+                    + steps.len()
+                    + compressed_steps_in_order
+                        .iter()
+                        .position(|ci| ci == compressed_i)
+                        .ok_or(Error::InternalLogicError)?
+                    + 1) as u32,
+                save: false,
+            },
+        };
+        compressed_steps_string
+            .push_str(&number_to_compressed_proof_format_number(step_num.number));
+        if step_num.save {
+            compressed_steps_string.push('Z');
+        }
+    }
+
+    let mut result = steps.iter().fold("( ".to_string(), |mut s, pus| {
+        s.push_str(pus);
+        s.push(' ');
+        s
+    });
 
     result.push_str(") ");
-    result.push_str(&compressed_steps);
+    result.push_str(&compressed_steps_string);
 
-    result
+    Ok(result)
 }
 
-fn number_to_compressed_proof_format_number(mut number: usize) -> String {
+fn compress_proof_tree<'a, 'b>(
+    proof_tree: &'b ProofTree<'a>,
+    nodes_seen: &mut HashMap<&'b ProofTree<'a>, usize>,
+) -> CompressedProofTree<'a> {
+    match nodes_seen.get(proof_tree) {
+        Some(compressed_i) => CompressedProofTree::Compressed(*compressed_i),
+        None => {
+            let i = if proof_tree.children.len() != 0 {
+                nodes_seen.insert(proof_tree, nodes_seen.len());
+                Some(nodes_seen.len() - 1)
+            } else {
+                None
+            };
+            CompressedProofTree::ProofTree(
+                CompressedProofTreeNode {
+                    label: proof_tree.label,
+                    children: proof_tree
+                        .children
+                        .iter()
+                        .map(|pt| compress_proof_tree(pt, nodes_seen))
+                        .collect(),
+                },
+                i,
+            )
+        }
+    }
+}
+
+// fn calc_compressed_proof(
+//     stage_3: &MmpParserStage3Theorem,
+//     distinct_variable_pairs: &HashSet<(String, String)>,
+//     unify_result: &Vec<UnifyLine>,
+//     uncompressed_proof: String,
+//     mm_data: &MetamathData,
+// ) -> Result<Option<String>, Error> {
+//     let theorem: Theorem = Theorem {
+//         label: String::new(),       // not used by verifier
+//         description: String::new(), // not used by verifier
+//         temp_variables: stage_3.temp_variable_statements.clone(),
+//         temp_floating_hypotheses: stage_3.temp_floating_hypotheses.clone(),
+//         distincts: Vec::new(), // not used by verifier
+//         hypotheses: unify_result
+//             .iter()
+//             .filter(|ul| ul.is_hypothesis)
+//             .map(|ul| {
+//                 Ok(Hypothesis {
+//                     label: ul.step_ref.clone(),
+//                     expression: ul
+//                         .parse_tree
+//                         .as_ref()
+//                         // todo: find out if this is really imposimple
+//                         .ok_or(Error::InternalLogicError)?
+//                         .to_expression(
+//                             &mm_data.optimized_data.symbol_number_mapping,
+//                             &mm_data.optimized_data.grammar,
+//                         )?,
+//                 })
+//             })
+//             .collect::<Result<Vec<Hypothesis>, Error>>()?,
+//         assertion: unify_result
+//             .iter()
+//             .find(|ul| ul.step_name == "qed")
+//             .ok_or(Error::InternalLogicError)?
+//             .parse_tree
+//             .as_ref()
+//             // todo: find out if this is really imposimple
+//             .ok_or(Error::InternalLogicError)?
+//             .to_expression(
+//                 &mm_data.optimized_data.symbol_number_mapping,
+//                 &mm_data.optimized_data.grammar,
+//             )?,
+//         proof: Some(uncompressed_proof.clone()),
+//     };
+
+//     let vars_in_theorem: HashSet<&str> = unify_result
+//         .iter()
+//         .filter(|ul| ul.is_hypothesis || ul.step_name == "qed")
+//         // Should never filter
+//         .filter_map(|ul| Some(ul.parse_tree.as_ref()?.top_node.iter()))
+//         .flatten()
+//         .filter_map(|ptn| {
+//             if let ParseTreeNode::Node { rule_i, .. } = ptn {
+//                 let rule = mm_data.optimized_data.grammar.rules.get(*rule_i as usize)?;
+
+//                 if rule.is_floating_hypothesis {
+//                     let symbol_i = rule.right_side.first()?.symbol_i;
+
+//                     Some(
+//                         mm_data
+//                             .optimized_data
+//                             .symbol_number_mapping
+//                             .symbols
+//                             .get(&symbol_i)?
+//                             .as_str(),
+//                     )
+//                 } else {
+//                     None
+//                 }
+//             } else {
+//                 None
+//             }
+//         })
+//         .collect();
+
+//     let floating_hypotheses: Vec<&str> = mm_data
+//         .optimized_data
+//         .floating_hypotheses
+//         .iter()
+//         .filter(|fh| vars_in_theorem.contains(&*fh.variable))
+//         .map(|fh| &*fh.label)
+//         .collect();
+
+//     let hypotheses: Vec<&str> = unify_result
+//         .iter()
+//         .filter(|ul| ul.is_hypothesis)
+//         .map(|ul| &*ul.step_ref)
+//         .collect();
+
+//     let mut previously_used_steps: Vec<&str> = Vec::new();
+//     let mut saved_steps: HashMap<String, Option<usize>> = HashMap::new();
+
+//     enum StepNumber {
+//         NormalStep(usize),
+//         SavedStep(usize),
+//     }
+
+//     let mut step_numbers: Vec<StepNumber> = Vec::new();
+//     let mut next_step_numbers: Vec<StepNumber> = Vec::new();
+
+//     let VerifierCreationResult::Verifier(mut verifier) = Verifier::new(
+//         &theorem,
+//         mm_data,
+//         false,
+//         true,
+//         Some(distinct_variable_pairs),
+//         None,
+//         None,
+//         None,
+//     )?
+//     else {
+//         return Err(Error::InternalLogicError);
+//     };
+
+//     let mut last_stack_len = 0;
+
+//     for step in uncompressed_proof.split_ascii_whitespace() {
+//         verifier.proccess_next_step(mm_data)?;
+
+//         let stack = verifier.get_stack();
+
+//         let stack_assertion = stack
+//             .last()
+//             .ok_or(Error::InternalLogicError)?
+//             .statement
+//             .clone();
+//         let stack_len = stack.len();
+
+//         let hypotheses_popped = last_stack_len + 1 - stack_len;
+
+//         if hypotheses_popped == 0 {
+//             match saved_steps.get(&stack_assertion) {
+//                 Some(Some(saved_step)) => {}
+//                 Some(None) => {}
+//                 None => {}
+//             }
+//         }
+
+//         let number = match floating_hypotheses
+//             .iter()
+//             .chain(hypotheses.iter())
+//             .chain(previously_used_steps.iter())
+//             .position(|prev_step| *prev_step == step)
+//         {
+//             Some(i) => i + 1,
+//             None => {
+//                 previously_used_steps.push(step);
+//                 floating_hypotheses.len() + hypotheses.len() + previously_used_steps.len()
+//             }
+//         };
+
+//         step_numbers.push(StepNumber::NormalStep(number));
+
+//         // let compressed_number = number_to_compressed_proof_format_number(number);
+
+//         // compressed_steps.push_str(&compressed_number);
+
+//         last_stack_len = stack_len;
+//     }
+
+//     let mut compressed_steps = String::new();
+
+//     for step_num in step_numbers {
+//         let compressed_number = number_to_compressed_proof_format_number(match step_num {
+//             StepNumber::NormalStep(num) => num,
+//             StepNumber::SavedStep(num) => previously_used_steps.len() + num,
+//         });
+
+//         compressed_steps.push_str(&compressed_number);
+//     }
+
+//     let mut result = previously_used_steps
+//         .iter()
+//         .fold("( ".to_string(), |mut s, pus| {
+//             s.push_str(pus);
+//             s.push(' ');
+//             s
+//         });
+
+//     result.push_str(") ");
+//     result.push_str(&compressed_steps);
+
+//     Ok(Some(result))
+// }
+
+fn number_to_compressed_proof_format_number(mut number: u32) -> String {
     if number == 0 {
         return String::new();
     }
@@ -279,4 +627,164 @@ fn number_to_compressed_proof_format_number(mut number: usize) -> String {
     }
 
     compressed_number.chars().rev().collect()
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct ProofTree<'a> {
+    pub label: &'a str,
+    pub children: Vec<ProofTree<'a>>,
+}
+
+impl<'a> ProofTree<'a> {
+    pub fn iter<'b>(&'b self) -> ProofTreeIterator<'a, 'b> {
+        ProofTreeIterator::new(self)
+    }
+}
+
+pub struct ProofTreeIterator<'a, 'b> {
+    proof_tree: &'b ProofTree<'a>,
+    current_path: Vec<(usize, &'b ProofTree<'a>)>,
+    finished: bool,
+}
+
+impl<'a, 'b> ProofTreeIterator<'a, 'b> {
+    pub fn new(proof_tree: &'b ProofTree<'a>) -> ProofTreeIterator<'a, 'b> {
+        let mut current_path = Vec::new();
+
+        let mut current_node = proof_tree;
+
+        while let Some(child) = current_node.children.first() {
+            current_path.push((0, current_node));
+
+            current_node = child;
+        }
+
+        ProofTreeIterator {
+            proof_tree,
+            current_path,
+            finished: false,
+        }
+    }
+}
+
+impl<'a, 'b> Iterator for ProofTreeIterator<'a, 'b> {
+    type Item = &'b ProofTree<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None;
+        }
+
+        let Some((next_node_i, node)) = self.current_path.last_mut() else {
+            self.finished = true;
+            return Some(self.proof_tree);
+        };
+
+        //should never return None
+        let target = node.children.get(*next_node_i)?;
+
+        *next_node_i += 1;
+
+        if let Some(next_child) = node.children.get(*next_node_i) {
+            let mut child = next_child;
+            while let Some(next_child) = child.children.first() {
+                self.current_path.push((0, child));
+                child = next_child;
+            }
+        } else {
+            self.current_path.pop();
+        }
+
+        Some(target)
+    }
+}
+
+enum CompressedProofTree<'a> {
+    ProofTree(CompressedProofTreeNode<'a>, Option<usize>),
+    Compressed(usize),
+}
+
+struct CompressedProofTreeNode<'a> {
+    pub label: &'a str,
+    pub children: Vec<CompressedProofTree<'a>>,
+}
+
+impl<'a> CompressedProofTree<'a> {
+    pub fn iter<'b>(&'b self) -> CompressedProofTreeIterator<'a, 'b> {
+        CompressedProofTreeIterator::new(self)
+    }
+}
+struct CompressedProofTreeIterator<'a, 'b> {
+    proof_tree: &'b CompressedProofTree<'a>,
+    current_path: Vec<(usize, &'b CompressedProofTree<'a>)>,
+    finished: bool,
+}
+
+impl<'a, 'b> CompressedProofTreeIterator<'a, 'b> {
+    pub fn new(proof_tree: &'b CompressedProofTree<'a>) -> CompressedProofTreeIterator<'a, 'b> {
+        let mut current_path = Vec::new();
+
+        let mut current_node = proof_tree;
+
+        loop {
+            let CompressedProofTree::ProofTree(current_pt_node, _) = current_node else {
+                break;
+            };
+            let Some(child) = current_pt_node.children.first() else {
+                break;
+            };
+
+            current_path.push((0, current_node));
+
+            current_node = child;
+        }
+
+        CompressedProofTreeIterator {
+            proof_tree,
+            current_path,
+            finished: false,
+        }
+    }
+}
+
+impl<'a, 'b> Iterator for CompressedProofTreeIterator<'a, 'b> {
+    type Item = &'b CompressedProofTree<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None;
+        }
+
+        let Some((next_node_i, node)) = self.current_path.last_mut() else {
+            self.finished = true;
+            return Some(self.proof_tree);
+        };
+
+        //should never return None
+        let CompressedProofTree::ProofTree(pt_node, _) = node else {
+            return None;
+        };
+        //should never return None
+        let target = pt_node.children.get(*next_node_i)?;
+
+        *next_node_i += 1;
+
+        if let Some(next_child) = pt_node.children.get(*next_node_i) {
+            let mut child = next_child;
+            loop {
+                let CompressedProofTree::ProofTree(current_pt_node, _) = child else {
+                    break;
+                };
+                let Some(next_child) = current_pt_node.children.first() else {
+                    break;
+                };
+                self.current_path.push((0, child));
+                child = next_child;
+            }
+        } else {
+            self.current_path.pop();
+        }
+
+        Some(target)
+    }
 }

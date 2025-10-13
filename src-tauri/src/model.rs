@@ -12,7 +12,7 @@ use tauri::{AppHandle, Emitter};
 use crate::{
     metamath::{
         export::{write_text_wrapped, write_text_wrapped_no_whitespace},
-        mmp_parser::LocateAfterRef,
+        mmp_parser::{stage_6::ProofTree, LocateAfterRef},
         verify::{ProofStep, VerificationResult, Verifier},
     },
     util::{
@@ -620,12 +620,13 @@ impl MetamathData {
                     let verify_result = Verifier::verify_proof(
                         theorem,
                         self,
+                        None,
                         Some(&proof_steps),
                         Some(
                             &self.optimized_data.floating_hypotheses
                                 [..prev_floating_hypotheses_num],
                         ),
-                        Some(compressed_infered_proof_steps), // None,
+                        Some(compressed_infered_proof_steps),
                     )?;
 
                     let mut vp = verification_progress
@@ -1403,6 +1404,32 @@ impl ParseTreeNode {
         Ok(proof)
     }
 
+    pub fn calc_proof_tree<'a>(&self, grammar: &'a Grammar) -> Result<ProofTree<'a>, Error> {
+        match self {
+            ParseTreeNode::Node { rule_i, sub_nodes } => {
+                let rule = grammar
+                    .rules
+                    .get(*rule_i as usize)
+                    .ok_or(Error::InternalLogicError)?;
+
+                Ok(ProofTree {
+                    label: &rule.label,
+                    children: rule
+                        .var_order
+                        .iter()
+                        .map(|i| {
+                            Ok(sub_nodes
+                                .get(*i as usize)
+                                .ok_or(Error::InternalLogicError)?
+                                .calc_proof_tree(grammar)?)
+                        })
+                        .collect::<Result<Vec<ProofTree>, Error>>()?,
+                })
+            }
+            ParseTreeNode::WorkVariable(_) => Err(Error::InternalLogicError),
+        }
+    }
+
     pub fn get_floating_hypotheses_rules(&self, grammar: &Grammar) -> Result<HashSet<u32>, Error> {
         let mut rules: HashSet<u32> = HashSet::new();
 
@@ -1869,14 +1896,18 @@ impl Grammar {
 
                 let mut var_order: Vec<u32> = Vec::new();
 
-                for floating_hypothesis in database_header.floating_hypohesis_iter() {
+                for floating_hypothesis in database_header
+                    .floating_hypohesis_locate_after_iter(Some(LocateAfterRef::LocateAfter(
+                        &theorem.label,
+                    )))
+                    .chain(theorem.temp_floating_hypotheses.iter())
+                {
+                    let float_var = *symbol_number_mapping
+                        .numbers
+                        .get(&floating_hypothesis.variable)
+                        .ok_or(Error::InternalLogicError)?;
                     for (i, &var) in vars.iter().enumerate() {
-                        if *symbol_number_mapping
-                            .numbers
-                            .get(&floating_hypothesis.variable)
-                            .ok_or(Error::InternalLogicError)?
-                            == var
-                        {
+                        if float_var == var {
                             var_order.push(i as u32);
                             break;
                         }

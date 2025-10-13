@@ -12,7 +12,7 @@ mod stage_2;
 mod stage_3;
 mod stage_4;
 mod stage_5;
-mod stage_6;
+pub mod stage_6;
 
 pub fn new<'a>(text: &'a str) -> MmpParserStage0<'a> {
     MmpParserStage0 { text }

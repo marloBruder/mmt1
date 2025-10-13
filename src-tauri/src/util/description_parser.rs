@@ -116,7 +116,7 @@ enum ParsedDescriptionChar {
     HtmlCharStart,
 }
 
-fn comment_to_parsed_comment_chars(comment: &str) -> ParsedCommentCharIterator {
+fn comment_to_parsed_comment_chars<'a>(comment: &'a str) -> ParsedCommentCharIterator<'a> {
     ParsedCommentCharIterator::new(comment)
 }
 
@@ -127,7 +127,7 @@ struct ParsedCommentCharIterator<'a> {
 }
 
 impl<'a> ParsedCommentCharIterator<'a> {
-    fn new(comment: &str) -> ParsedCommentCharIterator {
+    fn new(comment: &'a str) -> ParsedCommentCharIterator<'a> {
         ParsedCommentCharIterator {
             comment,
             next_char_i: 0,
