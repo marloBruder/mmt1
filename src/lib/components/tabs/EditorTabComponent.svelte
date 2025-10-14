@@ -90,7 +90,8 @@
         return;
       }
 
-      await invoke("add_to_database", { text: this.monacoModel!.getValue() });
+      goto("/main/addToDatabase");
+      // await invoke("add_to_database", { text: this.monacoModel!.getValue() });
 
       // let dataUnknown = await invoke("turn_into_theorem", { inProgressTheorem: this.#inProgressTheorem, positionName: placeAfter });
       // let theoremPath = dataUnknown as TheoremPath;
@@ -220,6 +221,7 @@
   import { getErrorMessage, getErrorSeverity } from "../util/errorMessages.svelte";
   import EditorTabSplitViewComponent from "./EditorTabSplitViewComponent.svelte";
   import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
+  import { goto } from "$app/navigation";
 
   let { tab }: { tab: Tab } = $props();
 

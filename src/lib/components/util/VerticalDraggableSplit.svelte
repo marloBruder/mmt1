@@ -2,7 +2,7 @@
   import { createInstanceId } from "$lib/sharedState/idGenerator.svelte";
   import { onDestroy, onMount, type Snippet } from "svelte";
 
-  let { first, second, setPosition = 320, onDrag = () => {}, onCollapse = () => {} }: { first: Snippet; second: Snippet; setPosition?: number; onDrag?: () => void; onCollapse?: () => void } = $props();
+  let { first, second, startPercent = 0.2, onDrag = () => {} }: { first: Snippet; second: Snippet; startPercent?: number; onDrag?: () => void } = $props();
 
   let position = $state(320);
   let containerId = "container-id-" + createInstanceId();
@@ -17,15 +17,9 @@
     let containerElement = document.getElementById(containerId)!;
 
     let newPosition = e.clientX - containerElement.offsetLeft;
-    let newPositionRightCapped = Math.min(containerElement.clientWidth - 200, newPosition);
+    position = Math.max(200, Math.min(containerElement.clientWidth - 200, newPosition));
 
-    if (newPositionRightCapped < 130) {
-      position = 60;
-      onCollapse();
-    } else {
-      position = Math.max(200, newPositionRightCapped);
-      onDrag();
-    }
+    onDrag();
   };
 
   let handleWindowResize = () => {
@@ -34,14 +28,12 @@
     let secondElement = document.getElementById(secondId)!;
     let buttonContainerElement = document.getElementById(buttonContainerId)!;
 
-    if (position !== 60) {
-      position = Math.max(200, Math.min(containerElement.clientWidth - 200, position));
-    }
+    position = Math.max(200, Math.min(containerElement.clientWidth - 200, position));
 
     firstElement.style.width = position + "px";
     secondElement.style.width = Math.max(containerElement.clientWidth - position, 0) + "px";
 
-    buttonContainerElement.style.left = position - 2 + "px";
+    buttonContainerElement.style.left = position - 2 + containerElement.offsetLeft + "px";
 
     buttonContainerElement.style.height = containerElement.clientHeight + "px";
   };
@@ -73,12 +65,12 @@
     let secondElement = document.getElementById(secondId)!;
     let buttonContainerElement = document.getElementById(buttonContainerId)!;
 
-    position = window.innerWidth * 0.25;
+    position = containerElement.clientWidth * startPercent;
 
     firstElement.style.width = position + "px";
     secondElement.style.width = Math.max(containerElement.clientWidth - position, 0) + "px";
 
-    buttonContainerElement.style.left = position - 2 + "px";
+    buttonContainerElement.style.left = position - 2 + containerElement.offsetLeft + "px";
 
     buttonContainerElement.style.top = containerElement.offsetTop + "px";
     buttonContainerElement.style.height = containerElement.clientHeight + "px";
@@ -97,11 +89,7 @@
     firstElement.style.width = position + "px";
     secondElement.style.width = Math.max(containerElement.clientWidth - position, 0) + "px";
 
-    buttonContainerElement.style.left = position - 2 + "px";
-  });
-
-  $effect(() => {
-    position = setPosition;
+    buttonContainerElement.style.left = position - 2 + containerElement.offsetLeft + "px";
   });
 </script>
 
