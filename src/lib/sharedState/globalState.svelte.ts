@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 class GlobalState {
   databaseState: DatabaseState | null = $state(null);
   databaseBeingOpened: string = $state("");
+  lastEditorContent: string = $state("");
 }
 
 export class DatabaseState {

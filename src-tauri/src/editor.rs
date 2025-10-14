@@ -9,6 +9,7 @@ use tauri::async_runtime::Mutex;
 
 use crate::{model::FolderData, AppState, Error};
 
+pub mod add_to_database;
 pub mod external_window;
 pub mod format;
 pub mod on_edit;

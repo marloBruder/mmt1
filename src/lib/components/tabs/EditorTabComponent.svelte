@@ -90,6 +90,7 @@
         return;
       }
 
+      globalState.lastEditorContent = this.#monacoModel!.getValue();
       goto("/main/addToDatabase");
       // await invoke("add_to_database", { text: this.monacoModel!.getValue() });
 
@@ -222,6 +223,7 @@
   import EditorTabSplitViewComponent from "./EditorTabSplitViewComponent.svelte";
   import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { goto } from "$app/navigation";
+  import { globalState } from "$lib/sharedState/globalState.svelte";
 
   let { tab }: { tab: Tab } = $props();
 

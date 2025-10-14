@@ -35,7 +35,7 @@ pub enum LocateAfterRef<'a> {
 }
 
 #[tauri::command]
-pub async fn add_to_database(
+pub async fn add_to_database_old(
     state: tauri::State<'_, Mutex<AppState>>,
     text: &str,
 ) -> Result<(), Error> {
