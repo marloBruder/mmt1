@@ -11,13 +11,14 @@ use crate::{
         },
     },
     model::{DatabaseElement, Header, Hypothesis, Statement, Theorem},
-    AppState, Error,
+    AppState, Error, ProofFormatOption,
 };
 
 #[tauri::command]
 pub async fn add_to_database_preview(
     state: tauri::State<'_, Mutex<AppState>>,
     text: &str,
+    override_proof_format: Option<ProofFormatOption>,
 ) -> Result<Option<(String, String)>, Error> {
     let app_state = state.lock().await;
     let mm_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
@@ -47,7 +48,12 @@ pub async fn add_to_database_preview(
 
     let stage_5 = stage_4_success.next_stage(&stage_2_success, &stage_3_theorem, mm_data)?;
 
-    let stage_6 = stage_5.next_stage(&stage_4_success, mm_data, settings)?;
+    let mut new_settings = settings.clone();
+    if let Some(pf) = override_proof_format {
+        new_settings.proof_format = pf;
+    }
+
+    let stage_6 = stage_5.next_stage(&stage_4_success, mm_data, &new_settings)?;
 
     let proof = if stage_3_theorem.is_axiom {
         None
@@ -330,6 +336,7 @@ fn add_statement_at_end_file(
     }
 
     statement.write_mm_string(&mut new_file_content);
+    new_file_content.push_str("\n");
 
     // fs::write(file_path, new_file_content).or(Err(Error::FileWriteError))?;
 
