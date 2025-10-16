@@ -11,7 +11,10 @@
   import { invoke } from "@tauri-apps/api/core";
   import { onDestroy, onMount } from "svelte";
 
+  let canceled = $state(false);
+
   let onCancelClick = () => {
+    canceled = true;
     goto("/main");
   };
 
@@ -25,7 +28,7 @@
     const text = globalState.lastEditorContent;
     const res = (await invoke("add_to_database_preview", { text, overrideProofFormat: null })) as [string, string] | null;
 
-    if (res === null) {
+    if (res === null || canceled) {
       loading = false;
       return;
     }
@@ -69,9 +72,9 @@
   };
 
   onDestroy(() => {
+    editor?.dispose();
     oldMonacoModel?.dispose();
     newMonacoModel?.dispose();
-    editor?.dispose();
     globalState.lastEditorContent = "";
   });
 
@@ -109,6 +112,12 @@
       loading = false;
     });
   });
+
+  let addToDatabase = async () => {
+    const text = globalState.lastEditorContent;
+    await invoke("add_to_database", { text, overrideProofFormat: proofFormatOption });
+    await goto("/main");
+  };
 </script>
 
 <div class="custom-height-width-minus-margin m-2 rounded-lg custom-bg-color overflow-hidden">
@@ -151,6 +160,9 @@
                   </div>
                   <div class="py-2">
                     <hr />
+                  </div>
+                  <div class="pt-2">
+                    <RoundButton onclick={addToDatabase} additionalClasses="w-full">Confirm Add to Database</RoundButton>
                   </div>
                 </div>
               </ScrollableContainer>

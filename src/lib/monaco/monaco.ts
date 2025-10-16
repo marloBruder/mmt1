@@ -99,6 +99,8 @@ export let setEditorSyntaxHighlighting = (colorInformation: ColorInformation[]) 
     colors: {
       "editor.background": "#262335",
       "editor.foreground": "#FFFFFF",
+      // "diffEditor.insertedTextBackground": "#39634C",
+      "diffEditor.insertedTextBackground": "#005030",
     },
     base: "vs-dark",
     inherit: false,

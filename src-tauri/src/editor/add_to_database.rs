@@ -6,11 +6,12 @@ use crate::{
     metamath::{
         mm_parser::{MmParser, StatementProcessed},
         mmp_parser::{
-            self, LocateAfterRef, MmpParserStage1, MmpParserStage2, MmpParserStage3,
-            MmpParserStage3Success, MmpParserStage4,
+            self, LocateAfterRef, MmpParserStage1, MmpParserStage2, MmpParserStage2Success,
+            MmpParserStage3, MmpParserStage3Success, MmpParserStage3Theorem, MmpParserStage4,
+            MmpParserStage5, MmpParserStage6,
         },
     },
-    model::{DatabaseElement, Header, Hypothesis, Statement, Theorem},
+    model::{DatabaseElement, Header, Hypothesis, MetamathData, Statement, Theorem},
     AppState, Error, ProofFormatOption,
 };
 
@@ -55,6 +56,91 @@ pub async fn add_to_database_preview(
 
     let stage_6 = stage_5.next_stage(&stage_4_success, mm_data, &new_settings)?;
 
+    let locate_after = stage_2_success.locate_after;
+
+    let Some(theorem) =
+        mmp_parser_stages_to_theorem(stage_2_success, stage_3_theorem, stage_5, stage_6, mm_data)?
+    else {
+        return Ok(None);
+    };
+
+    Ok(Some(add_statement_preview(
+        &mm_data.database_path,
+        &mm_data.database_header,
+        locate_after,
+        Statement::TheoremStatement(theorem),
+    )?))
+}
+
+#[tauri::command]
+pub async fn add_to_database(
+    state: tauri::State<'_, Mutex<AppState>>,
+    text: &str,
+    override_proof_format: Option<ProofFormatOption>,
+) -> Result<bool, Error> {
+    let mut app_state = state.lock().await;
+    let mut settings = app_state.settings.clone();
+    let mm_data = app_state.metamath_data.as_mut().ok_or(Error::NoMmDbError)?;
+
+    let stage_0 = mmp_parser::new(text);
+
+    let MmpParserStage1::Success(stage_1_success) = stage_0.next_stage()? else {
+        return Ok(false);
+    };
+
+    let MmpParserStage2::Success(stage_2_success) = stage_1_success.next_stage()? else {
+        return Ok(false);
+    };
+
+    let MmpParserStage3::Success(MmpParserStage3Success::Theorem(stage_3_theorem)) =
+        stage_2_success.next_stage(&stage_1_success, mm_data)?
+    else {
+        return Ok(false);
+    };
+
+    let MmpParserStage4::Success(stage_4_success) =
+        stage_3_theorem.next_stage(&stage_1_success, &stage_2_success, mm_data)?
+    else {
+        return Ok(false);
+    };
+
+    let stage_5 = stage_4_success.next_stage(&stage_2_success, &stage_3_theorem, mm_data)?;
+
+    if let Some(pf) = override_proof_format {
+        settings.proof_format = pf;
+    }
+
+    let stage_6 = stage_5.next_stage(&stage_4_success, mm_data, &settings)?;
+
+    let locate_after = stage_2_success.locate_after;
+
+    let Some(theorem) =
+        mmp_parser_stages_to_theorem(stage_2_success, stage_3_theorem, stage_5, stage_6, mm_data)?
+    else {
+        return Ok(false);
+    };
+
+    let theorem_label = theorem.label.clone();
+
+    add_statement(
+        &mm_data.database_path,
+        &mut mm_data.database_header,
+        locate_after,
+        Statement::TheoremStatement(theorem),
+    )?;
+
+    mm_data.update_optimized_theorem_data(&theorem_label, &settings)?;
+
+    Ok(true)
+}
+
+fn mmp_parser_stages_to_theorem(
+    stage_2_success: MmpParserStage2Success,
+    stage_3_theorem: MmpParserStage3Theorem,
+    stage_5: MmpParserStage5,
+    stage_6: MmpParserStage6,
+    mm_data: &MetamathData,
+) -> Result<Option<Theorem>, Error> {
     let proof = if stage_3_theorem.is_axiom {
         None
     } else {
@@ -65,7 +151,7 @@ pub async fn add_to_database_preview(
         Some(proof)
     };
 
-    let theorem = Theorem {
+    Ok(Some(Theorem {
         label: stage_3_theorem.label.to_string(),
         description: stage_2_success
             .comments
@@ -112,98 +198,106 @@ pub async fn add_to_database_preview(
                 &mm_data.optimized_data.grammar,
             )?,
         proof,
-    };
-
-    Ok(Some(add_statement(
-        &mm_data.database_path,
-        &mm_data.database_header,
-        stage_2_success.locate_after,
-        Statement::TheoremStatement(theorem),
-    )?))
+    }))
 }
 
-fn add_statement(
+fn add_statement_preview(
     file_path: &str,
     header: &Header,
     locate_after: Option<LocateAfterRef>,
     statement: Statement,
 ) -> Result<(String, String), Error> {
     match locate_after {
+        Some(loc_after) => {
+            add_statement_locate_after_file(file_path, header, loc_after, &statement, false)?
+                .ok_or(Error::InternalLogicError)
+        }
+        None => add_statement_at_end_file(file_path, &statement, false)?
+            .ok_or(Error::InternalLogicError),
+    }
+}
+
+fn add_statement(
+    file_path: &str,
+    header: &mut Header,
+    locate_after: Option<LocateAfterRef>,
+    statement: Statement,
+) -> Result<(), Error> {
+    match locate_after {
         Some(loc_after) => add_statement_locate_after(file_path, header, loc_after, statement),
-        None => add_statement_at_end(file_path, /*header,*/ statement),
+        None => add_statement_at_end(file_path, header, statement),
     }
 }
 
 fn add_statement_locate_after(
     file_path: &str,
-    header: &Header,
+    header: &mut Header,
     locate_after: LocateAfterRef,
     statement: Statement,
-) -> Result<(String, String), Error> {
-    add_statement_locate_after_file(file_path, header, locate_after, &statement)
-    // match add_statement_locate_after_memory(header, locate_after, statement) {
-    //     None => Ok(()),
-    //     Some(_) => Err(Error::InvalidLocateAfterError),
-    // }
+) -> Result<(), Error> {
+    add_statement_locate_after_file(file_path, header, locate_after, &statement, true)?;
+    add_statement_locate_after_memory(header, locate_after, statement);
+    Ok(())
 }
 
-// fn add_statement_locate_after_memory(
-//     header: &mut Header,
-//     locate_after: &LocateAfterRef,
-//     mut statement: Statement,
-// ) -> Option<Statement> {
-//     for i in 0..header.content.len() {
-//         match locate_after {
-//             LocateAfterRef::LocateAfterConst(s) => {
-//                 if let Some(Statement::ConstantStatement(constants)) = header.content.get(i) {
-//                     if constants.iter().find(|c| c.symbol == *s).is_some() {
-//                         header.content.insert(i + 1, statement);
-//                         return None;
-//                     }
-//                 }
-//             }
-//             LocateAfterRef::LocateAfterVar(s) => {
-//                 if let Some(Statement::VariableStatement(variables)) = header.content.get(i) {
-//                     if variables.iter().find(|c| c.symbol == *s).is_some() {
-//                         header.content.insert(i + 1, statement);
-//                         return None;
-//                     }
-//                 }
-//             }
-//             LocateAfterRef::LocateAfter(s) => {
-//                 if let Some(Statement::TheoremStatement(theorem)) = header.content.get(i) {
-//                     if theorem.label == *s {
-//                         header.content.insert(i + 1, statement);
-//                         return None;
-//                     }
-//                 } else if let Some(Statement::FloatingHypohesisStatement(floating_hypothesis)) =
-//                     header.content.get(i)
-//                 {
-//                     if floating_hypothesis.label == *s {
-//                         header.content.insert(i + 1, statement);
-//                         return None;
-//                     }
-//                 }
-//             }
-//         }
-//     }
+fn add_statement_locate_after_memory(
+    header: &mut Header,
+    locate_after: LocateAfterRef,
+    mut statement: Statement,
+) -> Option<Statement> {
+    for i in 0..header.content.len() {
+        match locate_after {
+            LocateAfterRef::LocateAfterConst(s) => {
+                if let Some(Statement::ConstantStatement(constants)) = header.content.get(i) {
+                    if constants.iter().find(|c| c.symbol == *s).is_some() {
+                        header.content.insert(i + 1, statement);
+                        return None;
+                    }
+                }
+            }
+            LocateAfterRef::LocateAfterVar(s) => {
+                if let Some(Statement::VariableStatement(variables)) = header.content.get(i) {
+                    if variables.iter().find(|c| c.symbol == *s).is_some() {
+                        header.content.insert(i + 1, statement);
+                        return None;
+                    }
+                }
+            }
+            LocateAfterRef::LocateAfter(s) => {
+                if let Some(Statement::TheoremStatement(theorem)) = header.content.get(i) {
+                    if theorem.label == *s {
+                        header.content.insert(i + 1, statement);
+                        return None;
+                    }
+                } else if let Some(Statement::FloatingHypohesisStatement(floating_hypothesis)) =
+                    header.content.get(i)
+                {
+                    if floating_hypothesis.label == *s {
+                        header.content.insert(i + 1, statement);
+                        return None;
+                    }
+                }
+            }
+        }
+    }
 
-//     for subheader in &mut header.subheaders {
-//         statement = match add_statement_locate_after_memory(subheader, locate_after, statement) {
-//             Some(s) => s,
-//             None => return None,
-//         };
-//     }
+    for subheader in &mut header.subheaders {
+        statement = match add_statement_locate_after_memory(subheader, locate_after, statement) {
+            Some(s) => s,
+            None => return None,
+        };
+    }
 
-//     Some(statement)
-// }
+    Some(statement)
+}
 
 fn add_statement_locate_after_file(
     file_path: &str,
     header: &Header,
     locate_after: LocateAfterRef,
     statement: &Statement,
-) -> Result<(String, String), Error> {
+    write_to_file: bool,
+) -> Result<Option<(String, String)>, Error> {
     let mut mm_parser = MmParser::new(file_path, None, None)?;
     let header_iter = header.locate_after_iter(Some(locate_after));
 
@@ -280,65 +374,80 @@ fn add_statement_locate_after_file(
         }
     }
 
-    let (file_content, next_token_i) = mm_parser.consume_early_and_return_file_content();
+    let (mut file_content, next_token_i) = mm_parser.consume_early_and_return_file_content();
 
-    let mut new_file_content = file_content.clone();
+    let old_file_content = if write_to_file {
+        None
+    } else {
+        Some(file_content.clone())
+    };
 
-    new_file_content.insert_str(next_token_i, "\n\n");
+    file_content.insert_str(next_token_i, "\n\n");
+    statement.insert_mm_string(&mut file_content, next_token_i + 2);
 
-    statement.insert_mm_string(&mut new_file_content, next_token_i + 2);
-
-    // fs::write(file_path, &file_content).or(Err(Error::FileWriteError))?;
-
-    Ok((file_content, new_file_content))
+    if write_to_file {
+        fs::write(file_path, &file_content).or(Err(Error::FileWriteError))?;
+        Ok(None)
+    } else {
+        Ok(Some((old_file_content.unwrap(), file_content)))
+    }
 }
 
 fn add_statement_at_end(
     file_path: &str,
-    // header: &Header,
+    header: &mut Header,
     statement: Statement,
-) -> Result<(String, String), Error> {
-    add_statement_at_end_file(file_path, &statement)
-    // add_statement_at_end_memory(header, statement);
-    // Ok(())
+) -> Result<(), Error> {
+    add_statement_at_end_file(file_path, &statement, true)?;
+    add_statement_at_end_memory(header, statement);
+    Ok(())
 }
 
-// fn add_statement_at_end_memory(header: &mut Header, statement: Statement) {
-//     let mut last_header = header;
+fn add_statement_at_end_memory(header: &mut Header, statement: Statement) {
+    let mut last_header = header;
 
-//     while last_header.subheaders.len() > 0 {
-//         last_header = last_header.subheaders.last_mut().unwrap();
-//     }
+    while last_header.subheaders.len() > 0 {
+        last_header = last_header.subheaders.last_mut().unwrap();
+    }
 
-//     last_header.content.push(statement);
-// }
+    last_header.content.push(statement);
+}
 
 fn add_statement_at_end_file(
     file_path: &str,
     statement: &Statement,
-) -> Result<(String, String), Error> {
-    let file_content = fs::read_to_string(file_path).or(Err(Error::FileReadError))?;
-    let mut new_file_content = file_content.clone();
+    write_to_file: bool,
+) -> Result<Option<(String, String)>, Error> {
+    let mut file_content = fs::read_to_string(file_path).or(Err(Error::FileReadError))?;
+
+    let old_file_content = if write_to_file {
+        None
+    } else {
+        Some(file_content.clone())
+    };
 
     loop {
-        match new_file_content.pop() {
+        match file_content.pop() {
             Some(c) if c.is_whitespace() => {}
             Some(c) => {
-                new_file_content.push(c);
+                file_content.push(c);
                 break;
             }
             None => break,
         }
     }
 
-    if !new_file_content.is_empty() {
-        new_file_content.push_str("\n\n");
+    if !file_content.is_empty() {
+        file_content.push_str("\n\n");
     }
 
-    statement.write_mm_string(&mut new_file_content);
-    new_file_content.push_str("\n");
+    statement.write_mm_string(&mut file_content);
+    file_content.push_str("\n");
 
-    // fs::write(file_path, new_file_content).or(Err(Error::FileWriteError))?;
-
-    Ok((file_content, new_file_content))
+    if write_to_file {
+        fs::write(file_path, file_content).or(Err(Error::FileWriteError))?;
+        Ok(None)
+    } else {
+        Ok(Some((old_file_content.unwrap(), file_content)))
+    }
 }

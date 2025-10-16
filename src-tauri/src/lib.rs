@@ -125,6 +125,7 @@ pub fn run() {
             editor::external_window::set_up_external_window_close_listener,
             editor::format::format,
             editor::on_edit::on_edit,
+            editor::add_to_database::add_to_database,
             editor::add_to_database::add_to_database_preview,
             editor::renumber::renumber,
             editor::unify::unify,
@@ -291,6 +292,8 @@ pub enum Error {
     OpenExternalWindowError,
 
     OpenDatabaseStoppedEarlyError,
+
+    TestError, // Used to replace InternalLogicErrors to find out where they come from
 }
 
 impl fmt::Display for Error {

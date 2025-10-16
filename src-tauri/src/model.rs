@@ -12,6 +12,7 @@ use tauri::{AppHandle, Emitter};
 use crate::{
     metamath::{
         export::{write_text_wrapped, write_text_wrapped_no_whitespace},
+        mm_parser::html_validation,
         mmp_parser::{stage_6::ProofTree, LocateAfterRef},
         verify::{ProofStep, VerificationResult, Verifier},
     },
@@ -679,6 +680,90 @@ impl MetamathData {
         }
 
         Ok(invalid_description_html)
+    }
+
+    pub fn update_optimized_theorem_data(
+        &mut self,
+        theorem_label: &str,
+        settings: &Settings,
+    ) -> Result<(), Error> {
+        let (allowed_tags_and_attributes, allowed_css_properties) =
+            html_validation::create_rule_structs();
+
+        println!("got to start of update");
+
+        let (i, theorem) = self
+            .database_header
+            .theorem_iter()
+            .enumerate()
+            .find(|(_, t)| t.label == theorem_label)
+            .ok_or(Error::InternalLogicError)?;
+
+        let (description_parsed, _) = description_parser::parse_description(
+            &theorem.description,
+            &self.database_header,
+            &allowed_tags_and_attributes,
+            &allowed_css_properties,
+        );
+
+        println!("got before verify");
+
+        let mut theorem_type = theorem.calc_theorem_type_without_verification(&self, settings)?;
+
+        println!("got before verify");
+
+        let distinct_variable_pairs = util::calc_distinct_variable_pairs(&theorem.distincts);
+
+        let verify_result = Verifier::verify_proof(
+            theorem,
+            self,
+            Some(&distinct_variable_pairs),
+            None,
+            None,
+            None,
+        )?;
+
+        println!("got after verify");
+
+        let proof_type = match verify_result {
+            VerificationResult::Correct => ProofType::Correct,
+            VerificationResult::Incomplete => ProofType::Incomplete,
+            VerificationResult::Incorrect => return Err(Error::InternalLogicError),
+        };
+
+        if let TheoremType::Theorem(proof_type_ref) = &mut theorem_type {
+            *proof_type_ref = proof_type;
+        }
+
+        let (axiom_dependencies, definition_dependencies) = theorem
+            .calc_dependencies_and_add_references(&mut self.optimized_data, i, &theorem_type);
+
+        let (assertion_parsed, hypotheses_parsed) = theorem.calc_parse_trees(
+            &self.optimized_data.grammar,
+            &self.optimized_data.symbol_number_mapping,
+            &self.optimized_data.floating_hypotheses,
+            &self.syntax_typecodes,
+            &self.logical_typecodes,
+        )?;
+
+        let optimized_theorem_data = OptimizedTheoremData {
+            theorem_type,
+            distinct_variable_pairs,
+            parse_trees: Some(TheoremParseTrees {
+                hypotheses_parsed,
+                assertion_parsed,
+            }),
+            axiom_dependencies,
+            definition_dependencies,
+            references: Vec::new(),
+            description_parsed,
+        };
+
+        self.optimized_data
+            .theorem_data
+            .insert(theorem.label.to_string(), optimized_theorem_data);
+
+        Ok(())
     }
 
     pub fn recalc_optimized_floating_hypotheses_after_one_new(&mut self) -> Result<(), Error> {
