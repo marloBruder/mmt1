@@ -24,7 +24,15 @@ pub async fn open_metamath_database(
     state: tauri::State<'_, Mutex<AppState>>,
     app: AppHandle,
     mm_file_path: &str,
-) -> Result<(u32, Vec<HtmlRepresentation>, Vec<(String, String)>), Error> {
+) -> Result<
+    (
+        u32,
+        Vec<HtmlRepresentation>,
+        Vec<(String, String)>,
+        Vec<(String, String)>,
+    ),
+    Error,
+> {
     // let metamath_data = MmParser::process_database(mm_file_path)?;
 
     let mut app_state = state.lock().await;
@@ -36,13 +44,18 @@ pub async fn open_metamath_database(
 
     let mut mm_parser = MmParser::new(mm_file_path, Some(app), Some(stop))?;
     mm_parser.process_all_statements()?;
-    let (metamath_data, invalid_html, invalid_description_html) =
+    let (metamath_data, invalid_html, invalid_description_html, invalid_header_description_html) =
         mm_parser.consume_early_before_grammar_calculations(database_id, &settings)?;
 
     let mut app_state = state.lock().await;
     app_state.temp_metamath_data = Some(metamath_data);
 
-    Ok((database_id, invalid_html, invalid_description_html))
+    Ok((
+        database_id,
+        invalid_html,
+        invalid_description_html,
+        invalid_header_description_html,
+    ))
 }
 
 #[tauri::command]
@@ -426,7 +439,15 @@ impl MmParser {
         self,
         database_id: u32,
         settings: &Settings,
-    ) -> Result<(MetamathData, Vec<HtmlRepresentation>, Vec<(String, String)>), Error> {
+    ) -> Result<
+        (
+            MetamathData,
+            Vec<HtmlRepresentation>,
+            Vec<(String, String)>,
+            Vec<(String, String)>,
+        ),
+        Error,
+    > {
         if let Some(ref app_handle) = self.app {
             app_handle.emit("mm-parser-progress", 100).ok();
         }
@@ -449,6 +470,7 @@ impl MmParser {
                     .ok_or(Error::InternalLogicError)?,
                 theorem_amount: self.theorem_amount,
                 theorem_data: HashMap::new(),
+                header_data: HashMap::new(),
                 symbol_number_mapping: SymbolNumberMapping::default(),
                 grammar: Grammar::default(),
             },
@@ -467,7 +489,17 @@ impl MmParser {
             settings,
         )?;
 
-        Ok((metamath_data, self.invalid_html, invalid_description_html))
+        let invalid_header_description_html = metamath_data.calc_optimized_header_data(
+            &self.html_allowed_tags_and_attributes,
+            &self.css_allowed_properties,
+        )?;
+
+        Ok((
+            metamath_data,
+            self.invalid_html,
+            invalid_description_html,
+            invalid_header_description_html,
+        ))
     }
 
     // pub fn process_all_statements_and_consume(mut self) -> Result<MetamathData, Error> {
@@ -731,7 +763,9 @@ impl MmParser {
 
         let mut header_title = String::new();
         let mut header_closed = false;
+        let mut tokens_processed = 1;
         while let Some(token) = comment_iter.next() {
+            tokens_processed += 1;
             if token.starts_with(curr_heading) {
                 header_closed = true;
                 break;
@@ -740,6 +774,16 @@ impl MmParser {
             header_title.push(' ');
         }
         header_title.pop();
+
+        let (header_pos_line, header_pos_char) = util::nth_token_end_pos(comment, tokens_processed);
+        let header_pos = comment
+            .lines()
+            .take(header_pos_line as usize - 1)
+            .map(|l| l.len() + 1)
+            .sum::<usize>()
+            + header_pos_char as usize;
+
+        let description = comment[header_pos..].to_string();
 
         if header_closed {
             let mut parent_header = &mut self.database_header;
@@ -756,6 +800,7 @@ impl MmParser {
             next_header_path.path.push(parent_header.subheaders.len());
             parent_header.subheaders.push(Header {
                 title: header_title,
+                description,
                 content: Vec::new(),
                 subheaders: Vec::new(),
             });

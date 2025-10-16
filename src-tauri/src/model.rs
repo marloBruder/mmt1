@@ -59,6 +59,7 @@ pub struct OptimizedMetamathData {
     pub floating_hypotheses: Vec<FloatingHypothesis>,
     pub theorem_amount: u32,
     pub theorem_data: HashMap<String, OptimizedTheoremData>,
+    pub header_data: HashMap<String, OptimizedHeaderData>,
     pub symbol_number_mapping: SymbolNumberMapping,
     pub grammar: Grammar,
 }
@@ -119,6 +120,11 @@ pub enum ParsedDescriptionSegment {
     Subscript(String),
     Html(String),
     HtmlCharacterRef(String),
+}
+
+#[derive(Debug)]
+pub struct OptimizedHeaderData {
+    pub description_parsed: Vec<ParsedDescriptionSegment>,
 }
 
 #[derive(Debug, Default)]
@@ -189,20 +195,34 @@ pub struct Hypothesis {
 #[derive(Debug, Default, Clone)]
 pub struct Header {
     pub title: String,
+    pub description: String,
     pub content: Vec<Statement>,
     pub subheaders: Vec<Header>,
 }
 
+#[derive(Serialize)]
 pub struct HeaderRepresentation {
     pub title: String,
+    #[serde(rename = "contentTitles")]
     pub content_titles: Vec<HeaderContentRepresentation>,
+    #[serde(rename = "subheaderTitles")]
     pub subheader_titles: Vec<String>,
 }
 
+#[derive(Serialize)]
 pub struct HeaderContentRepresentation {
-    //Should only ever be "CommentStatement" or "ConstantStatement" or "VariableStatement" or "FloatingHypohesisStatement" or "TheoremStatement";
-    pub content_type: String,
+    #[serde(rename = "contentType")]
+    pub content_type: HeaderContentType,
     pub title: String,
+}
+
+#[derive(Serialize)]
+pub enum HeaderContentType {
+    CommentStatement,
+    ConstantStatement,
+    VariableStatement,
+    FloatingHypohesisStatement,
+    TheoremStatement,
 }
 
 #[derive(Debug, Clone)]
@@ -325,6 +345,7 @@ pub enum ListEntry {
 pub struct HeaderListEntry {
     pub header_path: String,
     pub title: String,
+    pub description_parsed: Vec<ParsedDescriptionSegment>,
 }
 
 pub struct CommentListEntry {
@@ -764,6 +785,57 @@ impl MetamathData {
             .insert(theorem.label.to_string(), optimized_theorem_data);
 
         Ok(())
+    }
+
+    pub fn calc_optimized_header_data(
+        &mut self,
+        allowed_tags_and_attributes: &HashMap<String, HashSet<String>>,
+        allowed_css_properties: &HashSet<String>,
+    ) -> Result<Vec<(String, String)>, Error> {
+        let mut curr_header_path = HeaderPath { path: Vec::new() };
+
+        let mut invalid_description_html: Vec<(String, String)> = Vec::new();
+
+        for database_element in self.database_header.iter() {
+            if let DatabaseElement::Header(header, depth) = database_element {
+                if depth > curr_header_path.path.len() as u32 {
+                    curr_header_path.path.push(0);
+                } else if depth == curr_header_path.path.len() as u32 {
+                    *curr_header_path
+                        .path
+                        .last_mut()
+                        .ok_or(Error::InternalLogicError)? += 1;
+                } else if depth < curr_header_path.path.len() as u32 {
+                    while depth < curr_header_path.path.len() as u32 {
+                        curr_header_path.path.pop();
+                    }
+                    *curr_header_path
+                        .path
+                        .last_mut()
+                        .ok_or(Error::InternalLogicError)? += 1;
+                }
+
+                let (description_parsed, invalid_html) = description_parser::parse_description(
+                    &header.description,
+                    &self.database_header,
+                    allowed_tags_and_attributes,
+                    allowed_css_properties,
+                );
+
+                invalid_description_html.extend(
+                    invalid_html
+                        .into_iter()
+                        .map(|i_html| (curr_header_path.to_string(), i_html)),
+                );
+
+                self.optimized_data.header_data.insert(
+                    curr_header_path.to_string(),
+                    OptimizedHeaderData { description_parsed },
+                );
+            }
+        }
+
+        Ok(invalid_description_html)
     }
 
     pub fn recalc_optimized_floating_hypotheses_after_one_new(&mut self) -> Result<(), Error> {
@@ -2339,41 +2411,29 @@ impl Header {
                 .iter()
                 .map(|t| match t {
                     CommentStatement(_) => HeaderContentRepresentation {
-                        content_type: "CommentStatement".to_string(),
+                        content_type: HeaderContentType::CommentStatement,
                         title: "Comment".to_string(),
                     },
                     ConstantStatement(constants) => HeaderContentRepresentation {
-                        content_type: "ConstantStatement".to_string(),
+                        content_type: HeaderContentType::ConstantStatement,
                         title: constants
                             .iter()
-                            .fold((true, String::new()), |(first, mut s), c| {
-                                if !first {
-                                    s.push(' ');
-                                }
-                                s.push_str(&c.symbol);
-                                (false, s)
-                            })
-                            .1,
+                            .map(|c| &*c.symbol)
+                            .fold_to_space_seperated_string(),
                     },
                     VariableStatement(variables) => HeaderContentRepresentation {
-                        content_type: "VariableStatement".to_string(),
+                        content_type: HeaderContentType::VariableStatement,
                         title: variables
                             .iter()
-                            .fold((true, String::new()), |(first, mut s), v| {
-                                if !first {
-                                    s.push(' ');
-                                }
-                                s.push_str(&v.symbol);
-                                (false, s)
-                            })
-                            .1,
+                            .map(|v| &*v.symbol)
+                            .fold_to_space_seperated_string(),
                     },
                     FloatingHypohesisStatement(floating_hypohesis) => HeaderContentRepresentation {
-                        content_type: "FloatingHypothesisStatement".to_string(),
+                        content_type: HeaderContentType::FloatingHypohesisStatement,
                         title: floating_hypohesis.label.clone(),
                     },
                     TheoremStatement(theorem) => HeaderContentRepresentation {
-                        content_type: "TheoremStatement".to_string(),
+                        content_type: HeaderContentType::TheoremStatement,
                         title: theorem.label.clone(),
                     },
                 })
@@ -2689,35 +2749,6 @@ impl serde::Serialize for ParsedDescriptionSegment {
     }
 }
 
-impl serde::Serialize for HeaderRepresentation {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        use serde::ser::SerializeStruct;
-
-        let mut state = serializer.serialize_struct("HeaderRepresentation", 3)?;
-        state.serialize_field("title", &self.title)?;
-        state.serialize_field("contentTitles", &self.content_titles)?;
-        state.serialize_field("subheaderTitles", &self.subheader_titles)?;
-        state.end()
-    }
-}
-
-impl serde::Serialize for HeaderContentRepresentation {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        use serde::ser::SerializeStruct;
-
-        let mut state = serializer.serialize_struct("HeaderContentRepresentation", 2)?;
-        state.serialize_field("contentType", &self.content_type)?;
-        state.serialize_field("title", &self.title)?;
-        state.end()
-    }
-}
-
 impl serde::Serialize for TheoremPath {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -2907,6 +2938,8 @@ impl serde::Serialize for ListEntry {
                 let mut state = serializer.serialize_struct("HeaderListEntry", 2)?;
                 state.serialize_field("headerPath", &header_list_entry.header_path)?;
                 state.serialize_field("title", &header_list_entry.title)?;
+                state
+                    .serialize_field("descriptionParsed", &header_list_entry.description_parsed)?;
                 state.serialize_field("discriminator", "HeaderListEntry")?;
                 state.end()
             }

@@ -6,8 +6,8 @@ use crate::{
 };
 
 use super::{
-    stage_2, MmpParserStage1Success, MmpParserStage2Success, MmpParserStage3Theorem,
-    MmpParserStage4, MmpParserStage4Fail, MmpParserStage4Success, ProofLineParsed,
+    MmpParserStage1Success, MmpParserStage2Success, MmpParserStage3Theorem, MmpParserStage4,
+    MmpParserStage4Fail, MmpParserStage4Success, ProofLineParsed,
 };
 
 pub fn stage_4(
@@ -244,7 +244,7 @@ pub fn stage_4(
                 error_status.3 = true;
             }
             Err(Error::ExpressionParseError) => {
-                let last_non_whitespace_pos = stage_2::last_non_whitespace_pos(statement_str);
+                let last_non_whitespace_pos = util::last_non_whitespace_pos(statement_str);
 
                 errors.push(DetailedError {
                     error_type: Error::ExpressionParseError,

@@ -10,7 +10,7 @@ use crate::{
 };
 
 use super::{
-    stage_2, MmpLabel, MmpParserStage1Success, MmpParserStage2Success, MmpParserStage3,
+    MmpLabel, MmpParserStage1Success, MmpParserStage2Success, MmpParserStage3,
     MmpParserStage3Comment, MmpParserStage3Fail, MmpParserStage3Header, MmpParserStage3Success,
     MmpParserStage3Theorem, MmpStatement, ProofLine,
 };
@@ -95,7 +95,7 @@ fn calc_statement_out_of_place_errors(
         stage_1.statements.iter().zip(&stage_2.statements)
     {
         if *statement_type == out_of_place_statement_type {
-            let last_non_whitespace_pos = stage_2::last_non_whitespace_pos(statement_str);
+            let last_non_whitespace_pos = util::last_non_whitespace_pos(statement_str);
 
             errors.push(DetailedError {
                 error_type,
@@ -185,8 +185,8 @@ fn calc_label_error(
         stage_1.statements.iter().zip(&stage_2.statements)
     {
         if *statement_type == MmpStatement::MmpLabel {
-            let first_token_start_pos = stage_2::nth_token_start_pos(statement_str, 1);
-            let first_token_end_pos = stage_2::nth_token_end_pos(statement_str, 1);
+            let first_token_start_pos = util::nth_token_start_pos(statement_str, 1);
+            let first_token_end_pos = util::nth_token_end_pos(statement_str, 1);
 
             return Ok(DetailedError {
                 error_type,
@@ -315,8 +315,8 @@ fn stage_3_theorem<'a>(
         };
 
         if !metamath_data.symbols_not_already_taken(&vec![&label]) {
-            let second_token_start_pos = stage_2::nth_token_start_pos(statement_str, 1);
-            let second_token_end_pos = stage_2::nth_token_end_pos(statement_str, 1);
+            let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
+            let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
 
             errors.push(DetailedError {
                 error_type: Error::LabelAlreadyExistsError,
@@ -332,8 +332,8 @@ fn stage_3_theorem<'a>(
             .constant_locate_after_iter(stage_2.locate_after)
             .all(|c| c.symbol != typecode)
         {
-            let third_token_start_pos = stage_2::nth_token_start_pos(statement_str, 2);
-            let third_token_end_pos = stage_2::nth_token_end_pos(statement_str, 2);
+            let third_token_start_pos = util::nth_token_start_pos(statement_str, 2);
+            let third_token_end_pos = util::nth_token_end_pos(statement_str, 2);
 
             errors.push(DetailedError {
                 error_type: Error::TypecodeNotAConstantError,
@@ -350,8 +350,8 @@ fn stage_3_theorem<'a>(
             .chain(temp_variable_statements.iter().flatten())
             .all(|v| v.symbol != variable)
         {
-            let fourth_token_start_pos = stage_2::nth_token_start_pos(statement_str, 3);
-            let fourth_token_end_pos = stage_2::nth_token_end_pos(statement_str, 3);
+            let fourth_token_start_pos = util::nth_token_start_pos(statement_str, 3);
+            let fourth_token_end_pos = util::nth_token_end_pos(statement_str, 3);
 
             errors.push(DetailedError {
                 error_type: Error::ExpectedActiveVariableError,
@@ -368,8 +368,8 @@ fn stage_3_theorem<'a>(
             .chain(temp_floating_hypotheses.iter())
             .any(|fh| fh.variable == variable && fh.label != label)
         {
-            let fourth_token_start_pos = stage_2::nth_token_start_pos(statement_str, 3);
-            let fourth_token_end_pos = stage_2::nth_token_end_pos(statement_str, 3);
+            let fourth_token_start_pos = util::nth_token_start_pos(statement_str, 3);
+            let fourth_token_end_pos = util::nth_token_end_pos(statement_str, 3);
 
             errors.push(DetailedError {
                 error_type: Error::VariableTypecodeAlreadyDeclaredError,
@@ -553,8 +553,8 @@ fn stage_3_floating_hypothesis<'a>(
             .floating_hypohesis_iter()
             .any(|fh| fh.label == label)
     {
-        let second_token_start_pos = stage_2::nth_token_start_pos(statement_str, 1);
-        let second_token_end_pos = stage_2::nth_token_end_pos(statement_str, 1);
+        let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
+        let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
 
         errors.push(DetailedError {
             error_type: Error::LabelAlreadyExistsError,
@@ -570,8 +570,8 @@ fn stage_3_floating_hypothesis<'a>(
         .constant_locate_after_iter(stage_2.locate_after)
         .all(|c| c.symbol != typecode)
     {
-        let third_token_start_pos = stage_2::nth_token_start_pos(statement_str, 2);
-        let third_token_end_pos = stage_2::nth_token_end_pos(statement_str, 2);
+        let third_token_start_pos = util::nth_token_start_pos(statement_str, 2);
+        let third_token_end_pos = util::nth_token_end_pos(statement_str, 2);
 
         errors.push(DetailedError {
             error_type: Error::TypecodeNotAConstantError,
@@ -587,8 +587,8 @@ fn stage_3_floating_hypothesis<'a>(
         .variable_locate_after_iter(stage_2.locate_after)
         .all(|v| v.symbol != variable)
     {
-        let fourth_token_start_pos = stage_2::nth_token_start_pos(statement_str, 3);
-        let fourth_token_end_pos = stage_2::nth_token_end_pos(statement_str, 3);
+        let fourth_token_start_pos = util::nth_token_start_pos(statement_str, 3);
+        let fourth_token_end_pos = util::nth_token_end_pos(statement_str, 3);
 
         errors.push(DetailedError {
             error_type: Error::ExpectedActiveVariableError,
@@ -604,8 +604,8 @@ fn stage_3_floating_hypothesis<'a>(
         .floating_hypohesis_iter()
         .any(|fh| fh.variable == variable && fh.label != label)
     {
-        let fourth_token_start_pos = stage_2::nth_token_start_pos(statement_str, 3);
-        let fourth_token_end_pos = stage_2::nth_token_end_pos(statement_str, 3);
+        let fourth_token_start_pos = util::nth_token_start_pos(statement_str, 3);
+        let fourth_token_end_pos = util::nth_token_end_pos(statement_str, 3);
 
         errors.push(DetailedError {
             error_type: Error::VariableTypecodeAlreadyDeclaredError,

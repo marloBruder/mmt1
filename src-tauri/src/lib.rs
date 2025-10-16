@@ -101,7 +101,7 @@ pub fn run() {
             // editor::delete_in_progress_theorem,
             setup_main_window,
             set_settings,
-            explorer::add_header,
+            // explorer::add_header,
             explorer::quick_search,
             search::search_theorems,
             search::search_by_parse_tree_syntax_check,

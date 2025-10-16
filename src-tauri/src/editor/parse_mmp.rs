@@ -552,6 +552,7 @@ fn add_header_to_database(
     } else if last_header_index == header.subheaders.len() {
         header.subheaders.push(Header {
             title: header_title,
+            description: String::new(),
             content: Vec::new(),
             subheaders: Vec::new(),
         });

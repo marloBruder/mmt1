@@ -1,7 +1,7 @@
 <script lang="ts">
   import RoundButton from "./RoundButton.svelte";
 
-  let { invalidHtml, descriptionHtml = false }: { invalidHtml: [string, string][]; descriptionHtml?: boolean } = $props();
+  let { invalidHtml, htmlType }: { invalidHtml: [string, string][]; htmlType: "symbol" | "theoremDescription" | "headerDescription" } = $props();
 
   let page: number = $state(0);
 
@@ -15,17 +15,19 @@
 </script>
 
 {#if invalidHtml.length != 0}
-  <div class="p-2 mx-12 border rounded-lg">
+  <div class="mt-2 p-2 mx-12 border rounded-lg">
     <h2 class="text-red-600">WARNING</h2>
-    {#if !descriptionHtml}
+    {#if htmlType === "symbol"}
       The HTML representation of symbols in this database does not follow all rules for safe HTML checked by mmt1.
-    {:else}
+    {:else if htmlType === "theoremDescription"}
       The HTML found in the description of theorems does follow all rules for safe HTML checked by mmt1.
+    {:else if htmlType === "headerDescription"}
+      The HTML found in the description of headers does follow all rules for safe HTML checked by mmt1.
     {/if}
     The following
     <span class="text-red-600">{invalidHtml.length}</span>
     HTML
-    {#if !descriptionHtml}
+    {#if htmlType === "symbol"}
       representations
     {:else}
       snippets
@@ -38,11 +40,14 @@
         <thead>
           <tr>
             <th></th>
-            {#if !descriptionHtml}
+            {#if htmlType === "symbol"}
               <th class="border">Symbol</th>
               <th class="border">HTML Representation</th>
-            {:else}
+            {:else if htmlType === "theoremDescription"}
               <th class="border">Theorem Label</th>
+              <th class="border">HTML Snippet</th>
+            {:else if htmlType === "headerDescription"}
+              <th class="border">Header Position</th>
               <th class="border">HTML Snippet</th>
             {/if}
           </tr>

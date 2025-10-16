@@ -193,6 +193,7 @@ export type ListEntry = HeaderListEntry | CommentListEntry | ConstantListEntry |
 export interface HeaderListEntry {
   headerPath: string;
   title: string;
+  descriptionParsed: ParsedDescriptionSegment[];
   discriminator: "HeaderListEntry";
 }
 

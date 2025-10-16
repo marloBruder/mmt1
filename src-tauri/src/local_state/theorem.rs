@@ -24,73 +24,6 @@ pub async fn get_theorem_page_data_local(
     metamath::calc_theorem_page_data(label, metamath_data, show_all)
 }
 
-// pub fn get_theorem_insert_position(
-//     metamath_data: &MetamathData,
-//     position_name: &str,
-// ) -> Result<TheoremPath, Error> {
-//     if position_name.contains(' ') {
-//         // Safe unwrap because of the prior condition
-//         let (_, header_title) = position_name.split_once(' ').unwrap();
-//         let header_path_res = metamath_data
-//             .database_header
-//             .calc_header_path_by_title(header_title);
-
-//         if let Some(header_path) = header_path_res {
-//             return Ok(TheoremPath {
-//                 header_path,
-//                 theorem_index: 0,
-//             });
-//         } else {
-//             return Err(Error::NotFoundError);
-//         }
-//     } else {
-//         let theorem_path_res = metamath_data
-//             .database_header
-//             .calc_theorem_path_by_label(position_name);
-
-//         if let Some(mut theorem_path) = theorem_path_res {
-//             theorem_path.theorem_index += 1;
-//             return Ok(theorem_path);
-//         } else {
-//             return Err(Error::NotFoundError);
-//         }
-//     }
-// }
-
-// pub fn add_theorem_local(
-//     metamath_data: &mut MetamathData,
-//     label: &str,
-//     description: &str,
-//     distincts: &Vec<String>,
-//     hypotheses: &Vec<Hypothesis>,
-//     assertion: &str,
-//     proof: Option<&str>,
-//     insert_path: &TheoremPath,
-// ) -> Result<(), Error> {
-//     let header = insert_path
-//         .header_path
-//         .resolve_mut(&mut metamath_data.database_header)
-//         .ok_or(Error::NotFoundError)?;
-
-//     if header.content.len() < insert_path.theorem_index {
-//         return Err(Error::NotFoundError);
-//     }
-
-//     header.content.insert(
-//         insert_path.theorem_index,
-//         TheoremStatement(Theorem {
-//             label: label.to_string(),
-//             description: description.to_string(),
-//             distincts: distincts.clone(),
-//             hypotheses: hypotheses.clone(),
-//             assertion: assertion.to_string(),
-//             proof: proof.map(|s| s.to_string()),
-//         }),
-//     );
-
-//     Ok(())
-// }
-
 // page starts at 0
 #[tauri::command]
 pub async fn get_theorem_list_local(
@@ -134,10 +67,21 @@ pub async fn get_theorem_list_local(
 
                     curr_header_comment_amount = 0;
 
+                    let header_path = curr_header_path.to_string();
+
+                    let description_parsed = metamath_data
+                        .optimized_data
+                        .header_data
+                        .get(&header_path)
+                        .ok_or(Error::InternalLogicError)?
+                        .description_parsed
+                        .clone();
+
                     if page * 100 <= theorem_amount {
                         list.push(ListEntry::Header(HeaderListEntry {
-                            header_path: curr_header_path.to_string(),
+                            header_path,
                             title: header.title.clone(),
+                            description_parsed,
                         }));
                     }
                 }

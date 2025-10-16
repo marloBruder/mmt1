@@ -23,6 +23,7 @@
 
   let invalidHtml: HtmlRepresentation[] = $state([]);
   let invalidDescriptionHtml: [string, string][] = $state([]);
+  let invalidHeaderDescriptionHtml: [string, string][] = $state([]);
 
   let lastMmParserProgress = $state(0);
   let lastCalcOptimizedTheoremDataProgress = $state(0);
@@ -66,7 +67,7 @@
     );
 
     invoke("open_metamath_database", { mmFilePath: globalState.databaseBeingOpened }).then(async (payload) => {
-      [databaseId, invalidHtml, invalidDescriptionHtml] = payload as [number, HtmlRepresentation[], [string, string][]];
+      [databaseId, invalidHtml, invalidDescriptionHtml, invalidHeaderDescriptionHtml] = payload as [number, HtmlRepresentation[], [string, string][], [string, string][]];
       invoke("perform_grammar_calculations", { databaseId }).then(() => {
         emit("grammar-calculations-performed");
       });
@@ -127,7 +128,7 @@
         Parsing database:
         <ProgressBar progress={lastMmParserProgress}></ProgressBar>
       </div>
-      <InvalidHtmlPopup invalidHtml={invalidHtml.map((htmlRep) => [htmlRep.symbol, htmlRep.html])}></InvalidHtmlPopup>
+      <InvalidHtmlPopup invalidHtml={invalidHtml.map((htmlRep) => [htmlRep.symbol, htmlRep.html])} htmlType="symbol"></InvalidHtmlPopup>
       <div class="my-4">
         Calculating relevant theorem data:
         <div class="flex flex-col items-center">
@@ -144,8 +145,9 @@
           </div>
         </div>
       </div>
-      <InvalidHtmlPopup invalidHtml={invalidDescriptionHtml} descriptionHtml></InvalidHtmlPopup>
-      {#if invalidHtml.length !== 0 || invalidDescriptionHtml.length !== 0}
+      <InvalidHtmlPopup invalidHtml={invalidDescriptionHtml} htmlType="theoremDescription"></InvalidHtmlPopup>
+      <InvalidHtmlPopup invalidHtml={invalidHeaderDescriptionHtml} htmlType="headerDescription"></InvalidHtmlPopup>
+      {#if invalidHtml.length !== 0 || invalidDescriptionHtml.length !== 0 || invalidHeaderDescriptionHtml.length !== 0}
         <div class="border rounded-lg p-2 mx-12 my-4">
           <h2 class="text-blue-400">INFO</h2>
           The whitelist for what is considered safe HTML was created based on what is in set.mm and is by no means exhaustive. If you have a tag or attribute that is guaranteed to be safe, but that is not on the whitelist, please create an issue on Github, so it can be added to the rules of what makes HTML safe.

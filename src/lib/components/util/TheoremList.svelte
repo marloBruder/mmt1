@@ -34,12 +34,19 @@
       <div class="text-2xl p-4">
         {theoremListEntry.headerPath + " " + theoremListEntry.title}
       </div>
+      <div class="px-4">
+        <div class="flex flex-col items-center w-full">
+          <div class="text-left">
+            <DescriptionParsed descriptionParsed={theoremListEntry.descriptionParsed}></DescriptionParsed>
+          </div>
+        </div>
+      </div>
     {:else if theoremListEntry.discriminator === "CommentListEntry"}
       <div>
         <div class="text-xl">
           <button onclick={() => commentClick(theoremListEntry.commentPath)}>{theoremListEntry.commentPath}</button>
         </div>
-        <div class="whitespace-pre-line">
+        <div class="whitespace-pre-line break-words">
           {theoremListEntry.text}
         </div>
       </div>
@@ -69,7 +76,11 @@
         <TheoremLink label={theoremListEntry.label} theoremNumber={theoremListEntry.theoremNumber}></TheoremLink>
       </div>
       <div class="border-gray-500 border-y px-4">
-        <DescriptionParsed descriptionParsed={theoremListEntry.descriptionParsed}></DescriptionParsed>
+        <div class="flex flex-col items-center w-full">
+          <div class="text-left">
+            <DescriptionParsed descriptionParsed={theoremListEntry.descriptionParsed}></DescriptionParsed>
+          </div>
+        </div>
       </div>
       {#each theoremListEntry.hypotheses as hypothesis}
         <div>

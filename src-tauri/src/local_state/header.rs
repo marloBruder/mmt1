@@ -1,7 +1,7 @@
 use tauri::async_runtime::Mutex;
 
 use crate::{
-    model::{Header, HeaderPath, HeaderRepresentation, MetamathData},
+    model::{HeaderPath, HeaderRepresentation},
     AppState, Error,
 };
 
@@ -17,32 +17,4 @@ pub async fn get_header_local(
         .resolve(&metamath_data.database_header)
         .ok_or(Error::NotFoundError)?
         .to_representation())
-}
-
-pub fn add_header_local(
-    metamath_data: &mut MetamathData,
-    title: &str,
-    insert_path: &HeaderPath,
-) -> Result<(), Error> {
-    let mut header = &mut metamath_data.database_header;
-
-    for (loop_index, &pos_index) in insert_path.path.iter().enumerate() {
-        if loop_index != insert_path.path.len() - 1 {
-            header = header
-                .subheaders
-                .get_mut(pos_index)
-                .ok_or(Error::InternalLogicError)?;
-        } else {
-            header.subheaders.insert(
-                pos_index,
-                Header {
-                    title: title.to_string(),
-                    content: Vec::new(),
-                    subheaders: Vec::new(),
-                },
-            );
-        }
-    }
-
-    Ok(())
 }

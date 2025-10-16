@@ -99,6 +99,101 @@ pub fn new_lines_at_end_of_str(str: &str) -> u32 {
         .count() as u32
 }
 
+// Returns (a, b), where a is the line number and b is the column number of the last non-whitespace character
+pub fn last_non_whitespace_pos(str: &str) -> (u32, u32) {
+    let mut last_non_whitespace_line_number = 1;
+    let mut last_non_whitespace_column_number = 1;
+
+    let mut line_number = 1;
+    let mut column_number = 0;
+
+    for char in str.chars() {
+        column_number += 1;
+
+        if char == '\n' {
+            line_number += 1;
+            column_number = 0;
+        }
+
+        if !char.is_whitespace() {
+            last_non_whitespace_line_number = line_number;
+            last_non_whitespace_column_number = column_number;
+        }
+    }
+
+    (
+        last_non_whitespace_line_number,
+        last_non_whitespace_column_number,
+    )
+}
+
+pub fn nth_token_start_pos(str: &str, n: u32) -> (u32, u32) {
+    let mut tokens_seen = 0;
+    let mut seeing_token = false;
+
+    let mut line_number = 1;
+    let mut column_number = 0;
+
+    for char in str.chars() {
+        column_number += 1;
+
+        if char == '\n' {
+            line_number += 1;
+            column_number = 0;
+        }
+
+        if char.is_whitespace() {
+            if seeing_token {
+                tokens_seen += 1;
+            }
+
+            seeing_token = false;
+        } else {
+            if tokens_seen == n {
+                break;
+            }
+
+            seeing_token = true;
+        }
+    }
+
+    (line_number, column_number)
+}
+
+pub fn nth_token_end_pos(str: &str, n: u32) -> (u32, u32) {
+    let mut tokens_seen = 0;
+    let mut seeing_token = false;
+
+    let mut line_number = 1;
+    let mut column_number = 0;
+
+    for char in str.chars() {
+        column_number += 1;
+
+        if char.is_whitespace() {
+            if tokens_seen == n {
+                column_number -= 1;
+                break;
+            }
+
+            if seeing_token {
+                tokens_seen += 1;
+            }
+
+            seeing_token = false;
+        } else {
+            seeing_token = true;
+        }
+
+        if char == '\n' {
+            line_number += 1;
+            column_number = 0;
+        }
+    }
+
+    (line_number, column_number)
+}
+
 pub fn calc_distinct_variable_pairs<T>(distinct_vars: &Vec<T>) -> HashSet<(String, String)>
 where
     T: Deref<Target = str>,
