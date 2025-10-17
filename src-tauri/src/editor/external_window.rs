@@ -1,6 +1,9 @@
-use tauri::{AppHandle, Emitter, Listener, Manager, WebviewUrl, WebviewWindowBuilder, Window};
+use tauri::{
+    async_runtime::Mutex, AppHandle, Emitter, Listener, Manager, WebviewUrl, WebviewWindowBuilder,
+    Window,
+};
 
-use crate::Error;
+use crate::{AppState, Error};
 
 #[tauri::command]
 pub async fn open_external_window(app: AppHandle) -> Result<(), Error> {
@@ -30,4 +33,14 @@ pub fn set_up_external_window_close_listener(window: Window, app: AppHandle) {
         // Do nothing if emit fails
         app.emit("external-window-close", ()).ok();
     });
+}
+
+#[tauri::command]
+pub async fn load_external_window_relevant_info(
+    state: tauri::State<'_, Mutex<AppState>>,
+) -> Result<u32, Error> {
+    let app_state = state.lock().await;
+    let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
+
+    Ok(metamath_data.optimized_data.theorem_amount)
 }

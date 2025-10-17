@@ -28,6 +28,6 @@
       <TheoremPage {pageData} editorPreview></TheoremPage>
     {/if}
   {:else}
-    <div class="p-2">Resolve most errors to show the unicode preview.</div>
+    <div class="p-2">Resolve all syntax errors to show the unicode preview.</div>
   {/if}
 </div>

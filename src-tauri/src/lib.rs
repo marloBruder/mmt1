@@ -123,6 +123,7 @@ pub fn run() {
             editor::external_window::open_external_window,
             editor::external_window::close_external_window,
             editor::external_window::set_up_external_window_close_listener,
+            editor::external_window::load_external_window_relevant_info,
             editor::format::format,
             editor::on_edit::on_edit,
             editor::add_to_database::add_to_database,

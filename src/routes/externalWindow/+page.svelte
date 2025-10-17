@@ -10,16 +10,22 @@
   import { invoke } from "@tauri-apps/api/core";
   import { htmlData } from "$lib/sharedState/htmlData.svelte";
   import { getCurrentWindow } from "@tauri-apps/api/window";
+  import { loadExternalWindowRelevantInfo } from "$lib/sharedState/globalState.svelte";
+  import { setupTheoremNumberStyleSheet } from "$lib/components/util/TheoremNumber.svelte";
+  import ScrollableContainer from "$lib/components/util/ScrollableContainer.svelte";
 
   let pageDataLoaded: boolean = $state(false);
   let pageData: DatabaseElementPageData | null = $state(null);
 
   onMount(async () => {
-    listen("mm-db-opened", () => {
-      htmlData.load();
+    listen("mm-db-opened", async () => {
+      await htmlData.load();
+      await loadExternalWindowRelevantInfo();
     });
 
     await htmlData.load();
+    await loadExternalWindowRelevantInfo();
+    setupTheoremNumberStyleSheet();
 
     // If event "external-window-close" has been triggered and the window is still up, then close the external window
     listen("external-window-close", () => {
@@ -47,7 +53,9 @@
     {#snippet second()}
       <div class="custom-height-minus-margin custom-width-minus-margin custom-bg-color m-2 rounded-lg">
         {#if pageDataLoaded}
-          <EditorTabSplitViewComponent {pageData}></EditorTabSplitViewComponent>
+          <ScrollableContainer>
+            <EditorTabSplitViewComponent {pageData}></EditorTabSplitViewComponent>
+          </ScrollableContainer>
         {/if}
       </div>
     {/snippet}

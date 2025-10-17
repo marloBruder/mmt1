@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
 class GlobalState {
@@ -28,4 +29,9 @@ listen("grammar-calculations-progress", (e) => {
   }
 });
 
-export { globalState };
+async function loadExternalWindowRelevantInfo() {
+  let theoremAmount = (await invoke("load_external_window_relevant_info")) as number;
+  globalState.databaseState = new DatabaseState(0, "", theoremAmount);
+}
+
+export { globalState, loadExternalWindowRelevantInfo };

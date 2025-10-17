@@ -161,26 +161,31 @@
                     {proofLine.reference}
                   {/if}
                 </td>
-                <td class="border border-gray-600 p-0">
-                  {#snippet indentionPoints(indention: number)}
-                    <span class="text-xs text-gray-300">
-                      {#each { length: indention - 1 } as _}
-                        {". "}
-                      {/each}
-                      {indention}
-                    </span>
-                  {/snippet}
-                  {#if proofLine.oldAssertion !== null && proofLine.oldAssertion !== proofLine.assertion}
+                {#snippet indentionPoints(indention: number)}
+                  <span class="text-xs text-gray-300">
+                    {#each { length: indention - 1 } as _}
+                      {". "}
+                    {/each}
+                    {indention}
+                  </span>
+                {/snippet}
+                {#if proofLine.oldAssertion !== null && proofLine.oldAssertion !== proofLine.assertion}
+                  <td class="border border-gray-600 p-0">
                     <div class="py-1 pr-2 pl-1 border-b">
                       {@render indentionPoints(proofLine.indention)}
                       <MetamathExpression expression={proofLine.oldAssertion}></MetamathExpression>
                     </div>
-                  {/if}
-                  <div class={"py-1 pr-2 pl-1 " + proofLineBackground(i, 3)}>
+                    <div class={"py-1 pr-2 pl-1 " + proofLineBackground(i, 3)}>
+                      {@render indentionPoints(proofLine.indention)}
+                      <MetamathExpression expression={proofLine.assertion}></MetamathExpression>
+                    </div>
+                  </td>
+                {:else}
+                  <td class={"border border-gray-600 py-1 pr-2 pl-1 " + proofLineBackground(i, 3)}>
                     {@render indentionPoints(proofLine.indention)}
                     <MetamathExpression expression={proofLine.assertion}></MetamathExpression>
-                  </div>
-                </td>
+                  </td>
+                {/if}
               </tr>
             {/each}
           </tbody>
