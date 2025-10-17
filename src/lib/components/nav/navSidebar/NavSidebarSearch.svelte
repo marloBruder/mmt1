@@ -52,14 +52,14 @@
     <RoundButton onclick={resetClick} additionalClasses="w-full">Reset Search Parameters</RoundButton>
   </div>
   <div class="pt-2">
-    <SearchAccordion title="LABEL" active={searchParameters.label.length !== 0}>
+    <SearchAccordion title="LABEL" active={searchParameters.label.length !== 0} bind:open={searchInputData.searchAccordionOpenValues[0]}>
       <div class="px-2 pb-2">
         <label for="search-input">Label:</label>
         <br />
         <input id="search-input" class="border border-gray-300 rounded custom-bg-input-color w-full" bind:value={searchParameters.label} autocomplete="off" spellcheck="false" />
       </div>
     </SearchAccordion>
-    <SearchAccordion title="SEARCH BY PARSE TREE" active={searchParameters.searchByParseTree.length !== 0} valid={searchByParseTreeValidInput}>
+    <SearchAccordion title="SEARCH BY PARSE TREE" active={searchParameters.searchByParseTree.length !== 0} valid={searchByParseTreeValidInput} bind:open={searchInputData.searchAccordionOpenValues[1]}>
       <div class="p-2">
         {#each searchParameters.searchByParseTree as searchByParseTreeCondition, i}
           <SearchByParseTreeConditionComponent {searchByParseTreeCondition} onRemoveClick={() => removeSearchByParseTreeCondition(i)} bind:validInput={searchInputData.searchByParseTreeValidInputs[i]}></SearchByParseTreeConditionComponent>
@@ -67,7 +67,7 @@
         <RoundButton additionalClasses="w-full" onclick={addSearchByParseTreeCondition}>Add new condition</RoundButton>
       </div>
     </SearchAccordion>
-    <SearchAccordion title="AXIOM DEPENDENCIES" active={searchParameters.allAxiomDependencies.length + searchParameters.anyAxiomDependencies.length + searchParameters.avoidAxiomDependencies.length != 0}>
+    <SearchAccordion title="AXIOM DEPENDENCIES" active={searchParameters.allAxiomDependencies.length + searchParameters.anyAxiomDependencies.length + searchParameters.avoidAxiomDependencies.length != 0} bind:open={searchInputData.searchAccordionOpenValues[2]}>
       <div class="px-2">
         <div class="pb-2">
           Must depend on all of the axioms:
@@ -83,7 +83,7 @@
         </div>
       </div>
     </SearchAccordion>
-    <SearchAccordion title="DEFINITION DEPENDENCIES" active={searchParameters.allDefinitionDependencies.length + searchParameters.anyDefinitionDependencies.length + searchParameters.avoidDefinitionDependencies.length != 0}>
+    <SearchAccordion title="DEFINITION DEPENDENCIES" active={searchParameters.allDefinitionDependencies.length + searchParameters.anyDefinitionDependencies.length + searchParameters.avoidDefinitionDependencies.length != 0} bind:open={searchInputData.searchAccordionOpenValues[3]}>
       <div class="px-2">
         <div class="pb-2">
           Must depend on all of the definitions:
@@ -99,7 +99,7 @@
         </div>
       </div>
     </SearchAccordion>
-    <SearchAccordion title="STATEMENT TYPE" active={!searchParameters.allowTheorems || !searchParameters.allowAxioms || !searchParameters.allowDefinitions || !searchParameters.allowSyntaxAxioms}>
+    <SearchAccordion title="STATEMENT TYPE" active={!searchParameters.allowTheorems || !searchParameters.allowAxioms || !searchParameters.allowDefinitions || !searchParameters.allowSyntaxAxioms} bind:open={searchInputData.searchAccordionOpenValues[4]}>
       <div class="px-2 text-nowrap">
         <div>
           <input bind:checked={searchParameters.allowTheorems} type="checkbox" />

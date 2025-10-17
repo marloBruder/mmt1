@@ -87,7 +87,7 @@ pub async fn unify(
 fn write_unify_line(
     result_text: &mut String,
     unify_line: UnifyLine,
-    lines_at_end_of_statement: u32,
+    new_lines_at_end_of_statement: u32,
     indention: u32,
     mm_data: &MetamathData,
 ) -> Result<(), Error> {
@@ -144,7 +144,7 @@ fn write_unify_line(
             .unwrap_or(String::new()),
     );
 
-    for _ in 0..lines_at_end_of_statement {
+    for _ in 0..new_lines_at_end_of_statement {
         result_text.push('\n');
     }
 

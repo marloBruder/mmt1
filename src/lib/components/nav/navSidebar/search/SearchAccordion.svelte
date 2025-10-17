@@ -3,9 +3,7 @@
   import ChevronDownIcon from "$lib/icons/arrows/ChevronDownIcon.svelte";
   import type { Snippet } from "svelte";
 
-  let { children, title, active, valid = true }: { children: Snippet; title: string; active: boolean; valid?: boolean } = $props();
-
-  let open: boolean = $state(false);
+  let { children, title, active, valid = true, open = $bindable(false) }: { children: Snippet; title: string; active: boolean; valid?: boolean; open?: boolean } = $props();
 
   let toggleOpen = () => {
     open = !open;

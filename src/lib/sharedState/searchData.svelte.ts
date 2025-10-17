@@ -52,6 +52,7 @@ interface SearchInputData {
   allDefinitionDependenciesInputValue: string;
   anyDefinitionDependenciesInputValue: string;
   avoidDefinitionDependenciesInputValue: string;
+  searchAccordionOpenValues: boolean[];
 }
 
 let defaultSearchInputData: SearchInputData = {
@@ -62,6 +63,7 @@ let defaultSearchInputData: SearchInputData = {
   allDefinitionDependenciesInputValue: "",
   anyDefinitionDependenciesInputValue: "",
   avoidDefinitionDependenciesInputValue: "",
+  searchAccordionOpenValues: [false, false, false, false, false],
 };
 
 class SearchData {
