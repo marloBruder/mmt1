@@ -775,7 +775,8 @@ impl MmParser {
         }
         header_title.pop();
 
-        let (header_pos_line, header_pos_char) = util::nth_token_end_pos(comment, tokens_processed);
+        let (header_pos_line, header_pos_char) =
+            util::nth_token_end_pos(comment, tokens_processed - 1);
         let header_pos = comment
             .lines()
             .take(header_pos_line as usize - 1)
@@ -783,7 +784,10 @@ impl MmParser {
             .sum::<usize>()
             + header_pos_char as usize;
 
-        let description = comment[header_pos..].to_string();
+        let description = comment
+            .get(header_pos..)
+            .ok_or(Error::InternalLogicError)?
+            .to_string();
 
         if header_closed {
             let mut parent_header = &mut self.database_header;

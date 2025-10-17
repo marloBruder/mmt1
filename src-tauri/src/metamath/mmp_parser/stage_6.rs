@@ -44,6 +44,14 @@ fn calc_proof_tree<'a>(
         return Ok(None);
     };
 
+    if unify_result
+        .iter()
+        .filter(|ul| ul.is_hypothesis || ul.step_name == "qed")
+        .any(|ul| ul.parse_tree.is_none())
+    {
+        return Ok(None);
+    }
+
     let mut proofs: Vec<Option<ProofTree>> = Vec::new();
 
     for (i, unify_line) in unify_result.iter().enumerate() {
@@ -173,7 +181,7 @@ fn calc_proof_tree<'a>(
             }
         }
 
-        // println!("{}", proofs.last().unwrap());
+        // println!("{:#?}", proofs.last().unwrap());
     }
 
     Ok(proofs.swap_remove(qed_step_i))
@@ -365,7 +373,7 @@ fn number_to_compressed_proof_format_number(mut number: u32) -> String {
     compressed_number.chars().rev().collect()
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ProofTree<'a> {
     pub label: &'a str,
     pub children: Vec<ProofTree<'a>>,

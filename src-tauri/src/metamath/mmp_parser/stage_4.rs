@@ -299,6 +299,20 @@ pub fn stage_4(
 
                 error_status.3 = true;
             }
+            Err(Error::InvalidTypecodeError) => {
+                let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
+                let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
+
+                errors.push(DetailedError {
+                    error_type: Error::InvalidTypecodeError,
+                    start_line_number: line_number + second_token_start_pos.0 - 1,
+                    start_column: second_token_start_pos.1,
+                    end_line_number: line_number + second_token_end_pos.0 - 1,
+                    end_column: second_token_end_pos.1 + 1,
+                });
+
+                error_status.3 = true;
+            }
             Err(_) => {
                 return Err(Error::InternalLogicError);
             }

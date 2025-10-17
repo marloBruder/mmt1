@@ -171,12 +171,12 @@ pub fn nth_token_end_pos(str: &str, n: u32) -> (u32, u32) {
         column_number += 1;
 
         if char.is_whitespace() {
-            if tokens_seen == n {
-                column_number -= 1;
-                break;
-            }
-
             if seeing_token {
+                if tokens_seen == n {
+                    column_number -= 1;
+                    break;
+                }
+
                 tokens_seen += 1;
             }
 

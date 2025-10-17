@@ -170,6 +170,9 @@ export function getErrorMessage(errorType: string): string {
     case "IncompleteTheoremUsedError": {
       return "The theorem referenced is incomplete or has an incomplete theorem in it's dependency tree. Use $allowdincomplete to allow incomplete theorems in this proof.";
     }
+    case "InvalidTypecodeError": {
+      return "Not a valid typecode. Typecodes must be registered using $j syntax comments.";
+    }
   }
 
   return "You should not be seeing this error message. Please post a Github issue with your editor content.";

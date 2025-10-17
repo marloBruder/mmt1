@@ -61,14 +61,20 @@ pub async fn unify(
 
             while unify_line.new_line {
                 if !unify_line.deleted_line {
-                    write_unify_line(&mut result_text, unify_line, statement, indention, mm_data)?;
+                    write_unify_line(&mut result_text, unify_line, 1, indention, mm_data)?;
                 }
                 (unify_line, indention) =
                     unify_line_iter.next().ok_or(Error::InternalLogicError)?;
             }
 
             if !unify_line.deleted_line {
-                write_unify_line(&mut result_text, unify_line, statement, indention, mm_data)?;
+                write_unify_line(
+                    &mut result_text,
+                    unify_line,
+                    util::new_lines_at_end_of_str(statement),
+                    indention,
+                    mm_data,
+                )?;
             }
         } else {
             result_text.push_str(statement);
@@ -81,7 +87,7 @@ pub async fn unify(
 fn write_unify_line(
     result_text: &mut String,
     unify_line: UnifyLine,
-    statement: &str,
+    lines_at_end_of_statement: u32,
     indention: u32,
     mm_data: &MetamathData,
 ) -> Result<(), Error> {
@@ -138,7 +144,7 @@ fn write_unify_line(
             .unwrap_or(String::new()),
     );
 
-    for _ in 0..util::new_lines_at_end_of_str(statement) {
+    for _ in 0..lines_at_end_of_statement {
         result_text.push('\n');
     }
 

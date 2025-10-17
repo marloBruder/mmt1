@@ -253,12 +253,14 @@ fn set_unify_status_recursively_correct(
     previous_unify_lines: &Vec<UnifyLine>,
 ) {
     if let ProofLineStatus::Unified(_, recursively_correct) = &mut unify_line.status {
-        if unify_line.hypotheses.iter().all(|hyp| {
-            previous_unify_lines
-                .iter()
-                .find(|ul| ul.step_name == *hyp)
-                .is_some_and(|pul| unify_line_is_recursively_correct(pul))
-        }) {
+        if unify_line.step_ref != ""
+            && unify_line.hypotheses.iter().all(|hyp| {
+                previous_unify_lines
+                    .iter()
+                    .find(|ul| ul.step_name == *hyp)
+                    .is_some_and(|pul| unify_line_is_recursively_correct(pul))
+            })
+        {
             *recursively_correct = true;
         }
     }
