@@ -67,6 +67,7 @@ pub struct OptimizedMetamathData {
 #[derive(Debug)]
 pub struct OptimizedTheoremData {
     pub theorem_type: TheoremType,
+    pub is_discouraged: bool,
     pub parse_trees: Option<TheoremParseTrees>,
     pub distinct_variable_pairs: HashSet<(String, String)>,
     pub axiom_dependencies: Vec<usize>,
@@ -86,6 +87,7 @@ pub enum TheoremType {
 #[derive(Debug)]
 pub enum ProofType {
     Correct,
+    CorrectButRecursivelyIncomplete,
     Incomplete,
 }
 
@@ -455,6 +457,8 @@ impl MetamathData {
         let mut invalid_description_html = Vec::new();
 
         for (i, theorem) in self.database_header.theorem_iter().enumerate() {
+            let is_discouraged = theorem.description.contains("(New usage is discouraged.)");
+
             let (description_parsed, invalid_html) = description_parser::parse_description(
                 &theorem.description,
                 &self.database_header,
@@ -477,6 +481,7 @@ impl MetamathData {
 
             let optimized_theorem_data = OptimizedTheoremData {
                 theorem_type,
+                is_discouraged,
                 distinct_variable_pairs,
                 parse_trees: None,
                 axiom_dependencies,
@@ -673,7 +678,13 @@ impl MetamathData {
                     }
 
                     Ok(match verify_result {
-                        VerificationResult::Correct => ProofType::Correct,
+                        VerificationResult::Correct => {
+                            if theorem.calc_recursively_incomplete(self) {
+                                ProofType::CorrectButRecursivelyIncomplete
+                            } else {
+                                ProofType::Correct
+                            }
+                        }
                         VerificationResult::Incomplete => ProofType::Incomplete,
                         VerificationResult::Incorrect => {
                             println!("Incorrect: {}", theorem.label);
@@ -711,14 +722,14 @@ impl MetamathData {
         let (allowed_tags_and_attributes, allowed_css_properties) =
             html_validation::create_rule_structs();
 
-        println!("got to start of update");
-
         let (i, theorem) = self
             .database_header
             .theorem_iter()
             .enumerate()
             .find(|(_, t)| t.label == theorem_label)
             .ok_or(Error::InternalLogicError)?;
+
+        let is_discouraged = theorem.description.contains("(New usage is discouraged.)");
 
         let (description_parsed, _) = description_parser::parse_description(
             &theorem.description,
@@ -727,11 +738,7 @@ impl MetamathData {
             &allowed_css_properties,
         );
 
-        println!("got before verify");
-
         let mut theorem_type = theorem.calc_theorem_type_without_verification(&self, settings)?;
-
-        println!("got before verify");
 
         let distinct_variable_pairs = util::calc_distinct_variable_pairs(&theorem.distincts);
 
@@ -744,10 +751,14 @@ impl MetamathData {
             None,
         )?;
 
-        println!("got after verify");
-
         let proof_type = match verify_result {
-            VerificationResult::Correct => ProofType::Correct,
+            VerificationResult::Correct => {
+                if theorem.calc_recursively_incomplete(self) {
+                    ProofType::CorrectButRecursivelyIncomplete
+                } else {
+                    ProofType::Correct
+                }
+            }
             VerificationResult::Incomplete => ProofType::Incomplete,
             VerificationResult::Incorrect => return Err(Error::InternalLogicError),
         };
@@ -769,6 +780,7 @@ impl MetamathData {
 
         let optimized_theorem_data = OptimizedTheoremData {
             theorem_type,
+            is_discouraged,
             distinct_variable_pairs,
             parse_trees: Some(TheoremParseTrees {
                 hypotheses_parsed,
@@ -2399,6 +2411,38 @@ impl Theorem {
         } else {
             TheoremType::Axiom
         })
+    }
+
+    pub fn calc_recursively_incomplete(&self, metamath_data: &MetamathData) -> bool {
+        let Some(proof) = self.proof.as_ref() else {
+            return false;
+        };
+
+        // labels may have the same label twice
+        let labels: Vec<&str> = if proof.starts_with("(") {
+            proof
+                .split_ascii_whitespace()
+                .skip(1)
+                .take_while(|token| *token != ")")
+                .collect()
+        } else {
+            proof.split_ascii_whitespace().collect()
+        };
+
+        for label in labels {
+            if let Some(theorem_data) = metamath_data.optimized_data.theorem_data.get(label) {
+                if matches!(
+                    theorem_data.theorem_type,
+                    TheoremType::Theorem(
+                        ProofType::CorrectButRecursivelyIncomplete | ProofType::Incomplete
+                    )
+                ) {
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 }
 
