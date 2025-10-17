@@ -1,7 +1,7 @@
 use crate::{
     editor::on_edit::DetailedError,
     metamath::mmp_parser::{MmpStatement, ProofLineStatus},
-    model::{MetamathData, ParseTree, SymbolNumberMapping, Theorem},
+    model::{MetamathData, ParseTree, ProofType, SymbolNumberMapping, Theorem, TheoremType},
     util, Error,
 };
 
@@ -165,16 +165,46 @@ pub fn stage_4(
                 theorem = Some(theorem_ref);
                 reference_numbers.push(Some((theorem_i + 1) as u32));
 
-                if mm_data
+                let theorem_data = mm_data
                     .optimized_data
                     .theorem_data
                     .get(&theorem_ref.label)
-                    .ok_or(Error::InternalLogicError)?
-                    .parse_trees
-                    .is_none()
-                {
+                    .ok_or(Error::InternalLogicError)?;
+
+                if theorem_data.parse_trees.is_none() {
                     errors.push(DetailedError {
                         error_type: Error::SyntaxTheoremUsedError,
+                        start_line_number: line_number,
+                        start_column: step_prefix_len - proof_line.step_ref.len() as u32 + 1,
+                        end_line_number: line_number,
+                        end_column: step_prefix_len + 1,
+                    });
+
+                    error_status.2 = true;
+                }
+
+                if !stage_2.allow_discouraged && theorem_data.is_discouraged {
+                    errors.push(DetailedError {
+                        error_type: Error::DiscouragedTheoremUsedError,
+                        start_line_number: line_number,
+                        start_column: step_prefix_len - proof_line.step_ref.len() as u32 + 1,
+                        end_line_number: line_number,
+                        end_column: step_prefix_len + 1,
+                    });
+
+                    error_status.2 = true;
+                }
+
+                if !stage_2.allow_incomplete
+                    && matches!(
+                        theorem_data.theorem_type,
+                        TheoremType::Theorem(
+                            ProofType::CorrectButRecursivelyIncomplete | ProofType::Incomplete
+                        )
+                    )
+                {
+                    errors.push(DetailedError {
+                        error_type: Error::IncompleteTheoremUsedError,
                         start_line_number: line_number,
                         start_column: step_prefix_len - proof_line.step_ref.len() as u32 + 1,
                         end_line_number: line_number,

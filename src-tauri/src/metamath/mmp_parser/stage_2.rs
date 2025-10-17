@@ -7,6 +7,7 @@ use crate::{editor::on_edit::DetailedError, model::HeaderPath, util, Error};
 pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStage2<'a>, Error> {
     let mut label: Option<MmpLabel> = None;
     let mut allow_discouraged: bool = false;
+    let mut allow_incomplete: bool = false;
     let mut locate_after: Option<LocateAfterRef> = None;
     let mut distinct_vars: Vec<&str> = Vec::new();
     let mut constants: Option<&str> = None;
@@ -415,6 +416,33 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
 
                 statements.push((MmpStatement::AllowDiscouraged, current_line));
             }
+            "$allowincomplete" => {
+                if allow_incomplete {
+                    errors.push(DetailedError {
+                        error_type: Error::MultipleAllowIncompleteError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
+                }
+
+                allow_incomplete = true;
+
+                if token_iter.next().is_some() {
+                    let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
+
+                    errors.push(DetailedError {
+                        error_type: Error::TokensAfterAllowIncompleteError,
+                        start_line_number: current_line + second_token_start_pos.0 - 1,
+                        start_column: second_token_start_pos.1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
+                }
+
+                statements.push((MmpStatement::AllowIncomplete, current_line));
+            }
             "$locateafter" => {
                 if locate_after.is_some() {
                     errors.push(DetailedError {
@@ -760,6 +788,7 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
         MmpParserStage2::Success(MmpParserStage2Success {
             label,
             allow_discouraged,
+            allow_incomplete,
             locate_after,
             distinct_vars,
             constants,

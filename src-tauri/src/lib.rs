@@ -261,6 +261,8 @@ pub enum Error {
     VarSubedWithDifferentStrsError, //Returned if the same variable has been substituted with different Strings
     MultipleAllowDiscouragedError,  // Returned if there are multiple $allowdiscouraged statements
     TokensAfterAllowDiscouragedError, // Returned if there are tokens after $allowdiscouraged
+    MultipleAllowIncompleteError,   // Returned if there are multiple $allowdiscouraged statements
+    TokensAfterAllowIncompleteError, // Returned if there are tokens after $allowdiscouraged
     MultipleLocateAfterError, // Returned if there are multiple $locateafter(-var/-const) statements
     TooFewLocateAfterTokensError, // Returned if there is a $locateafter statement without a follow up token
     TooManyLocateAfterTokensError, // Returned if there is a $locateafter statement with too many follow up tokens
@@ -282,6 +284,8 @@ pub enum Error {
     InvalidWorkVariableError,   // Returned if a work variable's syntax is not correct
     UnificationError, // Returned from unification algorithm when a line can't be unified or from the unification command
     SyntaxTheoremUsedError, // Returned if a step ref references a syntax theorem
+    DiscouragedTheoremUsedError, // Retruned if a step ref references an discouraged theorem without $allowdiscouraged being present
+    IncompleteTheoremUsedError, // Retruned if a step ref references an (recursively) incomplete theorem without $allowincomplete being present
 
     MissingExpressionError, // Returned when converting str to number vec and skipping the first, but the str is empty
     InvalidTypecodeError,

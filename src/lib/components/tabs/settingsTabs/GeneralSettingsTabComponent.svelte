@@ -39,13 +39,13 @@
       <div class="flex h-6 w-6 items-center justify-center">
         <div class="h-4 w-4 custom-confirmation-color"></div>
       </div>
-      <div>The line is correct.</div>
+      <div>This line is correct.</div>
     </div>
     <div class="flex">
       <div class="flex h-6 w-6 items-center justify-center">
         <div class="h-4 w-4 custom-confirmation-recursive-color"></div>
       </div>
-      <div>The line and all lines it depends upon are correct.</div>
+      <div>This line and all lines it depends upon are correct.</div>
     </div>
     <div class="flex">
       <div class="flex h-6 w-6 items-center justify-center">
@@ -57,7 +57,7 @@
       <div class="flex h-6 w-6 items-center justify-center">
         <div class="h-4 w-4 bg-red-900"></div>
       </div>
-      <div>The line will be removed after unifying.</div>
+      <div>This line will be removed after unifying.</div>
     </div>
     <div class="flex">
       <div class="flex h-6 w-6 items-center justify-center">
@@ -75,7 +75,7 @@
     Show all proof steps in theorem explorer by default
   </div>
   <div>
-    Proof format:
+    Generated proof format:
     <SelectDropdown bind:value={settingsTab.settings.proofFormat} options={proofFormatOptions}></SelectDropdown>
   </div>
 </div>

@@ -5,7 +5,7 @@ use crate::{
         LocateAfterRef, MmpParserStage2Success, MmpParserStage3Theorem, MmpParserStage4Success,
         MmpParserStage5, ProofLine, ProofLineStatus, UnifyLine,
     },
-    model::{MetamathData, ParseTree, ParseTreeNode},
+    model::{MetamathData, ParseTree, ParseTreeNode, ProofType, TheoremType},
     util::{
         earley_parser_optimized::{Grammar, WorkVariable},
         work_variable_manager::WorkVariableManager,
@@ -146,6 +146,8 @@ pub fn stage_5(
             if let Some((new_step_ref, option_new_hypotheses)) = derive_step_ref(
                 &unify_line,
                 &new_unify_lines,
+                stage_2.allow_discouraged,
+                stage_2.allow_incomplete,
                 mm_data,
                 stage_2.locate_after,
                 &stage_4.distinct_variable_pairs,
@@ -524,6 +526,8 @@ fn martelli_montanari_unification(
 fn derive_step_ref(
     unify_line: &UnifyLine,
     previous_unify_lines: &Vec<UnifyLine>,
+    allow_discouraged: bool,
+    allow_incomplete: bool,
     mm_data: &MetamathData,
     locate_after: Option<LocateAfterRef>,
     distinct_variable_pairs: &HashSet<(String, String)>,
@@ -565,19 +569,37 @@ fn derive_step_ref(
                                 .get(&theorem.label)
                                 .ok_or(Error::InternalLogicError)?;
 
-                            if let Some(parse_trees) = theorem_data.parse_trees.as_ref() {
-                                let theorem_parse_trees = parse_trees.to_ref_parse_tree_vec();
+                            if !allow_discouraged && theorem_data.is_discouraged {
+                                continue;
+                            }
 
-                                if ParseTree::are_substitutions(
-                                    &theorem_parse_trees,
-                                    &proof_line_parse_trees,
-                                    &theorem_data.distinct_variable_pairs,
-                                    distinct_variable_pairs,
-                                    &mm_data.optimized_data.grammar,
-                                    &mm_data.optimized_data.symbol_number_mapping,
-                                )? {
-                                    return Ok(Some((theorem.label.clone(), None)));
-                                }
+                            if !allow_incomplete
+                                && matches!(
+                                    theorem_data.theorem_type,
+                                    TheoremType::Theorem(
+                                        ProofType::CorrectButRecursivelyIncomplete
+                                            | ProofType::Incomplete
+                                    )
+                                )
+                            {
+                                continue;
+                            }
+
+                            let Some(parse_trees) = theorem_data.parse_trees.as_ref() else {
+                                continue;
+                            };
+
+                            let theorem_parse_trees = parse_trees.to_ref_parse_tree_vec();
+
+                            if ParseTree::are_substitutions(
+                                &theorem_parse_trees,
+                                &proof_line_parse_trees,
+                                &theorem_data.distinct_variable_pairs,
+                                distinct_variable_pairs,
+                                &mm_data.optimized_data.grammar,
+                                &mm_data.optimized_data.symbol_number_mapping,
+                            )? {
+                                return Ok(Some((theorem.label.clone(), None)));
                             }
                         }
                     }
@@ -626,39 +648,55 @@ fn derive_step_ref(
                         .get(&theorem.label)
                         .ok_or(Error::InternalLogicError)?;
 
-                    if let Some(parse_trees) = theorem_data.parse_trees.as_ref() {
-                        let theorem_hypotheses_parse_trees: Vec<&ParseTree> =
-                            parse_trees.hypotheses_parsed.iter().collect();
+                    if !allow_discouraged && theorem_data.is_discouraged {
+                        continue;
+                    }
 
-                        let theorem_assertion_parse_tree = &parse_trees.assertion_parsed;
+                    if !allow_incomplete
+                        && matches!(
+                            theorem_data.theorem_type,
+                            TheoremType::Theorem(
+                                ProofType::CorrectButRecursivelyIncomplete | ProofType::Incomplete
+                            )
+                        )
+                    {
+                        continue;
+                    }
 
-                        if let Some(mut new_hypotheses) = find_hypotheses(
-                            previous_unify_lines,
-                            &proof_line_hypotheses_parse_trees,
-                            proof_line_assertion_parse_tree,
-                            &theorem_hypotheses_parse_trees,
-                            theorem_assertion_parse_tree,
-                            &mm_data.optimized_data.grammar,
-                        )? {
-                            let mut hypotheses_combined = Vec::new();
+                    let Some(parse_trees) = theorem_data.parse_trees.as_ref() else {
+                        continue;
+                    };
 
-                            for hypothesis in &unify_line.hypotheses {
-                                match hypothesis.as_str() {
-                                    "?" => hypotheses_combined.push(
-                                        new_hypotheses.pop().ok_or(Error::InternalLogicError)?,
-                                    ),
-                                    hyp => {
-                                        hypotheses_combined.push(hyp.to_string());
-                                    }
+                    let theorem_hypotheses_parse_trees: Vec<&ParseTree> =
+                        parse_trees.hypotheses_parsed.iter().collect();
+
+                    let theorem_assertion_parse_tree = &parse_trees.assertion_parsed;
+
+                    if let Some(mut new_hypotheses) = find_hypotheses(
+                        previous_unify_lines,
+                        &proof_line_hypotheses_parse_trees,
+                        proof_line_assertion_parse_tree,
+                        &theorem_hypotheses_parse_trees,
+                        theorem_assertion_parse_tree,
+                        &mm_data.optimized_data.grammar,
+                    )? {
+                        let mut hypotheses_combined = Vec::new();
+
+                        for hypothesis in &unify_line.hypotheses {
+                            match hypothesis.as_str() {
+                                "?" => hypotheses_combined
+                                    .push(new_hypotheses.pop().ok_or(Error::InternalLogicError)?),
+                                hyp => {
+                                    hypotheses_combined.push(hyp.to_string());
                                 }
                             }
-
-                            while let Some(hyp) = new_hypotheses.pop() {
-                                hypotheses_combined.push(hyp);
-                            }
-
-                            return Ok(Some((theorem.label.clone(), Some(hypotheses_combined))));
                         }
+
+                        while let Some(hyp) = new_hypotheses.pop() {
+                            hypotheses_combined.push(hyp);
+                        }
+
+                        return Ok(Some((theorem.label.clone(), Some(hypotheses_combined))));
                     }
                 }
             }

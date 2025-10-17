@@ -158,6 +158,18 @@ export function getErrorMessage(errorType: string): string {
     case "HypothesisWithHypsError": {
       return "Hypotheses lines can't have hypotheses.";
     }
+    case "MultipleAllowIncompleteError": {
+      return "There should be at most one $allowincomplete statement per mmp file.";
+    }
+    case "TokensAfterAllowIncompleteError": {
+      return "$allowincomplete statements should not be followed by any tokens.";
+    }
+    case "DiscouragedTheoremUsedError": {
+      return "The theorem referenced is discouraged. Use $allowdiscouraged to allow discouraged theorems in this proof.";
+    }
+    case "IncompleteTheoremUsedError": {
+      return "The theorem referenced is incomplete or has an incomplete theorem in it's dependency tree. Use $allowdincomplete to allow incomplete theorems in this proof.";
+    }
   }
 
   return "You should not be seeing this error message. Please post a Github issue with your editor content.";

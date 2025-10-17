@@ -678,13 +678,7 @@ impl MetamathData {
                     }
 
                     Ok(match verify_result {
-                        VerificationResult::Correct => {
-                            if theorem.calc_recursively_incomplete(self) {
-                                ProofType::CorrectButRecursivelyIncomplete
-                            } else {
-                                ProofType::Correct
-                            }
-                        }
+                        VerificationResult::Correct => ProofType::Correct,
                         VerificationResult::Incomplete => ProofType::Incomplete,
                         VerificationResult::Incorrect => {
                             println!("Incorrect: {}", theorem.label);
@@ -700,14 +694,27 @@ impl MetamathData {
             .theorem_iter()
             .zip(proof_types.into_iter())
         {
-            let theorem_data = self
-                .optimized_data
-                .theorem_data
-                .get_mut(&theorem.label)
-                .ok_or(Error::InternalLogicError)?;
+            if matches!(proof_type, ProofType::Correct) && theorem.calc_recursively_incomplete(self)
+            {
+                let theorem_data = self
+                    .optimized_data
+                    .theorem_data
+                    .get_mut(&theorem.label)
+                    .ok_or(Error::InternalLogicError)?;
 
-            if let TheoremType::Theorem(proof_type_ref) = &mut theorem_data.theorem_type {
-                *proof_type_ref = proof_type;
+                if let TheoremType::Theorem(proof_type_ref) = &mut theorem_data.theorem_type {
+                    *proof_type_ref = ProofType::CorrectButRecursivelyIncomplete;
+                }
+            } else {
+                let theorem_data = self
+                    .optimized_data
+                    .theorem_data
+                    .get_mut(&theorem.label)
+                    .ok_or(Error::InternalLogicError)?;
+
+                if let TheoremType::Theorem(proof_type_ref) = &mut theorem_data.theorem_type {
+                    *proof_type_ref = proof_type;
+                }
             }
         }
 
