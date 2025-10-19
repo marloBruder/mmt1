@@ -75,20 +75,24 @@ export let setEditorSyntaxHighlighting = (colorInformation: ColorInformation[]) 
   monaco.languages.setMonarchTokensProvider("mmp", {
     ...colorInformationToKeywords(colorInformation),
     keywords: ["$theorem", "$axiom", "$c", "$v", "$f", "$header", "$locateafter", "$locateaftervar", "$locateafterconst", "$allowdiscouraged", "$allowincomplete", "$d"],
+    keywordsWithoutVarColor: ["$theorem", "$axiom", "$header", "$locateafter", "$allowdiscouraged", "$allowincomplete"],
     tokenizer: {
-      root: [{ include: "@whitespace" }, { include: "line" }],
+      root: [{ include: "line" }],
 
       comment: [{ include: "line" }, [/.*/, "comment"]],
 
-      whitespace: [[/[ \t\r\n]+/, "white"]],
-
       line: [
         [/^\*\S*/, "comment", "@comment"],
-        [/^\$[\w$]+/, { cases: { "@keywords": { token: "keyword", next: "@root" }, "@default": { token: "error", next: "@root" } } }],
-        [/^\S+/, "linePrefix", "@root"],
+        [/^\$[\w$]+/, { cases: { "@keywordsWithoutVarColor": { token: "keyword", next: "@lineWithoutVarColor" }, "@keywords": { token: "keyword", next: "@line" }, "@default": { token: "error", next: "@root" } } }],
+        [/^\S+/, "linePrefix", "@line"],
         [/\S+/, { cases: colorInformationToCases(colorInformation) }],
       ],
-      // mmj2StepPop: [[/^\S*:\S*:\S*/, "test", "@pop"]],
+
+      lineWithoutVarColor: [
+        [/^\*\S*/, "comment", "@comment"],
+        [/^\$[\w$]+/, { cases: { "@keywordsWithoutVarColor": { token: "keyword", next: "@lineWithoutVarColor" }, "@keywords": { token: "keyword", next: "@line" }, "@default": { token: "error", next: "@root" } } }],
+        [/^\S+/, "linePrefix", "@line"],
+      ],
     },
   });
 
