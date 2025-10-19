@@ -80,16 +80,13 @@ export let setEditorSyntaxHighlighting = (colorInformation: ColorInformation[]) 
 
       comment: [{ include: "line" }, [/.*/, "comment"]],
 
-      whitespace: [
-        [/[ \t\r\n]+/, "white"],
-        [/^\*/, "comment", "@comment"],
-      ],
+      whitespace: [[/[ \t\r\n]+/, "white"]],
 
       line: [
-        [/^\S*:\S*:\S*/, "linePrefix", "@root"],
+        [/^\*\S*/, "comment", "@comment"],
         [/^\$[\w$]+/, { cases: { "@keywords": { token: "keyword", next: "@root" }, "@default": { token: "error", next: "@root" } } }],
+        [/^\S+/, "linePrefix", "@root"],
         [/\S+/, { cases: colorInformationToCases(colorInformation) }],
-        [/^\S+/, "error", "@root"],
       ],
       // mmj2StepPop: [[/^\S*:\S*:\S*/, "test", "@pop"]],
     },
