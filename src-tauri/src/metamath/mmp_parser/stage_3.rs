@@ -3,8 +3,8 @@ use std::collections::HashSet;
 use crate::{
     editor::on_edit::DetailedError,
     model::{
-        Comment, Constant, FloatingHypothesis, HeaderPath, MetamathData, Statement, Theorem,
-        Variable,
+        Comment, Constant, DatabaseElement, FloatingHypothesis, HeaderPath, MetamathData,
+        Statement, Theorem, Variable,
     },
     util, Error,
 };
@@ -24,9 +24,6 @@ pub fn stage_3<'a>(
         Some(MmpLabel::Header { header_path, title }) => {
             stage_3_header(stage_1, stage_2, mm_data, header_path, title)
         }
-        Some(MmpLabel::Comment(comment_path)) => {
-            stage_3_comment(stage_1, stage_2, mm_data, comment_path)
-        }
         Some(MmpLabel::Axiom(axiom_label)) => {
             stage_3_theorem(stage_1, stage_2, axiom_label, true, mm_data)
         }
@@ -45,7 +42,7 @@ fn stage_3_header<'a>(
     title: &'a str,
 ) -> Result<MmpParserStage3<'a>, Error> {
     let mut errors: Vec<DetailedError> =
-        calc_header_and_comment_statement_out_of_place_errors(stage_1, stage_2);
+        calc_header_statement_out_of_place_errors(stage_1, stage_2);
 
     let mut parent_header_path =
         HeaderPath::from_str(header_path).ok_or(Error::InternalLogicError)?;
@@ -110,7 +107,7 @@ fn calc_statement_out_of_place_errors(
     errors
 }
 
-fn calc_header_and_comment_statement_out_of_place_errors(
+fn calc_header_statement_out_of_place_errors(
     stage_1: &MmpParserStage1Success,
     stage_2: &MmpParserStage2Success,
 ) -> Vec<DetailedError> {
@@ -146,6 +143,14 @@ fn calc_header_and_comment_statement_out_of_place_errors(
             stage_2,
             Error::AllowDiscouragedOutOfPlaceError,
             MmpStatement::AllowDiscouraged,
+        ));
+    }
+    if stage_2.allow_incomplete {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::AllowIncompleteOutOfPlaceError,
+            MmpStatement::AllowIncomplete,
         ));
     }
     if stage_2.locate_after.is_some() {
@@ -199,61 +204,6 @@ fn calc_label_error(
     }
 
     Err(Error::InternalLogicError)
-}
-
-fn stage_3_comment<'a>(
-    stage_1: &MmpParserStage1Success<'a>,
-    stage_2: &MmpParserStage2Success<'a>,
-    mm_data: &MetamathData,
-    comment_path: &'a str,
-) -> Result<MmpParserStage3<'a>, Error> {
-    let mut errors: Vec<DetailedError> =
-        calc_header_and_comment_statement_out_of_place_errors(stage_1, stage_2);
-
-    let (parent_header_path_str, comment_i_str) = comment_path
-        .split_once('#')
-        .ok_or(Error::InternalLogicError)?;
-
-    let parent_header_path =
-        HeaderPath::from_str(parent_header_path_str).ok_or(Error::InternalLogicError)?;
-    let comment_i: usize = comment_i_str
-        .parse()
-        .map_err(|_| Error::InternalLogicError)?;
-
-    if let Some(parent_header) = parent_header_path.resolve(&mm_data.database_header) {
-        // comment_i should be at most 1 + count()
-        if comment_i
-            > 1 + parent_header
-                .content
-                .iter()
-                .filter(|s| matches!(s, Statement::CommentStatement(_)))
-                .count()
-        {
-            errors.push(calc_label_error(
-                stage_1,
-                stage_2,
-                Error::InvalidCommentPathError,
-            )?);
-        }
-    } else {
-        errors.push(calc_label_error(
-            stage_1,
-            stage_2,
-            Error::InvalidCommentPathError,
-        )?);
-    }
-
-    Ok(if errors.is_empty() {
-        MmpParserStage3::Success(MmpParserStage3Success::Comment(MmpParserStage3Comment {
-            parent_header_path,
-            comment_i,
-            comment: Comment {
-                text: stage_2.comments.first().unwrap_or(&"").to_string(),
-            },
-        }))
-    } else {
-        MmpParserStage3::Fail(MmpParserStage3Fail { errors })
-    })
 }
 
 fn stage_3_theorem<'a>(
@@ -454,6 +404,8 @@ fn stage_3_no_label<'a>(
         stage_3_variables(stage_1, stage_2, mm_data)
     } else if stage_2.constants.is_some() {
         stage_3_constants(stage_1, stage_2, mm_data)
+    } else if !stage_2.comments.is_empty() {
+        stage_3_comment(stage_1, stage_2, mm_data)
     } else {
         Ok(MmpParserStage3::Success(MmpParserStage3Success::Empty))
     }
@@ -499,6 +451,14 @@ fn stage_3_floating_hypothesis<'a>(
             stage_2,
             Error::AllowDiscouragedOutOfPlaceError,
             MmpStatement::AllowDiscouraged,
+        ));
+    }
+    if stage_2.allow_incomplete {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::AllowIncompleteOutOfPlaceError,
+            MmpStatement::AllowIncomplete,
         ));
     }
     if !stage_2.distinct_vars.is_empty() {
@@ -677,6 +637,14 @@ fn stage_3_variables<'a>(
             MmpStatement::AllowDiscouraged,
         ));
     }
+    if stage_2.allow_incomplete {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::AllowIncompleteOutOfPlaceError,
+            MmpStatement::AllowIncomplete,
+        ));
+    }
     if !stage_2.distinct_vars.is_empty() {
         errors.append(&mut calc_statement_out_of_place_errors(
             stage_1,
@@ -819,6 +787,14 @@ fn stage_3_constants<'a>(
             MmpStatement::AllowDiscouraged,
         ));
     }
+    if stage_2.allow_incomplete {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::AllowIncompleteOutOfPlaceError,
+            MmpStatement::AllowIncomplete,
+        ));
+    }
     if !stage_2.distinct_vars.is_empty() {
         errors.append(&mut calc_statement_out_of_place_errors(
             stage_1,
@@ -863,6 +839,81 @@ fn stage_3_constants<'a>(
 
     Ok(if errors.is_empty() {
         MmpParserStage3::Success(MmpParserStage3Success::Constants(constants))
+    } else {
+        MmpParserStage3::Fail(MmpParserStage3Fail { errors })
+    })
+}
+
+fn stage_3_comment<'a>(
+    stage_1: &MmpParserStage1Success<'a>,
+    stage_2: &MmpParserStage2Success<'a>,
+    mm_data: &MetamathData,
+    // comment_path: &'a str,
+) -> Result<MmpParserStage3<'a>, Error> {
+    let mut errors: Vec<DetailedError> = Vec::new();
+
+    if stage_2.allow_discouraged {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::AllowDiscouragedOutOfPlaceError,
+            MmpStatement::AllowDiscouraged,
+        ));
+    }
+    if stage_2.allow_incomplete {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::AllowIncompleteOutOfPlaceError,
+            MmpStatement::AllowIncomplete,
+        ));
+    }
+    if !stage_2.distinct_vars.is_empty() {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::DistinctVarOutOfPlaceError,
+            MmpStatement::DistinctVar,
+        ));
+    }
+    if !stage_2.proof_lines.is_empty() {
+        errors.append(&mut calc_statement_out_of_place_errors(
+            stage_1,
+            stage_2,
+            Error::ProofLinesOutOfPlaceError,
+            MmpStatement::ProofLine,
+        ));
+    }
+
+    let mut parent_header_path = HeaderPath { path: Vec::new() };
+    let mut comment_i = 0;
+
+    for database_element in mm_data
+        .database_header
+        .locate_after_iter(stage_2.locate_after)
+    {
+        match database_element {
+            DatabaseElement::Header(_, depth) => {
+                util::calc_next_header_path(&mut parent_header_path, depth)?;
+                comment_i = 0;
+            }
+            DatabaseElement::Statement(Statement::CommentStatement(_)) => {
+                comment_i += 1;
+            }
+            _ => {}
+        }
+    }
+
+    comment_i += 1;
+
+    Ok(if errors.is_empty() {
+        MmpParserStage3::Success(MmpParserStage3Success::Comment(MmpParserStage3Comment {
+            parent_header_path,
+            comment_i,
+            comment: Comment {
+                text: stage_2.comments.first().unwrap_or(&"").to_string(),
+            },
+        }))
     } else {
         MmpParserStage3::Fail(MmpParserStage3Fail { errors })
     })

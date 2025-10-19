@@ -29,12 +29,9 @@ export function getErrorMessage(errorType: string): string {
     case "TooFewHeaderTokensError": {
       return "$header statements must be followed by the header path and the header title.\n\nExample: $header 3.1.2 Test header";
     }
-    case "MissingCommentPathError":
-    case "TooManyCommentPathTokensError": {
-      return "$comment statements must only be followed by exactly one token: The path of the comment.\n\nExample: $comment 3.4.2#5 (The fifth comment under header 3.4.2)";
-    }
-    // case "InvalidCommentPathFormatError": {
-    //   return "$comment statements must be followed by the path of the comment.\n\nExample: $comment 3.4.2#5 (The fifth comment under header 3.4.2)";
+    // case "MissingCommentPathError":
+    // case "TooManyCommentPathTokensError": {
+    //   return "$comment statements must only be followed by exactly one token: The path of the comment.\n\nExample: $comment 3.4.2#5 (The fifth comment under header 3.4.2)";
     // }
     case "MissingAxiomLabelError":
     case "TooManyAxiomLabelTokensError": {
@@ -95,7 +92,7 @@ export function getErrorMessage(errorType: string): string {
       return "Expression could not be successfully parsed. Are you perhaps missing a parenthesis?";
     }
     case "ConstStatementOutOfPlaceError": {
-      return "$c statement should not be here. $c statements are only allowed when describing a constant statement and can not appear alongside $header, $comment, $axiom, $theorem, $v or $f statements.";
+      return "$c statement should not be here. $c statements are only allowed when describing a constant statement and can not appear alongside $header, $axiom, $theorem, $v or $f statements.";
     }
     case "VarStatementOutOfPlaceError": {
       return "$v statement should not be here. $v statements are only allowed when describing a variable statement or when adding a temporary variable to an axiom or theorem. $v statements cannot appear alongside $header or $comment statements. Multiple $v statements are only allowed when there is an $axiom or a $theorem statement.";
@@ -107,7 +104,7 @@ export function getErrorMessage(errorType: string): string {
       return "$allowdiscouraged statement should not be here. $allowdiscouraged may only appear alongside a $theorem statement.";
     }
     case "LocateAfterOutOfPlaceError": {
-      return "Locate after statement should not be here. Locate after statements may not appear alongside $comment or $header statements, as their location in the database is determined by their respective comment or header path.";
+      return "Locate after statement should not be here. Locate after statements may not appear alongside $header statements, as their location in the database is determined by their header path.";
     }
     case "DistinctVarOutOfPlaceError": {
       return "$d statement should not be here. $d statements may only appear alongside a $theorem or $axiom statement.";
@@ -118,15 +115,15 @@ export function getErrorMessage(errorType: string): string {
     case "InvalidHeaderPathFormatError": {
       return "Not a valid header path. Header paths must be a list of dot seperated numbers.\n\nExample: 1.2.3";
     }
-    case "InvalidCommentPathFormatError": {
-      return "Not a valid comment path. Comment paths must be a (possibly empty) list of dot seperated numbers, followed by a # and then the comment number.\n\nExamples: #2 or 1.2.3#4";
-    }
+    // case "InvalidCommentPathFormatError": {
+    //   return "Not a valid comment path. Comment paths must be a (possibly empty) list of dot seperated numbers, followed by a # and then the comment number.\n\nExamples: #2 or 1.2.3#4";
+    // }
     case "InvalidHeaderPathError": {
       return "Not a valid new header path. Either the parent header does not exist or it does not have enough subheaders.\n\nExample: To add header 1.2.3, parent header 1.2 must exist and must already have two subheaders to add the subheader number 3.";
     }
-    case "InvalidCommentPathError": {
-      return "Not a valid new comment path. Either the parent header does not exist or it does not have enough comments.\n\nExample: To add comment 1.2.3#4, parent header 1.2.3 must exist and must already have three comments to add comment #4.";
-    }
+    // case "InvalidCommentPathError": {
+    //   return "Not a valid new comment path. Either the parent header does not exist or it does not have enough comments.\n\nExample: To add comment 1.2.3#4, parent header 1.2.3 must exist and must already have three comments to add comment #4.";
+    // }
     case "LabelAlreadyExistsError":
     case "SymbolAlreadyExistsError": {
       return "This token already exists as a label or math symbol.";

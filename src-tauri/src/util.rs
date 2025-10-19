@@ -1,5 +1,7 @@
 use std::{collections::HashSet, ops::Deref};
 
+use crate::{model::HeaderPath, Error};
+
 pub mod description_parser;
 pub mod earley_parser;
 pub mod earley_parser_optimized;
@@ -213,4 +215,25 @@ where
     }
 
     distinct_variable_pairs
+}
+
+pub fn calc_next_header_path(header_path: &mut HeaderPath, depth: u32) -> Result<(), Error> {
+    if depth > header_path.path.len() as u32 {
+        header_path.path.push(0);
+    } else if depth == header_path.path.len() as u32 {
+        *header_path
+            .path
+            .last_mut()
+            .ok_or(Error::InternalLogicError)? += 1;
+    } else if depth < header_path.path.len() as u32 {
+        while depth < header_path.path.len() as u32 {
+            header_path.path.pop();
+        }
+        *header_path
+            .path
+            .last_mut()
+            .ok_or(Error::InternalLogicError)? += 1;
+    }
+
+    Ok(())
 }

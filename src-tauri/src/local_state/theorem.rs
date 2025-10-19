@@ -8,7 +8,7 @@ use crate::{
         Statement::{self},
         TheoremListData, TheoremPageData, VariableListEntry,
     },
-    util::StrIterToSpaceSeperatedString,
+    util::{self, StrIterToSpaceSeperatedString},
     AppState, Error,
 };
 
@@ -48,22 +48,7 @@ pub async fn get_theorem_list_local(
 
             match database_element {
                 DatabaseElement::Header(header, depth) => {
-                    if depth > curr_header_path.path.len() as u32 {
-                        curr_header_path.path.push(0);
-                    } else if depth == curr_header_path.path.len() as u32 {
-                        *curr_header_path
-                            .path
-                            .last_mut()
-                            .ok_or(Error::InternalLogicError)? += 1;
-                    } else if depth < curr_header_path.path.len() as u32 {
-                        while depth < curr_header_path.path.len() as u32 {
-                            curr_header_path.path.pop();
-                        }
-                        *curr_header_path
-                            .path
-                            .last_mut()
-                            .ok_or(Error::InternalLogicError)? += 1;
-                    }
+                    util::calc_next_header_path(&mut curr_header_path, depth)?;
 
                     curr_header_comment_amount = 0;
 

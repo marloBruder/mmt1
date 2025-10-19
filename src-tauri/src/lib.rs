@@ -233,11 +233,11 @@ pub enum Error {
     TooFewHeaderTokensError, // Returned if there are less than 2 tokens after $header statement
     InvalidHeaderPathFormatError, // Returned if the token after $header does not have the format of a valid Headerpath
     InvalidHeaderPathError, // Returned if the token after $header is not a valid new header path in the database
-    MissingCommentPathError, // Returned if there is a $comment statement without a follow up token
-    TooManyCommentPathTokensError, // Returned if there is a $comment statement with too many follow up tokens
-    InvalidCommentPathFormatError, // Returned if the token after $comment does not have the format of a valid comment path
-    InvalidCommentPathError, // Returned if the token after $comment is not a valid new comment path in the database
-    MissingAxiomLabelError,  // Returned if there is a $axiom statement without a follow up token
+    // MissingCommentPathError, // Returned if there is a $comment statement without a follow up token
+    // TooManyCommentPathTokensError, // Returned if there is a $comment statement with too many follow up tokens
+    // InvalidCommentPathFormatError, // Returned if the token after $comment does not have the format of a valid comment path
+    // InvalidCommentPathError, // Returned if the token after $comment is not a valid new comment path in the database
+    MissingAxiomLabelError, // Returned if there is a $axiom statement without a follow up token
     TooManyAxiomLabelTokensError, // Returned if there is a $axiom statement with too many follow up tokens
     MissingTheoremLabelError, // Returned if there is a $theorem statement without a follow up token
     TooManyTheoremLabelTokensError, // Returned if there is a $theorem statement with too many follow up tokens
@@ -279,6 +279,7 @@ pub enum Error {
     VarStatementOutOfPlaceError, // Returned if there is a variable statement when there shouldn't be
     FloatHypStatementOutOfPlaceError, // Returned if there is a floating hypothesis when there shouldn't be
     AllowDiscouragedOutOfPlaceError, // Returned if there is an allow discouraged statement when there shouldn't be
+    AllowIncompleteOutOfPlaceError, // Returned if there is an allow incomplete statement when there shouldn't be
     DistinctVarOutOfPlaceError, // Returned if there is a distinct variable statement when there shouldn't be
     LocateAfterOutOfPlaceError, // Returned if there is a locate after statement when there shouldn't be
     ProofLinesOutOfPlaceError,  // Returned if there are proof lines when there shouldn't be
@@ -297,6 +298,10 @@ pub enum Error {
     OpenExternalWindowError,
 
     OpenDatabaseStoppedEarlyError,
+
+    // Add to database errors
+    CantAddToDatabaseError, // Returned if you can't add the statement to the database (if there is an error for example)
+    MmpFileEmptyError,      // Returned if you try to add an empty mmp file to the database
 
     TestError, // Used to replace InternalLogicErrors to find out where they come from
 }

@@ -197,76 +197,76 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
                     label = Some(MmpLabel::Theorem(""));
                 }
             }
-            "$comment" => {
-                if label.is_some() {
-                    errors.push(DetailedError {
-                        error_type: Error::MultipleMmpLabelsError,
-                        start_line_number: current_line,
-                        start_column: 1,
-                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
-                        end_column: last_non_whitespace_pos.1 + 1,
-                    });
-                }
+            // "$comment" => {
+            //     if label.is_some() {
+            //         errors.push(DetailedError {
+            //             error_type: Error::MultipleMmpLabelsError,
+            //             start_line_number: current_line,
+            //             start_column: 1,
+            //             end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+            //             end_column: last_non_whitespace_pos.1 + 1,
+            //         });
+            //     }
 
-                if let Some(comment_path) = token_iter.next() {
-                    if let Some((header_path, comment_num)) = comment_path.split_once('#') {
-                        if HeaderPath::from_str(header_path).is_none()
-                            || comment_num.parse::<usize>().is_err()
-                            || comment_num.contains('+')
-                        {
-                            let second_token_start_pos =
-                                util::nth_token_start_pos(statement_str, 1);
-                            let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
+            //     if let Some(comment_path) = token_iter.next() {
+            //         if let Some((header_path, comment_num)) = comment_path.split_once('#') {
+            //             if HeaderPath::from_str(header_path).is_none()
+            //                 || comment_num.parse::<usize>().is_err()
+            //                 || comment_num.contains('+')
+            //             {
+            //                 let second_token_start_pos =
+            //                     util::nth_token_start_pos(statement_str, 1);
+            //                 let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
 
-                            errors.push(DetailedError {
-                                error_type: Error::InvalidCommentPathFormatError,
-                                start_line_number: current_line + second_token_start_pos.0 - 1,
-                                start_column: second_token_start_pos.1,
-                                end_line_number: current_line + second_token_end_pos.0 - 1,
-                                end_column: second_token_end_pos.1 + 1,
-                            });
-                        }
-                    } else {
-                        let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
-                        let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
+            //                 errors.push(DetailedError {
+            //                     error_type: Error::InvalidCommentPathFormatError,
+            //                     start_line_number: current_line + second_token_start_pos.0 - 1,
+            //                     start_column: second_token_start_pos.1,
+            //                     end_line_number: current_line + second_token_end_pos.0 - 1,
+            //                     end_column: second_token_end_pos.1 + 1,
+            //                 });
+            //             }
+            //         } else {
+            //             let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
+            //             let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
 
-                        errors.push(DetailedError {
-                            error_type: Error::InvalidCommentPathFormatError,
-                            start_line_number: current_line + second_token_start_pos.0 - 1,
-                            start_column: second_token_start_pos.1,
-                            end_line_number: current_line + second_token_end_pos.0 - 1,
-                            end_column: second_token_end_pos.1 + 1,
-                        });
-                    }
+            //             errors.push(DetailedError {
+            //                 error_type: Error::InvalidCommentPathFormatError,
+            //                 start_line_number: current_line + second_token_start_pos.0 - 1,
+            //                 start_column: second_token_start_pos.1,
+            //                 end_line_number: current_line + second_token_end_pos.0 - 1,
+            //                 end_column: second_token_end_pos.1 + 1,
+            //             });
+            //         }
 
-                    label = Some(MmpLabel::Comment(comment_path));
-                } else {
-                    errors.push(DetailedError {
-                        error_type: Error::MissingCommentPathError,
-                        start_line_number: current_line,
-                        start_column: 1,
-                        end_line_number: current_line,
-                        end_column: 9, // Length of "$theorem" + 1
-                    });
-                    // Make sure label is set to Some(_) so that future label statements will be flagged as errors
-                    // Since return_info is false, the content within Some(_) does not matter
-                    label = Some(MmpLabel::Theorem(""));
-                }
+            //         label = Some(MmpLabel::Comment(comment_path));
+            //     } else {
+            //         errors.push(DetailedError {
+            //             error_type: Error::MissingCommentPathError,
+            //             start_line_number: current_line,
+            //             start_column: 1,
+            //             end_line_number: current_line,
+            //             end_column: 9, // Length of "$theorem" + 1
+            //         });
+            //         // Make sure label is set to Some(_) so that future label statements will be flagged as errors
+            //         // Since return_info is false, the content within Some(_) does not matter
+            //         label = Some(MmpLabel::Theorem(""));
+            //     }
 
-                if token_iter.next().is_some() {
-                    let third_token_start_pos = util::nth_token_start_pos(statement_str, 2);
+            //     if token_iter.next().is_some() {
+            //         let third_token_start_pos = util::nth_token_start_pos(statement_str, 2);
 
-                    errors.push(DetailedError {
-                        error_type: Error::TooManyCommentPathTokensError,
-                        start_line_number: current_line + third_token_start_pos.0 - 1,
-                        start_column: third_token_start_pos.1,
-                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
-                        end_column: last_non_whitespace_pos.1 + 1,
-                    });
-                }
+            //         errors.push(DetailedError {
+            //             error_type: Error::TooManyCommentPathTokensError,
+            //             start_line_number: current_line + third_token_start_pos.0 - 1,
+            //             start_column: third_token_start_pos.1,
+            //             end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+            //             end_column: last_non_whitespace_pos.1 + 1,
+            //         });
+            //     }
 
-                statements.push((MmpStatement::MmpLabel, current_line));
-            }
+            //     statements.push((MmpStatement::MmpLabel, current_line));
+            // }
             "$axiom" => {
                 if label.is_some() {
                     errors.push(DetailedError {

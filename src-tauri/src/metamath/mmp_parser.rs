@@ -72,7 +72,6 @@ pub enum MmpLabel<'a> {
         header_path: &'a str,
         title: &'a str,
     },
-    Comment(&'a str),
     Axiom(&'a str),
     Theorem(&'a str),
 }

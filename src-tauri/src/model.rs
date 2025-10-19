@@ -251,7 +251,7 @@ pub struct ColorInformation {
     pub color: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, PartialOrd)]
 pub struct HeaderPath {
     pub path: Vec<usize>,
 }
@@ -811,28 +811,15 @@ impl MetamathData {
         allowed_tags_and_attributes: &HashMap<String, HashSet<String>>,
         allowed_css_properties: &HashSet<String>,
     ) -> Result<Vec<(String, String)>, Error> {
+        self.optimized_data.header_data = HashMap::new();
+
         let mut curr_header_path = HeaderPath { path: Vec::new() };
 
         let mut invalid_description_html: Vec<(String, String)> = Vec::new();
 
         for database_element in self.database_header.iter() {
             if let DatabaseElement::Header(header, depth) = database_element {
-                if depth > curr_header_path.path.len() as u32 {
-                    curr_header_path.path.push(0);
-                } else if depth == curr_header_path.path.len() as u32 {
-                    *curr_header_path
-                        .path
-                        .last_mut()
-                        .ok_or(Error::InternalLogicError)? += 1;
-                } else if depth < curr_header_path.path.len() as u32 {
-                    while depth < curr_header_path.path.len() as u32 {
-                        curr_header_path.path.pop();
-                    }
-                    *curr_header_path
-                        .path
-                        .last_mut()
-                        .ok_or(Error::InternalLogicError)? += 1;
-                }
+                util::calc_next_header_path(&mut curr_header_path, depth)?;
 
                 let (description_parsed, invalid_html) = description_parser::parse_description(
                     &header.description,
@@ -2573,6 +2560,77 @@ impl Header {
                 }
             })
             .collect()
+    }
+
+    pub fn insert_mm_string(
+        depth: u32,
+        title: &str,
+        description: &str,
+        target: &mut String,
+        insert_pos: usize,
+    ) -> Result<(), Error> {
+        let mut header_mm_string = String::new();
+
+        let description_not_empty = description.split_ascii_whitespace().next().is_some();
+
+        header_mm_string.push_str("$(\n");
+        Header::write_header_banner_string(&mut header_mm_string, depth)?;
+        header_mm_string.push_str("\n ");
+        write_text_wrapped(&mut header_mm_string, title, "  ");
+        header_mm_string.push('\n');
+        Header::write_header_banner_string(&mut header_mm_string, depth)?;
+        if description_not_empty {
+            header_mm_string.push_str("\n\n ");
+        }
+        write_text_wrapped(&mut header_mm_string, description, "  ");
+        if description_not_empty {
+            header_mm_string.push('\n');
+        }
+        header_mm_string.push_str("\n$)");
+
+        target.insert_str(insert_pos, &header_mm_string);
+
+        Ok(())
+    }
+
+    fn write_header_banner_string(target: &mut String, depth: u32) -> Result<(), Error> {
+        match depth {
+            1 => {
+                for _ in 0..79 {
+                    target.push('#');
+                }
+            }
+            2 => {
+                for i in 0..79 {
+                    if i % 2 == 0 {
+                        target.push('#');
+                    } else {
+                        target.push('*');
+                    }
+                }
+            }
+            3 => {
+                for i in 0..79 {
+                    if i % 2 == 0 {
+                        target.push('=');
+                    } else {
+                        target.push('-');
+                    }
+                }
+            }
+            4 => {
+                for i in 0..79 {
+                    if i % 2 == 0 {
+                        target.push('-');
+                    } else {
+                        target.push('.');
+                    }
+                }
+            }
+            _ => return Err(Error::InternalLogicError),
+        }
+
+        Ok(())
     }
 
     // pub fn count_theorems_and_headers(&self) -> i32 {
