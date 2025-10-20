@@ -3,10 +3,11 @@ use std::iter::FilterMap;
 use crate::{
     metamath::mmp_parser::LocateAfterRef,
     model::{
-        Constant, DatabaseElement, FloatingHypothesis, Header,
+        Constant, DatabaseElement, FloatingHypothesis, Header, HeaderPath,
         Statement::{self, *},
         Theorem, Variable,
     },
+    util,
 };
 
 pub struct HeaderIterator<'a> {
@@ -220,6 +221,8 @@ impl<'a> Iterator for TheoremIterator<'a> {
 pub struct HeaderLocateAfterIterator<'a, 'b> {
     inner: HeaderIterator<'a>,
     locate_after: Option<LocateAfterRef<'b>>,
+    current_header_path: HeaderPath,
+    current_comment_i: usize,
     found: bool,
 }
 
@@ -231,6 +234,8 @@ impl<'a, 'b> HeaderLocateAfterIterator<'a, 'b> {
         HeaderLocateAfterIterator {
             inner: top_header.iter(),
             locate_after,
+            current_header_path: HeaderPath::new(),
+            current_comment_i: 0,
             found: false,
         }
     }
@@ -240,48 +245,75 @@ impl<'a, 'b> Iterator for HeaderLocateAfterIterator<'a, 'b> {
     type Item = DatabaseElement<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.found {
+        if self.found || matches!(self.locate_after, Some(LocateAfterRef::LocateAfterStart)) {
             return None;
         }
 
         let next_element = self.inner.next()?;
 
-        match (&next_element, &self.locate_after) {
-            (DatabaseElement::Header(_header, _), Some(_la)) if false => {}
-            (DatabaseElement::Statement(statement), Some(la)) => match (statement, la) {
-                (Statement::CommentStatement(_comment), _) if false => {}
-                (
-                    Statement::ConstantStatement(constants),
-                    LocateAfterRef::LocateAfterConst(la_const),
-                ) => {
-                    if constants.iter().any(|c| c.symbol == *la_const) {
+        match next_element {
+            DatabaseElement::Header(_, depth) => {
+                if matches!(
+                    self.locate_after,
+                    Some(
+                        LocateAfterRef::LocateAfterHeader(_)
+                            | LocateAfterRef::LocateAfterComment(_)
+                    )
+                ) {
+                    // should never return
+                    util::calc_next_header_path(&mut self.current_header_path, depth).ok()?;
+                }
+
+                if let Some(LocateAfterRef::LocateAfterHeader(header_path_str)) = self.locate_after
+                {
+                    if header_path_str == self.current_header_path.to_string() {
                         self.found = true;
                     }
                 }
-                (
-                    Statement::VariableStatement(variables),
-                    LocateAfterRef::LocateAfterVar(la_var),
-                ) => {
-                    if variables.iter().any(|v| v.symbol == *la_var) {
-                        self.found = true;
+            }
+            DatabaseElement::Statement(statement) => match statement {
+                Statement::CommentStatement(_) => {
+                    if let Some(LocateAfterRef::LocateAfterComment(comment_path_str)) =
+                        self.locate_after
+                    {
+                        self.current_comment_i += 1;
+
+                        if comment_path_str
+                            == format!("{}#{}", self.current_header_path, self.current_comment_i)
+                        {
+                            self.found = true;
+                        }
                     }
                 }
-                (
-                    Statement::FloatingHypohesisStatement(floating_hypothesis),
-                    LocateAfterRef::LocateAfter(la_label),
-                ) => {
-                    if floating_hypothesis.label == *la_label {
-                        self.found = true;
+                Statement::ConstantStatement(constants) => {
+                    if let Some(LocateAfterRef::LocateAfterConst(const_str)) = self.locate_after {
+                        if constants.iter().any(|c| c.symbol == const_str) {
+                            self.found = true;
+                        }
                     }
                 }
-                (Statement::TheoremStatement(theorem), LocateAfterRef::LocateAfter(la_label)) => {
-                    if theorem.label == *la_label {
-                        self.found = true;
+                Statement::VariableStatement(variables) => {
+                    if let Some(LocateAfterRef::LocateAfterConst(var_str)) = self.locate_after {
+                        if variables.iter().any(|v| v.symbol == var_str) {
+                            self.found = true;
+                        }
                     }
                 }
-                (_, _) => {}
+                Statement::FloatingHypohesisStatement(floating_hypothesis) => {
+                    if let Some(LocateAfterRef::LocateAfter(label_str)) = self.locate_after {
+                        if label_str == floating_hypothesis.label {
+                            self.found = true;
+                        }
+                    }
+                }
+                Statement::TheoremStatement(theorem) => {
+                    if let Some(LocateAfterRef::LocateAfter(label_str)) = self.locate_after {
+                        if label_str == theorem.label {
+                            self.found = true;
+                        }
+                    }
+                }
             },
-            (_, _) => {}
         }
 
         Some(next_element)

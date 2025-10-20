@@ -34,7 +34,7 @@ pub async fn get_theorem_list_local(
     let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
 
     let mut theorem_amount: u32 = 0;
-    let mut curr_header_path: HeaderPath = HeaderPath { path: Vec::new() };
+    let mut curr_header_path: HeaderPath = HeaderPath::new();
     let mut curr_header_comment_amount: u32 = 0;
     let mut list: Vec<ListEntry> = Vec::new();
 

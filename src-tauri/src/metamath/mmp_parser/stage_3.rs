@@ -885,7 +885,7 @@ fn stage_3_comment<'a>(
         ));
     }
 
-    let mut parent_header_path = HeaderPath { path: Vec::new() };
+    let mut parent_header_path = HeaderPath::new();
     let mut comment_i = 0;
 
     for database_element in mm_data

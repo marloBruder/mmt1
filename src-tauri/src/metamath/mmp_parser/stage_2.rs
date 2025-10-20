@@ -480,10 +480,6 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
                         end_line_number: current_line + last_non_whitespace_pos.0 - 1,
                         end_column: last_non_whitespace_pos.1 + 1,
                     });
-
-                    // Make sure locate_after is set to Some(_) so that future locate-after statements will be flagged as errors
-                    // Since return_info is false, the content within Some(_) does not matter
-                    locate_after = Some(LocateAfterRef::LocateAfter(""));
                 }
 
                 statements.push((MmpStatement::LocateAfter, current_line));
@@ -525,10 +521,6 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
                         end_line_number: current_line + last_non_whitespace_pos.0 - 1,
                         end_column: last_non_whitespace_pos.1 + 1,
                     });
-
-                    // Make sure locate_after is set to Some(_) so that future locate-after statements will be flagged as errors
-                    // Since return_info is false, the content within Some(_) does not matter
-                    locate_after = Some(LocateAfterRef::LocateAfter(""));
                 }
 
                 statements.push((MmpStatement::LocateAfter, current_line));
@@ -570,10 +562,115 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
                         end_line_number: current_line + last_non_whitespace_pos.0 - 1,
                         end_column: last_non_whitespace_pos.1 + 1,
                     });
+                }
+
+                statements.push((MmpStatement::LocateAfter, current_line));
+            }
+            "$locateafterheader" => {
+                if locate_after.is_some() {
+                    errors.push(DetailedError {
+                        error_type: Error::MultipleLocateAfterError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
+                }
+
+                if let Some(locate_after_header) = token_iter.next() {
+                    locate_after = Some(LocateAfterRef::LocateAfterHeader(locate_after_header));
+                } else {
+                    errors.push(DetailedError {
+                        error_type: Error::TooFewLocateAfterHeaderTokensError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
 
                     // Make sure locate_after is set to Some(_) so that future locate-after statements will be flagged as errors
                     // Since return_info is false, the content within Some(_) does not matter
                     locate_after = Some(LocateAfterRef::LocateAfter(""));
+                }
+
+                if token_iter.next().is_some() {
+                    let third_token_start_pos = util::nth_token_start_pos(statement_str, 2);
+
+                    errors.push(DetailedError {
+                        error_type: Error::TooManyLocateAfterHeaderTokensError,
+                        start_line_number: current_line + third_token_start_pos.0 - 1,
+                        start_column: third_token_start_pos.1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
+                }
+
+                statements.push((MmpStatement::LocateAfter, current_line));
+            }
+            "$locateaftercomment" => {
+                if locate_after.is_some() {
+                    errors.push(DetailedError {
+                        error_type: Error::MultipleLocateAfterError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
+                }
+
+                if let Some(locate_after_comment) = token_iter.next() {
+                    locate_after = Some(LocateAfterRef::LocateAfterComment(locate_after_comment));
+                } else {
+                    errors.push(DetailedError {
+                        error_type: Error::TooFewLocateAfterCommentTokensError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
+
+                    // Make sure locate_after is set to Some(_) so that future locate-after statements will be flagged as errors
+                    // Since return_info is false, the content within Some(_) does not matter
+                    locate_after = Some(LocateAfterRef::LocateAfter(""));
+                }
+
+                if token_iter.next().is_some() {
+                    let third_token_start_pos = util::nth_token_start_pos(statement_str, 2);
+
+                    errors.push(DetailedError {
+                        error_type: Error::TooManyLocateAfterCommentTokensError,
+                        start_line_number: current_line + third_token_start_pos.0 - 1,
+                        start_column: third_token_start_pos.1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
+                }
+
+                statements.push((MmpStatement::LocateAfter, current_line));
+            }
+            "$locateafterstart" => {
+                if locate_after.is_some() {
+                    errors.push(DetailedError {
+                        error_type: Error::MultipleLocateAfterError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
+                }
+
+                locate_after = Some(LocateAfterRef::LocateAfterStart);
+
+                if token_iter.next().is_some() {
+                    let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
+
+                    errors.push(DetailedError {
+                        error_type: Error::TooManyLocateAfterStartTokensError,
+                        start_line_number: current_line + second_token_start_pos.0 - 1,
+                        start_column: second_token_start_pos.1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    });
                 }
 
                 statements.push((MmpStatement::LocateAfter, current_line));

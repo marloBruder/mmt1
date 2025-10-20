@@ -23,7 +23,7 @@
   let { theoremNumber, normalTextSize = false }: { theoremNumber: number; normalTextSize?: boolean } = $props();
 
   let hsvCode = $derived.by(() => {
-    if (globalState.databaseState !== null) {
+    if (globalState.databaseState !== null && globalState.databaseState.theoremAmount !== 0) {
       return Math.floor((theoremNumber * 325) / globalState.databaseState.theoremAmount);
     } else {
       return "";

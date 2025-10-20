@@ -341,7 +341,7 @@ fn add_statement_locate_after(
     statement: Statement,
 ) -> Result<(), Error> {
     add_statement_locate_after_file(file_path, header, locate_after, &statement, true)?;
-    add_statement_locate_after_memory(header, locate_after, statement);
+    add_statement_locate_after_memory(header, locate_after, statement, &mut HeaderPath::new());
     Ok(())
 }
 
@@ -349,35 +349,66 @@ fn add_statement_locate_after_memory(
     header: &mut Header,
     locate_after: LocateAfterRef,
     mut statement: Statement,
+    header_path: &mut HeaderPath,
 ) -> Option<Statement> {
-    for i in 0..header.content.len() {
-        match locate_after {
-            LocateAfterRef::LocateAfterConst(s) => {
+    match locate_after {
+        LocateAfterRef::LocateAfterStart => {
+            header.content.insert(0, statement);
+            return None;
+        }
+        LocateAfterRef::LocateAfterHeader(header_path_str) => {
+            if header_path_str == header_path.to_string() {
+                header.content.insert(0, statement);
+                return None;
+            }
+        }
+        LocateAfterRef::LocateAfterComment(comment_path_str) => {
+            let header_path_string = header_path.to_string();
+
+            let mut comment_i = 0;
+
+            for i in 0..header.content.len() {
+                if let Some(Statement::CommentStatement(_)) = header.content.get(i) {
+                    comment_i += 1;
+
+                    if comment_path_str == format!("{}#{}", header_path_string, comment_i) {
+                        header.content.insert(i + 1, statement);
+                        return None;
+                    }
+                }
+            }
+        }
+        LocateAfterRef::LocateAfterConst(const_str) => {
+            for i in 0..header.content.len() {
                 if let Some(Statement::ConstantStatement(constants)) = header.content.get(i) {
-                    if constants.iter().find(|c| c.symbol == *s).is_some() {
+                    if constants.iter().find(|c| c.symbol == *const_str).is_some() {
                         header.content.insert(i + 1, statement);
                         return None;
                     }
                 }
             }
-            LocateAfterRef::LocateAfterVar(s) => {
+        }
+        LocateAfterRef::LocateAfterVar(var_str) => {
+            for i in 0..header.content.len() {
                 if let Some(Statement::VariableStatement(variables)) = header.content.get(i) {
-                    if variables.iter().find(|c| c.symbol == *s).is_some() {
+                    if variables.iter().find(|c| c.symbol == *var_str).is_some() {
                         header.content.insert(i + 1, statement);
                         return None;
                     }
                 }
             }
-            LocateAfterRef::LocateAfter(s) => {
+        }
+        LocateAfterRef::LocateAfter(label_str) => {
+            for i in 0..header.content.len() {
                 if let Some(Statement::TheoremStatement(theorem)) = header.content.get(i) {
-                    if theorem.label == *s {
+                    if theorem.label == *label_str {
                         header.content.insert(i + 1, statement);
                         return None;
                     }
                 } else if let Some(Statement::FloatingHypohesisStatement(floating_hypothesis)) =
                     header.content.get(i)
                 {
-                    if floating_hypothesis.label == *s {
+                    if floating_hypothesis.label == *label_str {
                         header.content.insert(i + 1, statement);
                         return None;
                     }
@@ -386,11 +417,18 @@ fn add_statement_locate_after_memory(
         }
     }
 
-    for subheader in &mut header.subheaders {
-        statement = match add_statement_locate_after_memory(subheader, locate_after, statement) {
+    for (i, subheader) in header.subheaders.iter_mut().enumerate() {
+        header_path.path.push(i);
+        statement = match add_statement_locate_after_memory(
+            subheader,
+            locate_after,
+            statement,
+            header_path,
+        ) {
             Some(s) => s,
             None => return None,
         };
+        header_path.path.pop();
     }
 
     Some(statement)
@@ -585,7 +623,7 @@ fn add_header_file(
 ) -> Result<Option<(String, String)>, Error> {
     let mut mm_parser = MmParser::new(file_path, None, None)?;
 
-    let mut current_header_path = HeaderPath { path: Vec::new() };
+    let mut current_header_path = HeaderPath::new();
     let mut target_header_path = stage_3_header.parent_header_path.clone();
     target_header_path.path.push(stage_3_header.header_i);
 

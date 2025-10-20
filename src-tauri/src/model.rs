@@ -1,5 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
+    fmt::Display,
     fs::File,
     path::PathBuf,
     sync::Arc,
@@ -223,7 +224,7 @@ pub enum HeaderContentType {
     CommentStatement,
     ConstantStatement,
     VariableStatement,
-    FloatingHypohesisStatement,
+    FloatingHypothesisStatement,
     TheoremStatement,
 }
 
@@ -718,6 +719,10 @@ impl MetamathData {
             }
         }
 
+        if let Some(app_handle) = app {
+            app_handle.emit("verification-progress", 100).ok();
+        }
+
         Ok(invalid_description_html)
     }
 
@@ -813,7 +818,7 @@ impl MetamathData {
     ) -> Result<Vec<(String, String)>, Error> {
         self.optimized_data.header_data = HashMap::new();
 
-        let mut curr_header_path = HeaderPath { path: Vec::new() };
+        let mut curr_header_path = HeaderPath::new();
 
         let mut invalid_description_html: Vec<(String, String)> = Vec::new();
 
@@ -2467,7 +2472,7 @@ impl Header {
                             .fold_to_space_seperated_string(),
                     },
                     FloatingHypohesisStatement(floating_hypohesis) => HeaderContentRepresentation {
-                        content_type: HeaderContentType::FloatingHypohesisStatement,
+                        content_type: HeaderContentType::FloatingHypothesisStatement,
                         title: floating_hypohesis.label.clone(),
                     },
                     TheoremStatement(theorem) => HeaderContentRepresentation {
@@ -2490,44 +2495,28 @@ impl Header {
             .find(|(_, t)| t.label == label)
     }
 
-    pub fn calc_theorem_path_by_label(&self, label: &str) -> Option<TheoremPath> {
-        for (index, statement) in self.content.iter().enumerate() {
-            if let TheoremStatement(theorem) = statement {
-                if theorem.label == label {
-                    return Some(TheoremPath {
-                        header_path: HeaderPath { path: Vec::new() },
-                        theorem_index: index,
-                    });
-                }
-            }
-        }
+    // pub fn calc_theorem_path_by_label(&self, label: &str) -> Option<TheoremPath> {
+    //     for (index, statement) in self.content.iter().enumerate() {
+    //         if let TheoremStatement(theorem) = statement {
+    //             if theorem.label == label {
+    //                 return Some(TheoremPath {
+    //                     header_path: HeaderPath::new(),
+    //                     theorem_index: index,
+    //                 });
+    //             }
+    //         }
+    //     }
 
-        for (index, sub_header) in self.subheaders.iter().enumerate() {
-            let sub_header_res = sub_header.calc_theorem_path_by_label(label);
-            if let Some(mut theorem_path) = sub_header_res {
-                theorem_path.header_path.path.insert(0, index);
-                return Some(theorem_path);
-            }
-        }
+    //     for (index, sub_header) in self.subheaders.iter().enumerate() {
+    //         let sub_header_res = sub_header.calc_theorem_path_by_label(label);
+    //         if let Some(mut theorem_path) = sub_header_res {
+    //             theorem_path.header_path.path.insert(0, index);
+    //             return Some(theorem_path);
+    //         }
+    //     }
 
-        None
-    }
-
-    pub fn calc_header_path_by_title(&self, title: &str) -> Option<HeaderPath> {
-        if self.title == title {
-            return Some(HeaderPath { path: Vec::new() });
-        }
-
-        for (index, sub_header) in self.subheaders.iter().enumerate() {
-            let sub_header_res = sub_header.calc_header_path_by_title(title);
-            if let Some(mut header_path) = sub_header_res {
-                header_path.path.insert(0, index);
-                return Some(header_path);
-            }
-        }
-
-        None
-    }
+    //     None
+    // }
 
     pub fn theorem_i_vec_to_theorem_label_vec(
         &self,
@@ -2705,13 +2694,17 @@ impl Header {
 }
 
 impl HeaderPath {
+    pub fn new() -> HeaderPath {
+        HeaderPath { path: Vec::new() }
+    }
+
     pub fn from_str(str: &str) -> Option<HeaderPath> {
         if str.contains('+') {
             return None;
         }
 
         if str == "" {
-            return Some(HeaderPath { path: Vec::new() });
+            return Some(HeaderPath::new());
         }
 
         Some(HeaderPath {
@@ -2759,6 +2752,12 @@ impl HeaderPath {
         }
 
         Some(header)
+    }
+}
+
+impl Display for HeaderPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_string())
     }
 }
 

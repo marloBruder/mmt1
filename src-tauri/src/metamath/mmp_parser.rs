@@ -78,9 +78,12 @@ pub enum MmpLabel<'a> {
 
 #[derive(Debug, Clone, Copy)]
 pub enum LocateAfterRef<'a> {
-    LocateAfter(&'a str),
+    LocateAfterStart,
+    LocateAfterHeader(&'a str),
+    LocateAfterComment(&'a str),
     LocateAfterConst(&'a str),
     LocateAfterVar(&'a str),
+    LocateAfter(&'a str),
 }
 
 #[derive(Debug)]

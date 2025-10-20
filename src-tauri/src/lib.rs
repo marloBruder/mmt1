@@ -271,6 +271,11 @@ pub enum Error {
     TooManyLocateAfterConstTokensError, // Returned if there is a $locateafterconst statement with too many follow up tokens
     TooFewLocateAfterVarTokensError, // Returned if there is a $locateaftervar statement without a follow up token
     TooManyLocateAfterVarTokensError, // Returned if there is a $locateaftervar statement with too many follow up tokens
+    TooFewLocateAfterHeaderTokensError, // Returned if there is a $locateafterheader statement without a follow up token
+    TooManyLocateAfterHeaderTokensError, // Returned if there is a $locateafterheader statement with too many follow up tokens
+    TooFewLocateAfterCommentTokensError, // Returned if there is a $locateaftercomment statement without a follow up token
+    TooManyLocateAfterCommentTokensError, // Returned if there is a $locateaftercomment statement with too many follow up tokens
+    TooManyLocateAfterStartTokensError, // Returned if there is a $locateafterstart statement with too many follow up tokens
     InvalidLocateAfterError, // Returned if locateafter statement is not a real place in database
     MissingMmpStepExpressionError, // Returned if a mmp step is missing it's expression
     InvalidDollarTokenError, // Returned if there is a statement that starts with $ not followed by a vaild statement type

@@ -61,6 +61,21 @@ export function getErrorMessage(errorType: string): string {
     case "TooManyLocateAfterConstTokensError": {
       return "$locateafterconst statements must be followed by exactly one token: The constant which statement the content of the mmp file should be located after.";
     }
+    case "TooFewLocateAfterVarTokensError":
+    case "TooManyLocateAfterVarTokensError": {
+      return "$locateaftervar statements must be followed by exactly one token: The variable which statement the content of the mmp file should be located after.";
+    }
+    case "TooFewLocateAfterHeaderTokensError":
+    case "TooManyLocateAfterHeaderTokensError": {
+      return "$locateafterheader statements must be followed by exactly one token: The header path of the header that the content of the mmp file should be located after.";
+    }
+    case "TooFewLocateAfterCommentTokensError":
+    case "TooManyLocateAfterCommentTokensError": {
+      return "$locateaftercomment statements must be followed by exactly one token: The comment path of the comment that the content of the mmp file should be located after.";
+    }
+    case "TooManyLocateAfterStartTokensError": {
+      return "$locateafterstart statements should not be followed by any tokens.";
+    }
     case "InvalidDollarTokenError": {
       return "Invalid keyword. Step names may not start with or constain with '$'.";
     }
