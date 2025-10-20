@@ -92,13 +92,6 @@
 
       globalState.lastEditorContent = this.#monacoModel!.getValue();
       goto("/main/addToDatabase");
-      // await invoke("add_to_database", { text: this.monacoModel!.getValue() });
-
-      // let dataUnknown = await invoke("turn_into_theorem", { inProgressTheorem: this.#inProgressTheorem, positionName: placeAfter });
-      // let theoremPath = dataUnknown as TheoremPath;
-      // nameListData.removeInProgressTheoremName(this.#inProgressTheorem.name);
-      // await explorerData.addTheoremName(theoremPath, this.#inProgressTheorem.name);
-      // tabManager.changeTab(new TheoremTab(this.#inProgressTheorem.name));
     }
 
     addToDatabaseDisabled(): boolean {

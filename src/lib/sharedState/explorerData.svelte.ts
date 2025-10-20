@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { HeaderPath, HeaderRepresentation, NameListHeader, TheoremPath } from "./model.svelte";
+import type { HeaderPath, HeaderRepresentation, NameListHeader } from "./model.svelte";
 
 class ExplorerData {
   #theoremListHeader: NameListHeader = $state({ title: "Explorer:", content: null });
@@ -43,13 +43,6 @@ class ExplorerData {
     }
 
     return [currentHeader, lastOpened];
-  }
-
-  async addTheoremName(theoremPath: TheoremPath, title: string) {
-    let [header, lastOpened] = await this.loadHeaderPath(theoremPath.headerPath);
-    if (!lastOpened) {
-      header.content!.contentTitles.splice(theoremPath.theoremIndex, 0, { contentType: "TheoremStatement", title });
-    }
   }
 
   unloadHeader(header: NameListHeader) {

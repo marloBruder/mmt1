@@ -94,22 +94,19 @@
   };
 </script>
 
-<div class="relative h-6 custom-bg-hover-color">
-  <button class="h-full w-full text-left absolute" onclick={toggleOpen}>
-    <div class="h-6 w-6 div float-left">
+<div class="h-6 custom-bg-hover-color">
+  <button class="h-full w-full text-left flex flex-row" onclick={toggleOpen}>
+    <div class="h-6 w-6">
       {#if header.content !== null}
         <ChevronDownIcon></ChevronDownIcon>
       {:else}
         <ChevronRightIcon></ChevronRightIcon>
       {/if}
     </div>
-    <div class="ml-6 whitespace-nowrap mr-6 overflow-hidden">
+    <div class="whitespace-nowrap overflow-hidden">
       {pathString}
       {header.title}
     </div>
-  </button>
-  <button aria-label="Add subheader" onclick={openAddSubheaderInput} class="h-4 w-4 absolute bottom-1 end-1">
-    <PlusIcon></PlusIcon>
   </button>
 </div>
 {#if header.content !== null}

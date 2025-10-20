@@ -29,13 +29,14 @@
 
 <div class="h-full w-full">
   <div class="p-2">
-    <RoundButton onclick={newExplorerTabClick}>New Explorer Tab</RoundButton>
+    <RoundButton onclick={newExplorerTabClick} additionalClasses="w-full">New Explorer Tab</RoundButton>
   </div>
   <div class="p-2">
-    Quick Search:
-    <input bind:value={filter} oninput={quickSearchInput} class="custom-bg-input-color border border-gray-300 rounded" />
+    <div>Quick Search:</div>
+    <div>
+      <input bind:value={filter} oninput={quickSearchInput} class="custom-bg-input-color border border-gray-300 rounded w-full" />
+    </div>
   </div>
-  <!-- <div class="pl-1 py-2">Explorer:</div> -->
   {#if filter === ""}
     <div class="pt-2">
       <ExplorerHeader header={explorerData.theoremListHeader} headerPath={{ path: [] }}></ExplorerHeader>
@@ -48,14 +49,4 @@
       <button onclick={loadAllQuickSearch}>Load all</button>
     {/if}
   {/if}
-  <!-- <div class="pl-1 py-2">Explorer:</div>
-  <ul class="pl-2">
-    {#each nameListData.theoremNames as name}
-      {#if name.startsWith(filter)}
-        <li class:bg-gray-300={name === theoremName}>
-          <button class="pl-1" onclick={() => explorerClick(name)}>{name}</button>
-        </li>
-      {/if}
-    {/each}
-  </ul> -->
 </div>

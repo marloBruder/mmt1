@@ -66,11 +66,6 @@ export interface HeaderPath {
   path: number[];
 }
 
-export interface TheoremPath {
-  headerPath: HeaderPath;
-  theoremIndex: number;
-}
-
 export interface HtmlRepresentation {
   symbol: string;
   html: string;

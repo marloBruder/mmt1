@@ -257,11 +257,6 @@ pub struct HeaderPath {
     pub path: Vec<usize>,
 }
 
-pub struct TheoremPath {
-    pub header_path: HeaderPath,
-    pub theorem_index: usize,
-}
-
 #[derive(Debug, Clone, Serialize)]
 pub struct HtmlRepresentation {
     pub symbol: String,
@@ -2495,29 +2490,6 @@ impl Header {
             .find(|(_, t)| t.label == label)
     }
 
-    // pub fn calc_theorem_path_by_label(&self, label: &str) -> Option<TheoremPath> {
-    //     for (index, statement) in self.content.iter().enumerate() {
-    //         if let TheoremStatement(theorem) = statement {
-    //             if theorem.label == label {
-    //                 return Some(TheoremPath {
-    //                     header_path: HeaderPath::new(),
-    //                     theorem_index: index,
-    //                 });
-    //             }
-    //         }
-    //     }
-
-    //     for (index, sub_header) in self.subheaders.iter().enumerate() {
-    //         let sub_header_res = sub_header.calc_theorem_path_by_label(label);
-    //         if let Some(mut theorem_path) = sub_header_res {
-    //             theorem_path.header_path.path.insert(0, index);
-    //             return Some(theorem_path);
-    //         }
-    //     }
-
-    //     None
-    // }
-
     pub fn theorem_i_vec_to_theorem_label_vec(
         &self,
         theorem_i_vec: &Vec<usize>,
@@ -2767,15 +2739,6 @@ impl Default for HeaderPath {
     }
 }
 
-impl Default for TheoremPath {
-    fn default() -> Self {
-        TheoremPath {
-            theorem_index: 0,
-            header_path: HeaderPath::default(),
-        }
-    }
-}
-
 impl serde::Serialize for Theorem {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -2854,20 +2817,6 @@ impl serde::Serialize for ParsedDescriptionSegment {
                 state.end()
             }
         }
-    }
-}
-
-impl serde::Serialize for TheoremPath {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        use serde::ser::SerializeStruct;
-
-        let mut state = serializer.serialize_struct("TheoremPath", 2)?;
-        state.serialize_field("headerPath", &self.header_path)?;
-        state.serialize_field("theoremIndex", &self.theorem_index)?;
-        state.end()
     }
 }
 
