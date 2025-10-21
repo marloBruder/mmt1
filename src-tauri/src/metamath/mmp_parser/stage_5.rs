@@ -201,24 +201,26 @@ pub fn stage_5(
     while let Some(mut unify_line) = unify_lines.pop() {
         set_unify_status_recursively_correct(&mut unify_line, &new_unify_lines);
 
-        if let Some(other_unify_line) = new_unify_lines
-            .iter()
-            .find(|oul| oul.parse_tree == unify_line.parse_tree)
-        {
-            if !(unify_line_is_recursively_correct(&unify_line)
-                && !unify_line_is_recursively_correct(other_unify_line))
+        if unify_line.step_name != "qed" {
+            if let Some(other_unify_line) = new_unify_lines
+                .iter()
+                .find(|oul| oul.parse_tree == unify_line.parse_tree)
             {
-                unify_line.deleted_line = true;
-                for ul in &mut unify_lines {
-                    let mut hypothesis_replaced = false;
-                    for hyp in &mut ul.hypotheses {
-                        if *hyp == unify_line.step_name {
-                            *hyp = other_unify_line.step_name.clone();
-                            hypothesis_replaced = true;
+                if !(unify_line_is_recursively_correct(&unify_line)
+                    && !unify_line_is_recursively_correct(other_unify_line))
+                {
+                    unify_line.deleted_line = true;
+                    for ul in &mut unify_lines {
+                        let mut hypothesis_replaced = false;
+                        for hyp in &mut ul.hypotheses {
+                            if *hyp == unify_line.step_name {
+                                *hyp = other_unify_line.step_name.clone();
+                                hypothesis_replaced = true;
+                            }
                         }
-                    }
-                    if hypothesis_replaced {
-                        set_unify_status(&mut ul.status, 1)?;
+                        if hypothesis_replaced {
+                            set_unify_status(&mut ul.status, 1)?;
+                        }
                     }
                 }
             }
