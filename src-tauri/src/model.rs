@@ -378,6 +378,18 @@ pub struct FolderData {
     pub file_handles: HashMap<String, File>,
 }
 
+pub enum AddToDatabaseResult {
+    NewHeader {
+        header_title: String,
+        header_path: HeaderPath,
+    },
+    NewStatement {
+        content_rep: HeaderContentRepresentation,
+        header_path: HeaderPath,
+        header_content_i: usize,
+    },
+}
+
 impl MetamathData {
     pub fn symbols_not_already_taken(&self, symbols: &Vec<&str>) -> bool {
         self.database_header.iter().all(|c| match c {
@@ -1139,6 +1151,37 @@ impl Statement {
         self.write_mm_string(&mut mm_string);
 
         target.insert_str(insert_pos, &mm_string);
+    }
+
+    pub fn to_header_content_representation(&self) -> HeaderContentRepresentation {
+        match self {
+            CommentStatement(_) => HeaderContentRepresentation {
+                content_type: HeaderContentType::CommentStatement,
+                title: String::new(),
+            },
+            ConstantStatement(constants) => HeaderContentRepresentation {
+                content_type: HeaderContentType::ConstantStatement,
+                title: constants
+                    .iter()
+                    .map(|c| &*c.symbol)
+                    .fold_to_space_seperated_string(),
+            },
+            VariableStatement(variables) => HeaderContentRepresentation {
+                content_type: HeaderContentType::VariableStatement,
+                title: variables
+                    .iter()
+                    .map(|v| &*v.symbol)
+                    .fold_to_space_seperated_string(),
+            },
+            FloatingHypohesisStatement(floating_hypohesis) => HeaderContentRepresentation {
+                content_type: HeaderContentType::FloatingHypothesisStatement,
+                title: floating_hypohesis.label.clone(),
+            },
+            TheoremStatement(theorem) => HeaderContentRepresentation {
+                content_type: HeaderContentType::TheoremStatement,
+                title: theorem.label.clone(),
+            },
+        }
     }
 
     //     pub fn is_variable(&self) -> bool {
@@ -2447,34 +2490,7 @@ impl Header {
             content_titles: self
                 .content
                 .iter()
-                .map(|t| match t {
-                    CommentStatement(_) => HeaderContentRepresentation {
-                        content_type: HeaderContentType::CommentStatement,
-                        title: "Comment".to_string(),
-                    },
-                    ConstantStatement(constants) => HeaderContentRepresentation {
-                        content_type: HeaderContentType::ConstantStatement,
-                        title: constants
-                            .iter()
-                            .map(|c| &*c.symbol)
-                            .fold_to_space_seperated_string(),
-                    },
-                    VariableStatement(variables) => HeaderContentRepresentation {
-                        content_type: HeaderContentType::VariableStatement,
-                        title: variables
-                            .iter()
-                            .map(|v| &*v.symbol)
-                            .fold_to_space_seperated_string(),
-                    },
-                    FloatingHypohesisStatement(floating_hypohesis) => HeaderContentRepresentation {
-                        content_type: HeaderContentType::FloatingHypothesisStatement,
-                        title: floating_hypohesis.label.clone(),
-                    },
-                    TheoremStatement(theorem) => HeaderContentRepresentation {
-                        content_type: HeaderContentType::TheoremStatement,
-                        title: theorem.label.clone(),
-                    },
-                })
+                .map(|s| s.to_header_content_representation())
                 .collect(),
             subheader_titles: self.subheaders.iter().map(|sh| sh.title.clone()).collect(),
         }
@@ -3036,6 +3052,40 @@ impl serde::Serialize for ListEntry {
                 state
                     .serialize_field("descriptionParsed", &theorem_list_entry.description_parsed)?;
                 state.serialize_field("discriminator", "TheoremListEntry")?;
+                state.end()
+            }
+        }
+    }
+}
+
+impl serde::Serialize for AddToDatabaseResult {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        match self {
+            Self::NewHeader {
+                header_title,
+                header_path,
+            } => {
+                let mut state = serializer.serialize_struct("NewHeader", 2)?;
+                state.serialize_field("headerTitle", header_title)?;
+                state.serialize_field("headerPath", header_path)?;
+                state.serialize_field("discriminator", "NewHeader")?;
+                state.end()
+            }
+            Self::NewStatement {
+                content_rep,
+                header_path,
+                header_content_i,
+            } => {
+                let mut state = serializer.serialize_struct("NewStatement", 3)?;
+                state.serialize_field("contentRep", content_rep)?;
+                state.serialize_field("headerPath", header_path)?;
+                state.serialize_field("headerContentI", header_content_i)?;
+                state.serialize_field("discriminator", "NewStatement")?;
                 state.end()
             }
         }

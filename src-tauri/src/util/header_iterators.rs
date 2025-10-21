@@ -262,6 +262,7 @@ impl<'a, 'b> Iterator for HeaderLocateAfterIterator<'a, 'b> {
                 ) {
                     // should never return
                     util::calc_next_header_path(&mut self.current_header_path, depth).ok()?;
+                    self.current_comment_i = 0;
                 }
 
                 if let Some(LocateAfterRef::LocateAfterHeader(header_path_str)) = self.locate_after

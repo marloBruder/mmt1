@@ -18,9 +18,9 @@ class FileExplorerData {
   }
 
   async reloadFolder(folder: Folder, folderPath: string) {
-    let folderRep = (await invoke("get_subfolder", { relativePath: folderPath })) as FolderRepresentation;
-
     if (folder.content !== null) {
+      let folderRep = (await invoke("get_subfolder", { relativePath: folderPath })) as FolderRepresentation;
+
       folder.content = {
         fileNames: folderRep.fileNames,
         subfolders: folderRep.subfolderNames.map((subfolderName) => {

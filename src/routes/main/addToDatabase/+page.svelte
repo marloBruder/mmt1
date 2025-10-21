@@ -6,7 +6,9 @@
   import SelectDropdown, { type SelectDropdownOption } from "$lib/components/util/SelectDropdown.svelte";
   import VerticalDraggableSplit from "$lib/components/util/VerticalDraggableSplit.svelte";
   import monaco from "$lib/monaco/monaco";
+  import { explorerData } from "$lib/sharedState/explorerData.svelte";
   import { globalState } from "$lib/sharedState/globalState.svelte";
+  import type { AddToDatabaseResult } from "$lib/sharedState/model.svelte";
   import { settingsData } from "$lib/sharedState/settingsData.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { onDestroy, onMount } from "svelte";
@@ -115,8 +117,17 @@
 
   let addToDatabase = async () => {
     const text = globalState.lastEditorContent;
-    await invoke("add_to_database", { text, overrideProofFormat: proofFormatOption });
-    await goto("/main");
+    let add_to_database_result = (await invoke("add_to_database", { text, overrideProofFormat: proofFormatOption })) as AddToDatabaseResult | null;
+
+    if (add_to_database_result !== null) {
+      if (add_to_database_result.discriminator === "NewHeader") {
+        explorerData.addHeader(add_to_database_result.headerPath, add_to_database_result.headerTitle);
+      } else if (add_to_database_result.discriminator === "NewStatement") {
+        explorerData.addHeaderContent(add_to_database_result.headerPath, add_to_database_result.headerContentI, add_to_database_result.contentRep);
+      }
+
+      await goto("/main");
+    }
   };
 </script>
 

@@ -241,3 +241,18 @@ export interface DetailedError {
   endLineNumber: number;
   endColumn: number;
 }
+
+export type AddToDatabaseResult = NewHeader | NewStatement;
+
+export interface NewHeader {
+  headerTitle: string;
+  headerPath: HeaderPath;
+  discriminator: "NewHeader";
+}
+
+export interface NewStatement {
+  contentRep: HeaderContentRepresentation;
+  headerPath: HeaderPath;
+  headerContentI: number;
+  discriminator: "NewStatement";
+}

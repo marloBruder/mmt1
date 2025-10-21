@@ -11,7 +11,10 @@ use crate::{
             MmpParserStage4, MmpParserStage5, MmpParserStage6,
         },
     },
-    model::{DatabaseElement, Header, HeaderPath, Hypothesis, MetamathData, Statement, Theorem},
+    model::{
+        AddToDatabaseResult, DatabaseElement, Header, HeaderPath, Hypothesis, MetamathData,
+        Statement, Theorem,
+    },
     util, AppState, Error, ProofFormatOption,
 };
 
@@ -121,7 +124,7 @@ pub async fn add_to_database(
     state: tauri::State<'_, Mutex<AppState>>,
     text: &str,
     override_proof_format: Option<ProofFormatOption>,
-) -> Result<bool, Error> {
+) -> Result<Option<AddToDatabaseResult>, Error> {
     let mut app_state = state.lock().await;
     let mut settings = app_state.settings.clone();
     let mm_data = app_state.metamath_data.as_mut().ok_or(Error::NoMmDbError)?;
@@ -129,22 +132,27 @@ pub async fn add_to_database(
     let stage_0 = mmp_parser::new(text);
 
     let MmpParserStage1::Success(stage_1_success) = stage_0.next_stage()? else {
-        return Ok(false);
+        return Ok(None);
     };
 
     let MmpParserStage2::Success(stage_2_success) = stage_1_success.next_stage()? else {
-        return Ok(false);
+        return Ok(None);
     };
 
     let MmpParserStage3::Success(stage_3_success) =
         stage_2_success.next_stage(&stage_1_success, mm_data)?
     else {
-        return Ok(false);
+        return Ok(None);
     };
 
     let stage_3_theorem = match stage_3_success {
-        MmpParserStage3Success::Empty => return Ok(false),
+        MmpParserStage3Success::Empty => return Ok(None),
         MmpParserStage3Success::Header(stage_3_header) => {
+            let header_title = stage_3_header.title.clone();
+
+            let mut header_path = stage_3_header.parent_header_path.clone();
+            header_path.path.push(stage_3_header.header_i);
+
             add_header(
                 &mm_data.database_path,
                 &mut mm_data.database_header,
@@ -158,47 +166,84 @@ pub async fn add_to_database(
                 &allowed_css_properties,
             )?;
 
-            return Ok(false);
+            return Ok(Some(AddToDatabaseResult::NewHeader {
+                header_title,
+                header_path,
+            }));
         }
         MmpParserStage3Success::Comment(stage_3_comment) => {
-            add_statement(
+            let statement = Statement::CommentStatement(stage_3_comment.comment);
+
+            let content_rep = statement.to_header_content_representation();
+
+            let (header_path, header_content_i) = add_statement(
                 &mm_data.database_path,
                 &mut mm_data.database_header,
                 stage_2_success.locate_after,
-                Statement::CommentStatement(stage_3_comment.comment),
+                statement,
             )?;
 
-            return Ok(true);
+            return Ok(Some(AddToDatabaseResult::NewStatement {
+                content_rep,
+                header_path,
+                header_content_i,
+            }));
         }
         MmpParserStage3Success::Constants(constants) => {
-            add_statement(
+            let statement = Statement::ConstantStatement(constants);
+
+            let content_rep = statement.to_header_content_representation();
+
+            let (header_path, header_content_i) = add_statement(
                 &mm_data.database_path,
                 &mut mm_data.database_header,
                 stage_2_success.locate_after,
-                Statement::ConstantStatement(constants),
+                statement,
             )?;
 
-            return Ok(true);
+            return Ok(Some(AddToDatabaseResult::NewStatement {
+                content_rep,
+                header_path,
+                header_content_i,
+            }));
         }
         MmpParserStage3Success::Variables(variables) => {
-            add_statement(
+            let statement = Statement::VariableStatement(variables);
+
+            let content_rep = statement.to_header_content_representation();
+
+            let (header_path, header_content_i) = add_statement(
                 &mm_data.database_path,
                 &mut mm_data.database_header,
                 stage_2_success.locate_after,
-                Statement::VariableStatement(variables),
+                statement,
             )?;
 
-            return Ok(true);
+            return Ok(Some(AddToDatabaseResult::NewStatement {
+                content_rep,
+                header_path,
+                header_content_i,
+            }));
         }
         MmpParserStage3Success::FloatingHypohesis(floating_hypothesis) => {
-            add_statement(
+            let statement = Statement::FloatingHypohesisStatement(floating_hypothesis);
+
+            let content_rep = statement.to_header_content_representation();
+
+            let (header_path, header_content_i) = add_statement(
                 &mm_data.database_path,
                 &mut mm_data.database_header,
                 stage_2_success.locate_after,
-                Statement::FloatingHypohesisStatement(floating_hypothesis),
+                statement,
             )?;
 
-            return Ok(true);
+            mm_data.recalc_optimized_floating_hypotheses_after_one_new()?;
+
+            return Ok(Some(AddToDatabaseResult::NewStatement {
+                content_rep,
+                header_path,
+                header_content_i,
+            }));
         }
         MmpParserStage3Success::Theorem(s3t) => s3t,
     };
@@ -206,7 +251,7 @@ pub async fn add_to_database(
     let MmpParserStage4::Success(stage_4_success) =
         stage_3_theorem.next_stage(&stage_1_success, &stage_2_success, mm_data)?
     else {
-        return Ok(false);
+        return Ok(None);
     };
 
     let stage_5 = stage_4_success.next_stage(&stage_2_success, &stage_3_theorem, mm_data)?;
@@ -222,21 +267,29 @@ pub async fn add_to_database(
     let Some(theorem) =
         mmp_parser_stages_to_theorem(stage_2_success, stage_3_theorem, stage_5, stage_6, mm_data)?
     else {
-        return Ok(false);
+        return Ok(None);
     };
 
     let theorem_label = theorem.label.clone();
 
-    add_statement(
+    let statement = Statement::TheoremStatement(theorem);
+
+    let content_rep = statement.to_header_content_representation();
+
+    let (header_path, header_content_i) = add_statement(
         &mm_data.database_path,
         &mut mm_data.database_header,
         locate_after,
-        Statement::TheoremStatement(theorem),
+        statement,
     )?;
 
     mm_data.update_optimized_theorem_data(&theorem_label, &settings)?;
 
-    Ok(true)
+    Ok(Some(AddToDatabaseResult::NewStatement {
+        content_rep,
+        header_path,
+        header_content_i,
+    }))
 }
 
 fn mmp_parser_stages_to_theorem(
@@ -327,7 +380,7 @@ fn add_statement(
     header: &mut Header,
     locate_after: Option<LocateAfterRef>,
     statement: Statement,
-) -> Result<(), Error> {
+) -> Result<(HeaderPath, usize), Error> {
     match locate_after {
         Some(loc_after) => add_statement_locate_after(file_path, header, loc_after, statement),
         None => add_statement_at_end(file_path, header, statement),
@@ -339,10 +392,10 @@ fn add_statement_locate_after(
     header: &mut Header,
     locate_after: LocateAfterRef,
     statement: Statement,
-) -> Result<(), Error> {
+) -> Result<(HeaderPath, usize), Error> {
     add_statement_locate_after_file(file_path, header, locate_after, &statement, true)?;
-    add_statement_locate_after_memory(header, locate_after, statement, &mut HeaderPath::new());
-    Ok(())
+    add_statement_locate_after_memory(header, locate_after, statement, &mut HeaderPath::new())
+        .map_err(|_| Error::InternalLogicError)
 }
 
 fn add_statement_locate_after_memory(
@@ -350,16 +403,16 @@ fn add_statement_locate_after_memory(
     locate_after: LocateAfterRef,
     mut statement: Statement,
     header_path: &mut HeaderPath,
-) -> Option<Statement> {
+) -> Result<(HeaderPath, usize), Statement> {
     match locate_after {
         LocateAfterRef::LocateAfterStart => {
             header.content.insert(0, statement);
-            return None;
+            return Ok((header_path.clone(), 0));
         }
         LocateAfterRef::LocateAfterHeader(header_path_str) => {
             if header_path_str == header_path.to_string() {
                 header.content.insert(0, statement);
-                return None;
+                return Ok((header_path.clone(), 0));
             }
         }
         LocateAfterRef::LocateAfterComment(comment_path_str) => {
@@ -373,7 +426,7 @@ fn add_statement_locate_after_memory(
 
                     if comment_path_str == format!("{}#{}", header_path_string, comment_i) {
                         header.content.insert(i + 1, statement);
-                        return None;
+                        return Ok((header_path.clone(), i + 1));
                     }
                 }
             }
@@ -383,7 +436,7 @@ fn add_statement_locate_after_memory(
                 if let Some(Statement::ConstantStatement(constants)) = header.content.get(i) {
                     if constants.iter().find(|c| c.symbol == *const_str).is_some() {
                         header.content.insert(i + 1, statement);
-                        return None;
+                        return Ok((header_path.clone(), i + 1));
                     }
                 }
             }
@@ -393,7 +446,7 @@ fn add_statement_locate_after_memory(
                 if let Some(Statement::VariableStatement(variables)) = header.content.get(i) {
                     if variables.iter().find(|c| c.symbol == *var_str).is_some() {
                         header.content.insert(i + 1, statement);
-                        return None;
+                        return Ok((header_path.clone(), i + 1));
                     }
                 }
             }
@@ -403,14 +456,14 @@ fn add_statement_locate_after_memory(
                 if let Some(Statement::TheoremStatement(theorem)) = header.content.get(i) {
                     if theorem.label == *label_str {
                         header.content.insert(i + 1, statement);
-                        return None;
+                        return Ok((header_path.clone(), i + 1));
                     }
                 } else if let Some(Statement::FloatingHypohesisStatement(floating_hypothesis)) =
                     header.content.get(i)
                 {
                     if floating_hypothesis.label == *label_str {
                         header.content.insert(i + 1, statement);
-                        return None;
+                        return Ok((header_path.clone(), i + 1));
                     }
                 }
             }
@@ -425,13 +478,13 @@ fn add_statement_locate_after_memory(
             statement,
             header_path,
         ) {
-            Some(s) => s,
-            None => return None,
+            Ok(hp) => return Ok(hp),
+            Err(s) => s,
         };
         header_path.path.pop();
     }
 
-    Some(statement)
+    Err(statement)
 }
 
 fn add_statement_locate_after_file(
@@ -540,20 +593,24 @@ fn add_statement_at_end(
     file_path: &str,
     header: &mut Header,
     statement: Statement,
-) -> Result<(), Error> {
+) -> Result<(HeaderPath, usize), Error> {
     add_statement_at_end_file(file_path, &statement, true)?;
-    add_statement_at_end_memory(header, statement);
-    Ok(())
+    Ok(add_statement_at_end_memory(header, statement))
 }
 
-fn add_statement_at_end_memory(header: &mut Header, statement: Statement) {
+fn add_statement_at_end_memory(header: &mut Header, statement: Statement) -> (HeaderPath, usize) {
     let mut last_header = header;
+    let mut header_path = HeaderPath::new();
 
     while last_header.subheaders.len() > 0 {
+        header_path.path.push(last_header.subheaders.len() - 1);
         last_header = last_header.subheaders.last_mut().unwrap();
     }
 
+    let header_content_i = last_header.content.len();
     last_header.content.push(statement);
+
+    (header_path, header_content_i)
 }
 
 fn add_statement_at_end_file(
