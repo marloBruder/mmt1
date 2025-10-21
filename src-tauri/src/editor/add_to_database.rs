@@ -94,7 +94,7 @@ pub async fn add_to_database_preview(
         return Err(Error::CantAddToDatabaseError);
     };
 
-    let stage_5 = stage_4_success.next_stage(&stage_2_success, &stage_3_theorem, mm_data)?;
+    let stage_5 = stage_4_success.next_stage(&stage_2_success, &stage_3_theorem, mm_data, None)?;
 
     let mut new_settings = settings.clone();
     if let Some(pf) = override_proof_format {
@@ -254,7 +254,7 @@ pub async fn add_to_database(
         return Ok(None);
     };
 
-    let stage_5 = stage_4_success.next_stage(&stage_2_success, &stage_3_theorem, mm_data)?;
+    let stage_5 = stage_4_success.next_stage(&stage_2_success, &stage_3_theorem, mm_data, None)?;
 
     if let Some(pf) = override_proof_format {
         settings.proof_format = pf;

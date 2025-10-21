@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
 
 use crate::{
     editor::on_edit::DetailedError,
@@ -222,8 +222,9 @@ impl MmpParserStage4Success {
         stage_2: &MmpParserStage2Success,
         stage_3: &MmpParserStage3Theorem,
         mm_data: &MetamathData,
+        stop: Option<Arc<std::sync::Mutex<bool>>>,
     ) -> Result<MmpParserStage5, Error> {
-        stage_5::stage_5(stage_2, stage_3, self, mm_data)
+        stage_5::stage_5(stage_2, stage_3, self, mm_data, stop)
     }
 }
 

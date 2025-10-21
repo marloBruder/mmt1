@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use crate::{
     metamath::mmp_parser::{
@@ -19,6 +22,7 @@ pub fn stage_5(
     stage_3: &MmpParserStage3Theorem,
     stage_4: &MmpParserStage4Success,
     mm_data: &MetamathData,
+    stop: Option<Arc<std::sync::Mutex<bool>>>,
 ) -> Result<MmpParserStage5, Error> {
     let mut work_variable_manager = WorkVariableManager::new(
         &stage_4
@@ -67,6 +71,13 @@ pub fn stage_5(
         .collect();
 
     let mut new_unify_lines: Vec<UnifyLine> = Vec::new();
+
+    if stop
+        .as_ref()
+        .is_some_and(|stop| stop.lock().is_ok_and(|stop| *stop))
+    {
+        return Err(Error::OnEditStoppedEarlyError);
+    }
 
     while let Some(mut unify_line) = unify_lines.pop() {
         if unify_line.step_ref != "" && !unify_line.is_hypothesis {
@@ -136,6 +147,13 @@ pub fn stage_5(
         }
 
         new_unify_lines.push(unify_line);
+
+        if stop
+            .as_ref()
+            .is_some_and(|stop| stop.lock().is_ok_and(|stop| *stop))
+        {
+            return Err(Error::OnEditStoppedEarlyError);
+        }
     }
 
     unify_lines = new_unify_lines;
@@ -166,6 +184,13 @@ pub fn stage_5(
         }
 
         new_unify_lines.push(unify_line);
+
+        if stop
+            .as_ref()
+            .is_some_and(|stop| stop.lock().is_ok_and(|stop| *stop))
+        {
+            return Err(Error::OnEditStoppedEarlyError);
+        }
     }
 
     unify_lines = new_unify_lines;
@@ -200,6 +225,13 @@ pub fn stage_5(
         }
 
         new_unify_lines.push(unify_line);
+
+        if stop
+            .as_ref()
+            .is_some_and(|stop| stop.lock().is_ok_and(|stop| *stop))
+        {
+            return Err(Error::OnEditStoppedEarlyError);
+        }
     }
 
     unify_lines = new_unify_lines;

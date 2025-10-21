@@ -26,6 +26,10 @@ pub struct AppState {
     settings: Settings,
 }
 
+pub struct AdditionalStopSignals {
+    stop_on_edit: Arc<std::sync::Mutex<bool>>,
+}
+
 #[derive(Deserialize, Default, Clone)]
 pub struct Settings {
     #[serde(rename = "definitionsStartWith")]
@@ -57,7 +61,11 @@ fn app_setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         open_folder_data: None,
         settings: Settings::default(),
     }));
-    // app.manage::<Mutex<Option<AppState>>>(Mutex::new(None));
+
+    app.manage(Mutex::new(AdditionalStopSignals {
+        stop_on_edit: Arc::new(std::sync::Mutex::new(false)),
+    }));
+
     Ok(())
 }
 
@@ -303,6 +311,7 @@ pub enum Error {
     OpenExternalWindowError,
 
     OpenDatabaseStoppedEarlyError,
+    OnEditStoppedEarlyError,
 
     // Add to database errors
     CantAddToDatabaseError, // Returned if you can't add the statement to the database (if there is an error for example)

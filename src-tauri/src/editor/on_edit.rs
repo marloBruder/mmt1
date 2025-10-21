@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     metamath::{
         mm_parser::html_validation,
@@ -14,7 +16,7 @@ use crate::{
         TheoremPageData, VariablesPageData,
     },
     util::{self, description_parser},
-    AppState, Error, Settings,
+    AdditionalStopSignals, AppState, Error, Settings,
 };
 use serde::{ser::SerializeStruct, Serialize};
 use tauri::async_runtime::Mutex;
@@ -35,13 +37,27 @@ pub struct DetailedError {
 #[tauri::command]
 pub async fn on_edit(
     state: tauri::State<'_, Mutex<AppState>>,
+    stop_signals: tauri::State<'_, Mutex<AdditionalStopSignals>>,
     text: &str,
 ) -> Result<OnEditData, Error> {
+    let mut additional_stop_signals = stop_signals.lock().await;
+    *additional_stop_signals
+        .stop_on_edit
+        .lock()
+        .map_err(|_| Error::InternalLogicError)? = true;
+    additional_stop_signals.stop_on_edit = Arc::new(std::sync::Mutex::new(false));
+    let stop = additional_stop_signals.stop_on_edit.clone();
+    drop(additional_stop_signals);
+
     let app_state = state.lock().await;
     let mm_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
     let settings = &app_state.settings;
 
     let stage_0 = mmp_parser::new(text);
+
+    if stop.lock().is_ok_and(|stop| *stop) {
+        return Err(Error::OnEditStoppedEarlyError);
+    }
 
     let stage_1_success = match stage_0.next_stage()? {
         MmpParserStage1::Success(success) => success,
@@ -53,6 +69,10 @@ pub async fn on_edit(
         }
     };
 
+    if stop.lock().is_ok_and(|stop| *stop) {
+        return Err(Error::OnEditStoppedEarlyError);
+    }
+
     let stage_2_success = match stage_1_success.next_stage()? {
         MmpParserStage2::Success(success) => success,
         MmpParserStage2::Fail(fail) => {
@@ -62,6 +82,10 @@ pub async fn on_edit(
             });
         }
     };
+
+    if stop.lock().is_ok_and(|stop| *stop) {
+        return Err(Error::OnEditStoppedEarlyError);
+    }
 
     let stage_3_success = match stage_2_success.next_stage(&stage_1_success, mm_data)? {
         MmpParserStage3::Success(success) => success,
@@ -136,6 +160,10 @@ pub async fn on_edit(
         MmpParserStage3Success::Theorem(stage_3_theorem) => stage_3_theorem,
     };
 
+    if stop.lock().is_ok_and(|stop| *stop) {
+        return Err(Error::OnEditStoppedEarlyError);
+    }
+
     let stage_4_success =
         match stage_3_theorem.next_stage(&stage_1_success, &stage_2_success, mm_data)? {
             MmpParserStage4::Success(success) => success,
@@ -156,9 +184,26 @@ pub async fn on_edit(
             }
         };
 
-    let stage_5 = stage_4_success.next_stage(&stage_2_success, &stage_3_theorem, mm_data)?;
+    if stop.lock().is_ok_and(|stop| *stop) {
+        return Err(Error::OnEditStoppedEarlyError);
+    }
+
+    let stage_5 = stage_4_success.next_stage(
+        &stage_2_success,
+        &stage_3_theorem,
+        mm_data,
+        Some(stop.clone()),
+    )?;
+
+    if stop.lock().is_ok_and(|stop| *stop) {
+        return Err(Error::OnEditStoppedEarlyError);
+    }
 
     let stage_6 = stage_5.next_stage(&stage_4_success, mm_data, settings)?;
+
+    if stop.lock().is_ok_and(|stop| *stop) {
+        return Err(Error::OnEditStoppedEarlyError);
+    }
 
     Ok(OnEditData {
         page_data: Some(calc_theorem_page_data(
