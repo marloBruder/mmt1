@@ -1,5 +1,4 @@
 <script lang="ts" module>
-  import { Tab } from "$lib/sharedState/tabManager.svelte";
   import TheoremTabComponent from "$lib/components/tabs/TheoremTabComponent.svelte";
   import type { TheoremPageData } from "$lib/sharedState/model.svelte";
   import { invoke } from "@tauri-apps/api/core";
@@ -77,6 +76,7 @@
 <script lang="ts">
   import TheoremPage from "../pages/TheoremPage.svelte";
   import { settingsData } from "$lib/sharedState/settingsData.svelte";
+  import { Tab } from "$lib/sharedState/tab.svelte";
 
   let { tab }: { tab: Tab } = $props();
 

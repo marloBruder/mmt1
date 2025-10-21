@@ -11,13 +11,14 @@
 
     databaseReloadRequired = $derived(settingsData.settings.definitionsStartWith !== this.settings.definitionsStartWith);
 
-    async loadData(): Promise<void> {
+    constructor() {
+      super();
       this.settings = settingsData.cloneSettings();
     }
 
-    unloadData(): void {
-      this.settings = defaultSettings;
-    }
+    async loadData(): Promise<void> {}
+
+    unloadData(): void {}
 
     name(): string {
       return "Settings";
@@ -38,7 +39,7 @@
 </script>
 
 <script lang="ts">
-  import { Tab } from "$lib/sharedState/tabManager.svelte";
+  import { Tab } from "$lib/sharedState/tab.svelte";
   import { util } from "$lib/sharedState/util.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import HorizontalSplit from "../util/HorizontalSplit.svelte";

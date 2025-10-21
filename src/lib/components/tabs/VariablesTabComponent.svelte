@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import type { Variable, VariablesPageData } from "$lib/sharedState/model.svelte";
+  import type { VariablesPageData } from "$lib/sharedState/model.svelte";
   import VariablesTabComponent from "$lib/components/tabs/VariablesTabComponent.svelte";
 
   export class VariablesTab extends Tab {
@@ -50,9 +50,8 @@
 </script>
 
 <script lang="ts">
-  import { Tab } from "$lib/sharedState/tabManager.svelte";
+  import { Tab } from "$lib/sharedState/tab.svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import MetamathExpression from "../util/MetamathExpression.svelte";
   import VariablesPage from "../pages/VariablesPage.svelte";
 
   let { tab }: { tab: Tab } = $props();

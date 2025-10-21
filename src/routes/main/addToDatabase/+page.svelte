@@ -10,6 +10,7 @@
   import { globalState } from "$lib/sharedState/globalState.svelte";
   import type { AddToDatabaseResult } from "$lib/sharedState/model.svelte";
   import { settingsData } from "$lib/sharedState/settingsData.svelte";
+  import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { onDestroy, onMount } from "svelte";
 
@@ -125,6 +126,8 @@
       } else if (add_to_database_result.discriminator === "NewStatement") {
         explorerData.addHeaderContent(add_to_database_result.headerPath, add_to_database_result.headerContentI, add_to_database_result.contentRep);
       }
+
+      await tabManager.reloadAllNonEditorTabs();
 
       await goto("/main");
     }

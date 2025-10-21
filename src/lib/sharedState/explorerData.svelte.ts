@@ -46,9 +46,6 @@ class ExplorerData {
   }
 
   addHeader(headerPath: HeaderPath, title: string) {
-    console.log(headerPath);
-    console.log(title);
-
     let targetHeader = this.#theoremListHeader;
 
     for (let [i, subheaderI] of headerPath.path.entries()) {
@@ -81,33 +78,6 @@ class ExplorerData {
       targetHeader.content.contentTitles.splice(headerContentI, 0, headerContent);
     }
   }
-
-  // async reloadTheoremListHeader() {
-  //   await this.reloadHeaderRecursive({ path: [] }, this.#theoremListHeader);
-  // }
-
-  // // intoHeader is given seperately from headerPath for performance reasons
-  // // Make sure intoHeader is located at headerPath, else there will be bugs
-  // async reloadHeaderRecursive(headerPath: HeaderPath, intoHeader: NameListHeader) {
-  //   if (intoHeader.content !== null) {
-  //     let headerRepresentation = (await invoke("get_header_local", { headerPath })) as HeaderRepresentation;
-
-  //     intoHeader.content = {
-  //       contentTitles: headerRepresentation.contentTitles,
-  //       subheaders: headerRepresentation.subheaderTitles.map((subheaderTitle) => {
-  //         let subfolder: Folder | undefined = intoHeader.content!.subheaders.find((subheader) => subfolder.name === subfolderName);
-  //         if (subfolder !== undefined) {
-  //           return subfolder;
-  //         } else {
-  //           return {
-  //             name: subfolderName,
-  //             content: null,
-  //           };
-  //         }
-  //       }),
-  //     };
-  //   }
-  // }
 
   unloadHeader(header: NameListHeader) {
     header.content = null;

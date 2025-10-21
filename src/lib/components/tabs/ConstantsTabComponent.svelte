@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import type { Constant, ConstantsPageData } from "$lib/sharedState/model.svelte";
+  import type { ConstantsPageData } from "$lib/sharedState/model.svelte";
   import ConstantsTabComponent from "$lib/components/tabs/ConstantsTabComponent.svelte";
 
   export class ConstantsTab extends Tab {
@@ -50,7 +50,7 @@
 </script>
 
 <script lang="ts">
-  import { Tab } from "$lib/sharedState/tabManager.svelte";
+  import { Tab } from "$lib/sharedState/tab.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import ConstantsPage from "../pages/ConstantsPage.svelte";
 

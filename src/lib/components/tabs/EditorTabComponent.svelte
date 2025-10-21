@@ -207,7 +207,7 @@
 <script lang="ts">
   import type * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
   import { invoke } from "@tauri-apps/api/core";
-  import { Tab, tabManager } from "$lib/sharedState/tabManager.svelte";
+  import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { onDestroy, onMount, type Component } from "svelte";
   import monaco from "$lib/monaco/monaco";
   import type { DatabaseElementPageData, DetailedError } from "$lib/sharedState/model.svelte";
@@ -216,6 +216,7 @@
   import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { goto } from "$app/navigation";
   import { globalState } from "$lib/sharedState/globalState.svelte";
+  import { Tab } from "$lib/sharedState/tab.svelte";
 
   let { tab }: { tab: Tab } = $props();
 

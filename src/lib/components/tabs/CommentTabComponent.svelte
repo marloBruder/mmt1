@@ -44,7 +44,7 @@
 </script>
 
 <script lang="ts">
-  import { Tab } from "$lib/sharedState/tabManager.svelte";
+  import { Tab } from "$lib/sharedState/tab.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { util } from "$lib/sharedState/util.svelte";
   import CommentPage from "../pages/CommentPage.svelte";

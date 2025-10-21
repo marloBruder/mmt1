@@ -46,10 +46,11 @@
 </script>
 
 <script lang="ts">
-  import { Tab, tabManager } from "$lib/sharedState/tabManager.svelte";
+  import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import TheoremList from "../util/TheoremList.svelte";
   import { defaultSearchParameters, type SearchParameters } from "$lib/sharedState/searchData.svelte";
+  import { Tab } from "$lib/sharedState/tab.svelte";
 
   let { tab }: { tab: Tab } = $props();
 

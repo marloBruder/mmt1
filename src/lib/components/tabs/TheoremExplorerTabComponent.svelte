@@ -1,6 +1,6 @@
 <script lang="ts" module>
   import TheoremExplorerTabComponent from "$lib/components/tabs/TheoremExplorerTabComponent.svelte";
-  import type { TheoremListData, TheoremListEntry } from "$lib/sharedState/model.svelte";
+  import type { TheoremListData } from "$lib/sharedState/model.svelte";
 
   export class TheoremExplorerTab extends Tab {
     component = TheoremExplorerTabComponent;
@@ -40,9 +40,10 @@
 </script>
 
 <script lang="ts">
-  import { Tab, tabManager } from "$lib/sharedState/tabManager.svelte";
+  import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import TheoremList from "../util/TheoremList.svelte";
+  import { Tab } from "$lib/sharedState/tab.svelte";
 
   let { tab }: { tab: Tab } = $props();
 

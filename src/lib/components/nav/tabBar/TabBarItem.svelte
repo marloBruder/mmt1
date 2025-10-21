@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Tab, tabManager } from "$lib/sharedState/tabManager.svelte";
+  import type { Tab } from "$lib/sharedState/tab.svelte";
+  import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { confirm } from "@tauri-apps/plugin-dialog";
 
   let { tab, index }: { tab: Tab; index: number } = $props();

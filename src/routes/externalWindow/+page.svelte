@@ -1,8 +1,6 @@
 <script lang="ts">
-  import EmptyTabComponent from "$lib/components/tabs/EmptyTabComponent.svelte";
   import { emit, listen } from "@tauri-apps/api/event";
-  import type { DatabaseElementPageData, HtmlRepresentation } from "$lib/sharedState/model.svelte";
-  import type { Tab } from "$lib/sharedState/tabManager.svelte";
+  import type { DatabaseElementPageData } from "$lib/sharedState/model.svelte";
   import { onMount } from "svelte";
   import EditorTabSplitViewComponent from "$lib/components/tabs/EditorTabSplitViewComponent.svelte";
   import HorizontalSplit from "$lib/components/util/HorizontalSplit.svelte";
