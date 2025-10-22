@@ -5,20 +5,48 @@
   let { element, contextMenu }: { element: Snippet; contextMenu: Snippet } = $props();
 
   let contextMenuId = "context-menu-id-" + createInstanceId();
+  let dummyContextMenuId = "dummy-context-menu-id-" + createInstanceId();
 
   let contextMenuVisible = $state(false);
-  let lastMouseX = $state(0);
-  let lastMouseY = $state(0);
+
+  let nextContextMenuLeft = $state(0);
+  let nextContextMenuTop = $state(0);
+
+  let dummyContextMenuVisible = $state(false);
 
   let oncontextmenu = (e: MouseEvent) => {
-    contextMenuVisible = true;
-    lastMouseX = e.clientX;
-    lastMouseY = e.clientY;
+    dummyContextMenuVisible = true;
+    let lastMouseX = e.clientX;
+    let lastMouseY = e.clientY;
+
+    requestAnimationFrame(() => {
+      let dummyContextMenu = document.getElementById(dummyContextMenuId);
+      if (dummyContextMenu !== null) {
+        if (lastMouseX + dummyContextMenu.clientWidth > window.innerWidth) {
+          nextContextMenuLeft = lastMouseX - dummyContextMenu.clientWidth;
+        } else {
+          nextContextMenuLeft = lastMouseX;
+        }
+
+        console.log(lastMouseY);
+        console.log(dummyContextMenu.clientHeight);
+        console.log(window.innerHeight);
+
+        if (lastMouseY + dummyContextMenu.clientHeight > window.innerHeight) {
+          nextContextMenuTop = lastMouseY - dummyContextMenu.clientHeight;
+        } else {
+          nextContextMenuTop = lastMouseY;
+        }
+
+        contextMenuVisible = true;
+      }
+    });
   };
 
   let handleClickOutside = (e: MouseEvent) => {
     let contextMenuDiv = document.getElementById(contextMenuId);
     if (contextMenuDiv && !contextMenuDiv.contains(e.target as Node)) {
+      dummyContextMenuVisible = false;
       contextMenuVisible = false;
     }
   };
@@ -27,12 +55,14 @@
     let contextMenuDiv = document.getElementById(contextMenuId);
     let target = e.target;
     if (target instanceof HTMLButtonElement && contextMenuDiv && contextMenuDiv.contains(target as Node)) {
+      dummyContextMenuVisible = false;
       contextMenuVisible = false;
     }
   };
 
   let handleKeydown = (e: KeyboardEvent) => {
     if (e.key === "Escape" && contextMenuVisible) {
+      dummyContextMenuVisible = false;
       contextMenuVisible = false;
     }
   };
@@ -42,8 +72,8 @@
       let contextMenuDiv = document.getElementById(contextMenuId);
       if (contextMenuDiv !== null) {
         contextMenuDiv.focus();
-        contextMenuDiv.style.left = lastMouseX + "px";
-        contextMenuDiv.style.top = lastMouseY + "px";
+        contextMenuDiv.style.left = nextContextMenuLeft + "px";
+        contextMenuDiv.style.top = nextContextMenuTop + "px";
       }
     }
   });
@@ -93,3 +123,15 @@
     {@render contextMenu()}
   </div>
 {/if}
+{#if dummyContextMenuVisible}
+  <div id={dummyContextMenuId} class="fixed p-2 rounded-lg custom-off-screen invisible pointer-events-none">
+    {@render contextMenu()}
+  </div>
+{/if}
+
+<style>
+  .custom-off-screen {
+    left: -9999px;
+    top: -9999px;
+  }
+</style>
