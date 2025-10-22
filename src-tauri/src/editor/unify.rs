@@ -1,9 +1,12 @@
 use tauri::async_runtime::Mutex;
 
 use crate::{
-    metamath::mmp_parser::{
-        self, calc_indention::calc_indention, MmpParserStage1, MmpParserStage2, MmpParserStage3,
-        MmpParserStage3Success, MmpParserStage4, MmpStatement, UnifyLine,
+    metamath::{
+        export,
+        mmp_parser::{
+            self, calc_indention::calc_indention, MmpParserStage1, MmpParserStage2,
+            MmpParserStage3, MmpParserStage3Success, MmpParserStage4, MmpStatement, UnifyLine,
+        },
     },
     model::MetamathData,
     util::{self, StrIterToDelimiterSeperatedString},
@@ -17,6 +20,7 @@ pub async fn unify(
 ) -> Result<Option<String>, Error> {
     let app_state = state.lock().await;
     let mm_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
+    let settings = &app_state.settings;
 
     let stage_0 = mmp_parser::new(text);
 
@@ -42,6 +46,8 @@ pub async fn unify(
 
     let stage_5 = stage_4_success.next_stage(&stage_2_success, &stage_3_theorem, mm_data, None)?;
 
+    let stage_6 = stage_5.next_stage(&stage_3_theorem, &stage_4_success, mm_data, settings)?;
+
     let indention_vec = calc_indention(&stage_5.unify_result)?.into_iter();
 
     let mut result_text = String::new();
@@ -49,6 +55,8 @@ pub async fn unify(
         .unify_result
         .into_iter()
         .zip(indention_vec.into_iter());
+
+    let mut proof_added = false;
 
     for (&statement, (statement_type, _)) in stage_1_success
         .statements
@@ -76,8 +84,25 @@ pub async fn unify(
                     mm_data,
                 )?;
             }
+        } else if matches!(statement_type, MmpStatement::Proof) {
+            if let Some(proof) = &stage_6.proof {
+                write_proof(&mut result_text, proof)?;
+
+                for _ in 0..std::cmp::min(util::new_lines_at_end_of_str(statement), 2) {
+                    result_text.push('\n');
+                }
+
+                proof_added = true;
+            }
         } else {
             result_text.push_str(statement);
+        }
+    }
+
+    if let Some(proof) = &stage_6.proof {
+        if !proof_added {
+            write_proof(&mut result_text, proof)?;
+            result_text.push('\n');
         }
     }
 
@@ -127,8 +152,10 @@ fn write_unify_line(
         result_text.push_str(util::spaces(20));
         result_text.push_str(util::spaces(indention - 1));
     } else {
-        result_text.push_str(util::spaces(20 - prefix_len));
-        result_text.push_str(util::spaces(indention - 1));
+        result_text.push_str(util::spaces(20 - std::cmp::min(20, prefix_len)));
+        result_text.push_str(util::spaces(
+            indention - 1 + 20 - std::cmp::max(20, prefix_len),
+        ));
     }
 
     result_text.push_str(
@@ -144,8 +171,24 @@ fn write_unify_line(
             .unwrap_or(String::new()),
     );
 
-    for _ in 0..new_lines_at_end_of_statement {
+    for _ in 0..std::cmp::min(new_lines_at_end_of_statement, 2) {
         result_text.push('\n');
+    }
+
+    Ok(())
+}
+
+fn write_proof(result_text: &mut String, proof: &str) -> Result<(), Error> {
+    result_text.push_str("$=");
+
+    if proof.starts_with('(') {
+        let (label_str, step_str) = proof.split_once(')').ok_or(Error::InternalLogicError)?;
+
+        export::write_text_wrapped(result_text, label_str, "  ");
+        result_text.push_str(" ) ");
+        export::write_text_wrapped_no_whitespace(result_text, step_str, "  ");
+    } else {
+        export::write_text_wrapped(result_text, proof, "  ");
     }
 
     Ok(())

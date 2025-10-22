@@ -108,6 +108,7 @@ pub enum MmpStatement {
     FloatingHypohesis,
     ProofLine,
     Comment,
+    Proof,
 }
 
 pub struct MmpParserStage2Fail {

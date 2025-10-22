@@ -200,6 +200,9 @@ export function getErrorMessage(errorType: string): string {
     case "AxiomWithWorkVariableError": {
       return "Can't use work variables when adding an axiom.";
     }
+    case "MultipleProofStatementsError": {
+      return "There can only be one $= statement per mmp file.";
+    }
   }
 
   return "You should not be seeing this error message. Please post a Github issue with your editor content.";

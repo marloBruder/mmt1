@@ -303,8 +303,9 @@ pub enum Error {
     InvalidWorkVariableError,   // Returned if a work variable's syntax is not correct
     UnificationError, // Returned from unification algorithm when a line can't be unified or from the unification command
     SyntaxTheoremUsedError, // Returned if a step ref references a syntax theorem
-    DiscouragedTheoremUsedError, // Retruned if a step ref references an discouraged theorem without $allowdiscouraged being present
-    IncompleteTheoremUsedError, // Retruned if a step ref references an (recursively) incomplete theorem without $allowincomplete being present
+    DiscouragedTheoremUsedError, // Returned if a step ref references an discouraged theorem without $allowdiscouraged being present
+    IncompleteTheoremUsedError, // Returned if a step ref references an (recursively) incomplete theorem without $allowincomplete being present
+    MultipleProofStatementsError, // Returned if there are multiple proof ($=) statements
 
     MissingExpressionError, // Returned when converting str to number vec and skipping the first, but the str is empty
     InvalidTypecodeError,

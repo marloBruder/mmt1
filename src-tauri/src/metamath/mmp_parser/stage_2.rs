@@ -17,6 +17,8 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
     let mut comments: Vec<&str> = Vec::new();
     let mut statements: Vec<(MmpStatement, u32)> = Vec::with_capacity(stage_1.statements.len());
 
+    let mut proof_seen = false;
+
     let mut errors: Vec<DetailedError> = Vec::new();
 
     let mut current_line: u32 = stage_1.number_of_lines_before_first_statement;
@@ -674,6 +676,21 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
                 }
 
                 statements.push((MmpStatement::LocateAfter, current_line));
+            }
+            "$=" => {
+                if proof_seen {
+                    errors.push(DetailedError {
+                        error_type: Error::MultipleProofStatementsError,
+                        start_line_number: current_line,
+                        start_column: 1,
+                        end_line_number: current_line + last_non_whitespace_pos.0 - 1,
+                        end_column: last_non_whitespace_pos.1 + 1,
+                    })
+                }
+
+                proof_seen = true;
+
+                statements.push((MmpStatement::Proof, current_line));
             }
             t if t.starts_with('*') => {
                 statements.push((MmpStatement::Comment, current_line));

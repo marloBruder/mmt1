@@ -74,8 +74,8 @@ monaco.languages.register({ id: "mmp" });
 export let setEditorSyntaxHighlighting = (colorInformation: ColorInformation[]) => {
   monaco.languages.setMonarchTokensProvider("mmp", {
     ...colorInformationToKeywords(colorInformation),
-    keywords: ["$theorem", "$axiom", "$c", "$v", "$f", "$header", "$locateafter", "$locateaftervar", "$locateafterconst", "$locateafterheader", "$locateaftercomment", "$locateafterstart", "$allowdiscouraged", "$allowincomplete", "$d"],
-    keywordsWithoutVarColor: ["$theorem", "$axiom", "$header", "$locateafter", "$locateafterheader", "$locateaftercomment", "$locateafterstart", "$allowdiscouraged", "$allowincomplete"],
+    keywords: ["$theorem", "$axiom", "$c", "$v", "$f", "$header", "$locateafter", "$locateaftervar", "$locateafterconst", "$locateafterheader", "$locateaftercomment", "$locateafterstart", "$allowdiscouraged", "$allowincomplete", "$d", "$="],
+    keywordsWithoutVarColor: ["$theorem", "$axiom", "$header", "$locateafter", "$locateafterheader", "$locateaftercomment", "$locateafterstart", "$allowdiscouraged", "$allowincomplete", "$="],
     tokenizer: {
       root: [{ include: "line" }],
 
