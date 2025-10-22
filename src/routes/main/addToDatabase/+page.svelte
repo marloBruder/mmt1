@@ -12,6 +12,7 @@
   import { settingsData } from "$lib/sharedState/settingsData.svelte";
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { invoke } from "@tauri-apps/api/core";
+  import { emit } from "@tauri-apps/api/event";
   import { onDestroy, onMount } from "svelte";
 
   let canceled = $state(false);
@@ -118,13 +119,26 @@
 
   let addToDatabase = async () => {
     const text = globalState.lastEditorContent;
-    let add_to_database_result = (await invoke("add_to_database", { text, overrideProofFormat: proofFormatOption })) as AddToDatabaseResult | null;
+    let tuple = (await invoke("add_to_database", { text, overrideProofFormat: proofFormatOption })) as [AddToDatabaseResult, boolean] | null;
 
-    if (add_to_database_result !== null) {
+    if (tuple !== null) {
+      let [add_to_database_result, redoGrammarCalculations] = tuple;
+
       if (add_to_database_result.discriminator === "NewHeader") {
         explorerData.addHeader(add_to_database_result.headerPath, add_to_database_result.headerTitle);
       } else if (add_to_database_result.discriminator === "NewStatement") {
         explorerData.addHeaderContent(add_to_database_result.headerPath, add_to_database_result.headerContentI, add_to_database_result.contentRep);
+
+        if (add_to_database_result.contentRep.contentType == "TheoremStatement") {
+          globalState.databaseState!.theoremAmount += 1;
+        }
+      }
+
+      if (redoGrammarCalculations) {
+        globalState.databaseState!.grammarCalculationsProgress = 0;
+        invoke("perform_grammar_calculations", { databaseId: globalState.databaseState!.databaseId }).then(() => {
+          emit("grammar-calculations-performed");
+        });
       }
 
       await tabManager.reloadAllNonEditorTabs();

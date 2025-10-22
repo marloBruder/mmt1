@@ -125,7 +125,7 @@ pub async fn add_to_database(
     state: tauri::State<'_, Mutex<AppState>>,
     text: &str,
     override_proof_format: Option<ProofFormatOption>,
-) -> Result<Option<AddToDatabaseResult>, Error> {
+) -> Result<Option<(AddToDatabaseResult, bool)>, Error> {
     let mut app_state = state.lock().await;
     let mut settings = app_state.settings.clone();
     let mm_data = app_state.metamath_data.as_mut().ok_or(Error::NoMmDbError)?;
@@ -167,10 +167,13 @@ pub async fn add_to_database(
                 &allowed_css_properties,
             )?;
 
-            return Ok(Some(AddToDatabaseResult::NewHeader {
-                header_title,
-                header_path,
-            }));
+            return Ok(Some((
+                AddToDatabaseResult::NewHeader {
+                    header_title,
+                    header_path,
+                },
+                false,
+            )));
         }
         MmpParserStage3Success::Comment(stage_3_comment) => {
             let statement = Statement::CommentStatement(stage_3_comment.comment);
@@ -184,11 +187,14 @@ pub async fn add_to_database(
                 statement,
             )?;
 
-            return Ok(Some(AddToDatabaseResult::NewStatement {
-                content_rep,
-                header_path,
-                header_content_i,
-            }));
+            return Ok(Some((
+                AddToDatabaseResult::NewStatement {
+                    content_rep,
+                    header_path,
+                    header_content_i,
+                },
+                false,
+            )));
         }
         MmpParserStage3Success::Constants(constants) => {
             let statement = Statement::ConstantStatement(constants);
@@ -202,13 +208,22 @@ pub async fn add_to_database(
                 statement,
             )?;
 
-            return Ok(Some(AddToDatabaseResult::NewStatement {
-                content_rep,
-                header_path,
-                header_content_i,
-            }));
+            mm_data.grammar_calculations_done = false;
+
+            return Ok(Some((
+                AddToDatabaseResult::NewStatement {
+                    content_rep,
+                    header_path,
+                    header_content_i,
+                },
+                true,
+            )));
         }
         MmpParserStage3Success::Variables(variables) => {
+            for var in &variables {
+                mm_data.optimized_data.variables.insert(var.symbol.clone());
+            }
+
             let statement = Statement::VariableStatement(variables);
 
             let content_rep = statement.to_header_content_representation();
@@ -220,11 +235,16 @@ pub async fn add_to_database(
                 statement,
             )?;
 
-            return Ok(Some(AddToDatabaseResult::NewStatement {
-                content_rep,
-                header_path,
-                header_content_i,
-            }));
+            mm_data.grammar_calculations_done = false;
+
+            return Ok(Some((
+                AddToDatabaseResult::NewStatement {
+                    content_rep,
+                    header_path,
+                    header_content_i,
+                },
+                true,
+            )));
         }
         MmpParserStage3Success::FloatingHypohesis(floating_hypothesis) => {
             let statement = Statement::FloatingHypohesisStatement(floating_hypothesis);
@@ -240,11 +260,16 @@ pub async fn add_to_database(
 
             mm_data.recalc_optimized_floating_hypotheses_after_one_new()?;
 
-            return Ok(Some(AddToDatabaseResult::NewStatement {
-                content_rep,
-                header_path,
-                header_content_i,
-            }));
+            mm_data.grammar_calculations_done = false;
+
+            return Ok(Some((
+                AddToDatabaseResult::NewStatement {
+                    content_rep,
+                    header_path,
+                    header_content_i,
+                },
+                true,
+            )));
         }
         MmpParserStage3Success::Theorem(s3t) => s3t,
     };
@@ -284,13 +309,20 @@ pub async fn add_to_database(
         statement,
     )?;
 
-    mm_data.update_optimized_theorem_data(&theorem_label, &settings)?;
+    let is_syntax_axiom = mm_data.update_optimized_theorem_data(&theorem_label, &settings)?;
 
-    Ok(Some(AddToDatabaseResult::NewStatement {
-        content_rep,
-        header_path,
-        header_content_i,
-    }))
+    if is_syntax_axiom {
+        mm_data.grammar_calculations_done = false;
+    }
+
+    Ok(Some((
+        AddToDatabaseResult::NewStatement {
+            content_rep,
+            header_path,
+            header_content_i,
+        },
+        is_syntax_axiom,
+    )))
 }
 
 fn mmp_parser_stages_to_theorem(

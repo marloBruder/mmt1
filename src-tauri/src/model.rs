@@ -737,7 +737,7 @@ impl MetamathData {
         &mut self,
         theorem_label: &str,
         settings: &Settings,
-    ) -> Result<(), Error> {
+    ) -> Result<bool, Error> {
         let (allowed_tags_and_attributes, allowed_css_properties) =
             html_validation::create_rule_structs();
 
@@ -806,6 +806,8 @@ impl MetamathData {
             None
         };
 
+        let is_syntax_axiom = matches!(theorem_type, TheoremType::SyntaxAxiom);
+
         let optimized_theorem_data = OptimizedTheoremData {
             theorem_type,
             is_discouraged,
@@ -821,7 +823,9 @@ impl MetamathData {
             .theorem_data
             .insert(theorem.label.to_string(), optimized_theorem_data);
 
-        Ok(())
+        self.optimized_data.theorem_amount += 1;
+
+        Ok(is_syntax_axiom)
     }
 
     pub fn calc_optimized_header_data(
