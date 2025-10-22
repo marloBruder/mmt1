@@ -16,6 +16,7 @@
       }
       const { scrollOffsetElement } = osInstance.elements();
 
+      scrollTarget += event.deltaX;
       scrollTarget += event.deltaY;
       scrollTarget = Math.max(0, Math.min(scrollTarget, scrollOffsetElement.scrollWidth - scrollOffsetElement.clientWidth));
 

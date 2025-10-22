@@ -124,7 +124,7 @@
   </div>
 {/if}
 {#if dummyContextMenuVisible}
-  <div id={dummyContextMenuId} class="fixed p-2 rounded-lg custom-off-screen invisible pointer-events-none">
+  <div id={dummyContextMenuId} class="fixed py-2 rounded-lg custom-off-screen invisible pointer-events-none">
     {@render contextMenu()}
   </div>
 {/if}
