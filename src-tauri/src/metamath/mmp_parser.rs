@@ -92,7 +92,6 @@ pub struct ProofLine<'a> {
     pub is_hypothesis: bool,
     pub step_name: &'a str,
     pub hypotheses: &'a str,
-    // pub hypotheses_parsed: Vec<Option<usize>>, // None if the hypothesis is "?"
     pub step_ref: &'a str,
     pub expression: &'a str,
 }
@@ -251,11 +250,12 @@ pub struct UnifyLine {
 impl MmpParserStage5 {
     pub fn next_stage(
         &self,
+        stage_3: &MmpParserStage3Theorem,
         stage_4: &MmpParserStage4Success,
         mm_data: &MetamathData,
         settings: &Settings,
     ) -> Result<MmpParserStage6, Error> {
-        stage_6::stage_6(stage_4, self, mm_data, settings)
+        stage_6::stage_6(stage_3, stage_4, self, mm_data, settings)
     }
 }
 

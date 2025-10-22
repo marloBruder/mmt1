@@ -15,7 +15,8 @@ use crate::{
         AddToDatabaseResult, DatabaseElement, Header, HeaderPath, Hypothesis, MetamathData,
         Statement, Theorem,
     },
-    util, AppState, Error, ProofFormatOption,
+    util::{self, StrIterToSpaceSeperatedString},
+    AppState, Error, ProofFormatOption,
 };
 
 #[tauri::command]
@@ -101,7 +102,7 @@ pub async fn add_to_database_preview(
         new_settings.proof_format = pf;
     }
 
-    let stage_6 = stage_5.next_stage(&stage_4_success, mm_data, &new_settings)?;
+    let stage_6 = stage_5.next_stage(&stage_3_theorem, &stage_4_success, mm_data, &new_settings)?;
 
     let locate_after = stage_2_success.locate_after;
 
@@ -260,7 +261,7 @@ pub async fn add_to_database(
         settings.proof_format = pf;
     }
 
-    let stage_6 = stage_5.next_stage(&stage_4_success, mm_data, &settings)?;
+    let stage_6 = stage_5.next_stage(&stage_3_theorem, &stage_4_success, mm_data, &settings)?;
 
     let locate_after = stage_2_success.locate_after;
 
@@ -343,18 +344,29 @@ fn mmp_parser_stages_to_theorem(
                 })
             })
             .collect::<Result<Vec<Hypothesis>, Error>>()?,
-        assertion: stage_5
-            .unify_result
-            .iter()
-            .find(|ul| ul.step_name == "qed")
-            .ok_or(Error::InternalLogicError)?
-            .parse_tree
-            .as_ref()
-            .ok_or(Error::InternalLogicError)?
-            .to_expression(
-                &mm_data.optimized_data.symbol_number_mapping,
-                &mm_data.optimized_data.grammar,
-            )?,
+        assertion: if stage_3_theorem.is_axiom {
+            stage_2_success
+                .proof_lines
+                .iter()
+                .find(|pl| pl.step_name == "qed")
+                .ok_or(Error::InternalLogicError)?
+                .expression
+                .split_ascii_whitespace()
+                .fold_to_space_seperated_string()
+        } else {
+            stage_5
+                .unify_result
+                .iter()
+                .find(|ul| ul.step_name == "qed")
+                .ok_or(Error::InternalLogicError)?
+                .parse_tree
+                .as_ref()
+                .ok_or(Error::InternalLogicError)?
+                .to_expression(
+                    &mm_data.optimized_data.symbol_number_mapping,
+                    &mm_data.optimized_data.grammar,
+                )?
+        },
         proof,
     }))
 }

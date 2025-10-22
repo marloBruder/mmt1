@@ -2,7 +2,10 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{
     metamath::{
-        mmp_parser::{MmpParserStage4Success, MmpParserStage5, MmpParserStage6, UnifyLine},
+        mmp_parser::{
+            MmpParserStage3Theorem, MmpParserStage4Success, MmpParserStage5, MmpParserStage6,
+            UnifyLine,
+        },
         verify::ProofNumber,
     },
     model::{MetamathData, ParseTree, ParseTreeNode},
@@ -11,11 +14,16 @@ use crate::{
 };
 
 pub fn stage_6(
+    stage_3: &MmpParserStage3Theorem,
     stage_4: &MmpParserStage4Success,
     stage_5: &MmpParserStage5,
     mm_data: &MetamathData,
     settings: &Settings,
 ) -> Result<MmpParserStage6, Error> {
+    if stage_3.is_axiom {
+        return Ok(MmpParserStage6 { proof: None });
+    }
+
     let Some(proof_tree) = calc_proof_tree(
         &stage_5.unify_result,
         &stage_4.distinct_variable_pairs,

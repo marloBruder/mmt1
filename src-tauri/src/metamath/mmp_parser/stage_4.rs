@@ -1,6 +1,8 @@
+use std::collections::HashSet;
+
 use crate::{
     editor::on_edit::DetailedError,
-    metamath::mmp_parser::{MmpStatement, ProofLineStatus},
+    metamath::mmp_parser::{MmpStatement, ProofLine, ProofLineStatus},
     model::{MetamathData, ParseTree, ProofType, SymbolNumberMapping, Theorem, TheoremType},
     util, Error,
 };
@@ -13,7 +15,7 @@ use super::{
 pub fn stage_4(
     stage_1: &MmpParserStage1Success,
     stage_2: &MmpParserStage2Success,
-    _stage_3: &MmpParserStage3Theorem,
+    stage_3: &MmpParserStage3Theorem,
     mm_data: &MetamathData,
 ) -> Result<MmpParserStage4, Error> {
     if !mm_data.grammar_calculations_done {
@@ -22,6 +24,10 @@ pub fn stage_4(
             reference_numbers: vec![None; stage_2.proof_lines.len()],
             proof_line_statuses: vec![ProofLineStatus::None; stage_2.proof_lines.len()],
         }));
+    }
+
+    if stage_3.is_axiom {
+        return stage_4_axiom(stage_1, stage_2, mm_data);
     }
 
     let mut errors: Vec<DetailedError> = Vec::new();
@@ -245,78 +251,16 @@ pub fn stage_4(
         // Calculate parse_tree
         let mut parse_tree = None;
 
-        match mm_data.expression_to_parse_tree(proof_line.expression) {
-            Ok(pt) => parse_tree = Some(pt),
-            Err(Error::MissingExpressionError) => {
-                // let last_non_whitespace_pos = stage_2::last_non_whitespace_pos(statement_str);
-
-                // errors.push(DetailedError {
-                //     error_type: Error::MissingMmpStepExpressionError,
-                //     start_line_number: line_number,
-                //     start_column: last_non_whitespace_pos.1 + 1,
-                //     end_line_number: line_number,
-                //     end_column: last_non_whitespace_pos.1 + 2,
-                // });
-
-                // preview_error.3 = true;
-            }
-            Err(Error::NonSymbolInExpressionError) => {
-                errors.append(
-                    &mut calc_non_symbol_in_expression_and_invalid_work_variable_errors(
-                        proof_line.expression,
-                        &mm_data.optimized_data.symbol_number_mapping,
-                        line_number,
-                        // step_prefix.len() as u32,
-                        step_prefix_len,
-                    ),
-                );
-
-                error_status.3 = true;
-            }
-            Err(Error::ExpressionParseError) => {
-                let last_non_whitespace_pos = util::last_non_whitespace_pos(statement_str);
-
-                errors.push(DetailedError {
-                    error_type: Error::ExpressionParseError,
-                    start_line_number: line_number,
-                    start_column: last_non_whitespace_pos.1 + 1,
-                    end_line_number: line_number,
-                    end_column: last_non_whitespace_pos.1 + 2,
-                });
-
-                error_status.3 = true;
-            }
-            Err(Error::InvalidWorkVariableError) => {
-                errors.append(
-                    &mut calc_non_symbol_in_expression_and_invalid_work_variable_errors(
-                        proof_line.expression,
-                        &mm_data.optimized_data.symbol_number_mapping,
-                        line_number,
-                        // step_prefix.len() as u32,
-                        step_prefix_len,
-                    ),
-                );
-
-                error_status.3 = true;
-            }
-            Err(Error::InvalidTypecodeError) => {
-                let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
-                let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
-
-                errors.push(DetailedError {
-                    error_type: Error::InvalidTypecodeError,
-                    start_line_number: line_number + second_token_start_pos.0 - 1,
-                    start_column: second_token_start_pos.1,
-                    end_line_number: line_number + second_token_end_pos.0 - 1,
-                    end_column: second_token_end_pos.1 + 1,
-                });
-
-                error_status.3 = true;
-            }
-            Err(_) => {
-                return Err(Error::InternalLogicError);
-            }
-        }
+        calc_parse_tree_and_handle_errors(
+            &mut parse_tree,
+            &mut errors,
+            &mut error_status,
+            proof_line,
+            step_prefix_len,
+            statement_str,
+            line_number,
+            mm_data,
+        )?;
 
         //calc previw_confirmation
         let mut correct = false;
@@ -429,6 +373,80 @@ pub fn stage_4(
     })
 }
 
+fn calc_parse_tree_and_handle_errors(
+    parse_tree: &mut Option<ParseTree>,
+    errors: &mut Vec<DetailedError>,
+    error_status: &mut (bool, bool, bool, bool),
+    proof_line: &ProofLine,
+    step_prefix_len: u32,
+    statement_str: &str,
+    line_number: u32,
+    mm_data: &MetamathData,
+) -> Result<(), Error> {
+    match mm_data.expression_to_parse_tree(proof_line.expression) {
+        Ok(pt) => *parse_tree = Some(pt),
+        Err(Error::MissingExpressionError) => {}
+        Err(Error::NonSymbolInExpressionError) => {
+            errors.append(
+                &mut calc_non_symbol_in_expression_and_invalid_work_variable_errors(
+                    proof_line.expression,
+                    &mm_data.optimized_data.symbol_number_mapping,
+                    line_number,
+                    // step_prefix.len() as u32,
+                    step_prefix_len,
+                ),
+            );
+
+            error_status.3 = true;
+        }
+        Err(Error::ExpressionParseError) => {
+            let last_non_whitespace_pos = util::last_non_whitespace_pos(statement_str);
+
+            errors.push(DetailedError {
+                error_type: Error::ExpressionParseError,
+                start_line_number: line_number,
+                start_column: last_non_whitespace_pos.1 + 1,
+                end_line_number: line_number,
+                end_column: last_non_whitespace_pos.1 + 2,
+            });
+
+            error_status.3 = true;
+        }
+        Err(Error::InvalidWorkVariableError) => {
+            errors.append(
+                &mut calc_non_symbol_in_expression_and_invalid_work_variable_errors(
+                    proof_line.expression,
+                    &mm_data.optimized_data.symbol_number_mapping,
+                    line_number,
+                    // step_prefix.len() as u32,
+                    step_prefix_len,
+                ),
+            );
+
+            error_status.3 = true;
+        }
+        Err(Error::InvalidTypecodeError) => {
+            let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
+            let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
+
+            errors.push(DetailedError {
+                error_type: Error::InvalidTypecodeError,
+                start_line_number: line_number + second_token_start_pos.0 - 1,
+                start_column: second_token_start_pos.1,
+                end_line_number: line_number + second_token_end_pos.0 - 1,
+                end_column: second_token_end_pos.1 + 1,
+            });
+
+            error_status.3 = true;
+        }
+        Err(_) => {
+            return Err(Error::InternalLogicError);
+        }
+    }
+
+    Ok(())
+}
+
 fn calc_non_symbol_in_expression_and_invalid_work_variable_errors(
     expression: &str,
     symbol_number_mapping: &SymbolNumberMapping,
@@ -517,4 +535,215 @@ fn check_symbol_for_error(
     }
 
     None
+}
+
+pub fn stage_4_axiom(
+    stage_1: &MmpParserStage1Success,
+    stage_2: &MmpParserStage2Success,
+    mm_data: &MetamathData,
+) -> Result<MmpParserStage4, Error> {
+    let mut errors: Vec<DetailedError> = Vec::new();
+
+    let mut proof_lines_parsed: Vec<ProofLineParsed> = Vec::new();
+
+    let is_syntax_axiom = stage_2
+        .proof_lines
+        .iter()
+        .find(|pl| pl.step_name == "qed")
+        .is_some_and(|pl| {
+            pl.expression
+                .split_ascii_whitespace()
+                .next()
+                .is_some_and(|pl_typecode| {
+                    mm_data
+                        .syntax_typecodes
+                        .iter()
+                        .any(|st| st.typecode == pl_typecode)
+                })
+        });
+
+    for (i, (proof_line, (statement_str, line_number))) in stage_2
+        .proof_lines
+        .iter()
+        .zip(
+            stage_1
+                .statements
+                .iter()
+                .zip(stage_2.statements.iter())
+                .filter_map(|(str, (st, ln))| match st {
+                    MmpStatement::ProofLine => Some((*str, *ln)),
+                    _ => None,
+                }),
+        )
+        .enumerate()
+    {
+        let step_prefix_len = statement_str
+            .split_ascii_whitespace()
+            .next()
+            .ok_or(Error::InternalLogicError)?
+            .len() as u32;
+
+        let mut error_status = (false, false, false, false);
+        let mut parse_tree = None;
+
+        // Check duplicate step names
+        if proof_line.step_name != ""
+            && stage_2
+                .proof_lines
+                .iter()
+                .take(i)
+                .any(|pl| pl.step_name == proof_line.step_name)
+        {
+            errors.push(DetailedError {
+                error_type: Error::DuplicateStepNameError,
+                start_line_number: line_number,
+                start_column: 1
+                    + proof_line.advanced_unification as u32
+                    + proof_line.is_hypothesis as u32,
+                end_line_number: line_number,
+                end_column: 1
+                    + proof_line.advanced_unification as u32
+                    + proof_line.is_hypothesis as u32
+                    + proof_line.step_name.len() as u32,
+            });
+        }
+
+        // Check duplicate hypothesis names
+        if proof_line.is_hypothesis
+            && proof_line.step_ref != ""
+            && stage_2
+                .proof_lines
+                .iter()
+                .take(i)
+                .any(|pl| pl.is_hypothesis && pl.step_ref == proof_line.step_ref)
+        {
+            errors.push(DetailedError {
+                error_type: Error::DuplicateHypLabelsError,
+                start_line_number: line_number,
+                start_column: step_prefix_len - proof_line.step_ref.len() as u32 + 1,
+                end_line_number: line_number,
+                end_column: step_prefix_len + 1,
+            });
+        }
+
+        if proof_line.is_hypothesis {
+            // Perform hypothesis specific checks
+            if proof_line.hypotheses != "" {
+                errors.push(DetailedError {
+                    error_type: Error::AxiomStepWithHypError,
+                    start_line_number: line_number,
+                    start_column: step_prefix_len
+                        - proof_line.step_ref.len() as u32
+                        - proof_line.hypotheses.len() as u32,
+                    end_line_number: line_number,
+                    end_column: step_prefix_len - proof_line.step_ref.len() as u32,
+                });
+            }
+
+            if !is_syntax_axiom {
+                calc_parse_tree_and_handle_errors(
+                    &mut parse_tree,
+                    &mut errors,
+                    &mut error_status,
+                    proof_line,
+                    step_prefix_len,
+                    statement_str,
+                    line_number,
+                    mm_data,
+                )?;
+            } else {
+                let last_non_whitespace_pos = util::last_non_whitespace_pos(statement_str);
+
+                errors.push(DetailedError {
+                    error_type: Error::SyntaxAxiomWithHypothesesError,
+                    start_line_number: line_number,
+                    start_column: 0,
+                    end_line_number: line_number + last_non_whitespace_pos.0 - 1,
+                    end_column: last_non_whitespace_pos.1 + 1,
+                });
+            }
+        } else if proof_line.step_name == "qed" {
+            // Perform qed step sepcific checks
+            if proof_line.hypotheses != "" {
+                errors.push(DetailedError {
+                    error_type: Error::AxiomStepWithHypError,
+                    start_line_number: line_number,
+                    start_column: step_prefix_len
+                        - proof_line.step_ref.len() as u32
+                        - proof_line.hypotheses.len() as u32,
+                    end_line_number: line_number,
+                    end_column: step_prefix_len - proof_line.step_ref.len() as u32,
+                });
+            }
+
+            if proof_line.step_ref != "" {
+                errors.push(DetailedError {
+                    error_type: Error::AxiomQedStepWithRefError,
+                    start_line_number: line_number,
+                    start_column: step_prefix_len - proof_line.step_ref.len() as u32 + 1,
+                    end_line_number: line_number,
+                    end_column: step_prefix_len + 1,
+                });
+            }
+
+            if !is_syntax_axiom {
+                calc_parse_tree_and_handle_errors(
+                    &mut parse_tree,
+                    &mut errors,
+                    &mut error_status,
+                    proof_line,
+                    step_prefix_len,
+                    statement_str,
+                    line_number,
+                    mm_data,
+                )?;
+            }
+        } else {
+            let last_non_whitespace_pos = util::last_non_whitespace_pos(statement_str);
+
+            errors.push(DetailedError {
+                error_type: Error::InvalidMmpStepForAxiomError,
+                start_line_number: line_number,
+                start_column: 0,
+                end_line_number: line_number + last_non_whitespace_pos.0 - 1,
+                end_column: last_non_whitespace_pos.1 + 1,
+            });
+        }
+
+        if parse_tree
+            .as_ref()
+            .is_some_and(|pt| pt.has_work_variables())
+        {
+            let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
+            let last_non_whitespace_pos = util::last_non_whitespace_pos(statement_str);
+
+            errors.push(DetailedError {
+                error_type: Error::AxiomWithWorkVariableError,
+                start_line_number: line_number + second_token_start_pos.0 - 1,
+                start_column: second_token_start_pos.1,
+                end_line_number: line_number + last_non_whitespace_pos.0 - 1,
+                end_column: last_non_whitespace_pos.1 + 1,
+            });
+        }
+
+        proof_lines_parsed.push(ProofLineParsed {
+            hypotheses_parsed: Vec::new(),
+            parse_tree,
+        });
+    }
+
+    Ok(if errors.is_empty() {
+        MmpParserStage4::Success(MmpParserStage4Success {
+            distinct_variable_pairs: HashSet::new(),
+            proof_lines_parsed,
+            reference_numbers: Vec::new(),
+            proof_line_statuses: Vec::new(),
+        })
+    } else {
+        MmpParserStage4::Fail(MmpParserStage4Fail {
+            errors,
+            reference_numbers: Vec::new(),
+            proof_line_statuses: Vec::new(),
+        })
+    })
 }

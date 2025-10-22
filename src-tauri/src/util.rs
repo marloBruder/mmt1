@@ -11,8 +11,8 @@ pub mod parse_tree_node_iterator;
 pub mod work_variable_manager;
 
 pub fn spaces(num: u32) -> &'static str {
-    &"                                                                                "
-        [0..(std::cmp::min(num as usize, 80))]
+    &"                                                                                                                                                                                                                                                                                                                                                                                                                "
+        [0..(std::cmp::min(num as usize, 400))]
 }
 
 pub fn str_to_space_seperated_string(str: &str) -> String {

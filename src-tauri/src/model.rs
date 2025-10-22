@@ -789,22 +789,28 @@ impl MetamathData {
         let (axiom_dependencies, definition_dependencies) = theorem
             .calc_dependencies_and_add_references(&mut self.optimized_data, i, &theorem_type);
 
-        let (assertion_parsed, hypotheses_parsed) = theorem.calc_parse_trees(
-            &self.optimized_data.grammar,
-            &self.optimized_data.symbol_number_mapping,
-            &self.optimized_data.floating_hypotheses,
-            &self.syntax_typecodes,
-            &self.logical_typecodes,
-        )?;
+        let parse_trees = if matches!(theorem_type, TheoremType::Theorem(_)) {
+            let (assertion_parsed, hypotheses_parsed) = theorem.calc_parse_trees(
+                &self.optimized_data.grammar,
+                &self.optimized_data.symbol_number_mapping,
+                &self.optimized_data.floating_hypotheses,
+                &self.syntax_typecodes,
+                &self.logical_typecodes,
+            )?;
+
+            Some(TheoremParseTrees {
+                hypotheses_parsed,
+                assertion_parsed,
+            })
+        } else {
+            None
+        };
 
         let optimized_theorem_data = OptimizedTheoremData {
             theorem_type,
             is_discouraged,
             distinct_variable_pairs,
-            parse_trees: Some(TheoremParseTrees {
-                hypotheses_parsed,
-                assertion_parsed,
-            }),
+            parse_trees,
             axiom_dependencies,
             definition_dependencies,
             references: Vec::new(),
@@ -1395,7 +1401,7 @@ impl ParseTree {
             .ok_or(Error::InternalLogicError)
     }
 
-    fn has_work_variables(&self) -> bool {
+    pub fn has_work_variables(&self) -> bool {
         let mut check: Vec<&ParseTreeNode> = vec![&self.top_node];
 
         while let Some(node) = check.pop() {

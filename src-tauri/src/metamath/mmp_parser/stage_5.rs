@@ -24,6 +24,10 @@ pub fn stage_5(
     mm_data: &MetamathData,
     stop: Option<Arc<std::sync::Mutex<bool>>>,
 ) -> Result<MmpParserStage5, Error> {
+    if stage_3.is_axiom {
+        return stage_5_axiom(stage_2, stage_3, stage_4);
+    }
+
     let mut work_variable_manager = WorkVariableManager::new(
         &stage_4
             .proof_lines_parsed
@@ -1081,6 +1085,56 @@ fn unify_line_is_recursively_correct(unify_line: &UnifyLine) -> bool {
         ProofLineStatus::CorrectRecursively => true,
         ProofLineStatus::Unified(_, correct_recursively) => correct_recursively,
     }
+}
+
+pub fn stage_5_axiom(
+    stage_2: &MmpParserStage2Success,
+    stage_3: &MmpParserStage3Theorem,
+    stage_4: &MmpParserStage4Success,
+) -> Result<MmpParserStage5, Error> {
+    let mut hypotheses_name_manager =
+        HypothesesNameManager::new(stage_3.label, &stage_2.proof_lines);
+
+    let mut unify_lines: Vec<UnifyLine> = stage_2
+        .proof_lines
+        .iter()
+        .zip(stage_4.proof_lines_parsed.iter())
+        .map(|(pl, pl_p)| UnifyLine {
+            new_line: false,
+            deleted_line: false,
+            advanced_unification: pl.advanced_unification,
+            is_hypothesis: pl.is_hypothesis,
+            step_name: pl.step_name.to_string(),
+            hypotheses: if !pl.hypotheses.is_empty() {
+                pl.hypotheses.split(',').map(|s| s.to_string()).collect()
+            } else {
+                Vec::new()
+            },
+            step_ref: pl.step_ref.to_string(),
+            parse_tree: pl_p.parse_tree.clone(),
+            old_assertion: if pl.expression.split_ascii_whitespace().next().is_some() {
+                Some(
+                    pl.expression
+                        .split_ascii_whitespace()
+                        .fold_to_space_seperated_string(),
+                )
+            } else {
+                None
+            },
+            status: ProofLineStatus::None,
+        })
+        .collect();
+
+    for ul in &mut unify_lines {
+        if ul.is_hypothesis && ul.step_ref == "" {
+            ul.step_ref = hypotheses_name_manager.next_hypothesis_name();
+        }
+    }
+
+    Ok(MmpParserStage5 {
+        unify_result: unify_lines,
+        unify_reference_numbers: Vec::new(),
+    })
 }
 
 struct StepNameManager {

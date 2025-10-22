@@ -256,7 +256,11 @@ pub enum Error {
     MissingMmpStepRefError,  // Returned if there is an mmp step with an empty ref
     TooManyHypothesesError,  // Returned if a proof step withg a theoerm ref has too many hypotheses
     MmpStepRefNotALabelError, // Returned if there is an mmp step which ref is not a valid label
-    InvalidMmpStepForAxiomError, // Returned when adding an axiom and the mmp steps do not follow the required format
+    InvalidMmpStepForAxiomError, // Returned if there is an axiom step that is neither the qed step nor a hypothesis
+    AxiomQedStepWithRefError,    // Returned if there is an axiom qed step with a reference
+    AxiomStepWithHypError,       // Returned if there is an axiom step with hypotheses
+    SyntaxAxiomWithHypothesesError, // Returned if there is an hypothesis step when adding an axiom
+    AxiomWithWorkVariableError,  // Returned if there is a work variable when adding an axiom
     MissingMmpStepsError,        // Returned if there are no mmp steps when adding theorem/axiom
     MissingQedStepError,         // Returned if there is no qed step, but a $thereom statement
     DuplicateStepNameError,      // Returned if there is a duplicate step name

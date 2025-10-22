@@ -199,7 +199,7 @@ pub async fn on_edit(
         return Err(Error::OnEditStoppedEarlyError);
     }
 
-    let stage_6 = stage_5.next_stage(&stage_4_success, mm_data, settings)?;
+    let stage_6 = stage_5.next_stage(&stage_3_theorem, &stage_4_success, mm_data, settings)?;
 
     if stop.lock().is_ok_and(|stop| *stop) {
         return Err(Error::OnEditStoppedEarlyError);
@@ -240,21 +240,72 @@ pub fn calc_theorem_page_data(
     let mut preview_confirmations_recursive: Vec<bool> = Vec::new();
     let mut preview_unify_markers: Vec<(bool, bool, bool, bool)> = Vec::new();
 
-    if stage_5.is_some() && settings.show_unify_result_in_unicode_preview {
-        let stage_5 = stage_5.ok_or(Error::InternalLogicError)?;
+    if !stage_3_theorem.is_axiom {
+        if stage_5.is_some() && settings.show_unify_result_in_unicode_preview {
+            let stage_5 = stage_5.ok_or(Error::InternalLogicError)?;
 
-        let indention_vec = calc_indention(&stage_5.unify_result)?;
+            let indention_vec = calc_indention(&stage_5.unify_result)?;
 
-        for ((ul, reference_number), indention) in stage_5
-            .unify_result
-            .into_iter()
-            .zip(stage_5.unify_reference_numbers.into_iter())
-            .zip(indention_vec.into_iter())
-        {
-            if !(ul.deleted_line && ul.new_line) {
+            for ((ul, reference_number), indention) in stage_5
+                .unify_result
+                .into_iter()
+                .zip(stage_5.unify_reference_numbers.into_iter())
+                .zip(indention_vec.into_iter())
+            {
+                if !(ul.deleted_line && ul.new_line) {
+                    update_preview_markers(
+                        ul.status,
+                        ul.deleted_line,
+                        &mut preview_errors,
+                        &mut preview_deleted_markers,
+                        &mut preview_confirmations,
+                        &mut preview_confirmations_recursive,
+                        &mut preview_unify_markers,
+                    );
+
+                    let assertion = ul
+                        .parse_tree
+                        .map(|pt| {
+                            pt.to_expression(
+                                &mm_data.optimized_data.symbol_number_mapping,
+                                &mm_data.optimized_data.grammar,
+                            )
+                        })
+                        .transpose()?
+                        .unwrap_or(String::new());
+
+                    proof_lines.push(model::ProofLine {
+                        step_name: ul.step_name,
+                        hypotheses: ul.hypotheses,
+                        reference: ul.step_ref,
+                        indention,
+                        reference_number,
+                        old_assertion: if ul
+                            .old_assertion
+                            .as_ref()
+                            .is_none_or(|oa| *oa == assertion)
+                        {
+                            None
+                        } else {
+                            ul.old_assertion
+                        },
+                        assertion,
+                    });
+                }
+            }
+        } else {
+            let indention_vec = calc_indention(&stage_2_success.proof_lines)?;
+
+            for (((pl, indention), ref_number), status) in stage_2_success
+                .proof_lines
+                .iter()
+                .zip(indention_vec.into_iter())
+                .zip(reference_numbers.into_iter())
+                .zip(proof_line_statuses.into_iter())
+            {
                 update_preview_markers(
-                    ul.status,
-                    ul.deleted_line,
+                    status,
+                    false,
                     &mut preview_errors,
                     &mut preview_deleted_markers,
                     &mut preview_confirmations,
@@ -262,65 +313,20 @@ pub fn calc_theorem_page_data(
                     &mut preview_unify_markers,
                 );
 
-                let assertion = ul
-                    .parse_tree
-                    .map(|pt| {
-                        pt.to_expression(
-                            &mm_data.optimized_data.symbol_number_mapping,
-                            &mm_data.optimized_data.grammar,
-                        )
-                    })
-                    .transpose()?
-                    .unwrap_or(String::new());
-
                 proof_lines.push(model::ProofLine {
-                    step_name: ul.step_name,
-                    hypotheses: ul.hypotheses,
-                    reference: ul.step_ref,
-                    indention,
-                    reference_number,
-                    old_assertion: if ul.old_assertion.as_ref().is_none_or(|oa| *oa == assertion) {
-                        None
+                    step_name: pl.step_name.to_string(),
+                    hypotheses: if pl.hypotheses.len() != 0 {
+                        pl.hypotheses.split(',').map(|s| s.to_string()).collect()
                     } else {
-                        ul.old_assertion
+                        Vec::new()
                     },
-                    assertion,
+                    reference: pl.step_ref.to_string(),
+                    reference_number: ref_number,
+                    indention,
+                    assertion: util::str_to_space_seperated_string(pl.expression),
+                    old_assertion: None,
                 });
             }
-        }
-    } else {
-        let indention_vec = calc_indention(&stage_2_success.proof_lines)?;
-
-        for (((pl, indention), ref_number), status) in stage_2_success
-            .proof_lines
-            .iter()
-            .zip(indention_vec.into_iter())
-            .zip(reference_numbers.into_iter())
-            .zip(proof_line_statuses.into_iter())
-        {
-            update_preview_markers(
-                status,
-                false,
-                &mut preview_errors,
-                &mut preview_deleted_markers,
-                &mut preview_confirmations,
-                &mut preview_confirmations_recursive,
-                &mut preview_unify_markers,
-            );
-
-            proof_lines.push(model::ProofLine {
-                step_name: pl.step_name.to_string(),
-                hypotheses: if pl.hypotheses.len() != 0 {
-                    pl.hypotheses.split(',').map(|s| s.to_string()).collect()
-                } else {
-                    Vec::new()
-                },
-                reference: pl.step_ref.to_string(),
-                reference_number: ref_number,
-                indention,
-                assertion: util::str_to_space_seperated_string(pl.expression),
-                old_assertion: None,
-            });
         }
     }
 

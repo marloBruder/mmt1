@@ -185,6 +185,21 @@ export function getErrorMessage(errorType: string): string {
     case "InvalidTypecodeError": {
       return "Not a valid typecode. Typecodes must be registered using $j syntax comments.";
     }
+    case "InvalidMmpStepForAxiomError": {
+      return "When adding an axiom to the database, there should only be hypotheses or qed mmp-steps.";
+    }
+    case "AxiomStepWithHypError": {
+      return "No mmp-step alongside an $axiom statement should have hypotheses.";
+    }
+    case "AxiomQedStepWithRefError": {
+      return "When adding an axiom to the database, the step ref field of the qed step must be empty.";
+    }
+    case "SyntaxAxiomWithHypothesesError": {
+      return "Syntax axioms cannot have hypotheses.";
+    }
+    case "AxiomWithWorkVariableError": {
+      return "Can't use work variables when adding an axiom.";
+    }
   }
 
   return "You should not be seeing this error message. Please post a Github issue with your editor content.";
