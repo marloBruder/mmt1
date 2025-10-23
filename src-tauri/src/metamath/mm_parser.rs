@@ -455,6 +455,7 @@ impl MmParser {
         let mut metamath_data = MetamathData {
             database_id,
             database_path: self.database_path,
+            database_hash: util::str_to_hash_string(&self.file_content),
             database_header: self.database_header,
             html_representations: self.html_representations,
             optimized_data: OptimizedMetamathData {

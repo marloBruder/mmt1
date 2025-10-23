@@ -44,6 +44,7 @@ pub struct MetamathData {
     pub optimized_data: OptimizedMetamathData,
     pub grammar_calculations_done: bool,
     pub database_path: String,
+    pub database_hash: String,
     pub syntax_typecodes: Vec<SyntaxTypecode>,
     pub logical_typecodes: Vec<LogicalTypecode>,
     pub variable_colors: Vec<VariableColor>,

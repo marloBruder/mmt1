@@ -1,5 +1,7 @@
 use std::{collections::HashSet, ops::Deref};
 
+use sha2::{Digest, Sha256};
+
 use crate::{model::HeaderPath, Error};
 
 pub mod description_parser;
@@ -236,4 +238,15 @@ pub fn calc_next_header_path(header_path: &mut HeaderPath, depth: u32) -> Result
     }
 
     Ok(())
+}
+
+pub fn str_to_hash_string(str: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(str);
+    let hash_result = hasher.finalize();
+
+    hash_result
+        .into_iter()
+        .map(|byte| format!("{:02x}", byte))
+        .collect()
 }

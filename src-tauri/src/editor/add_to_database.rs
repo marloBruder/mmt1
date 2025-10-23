@@ -1,5 +1,9 @@
-use std::fs;
+use std::{
+    fs::{self, File},
+    io::{BufReader, Read},
+};
 
+use sha2::{Digest, Sha256};
 use tauri::async_runtime::Mutex;
 
 use crate::{
@@ -28,6 +32,10 @@ pub async fn add_to_database_preview(
     let app_state = state.lock().await;
     let mm_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
     let settings = &app_state.settings;
+
+    if database_has_changed(&mm_data.database_path, &mm_data.database_hash)? {
+        return Err(Error::DatabaseHasChangedError);
+    }
 
     let stage_0 = mmp_parser::new(text);
 
@@ -120,6 +128,33 @@ pub async fn add_to_database_preview(
     )?)
 }
 
+pub fn database_has_changed(file_path: &str, database_hash: &str) -> Result<bool, Error> {
+    let file = File::open(file_path).map_err(|_| Error::FileReadError)?;
+    let mut reader = BufReader::new(file);
+
+    let mut hasher = Sha256::new();
+    let mut buffer = [0; 1024];
+
+    loop {
+        let bytes_read = reader.read(&mut buffer).map_err(|_| Error::FileReadError)?;
+
+        if bytes_read == 0 {
+            break;
+        }
+
+        hasher.update(&buffer[..bytes_read]);
+    }
+
+    let hasher_result = hasher.finalize();
+
+    let new_database_hash: String = hasher_result
+        .into_iter()
+        .map(|byte| format!("{:02x}", byte))
+        .collect();
+
+    Ok(new_database_hash != database_hash)
+}
+
 #[tauri::command]
 pub async fn add_to_database(
     state: tauri::State<'_, Mutex<AppState>>,
@@ -154,11 +189,13 @@ pub async fn add_to_database(
             let mut header_path = stage_3_header.parent_header_path.clone();
             header_path.path.push(stage_3_header.header_i);
 
-            add_header(
+            let new_database_hash = add_header(
                 &mm_data.database_path,
                 &mut mm_data.database_header,
                 stage_3_header,
             )?;
+
+            mm_data.database_hash = new_database_hash;
 
             let (allowed_tags_and_attributes, allowed_css_properties) =
                 html_validation::create_rule_structs();
@@ -180,12 +217,14 @@ pub async fn add_to_database(
 
             let content_rep = statement.to_header_content_representation();
 
-            let (header_path, header_content_i) = add_statement(
+            let (header_path, header_content_i, new_database_hash) = add_statement(
                 &mm_data.database_path,
                 &mut mm_data.database_header,
                 stage_2_success.locate_after,
                 statement,
             )?;
+
+            mm_data.database_hash = new_database_hash;
 
             return Ok(Some((
                 AddToDatabaseResult::NewStatement {
@@ -201,12 +240,14 @@ pub async fn add_to_database(
 
             let content_rep = statement.to_header_content_representation();
 
-            let (header_path, header_content_i) = add_statement(
+            let (header_path, header_content_i, new_database_hash) = add_statement(
                 &mm_data.database_path,
                 &mut mm_data.database_header,
                 stage_2_success.locate_after,
                 statement,
             )?;
+
+            mm_data.database_hash = new_database_hash;
 
             mm_data.grammar_calculations_done = false;
 
@@ -228,12 +269,14 @@ pub async fn add_to_database(
 
             let content_rep = statement.to_header_content_representation();
 
-            let (header_path, header_content_i) = add_statement(
+            let (header_path, header_content_i, new_database_hash) = add_statement(
                 &mm_data.database_path,
                 &mut mm_data.database_header,
                 stage_2_success.locate_after,
                 statement,
             )?;
+
+            mm_data.database_hash = new_database_hash;
 
             mm_data.grammar_calculations_done = false;
 
@@ -251,12 +294,14 @@ pub async fn add_to_database(
 
             let content_rep = statement.to_header_content_representation();
 
-            let (header_path, header_content_i) = add_statement(
+            let (header_path, header_content_i, new_database_hash) = add_statement(
                 &mm_data.database_path,
                 &mut mm_data.database_header,
                 stage_2_success.locate_after,
                 statement,
             )?;
+
+            mm_data.database_hash = new_database_hash;
 
             mm_data.recalc_optimized_floating_hypotheses_after_one_new()?;
 
@@ -302,12 +347,14 @@ pub async fn add_to_database(
 
     let content_rep = statement.to_header_content_representation();
 
-    let (header_path, header_content_i) = add_statement(
+    let (header_path, header_content_i, new_database_hash) = add_statement(
         &mm_data.database_path,
         &mut mm_data.database_header,
         locate_after,
         statement,
     )?;
+
+    mm_data.database_hash = new_database_hash;
 
     let is_syntax_axiom = mm_data.update_optimized_theorem_data(&theorem_label, &settings)?;
 
@@ -411,11 +458,9 @@ fn add_statement_preview(
 ) -> Result<(String, String), Error> {
     match locate_after {
         Some(loc_after) => {
-            add_statement_locate_after_file(file_path, header, loc_after, &statement, false)?
-                .ok_or(Error::InternalLogicError)
+            add_statement_locate_after_file(file_path, header, loc_after, &statement, false)
         }
-        None => add_statement_at_end_file(file_path, &statement, false)?
-            .ok_or(Error::InternalLogicError),
+        None => add_statement_at_end_file(file_path, &statement, false),
     }
 }
 
@@ -424,7 +469,7 @@ fn add_statement(
     header: &mut Header,
     locate_after: Option<LocateAfterRef>,
     statement: Statement,
-) -> Result<(HeaderPath, usize), Error> {
+) -> Result<(HeaderPath, usize, String), Error> {
     match locate_after {
         Some(loc_after) => add_statement_locate_after(file_path, header, loc_after, statement),
         None => add_statement_at_end(file_path, header, statement),
@@ -436,10 +481,14 @@ fn add_statement_locate_after(
     header: &mut Header,
     locate_after: LocateAfterRef,
     statement: Statement,
-) -> Result<(HeaderPath, usize), Error> {
-    add_statement_locate_after_file(file_path, header, locate_after, &statement, true)?;
-    add_statement_locate_after_memory(header, locate_after, statement, &mut HeaderPath::new())
-        .map_err(|_| Error::InternalLogicError)
+) -> Result<(HeaderPath, usize, String), Error> {
+    let (new_database_hash, _) =
+        add_statement_locate_after_file(file_path, header, locate_after, &statement, true)?;
+    let (header_path, header_content_i) =
+        add_statement_locate_after_memory(header, locate_after, statement, &mut HeaderPath::new())
+            .map_err(|_| Error::InternalLogicError)?;
+
+    Ok((header_path, header_content_i, new_database_hash))
 }
 
 fn add_statement_locate_after_memory(
@@ -537,11 +586,10 @@ fn add_statement_locate_after_file(
     locate_after: LocateAfterRef,
     statement: &Statement,
     write_to_file: bool,
-) -> Result<Option<(String, String)>, Error> {
+) -> Result<(String, String), Error> {
     let mut mm_parser = MmParser::new(file_path, None, None)?;
-    let header_iter = header.locate_after_iter(Some(locate_after));
 
-    for database_element in header_iter {
+    for database_element in header.locate_after_iter(Some(locate_after)) {
         match database_element {
             DatabaseElement::Header(_, _) => loop {
                 if let Some(StatementProcessed::HeaderStatement) =
@@ -626,10 +674,12 @@ fn add_statement_locate_after_file(
     statement.insert_mm_string(&mut file_content, next_token_i + 2);
 
     if write_to_file {
+        let new_database_hash = util::str_to_hash_string(&file_content);
+
         fs::write(file_path, &file_content).or(Err(Error::FileWriteError))?;
-        Ok(None)
+        Ok((new_database_hash, String::new()))
     } else {
-        Ok(Some((old_file_content.unwrap(), file_content)))
+        Ok((old_file_content.unwrap(), file_content))
     }
 }
 
@@ -637,9 +687,10 @@ fn add_statement_at_end(
     file_path: &str,
     header: &mut Header,
     statement: Statement,
-) -> Result<(HeaderPath, usize), Error> {
-    add_statement_at_end_file(file_path, &statement, true)?;
-    Ok(add_statement_at_end_memory(header, statement))
+) -> Result<(HeaderPath, usize, String), Error> {
+    let (new_database_hash, _) = add_statement_at_end_file(file_path, &statement, true)?;
+    let (header_path, header_content_i) = add_statement_at_end_memory(header, statement);
+    Ok((header_path, header_content_i, new_database_hash))
 }
 
 fn add_statement_at_end_memory(header: &mut Header, statement: Statement) -> (HeaderPath, usize) {
@@ -661,7 +712,7 @@ fn add_statement_at_end_file(
     file_path: &str,
     statement: &Statement,
     write_to_file: bool,
-) -> Result<Option<(String, String)>, Error> {
+) -> Result<(String, String), Error> {
     let mut file_content = fs::read_to_string(file_path).or(Err(Error::FileReadError))?;
 
     let old_file_content = if write_to_file {
@@ -689,10 +740,13 @@ fn add_statement_at_end_file(
     file_content.push_str("\n");
 
     if write_to_file {
+        let new_database_hash = util::str_to_hash_string(&file_content);
+
         fs::write(file_path, file_content).or(Err(Error::FileWriteError))?;
-        Ok(None)
+
+        Ok((new_database_hash, String::new()))
     } else {
-        Ok(Some((old_file_content.unwrap(), file_content)))
+        Ok((old_file_content.unwrap(), file_content))
     }
 }
 
@@ -701,19 +755,18 @@ fn add_header_preview(
     header: &Header,
     stage_3_header: MmpParserStage3Header,
 ) -> Result<(String, String), Error> {
-    Ok(add_header_file(file_path, header, &stage_3_header, false)?
-        .ok_or(Error::InternalLogicError)?)
+    add_header_file(file_path, header, &stage_3_header, false)
 }
 
 fn add_header(
     file_path: &str,
     header: &mut Header,
     stage_3_header: MmpParserStage3Header,
-) -> Result<(), Error> {
-    add_header_file(file_path, header, &stage_3_header, true)?;
+) -> Result<String, Error> {
+    let (new_database_hash, _) = add_header_file(file_path, header, &stage_3_header, true)?;
     add_header_memory(header, stage_3_header)?;
 
-    Ok(())
+    Ok(new_database_hash)
 }
 
 fn add_header_file(
@@ -721,7 +774,7 @@ fn add_header_file(
     header: &Header,
     stage_3_header: &MmpParserStage3Header,
     write_to_file: bool,
-) -> Result<Option<(String, String)>, Error> {
+) -> Result<(String, String), Error> {
     let mut mm_parser = MmParser::new(file_path, None, None)?;
 
     let mut current_header_path = HeaderPath::new();
@@ -827,10 +880,12 @@ fn add_header_file(
     )?;
 
     if write_to_file {
+        let new_database_hash = util::str_to_hash_string(&file_content);
+
         fs::write(file_path, &file_content).or(Err(Error::FileWriteError))?;
-        Ok(None)
+        Ok((new_database_hash, String::new()))
     } else {
-        Ok(Some((old_file_content.unwrap(), file_content)))
+        Ok((old_file_content.unwrap(), file_content))
     }
 }
 

@@ -328,6 +328,7 @@ pub enum Error {
     // Add to database errors
     CantAddToDatabaseError, // Returned if you can't add the statement to the database (if there is an error for example)
     MmpFileEmptyError,      // Returned if you try to add an empty mmp file to the database
+    DatabaseHasChangedError, // Returned if you try to add to the database, but the file content has changed since the database was opened
 
     TestError, // Used to replace InternalLogicErrors to find out where they come from
 }
