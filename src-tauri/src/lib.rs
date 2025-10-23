@@ -247,6 +247,7 @@ pub enum Error {
     MultipleMmpLabelsError, // Returned if there are more than one $theorem, $axiom or $header statements
     TooFewHeaderTokensError, // Returned if there are less than 2 tokens after $header statement
     InvalidHeaderPathFormatError, // Returned if the token after $header does not have the format of a valid Headerpath
+    HeaderPathLengthGreater4Error, // Returned if there is a header path with a length that is greater 4
     InvalidHeaderPathError, // Returned if the token after $header is not a valid new header path in the database
     // MissingCommentPathError, // Returned if there is a $comment statement without a follow up token
     // TooManyCommentPathTokensError, // Returned if there is a $comment statement with too many follow up tokens

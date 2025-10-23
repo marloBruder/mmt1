@@ -133,7 +133,21 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
                 }
 
                 if let Some(header_path) = token_iter.next() {
-                    if HeaderPath::from_str(header_path).is_none() {
+                    if let Some(header_path) = HeaderPath::from_str(header_path) {
+                        if header_path.path.len() > 4 {
+                            let second_token_start_pos =
+                                util::nth_token_start_pos(statement_str, 1);
+                            let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
+
+                            errors.push(DetailedError {
+                                error_type: Error::HeaderPathLengthGreater4Error,
+                                start_line_number: current_line + second_token_start_pos.0 - 1,
+                                start_column: second_token_start_pos.1,
+                                end_line_number: current_line + second_token_end_pos.0 - 1,
+                                end_column: second_token_end_pos.1 + 1,
+                            });
+                        }
+                    } else {
                         let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
                         let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
 

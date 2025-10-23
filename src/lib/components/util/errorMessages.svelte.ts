@@ -203,6 +203,9 @@ export function getErrorMessage(errorType: string): string {
     case "MultipleProofStatementsError": {
       return "There can only be one $= statement per mmp file.";
     }
+    case "HeaderPathLengthGreater4Error": {
+      return "Header paths may only go 4 levels deep.";
+    }
   }
 
   return "You should not be seeing this error message. Please post a Github issue with your editor content.";
