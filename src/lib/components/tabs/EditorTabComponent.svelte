@@ -62,9 +62,7 @@
 
     async saveFile(): Promise<void> {
       if (settingsData.settings.formatOnSave) {
-        try {
-          await this.format();
-        } catch (e) {}
+        await this.format();
       }
 
       await invoke("save_file", { relativePath: this.#filePath, content: this.#monacoModel!.getValue() });

@@ -1,11 +1,12 @@
 use tauri::async_runtime::Mutex;
 
 use crate::{
+    editor::format,
     metamath::{
         export,
         mmp_parser::{
-            self, calc_indention::calc_indention, MmpParserStage1, MmpParserStage2,
-            MmpParserStage3, MmpParserStage3Success, MmpParserStage4, MmpStatement, UnifyLine,
+            self, MmpParserStage1, MmpParserStage2, MmpParserStage3, MmpParserStage3Success,
+            MmpParserStage4, MmpStatement, UnifyLine,
         },
     },
     model::MetamathData,
@@ -48,13 +49,8 @@ pub async fn unify(
 
     let stage_6 = stage_5.next_stage(&stage_3_theorem, &stage_4_success, mm_data, settings)?;
 
-    let indention_vec = calc_indention(&stage_5.unify_result)?.into_iter();
-
     let mut result_text = String::new();
-    let mut unify_line_iter = stage_5
-        .unify_result
-        .into_iter()
-        .zip(indention_vec.into_iter());
+    let mut unify_line_iter = stage_5.unify_result.into_iter();
 
     let mut proof_added = false;
 
@@ -64,15 +60,13 @@ pub async fn unify(
         .zip(stage_2_success.statements.iter())
     {
         if matches!(statement_type, MmpStatement::ProofLine) {
-            let (mut unify_line, mut indention) =
-                unify_line_iter.next().ok_or(Error::InternalLogicError)?;
+            let mut unify_line = unify_line_iter.next().ok_or(Error::InternalLogicError)?;
 
             while unify_line.new_line {
                 if !unify_line.deleted_line {
-                    write_unify_line(&mut result_text, unify_line, 1, indention, mm_data)?;
+                    write_unify_line(&mut result_text, unify_line, 1, mm_data)?;
                 }
-                (unify_line, indention) =
-                    unify_line_iter.next().ok_or(Error::InternalLogicError)?;
+                unify_line = unify_line_iter.next().ok_or(Error::InternalLogicError)?;
             }
 
             if !unify_line.deleted_line {
@@ -80,7 +74,6 @@ pub async fn unify(
                     &mut result_text,
                     unify_line,
                     util::new_lines_at_end_of_str(statement),
-                    indention,
                     mm_data,
                 )?;
             }
@@ -101,34 +94,22 @@ pub async fn unify(
 
     if let Some(proof) = &stage_6.proof {
         if !proof_added {
+            result_text.push('\n');
+            result_text.push('\n');
             write_proof(&mut result_text, proof)?;
             result_text.push('\n');
         }
     }
 
-    Ok(Some(result_text))
+    format::format(&result_text).await
 }
 
 fn write_unify_line(
     result_text: &mut String,
     unify_line: UnifyLine,
     new_lines_at_end_of_statement: u32,
-    indention: u32,
     mm_data: &MetamathData,
 ) -> Result<(), Error> {
-    let prefix_len = unify_line.advanced_unification as u32
-        + unify_line.is_hypothesis as u32
-        + unify_line.step_name.len() as u32
-        + 1
-        + unify_line
-            .hypotheses
-            .iter()
-            .map(|hyp| hyp.len() + 1)
-            .sum::<usize>() as u32
-        - !unify_line.hypotheses.is_empty() as u32
-        + 1
-        + unify_line.step_ref.len() as u32;
-
     if unify_line.advanced_unification {
         result_text.push('!');
     }
@@ -147,16 +128,7 @@ fn write_unify_line(
     result_text.push(':');
     result_text.push_str(&unify_line.step_ref);
 
-    if prefix_len >= 20 + indention - 1 {
-        result_text.push('\n');
-        result_text.push_str(util::spaces(20));
-        result_text.push_str(util::spaces(indention - 1));
-    } else {
-        result_text.push_str(util::spaces(20 - std::cmp::min(20, prefix_len)));
-        result_text.push_str(util::spaces(
-            indention - 1 + 20 - std::cmp::max(20, prefix_len),
-        ));
-    }
+    result_text.push(' ');
 
     result_text.push_str(
         &unify_line

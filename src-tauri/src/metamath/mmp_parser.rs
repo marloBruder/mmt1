@@ -67,6 +67,7 @@ pub struct MmpParserStage2Success<'a> {
     pub statements: Vec<(MmpStatement, u32)>,
 }
 
+#[derive(Clone, Copy)]
 pub enum MmpLabel<'a> {
     Header {
         header_path: &'a str,

@@ -1,9 +1,10 @@
 use tauri::async_runtime::Mutex;
 
 use crate::{
+    editor::format,
     metamath::mmp_parser::{
-        self, calc_indention::calc_indention, MmpParserStage1, MmpParserStage2, MmpParserStage3,
-        MmpParserStage3Success, MmpParserStage4, MmpStatement,
+        self, MmpParserStage1, MmpParserStage2, MmpParserStage3, MmpParserStage3Success,
+        MmpParserStage4, MmpStatement,
     },
     util::{self, StrIterToDelimiterSeperatedString},
     AppState, Error,
@@ -47,8 +48,6 @@ pub async fn renumber(
 
     let mut proof_line_i = 0;
 
-    let indention_vec = calc_indention(&stage_2_success.proof_lines)?;
-
     for (&statement, (statement_type, _)) in stage_1_success
         .statements
         .iter()
@@ -61,9 +60,6 @@ pub async fn renumber(
                 .ok_or(Error::InternalLogicError)?;
             let proof_line_parsed = stage_4_success
                 .proof_lines_parsed
-                .get(proof_line_i)
-                .ok_or(Error::InternalLogicError)?;
-            let indention = indention_vec
                 .get(proof_line_i)
                 .ok_or(Error::InternalLogicError)?;
 
@@ -97,21 +93,8 @@ pub async fn renumber(
             result_text.push(':');
             result_text.push_str(proof_line.step_ref);
 
-            let prefix_len = result_text
-                .chars()
-                .rev()
-                .take_while(|c| !c.is_ascii_whitespace())
-                .count() as u32;
-
-            if prefix_len >= 20 + indention - 1 {
-                result_text.push('\n');
-                result_text.push_str(util::spaces(20));
-                result_text.push_str(util::spaces(indention - 1));
-            } else {
-                result_text.push_str(util::spaces(indention - 1 + 20 - prefix_len));
-            }
-
-            result_text.push_str(&util::str_to_space_seperated_string(proof_line.expression));
+            // should contain some whitespace at it's start
+            result_text.push_str(proof_line.expression.trim_ascii_end());
 
             for _ in 0..util::new_lines_at_end_of_str(statement) {
                 result_text.push('\n');
@@ -123,5 +106,5 @@ pub async fn renumber(
         }
     }
 
-    Ok(Some(result_text))
+    format::format(&result_text).await
 }
