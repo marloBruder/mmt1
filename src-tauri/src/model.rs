@@ -1251,7 +1251,8 @@ impl ParseTree {
         grammar: &Grammar,
         symbol_number_mapping: &SymbolNumberMapping,
     ) -> Result<Option<HashMap<u32, &'a ParseTreeNode>>, Error> {
-        if trees.len() != other_trees.len() || trees.iter().any(|t| t.has_work_variables()) {
+        if trees.len() != other_trees.len() || trees.iter().any(|t| t.top_node.has_work_variables())
+        {
             return Ok(None);
         }
 
@@ -1403,23 +1404,6 @@ impl ParseTree {
                     .symbol_i,
             )
             .ok_or(Error::InternalLogicError)
-    }
-
-    pub fn has_work_variables(&self) -> bool {
-        let mut check: Vec<&ParseTreeNode> = vec![&self.top_node];
-
-        while let Some(node) = check.pop() {
-            match node {
-                ParseTreeNode::Node { sub_nodes, .. } => {
-                    check.extend(sub_nodes.iter());
-                }
-                ParseTreeNode::WorkVariable(_) => {
-                    return true;
-                }
-            }
-        }
-
-        false
     }
 
     // Clones the parse tree and replaces all floating hypotheses rules (variables) with work variables
@@ -1764,6 +1748,11 @@ impl ParseTreeNode {
                 }
             }
         }
+    }
+
+    pub fn has_work_variables(&self) -> bool {
+        self.iter()
+            .any(|node| matches!(node, ParseTreeNode::WorkVariable(_)))
     }
 
     pub fn iter<'a>(&'a self) -> ParseTreeNodeIterator<'a> {

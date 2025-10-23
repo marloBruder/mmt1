@@ -134,9 +134,13 @@ fn calc_proof_tree<'a>(
                 continue;
             };
 
-            let mut var_proofs = substitutions
+            let Some(mut var_proofs) = substitutions
                 .into_iter()
                 .map(|(rule_i, pt_node)| {
+                    if pt_node.has_work_variables() {
+                        return Ok(None);
+                    }
+
                     let rule = mm_data
                         .optimized_data
                         .grammar
@@ -154,12 +158,16 @@ fn calc_proof_tree<'a>(
                         .ok_or(Error::InternalLogicError)?
                         .as_str();
 
-                    Ok((
+                    Ok(Some((
                         var_str,
                         pt_node.calc_proof_tree(&mm_data.optimized_data.grammar)?,
-                    ))
+                    )))
                 })
-                .collect::<Result<HashMap<&str, ProofTree>, Error>>()?;
+                .collect::<Result<Option<HashMap<&str, ProofTree>>, Error>>()?
+            else {
+                proofs.push(None);
+                continue;
+            };
 
             let vars_proof_children: Vec<ProofTree> = mm_data
                 .optimized_data

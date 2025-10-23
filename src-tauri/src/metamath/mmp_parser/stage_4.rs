@@ -712,7 +712,7 @@ pub fn stage_4_axiom(
 
         if parse_tree
             .as_ref()
-            .is_some_and(|pt| pt.has_work_variables())
+            .is_some_and(|pt| pt.top_node.has_work_variables())
         {
             let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
             let last_non_whitespace_pos = util::last_non_whitespace_pos(statement_str);
