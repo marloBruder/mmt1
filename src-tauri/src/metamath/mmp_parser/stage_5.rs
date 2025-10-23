@@ -131,6 +131,8 @@ pub fn stage_5(
                         set_unify_status(&mut unify_line.status, 1)?;
                     }
 
+                    unify_line.advanced_unification = false;
+
                     new_unify_lines.extend(new_lines.into_iter().map(|mut nl| {
                         nl.parse_tree = nl.parse_tree.map(|pt| ParseTree {
                             typecode: pt.typecode,
@@ -176,6 +178,8 @@ pub fn stage_5(
                 &mut hypotheses_name_manager,
             )? {
                 unify_line.step_ref = new_step_ref;
+
+                unify_line.advanced_unification = false;
 
                 set_unify_status(&mut unify_line.status, 2)?;
 
