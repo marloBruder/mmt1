@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { HeaderPageData } from "$lib/sharedState/model.svelte";
+  import DescriptionParsed from "../util/DescriptionParsed.svelte";
 
   let { pageData, externalWindow = false }: { pageData: HeaderPageData; externalWindow?: boolean } = $props();
 </script>
@@ -9,6 +10,6 @@
     <h1 class="text-3xl">{pageData.headerPath + ": " + pageData.title}</h1>
   </div>
   <div>
-    <p>{pageData.description}</p>
+    <DescriptionParsed descriptionParsed={pageData.descriptionParsed} {externalWindow}></DescriptionParsed>
   </div>
 </div>

@@ -16,6 +16,7 @@
   import ContextMenuButton from "$lib/components/util/contextMenu/ContextMenuButton.svelte";
   import { TheoremExplorerTab } from "$lib/components/tabs/TheoremExplorerTabComponent.svelte";
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
+  import { HeaderTab } from "$lib/components/tabs/HeaderTabComponent.svelte";
 
   let { header, headerPath }: { header: NameListHeader; headerPath: HeaderPath } = $props();
 
@@ -97,6 +98,10 @@
     return commentNum - 1;
   };
 
+  let open = () => {
+    tabManager.openTab(new HeaderTab(headerPath));
+  };
+
   let openInNewTheoremExplorer = async () => {
     let pageNum = (await invoke("get_theorem_list_page_of_header", { headerPath })) as number;
 
@@ -123,6 +128,7 @@
     </div>
   {/snippet}
   {#snippet contextMenu()}
+    <ContextMenuButton onclick={open}>Open</ContextMenuButton>
     <ContextMenuButton onclick={openInNewTheoremExplorer}>Open In New Theorem Explorer</ContextMenuButton>
   {/snippet}
 </ContextMenuElement>

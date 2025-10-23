@@ -166,6 +166,7 @@ pub fn run() {
             local_state::floating_hypothesis::get_floating_hypotheses_local,
             local_state::theorem::get_theorem_page_data_local,
             local_state::header::get_header_local,
+            local_state::header::get_header_page_data,
             local_state::html_representation::get_html_representations_local,
         ])
         .setup(|app| app_setup(app))

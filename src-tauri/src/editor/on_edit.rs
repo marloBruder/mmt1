@@ -109,11 +109,23 @@ pub async fn on_edit(
                 .parent_header_path
                 .path
                 .push(stage_3_header.header_i);
+
+            let (html_allowed_tags_and_attributes, css_allowed_properties) =
+                html_validation::create_rule_structs();
+
+            let description_parsed = description_parser::parse_description(
+                &stage_3_header.description,
+                &mm_data.database_header,
+                &html_allowed_tags_and_attributes,
+                &css_allowed_properties,
+            )
+            .0;
+
             return Ok(OnEditData {
                 page_data: Some(DatabaseElementPageData::Header(HeaderPageData {
                     header_path: stage_3_header.parent_header_path.to_string(),
-                    description: stage_3_header.description,
                     title: stage_3_header.title,
+                    description_parsed,
                 })),
                 errors: Vec::new(),
             });

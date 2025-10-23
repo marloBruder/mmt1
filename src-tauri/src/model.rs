@@ -276,7 +276,7 @@ pub enum DatabaseElementPageData {
 pub struct HeaderPageData {
     pub header_path: String,
     pub title: String,
-    pub description: String,
+    pub description_parsed: Vec<ParsedDescriptionSegment>,
 }
 
 pub struct CommentPageData {
@@ -2500,6 +2500,26 @@ impl Header {
         }
     }
 
+    pub fn calc_page_data(
+        &self,
+        header_path: &HeaderPath,
+        mm_data: &MetamathData,
+    ) -> Result<HeaderPageData, Error> {
+        let header_path = header_path.to_string();
+
+        let header_data = mm_data
+            .optimized_data
+            .header_data
+            .get(&header_path)
+            .ok_or(Error::InternalLogicError)?;
+
+        Ok(HeaderPageData {
+            header_path,
+            title: self.title.clone(),
+            description_parsed: header_data.description_parsed.clone(),
+        })
+    }
+
     pub fn find_theorem_by_label(&self, label: &str) -> Option<&Theorem> {
         self.theorem_iter().find(|t| t.label == label)
     }
@@ -2875,7 +2895,7 @@ impl serde::Serialize for HeaderPageData {
         let mut state = serializer.serialize_struct("HeaderPageData", 3)?;
         state.serialize_field("headerPath", &self.header_path)?;
         state.serialize_field("title", &self.title)?;
-        state.serialize_field("description", &self.description)?;
+        state.serialize_field("descriptionParsed", &self.description_parsed)?;
         state.serialize_field("discriminator", "HeaderPageData")?;
         state.end()
     }

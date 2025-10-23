@@ -80,7 +80,7 @@ export interface EmptyPageData {
 export interface HeaderPageData {
   headerPath: string;
   title: string;
-  description: string;
+  descriptionParsed: ParsedDescriptionSegment[];
   discriminator: "HeaderPageData";
 }
 
