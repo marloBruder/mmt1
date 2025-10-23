@@ -61,6 +61,12 @@
     }
 
     async saveFile(): Promise<void> {
+      if (settingsData.settings.formatOnSave) {
+        try {
+          await this.format();
+        } catch (e) {}
+      }
+
       await invoke("save_file", { relativePath: this.#filePath, content: this.#monacoModel!.getValue() });
       this.textChanged = false;
     }
@@ -217,6 +223,7 @@
   import { goto } from "$app/navigation";
   import { globalState } from "$lib/sharedState/globalState.svelte";
   import { Tab } from "$lib/sharedState/tab.svelte";
+  import { settingsData } from "$lib/sharedState/settingsData.svelte";
 
   let { tab }: { tab: Tab } = $props();
 

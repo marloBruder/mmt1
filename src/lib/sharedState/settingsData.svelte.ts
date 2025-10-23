@@ -8,6 +8,7 @@ export interface Settings {
   showUnifyResultInUnicodePreview: boolean;
   defaultShowAll: boolean;
   proofFormat: "uncompressed" | "compressed";
+  formatOnSave: boolean;
 }
 
 let defaultSettings: Settings = {
@@ -16,6 +17,7 @@ let defaultSettings: Settings = {
   showUnifyResultInUnicodePreview: true,
   defaultShowAll: false,
   proofFormat: "compressed",
+  formatOnSave: true,
 };
 
 class SettingsData {

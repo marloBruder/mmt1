@@ -51,6 +51,7 @@
   import { globalState } from "$lib/sharedState/globalState.svelte";
   import { goto } from "$app/navigation";
   import { confirm } from "@tauri-apps/plugin-dialog";
+  import EditorSettingsTabComponent from "./settingsTabs/EditorSettingsTabComponent.svelte";
 
   let { tab }: { tab: Tab } = $props();
 
@@ -65,6 +66,10 @@
     {
       name: "General",
       component: GeneralSettingsTabComponent,
+    },
+    {
+      name: "Editor",
+      component: EditorSettingsTabComponent,
     },
   ];
 
