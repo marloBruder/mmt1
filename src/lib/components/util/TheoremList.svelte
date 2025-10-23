@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { TheoremListData } from "$lib/sharedState/model.svelte";
+  import type { ListEntry, TheoremListData } from "$lib/sharedState/model.svelte";
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { CommentTab } from "../tabs/CommentTabComponent.svelte";
   import { FloatingHypothesisTab } from "../tabs/FloatingHypothesisTabComponent.svelte";
@@ -26,10 +26,28 @@
   let floatingHypothesisClick = (label: string) => {
     tabManager.changeTab(new FloatingHypothesisTab(label));
   };
+
+  let getListEntryId = (listEntry: ListEntry): string => {
+    if (listEntry.discriminator === "HeaderListEntry") {
+      return "header-list-entry-id-" + listEntry.headerPath;
+    } else if (listEntry.discriminator === "CommentListEntry") {
+      return "comment-list-entry-id-" + listEntry.commentPath;
+    } else if (listEntry.discriminator === "ConstantListEntry") {
+      return "constant-list-entry-id-" + listEntry.constants.split(" ")[0];
+    } else if (listEntry.discriminator === "VariableListEntry") {
+      return "variable-list-entry-id-" + listEntry.variables.split(" ")[0];
+    } else if (listEntry.discriminator === "FloatingHypothesisListEntry") {
+      return "floating-hypothesis-list-entry-id-" + listEntry.label;
+    } else if (listEntry.discriminator === "TheoremListEntry") {
+      return "theorem-list-entry-id-" + listEntry.label;
+    }
+
+    return "";
+  };
 </script>
 
 {#each theoremListData.list as theoremListEntry}
-  <div class="my-10 text-center border-y">
+  <div id={getListEntryId(theoremListEntry)} class="my-10 text-center border-y">
     {#if theoremListEntry.discriminator === "HeaderListEntry"}
       <div class="text-2xl p-4">
         {theoremListEntry.headerPath + " " + theoremListEntry.title}

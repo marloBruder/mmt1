@@ -5,12 +5,14 @@
   import ChevronRightIcon from "$lib/icons/arrows/ChevronRightIcon.svelte";
   import FileButton from "./FileButton.svelte";
   import { fileExplorerData } from "$lib/sharedState/fileExplorerData.svelte";
-  import ContextMenuElement from "$lib/components/util/ContextMenuElement.svelte";
+  import ContextMenuElement from "$lib/components/util/contextMenu/ContextMenuElement.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import HiddenInput from "$lib/components/util/HiddenInput.svelte";
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { EditorTab } from "$lib/components/tabs/EditorTabComponent.svelte";
   import { confirm } from "@tauri-apps/plugin-dialog";
+  import ContextMenuButton from "$lib/components/util/contextMenu/ContextMenuButton.svelte";
+  import ContextMenuDivider from "$lib/components/util/contextMenu/ContextMenuDivider.svelte";
 
   let {
     folder,
@@ -155,14 +157,14 @@
     </div>
   {/snippet}
   {#snippet contextMenu()}
-    <div><button class="w-full px-2 text-left hover:bg-purple-500" onclick={openAddFileInput}>New File</button></div>
-    <div><button class="w-full px-2 text-left hover:bg-purple-500" onclick={openAddSubfolderInput}>New Folder</button></div>
-    <div class="py-1"><hr /></div>
-    <div><button class="w-full px-2 text-left hover:bg-purple-500" onclick={copyPath}>Copy Path</button></div>
-    <div><button class="w-full px-2 text-left hover:bg-purple-500" onclick={copyRelativePath}>Copy Relative Path</button></div>
-    <div class="py-1"><hr /></div>
-    <div><button class="w-full px-2 text-left hover:enabled:bg-purple-500 disabled:text-gray-400" onclick={openRenameInput} disabled={noRenameOrDelete}>Rename</button></div>
-    <div><button class="w-full px-2 text-left hover:enabled:bg-purple-500 disabled:text-gray-400" onclick={deleteFolder} disabled={noRenameOrDelete}>Delete</button></div>
+    <ContextMenuButton onclick={openAddFileInput}>New File</ContextMenuButton>
+    <ContextMenuButton onclick={openAddSubfolderInput}>New Folder</ContextMenuButton>
+    <ContextMenuDivider></ContextMenuDivider>
+    <ContextMenuButton onclick={copyPath}>Copy Path</ContextMenuButton>
+    <ContextMenuButton onclick={copyRelativePath}>Copy Relative Path</ContextMenuButton>
+    <ContextMenuDivider></ContextMenuDivider>
+    <ContextMenuButton onclick={openRenameInput} disabled={noRenameOrDelete}>Rename</ContextMenuButton>
+    <ContextMenuButton onclick={deleteFolder} disabled={noRenameOrDelete}>Delete</ContextMenuButton>
   {/snippet}
 </ContextMenuElement>
 {#if folder.content != null}

@@ -1,7 +1,9 @@
 <script lang="ts">
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
+  import { onMount } from "svelte";
   import ScrollableContainer from "../util/ScrollableContainer.svelte";
   import EmptyTabComponent from "./EmptyTabComponent.svelte";
+  import { listen } from "@tauri-apps/api/event";
 
   let openTab = $derived(tabManager.getOpenTab());
   let scrollTop = $state(0);
@@ -32,6 +34,14 @@
 
   let verticalSplit = $derived(tabManager.splitTabState === "splitVertical" && openTab != null && openTab.splitComponent != null);
   let horizontalSplit = $derived(tabManager.splitTabState === "splitHorizontal" && openTab != null && openTab.splitComponent != null);
+
+  onMount(() => {
+    listen("scroll-main-tab", (event) => {
+      const scrollTo = event.payload as number;
+      scrollTop = -1;
+      scrollTop = scrollTo;
+    });
+  });
 </script>
 
 {#if openTab != null}

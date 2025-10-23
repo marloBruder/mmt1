@@ -6,11 +6,14 @@
     component = TheoremExplorerTabComponent;
 
     #page: number = $state(0);
-    #theoremListData: TheoremListData = $state({ list: [], pageAmount: 0, pageLimits: null });
+    #theoremListData: TheoremListData = $state({ list: [], pageAmount: 0, theoremAmount: 0, pageLimits: null });
+    #scrollToId: string | undefined;
+    firstOpen: boolean = true;
 
-    constructor(page: number) {
+    constructor(page: number, scrollToId?: string) {
       super();
       this.#page = page;
+      this.#scrollToId = scrollToId;
     }
 
     async loadData(): Promise<void> {
@@ -18,7 +21,7 @@
     }
 
     unloadData(): void {
-      this.#theoremListData = { list: [], pageAmount: 0, pageLimits: null };
+      this.#theoremListData = { list: [], pageAmount: 0, theoremAmount: 0, pageLimits: null };
     }
 
     name(): string {
@@ -36,6 +39,10 @@
     get theoremListData() {
       return this.#theoremListData;
     }
+
+    get scrollToId() {
+      return this.#scrollToId;
+    }
   }
 </script>
 
@@ -44,6 +51,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import TheoremList from "../util/TheoremList.svelte";
   import { Tab } from "$lib/sharedState/tab.svelte";
+  import { emit } from "@tauri-apps/api/event";
 
   let { tab }: { tab: Tab } = $props();
 
@@ -65,6 +73,25 @@
   let pageButtonClick = (pageNum: number) => {
     tabManager.changeTab(new TheoremExplorerTab(pageNum));
   };
+
+  $effect(() => {
+    if (theoremExplorerTab) {
+      requestAnimationFrame(() => {
+        if (theoremExplorerTab.firstOpen && theoremExplorerTab.scrollToId !== undefined) {
+          let element = document.getElementById(theoremExplorerTab.scrollToId);
+
+          if (element !== null) {
+            let parentElement = element.parentElement;
+
+            if (parentElement !== null) {
+              emit("scroll-main-tab", element.getBoundingClientRect().top - parentElement.getBoundingClientRect().top);
+            }
+          }
+        }
+        theoremExplorerTab.firstOpen = false;
+      });
+    }
+  });
 </script>
 
 <TheoremList theoremListData={theoremExplorerTab.theoremListData} {previousPageClick} {nextPageClick} {pageButtonClick} pageNum={theoremExplorerTab.page}></TheoremList>

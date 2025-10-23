@@ -12,6 +12,10 @@
   import ExplorerVariableButton from "./ExplorerVariableButton.svelte";
   import ExplorerConstantButton from "./ExplorerConstantButton.svelte";
   import ExplorerTheoremButton from "./ExplorerTheoremButton.svelte";
+  import ContextMenuElement from "$lib/components/util/contextMenu/ContextMenuElement.svelte";
+  import ContextMenuButton from "$lib/components/util/contextMenu/ContextMenuButton.svelte";
+  import { TheoremExplorerTab } from "$lib/components/tabs/TheoremExplorerTabComponent.svelte";
+  import { tabManager } from "$lib/sharedState/tabManager.svelte";
 
   let { header, headerPath }: { header: NameListHeader; headerPath: HeaderPath } = $props();
 
@@ -92,23 +96,36 @@
     commentNum++;
     return commentNum - 1;
   };
+
+  let openInNewTheoremExplorer = async () => {
+    let pageNum = (await invoke("get_theorem_list_page_of_header", { headerPath })) as number;
+
+    tabManager.openTab(new TheoremExplorerTab(pageNum, "header-list-entry-id-" + util.headerPathToStringRep(headerPath)), true);
+  };
 </script>
 
-<div class="h-6 custom-bg-hover-color">
-  <button class="h-full w-full text-left flex flex-row" onclick={toggleOpen}>
-    <div class="h-6 w-6">
-      {#if header.content !== null}
-        <ChevronDownIcon></ChevronDownIcon>
-      {:else}
-        <ChevronRightIcon></ChevronRightIcon>
-      {/if}
+<ContextMenuElement>
+  {#snippet element()}
+    <div class="h-6 custom-bg-hover-color">
+      <button class="h-full w-full text-left flex flex-row" onclick={toggleOpen}>
+        <div class="h-6 w-6">
+          {#if header.content !== null}
+            <ChevronDownIcon></ChevronDownIcon>
+          {:else}
+            <ChevronRightIcon></ChevronRightIcon>
+          {/if}
+        </div>
+        <div class="whitespace-nowrap overflow-hidden">
+          {pathString}
+          {header.title}
+        </div>
+      </button>
     </div>
-    <div class="whitespace-nowrap overflow-hidden">
-      {pathString}
-      {header.title}
-    </div>
-  </button>
-</div>
+  {/snippet}
+  {#snippet contextMenu()}
+    <ContextMenuButton onclick={openInNewTheoremExplorer}>Open In New Theorem Explorer</ContextMenuButton>
+  {/snippet}
+</ContextMenuElement>
 {#if header.content !== null}
   <div class="pl-3">
     {#each header.content.contentTitles as contentTitle}

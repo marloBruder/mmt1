@@ -1,6 +1,8 @@
 <script lang="ts">
   import { EditorTab } from "$lib/components/tabs/EditorTabComponent.svelte";
-  import ContextMenuElement from "$lib/components/util/ContextMenuElement.svelte";
+  import ContextMenuButton from "$lib/components/util/contextMenu/ContextMenuButton.svelte";
+  import ContextMenuDivider from "$lib/components/util/contextMenu/ContextMenuDivider.svelte";
+  import ContextMenuElement from "$lib/components/util/contextMenu/ContextMenuElement.svelte";
   import HiddenInput from "$lib/components/util/HiddenInput.svelte";
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { invoke } from "@tauri-apps/api/core";
@@ -71,12 +73,12 @@
     </div>
   {/snippet}
   {#snippet contextMenu()}
-    <div><button class="w-full px-2 text-left hover:bg-purple-500" onclick={openFile}>Open</button></div>
-    <div class="py-1"><hr /></div>
-    <div><button class="w-full px-2 text-left hover:bg-purple-500" onclick={copyPath}>Copy Path</button></div>
-    <div><button class="w-full px-2 text-left hover:bg-purple-500" onclick={copyRelativePath}>Copy Relative Path</button></div>
-    <div class="py-1"><hr /></div>
-    <div><button class="w-full px-2 text-left hover:bg-purple-500" onclick={rename}>Rename</button></div>
-    <div><button class="w-full px-2 text-left hover:bg-purple-500" onclick={deleteFile}>Delete</button></div>
+    <ContextMenuButton onclick={openFile}>Open</ContextMenuButton>
+    <ContextMenuDivider></ContextMenuDivider>
+    <ContextMenuButton onclick={copyPath}>Copy Path</ContextMenuButton>
+    <ContextMenuButton onclick={copyRelativePath}>Copy Relative Path</ContextMenuButton>
+    <ContextMenuDivider></ContextMenuDivider>
+    <ContextMenuButton onclick={rename}>Rename</ContextMenuButton>
+    <ContextMenuButton onclick={deleteFile}>Delete</ContextMenuButton>
   {/snippet}
 </ContextMenuElement>

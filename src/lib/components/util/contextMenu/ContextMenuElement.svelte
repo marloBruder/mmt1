@@ -28,10 +28,6 @@
           nextContextMenuLeft = lastMouseX;
         }
 
-        console.log(lastMouseY);
-        console.log(dummyContextMenu.clientHeight);
-        console.log(window.innerHeight);
-
         if (lastMouseY + dummyContextMenu.clientHeight > window.innerHeight) {
           nextContextMenuTop = lastMouseY - dummyContextMenu.clientHeight;
         } else {
