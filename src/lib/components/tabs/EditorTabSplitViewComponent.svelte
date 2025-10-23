@@ -7,7 +7,7 @@
   import TheoremPage from "../pages/TheoremPage.svelte";
   import VariablesPage from "../pages/VariablesPage.svelte";
 
-  let { pageData }: { pageData: DatabaseElementPageData | null } = $props();
+  let { pageData, externalWindow = false }: { pageData: DatabaseElementPageData | null; externalWindow?: boolean } = $props();
 </script>
 
 <div class="w-full h-full">
@@ -15,7 +15,7 @@
     {#if pageData.discriminator == "EmptyPageData"}
       <div class="p-2">Nothing to see yet.</div>
     {:else if pageData.discriminator == "HeaderPageData"}
-      <HeaderPage {pageData}></HeaderPage>
+      <HeaderPage {pageData} {externalWindow}></HeaderPage>
     {:else if pageData.discriminator == "CommentPageData"}
       <CommentPage {pageData}></CommentPage>
     {:else if pageData.discriminator == "ConstantsPageData"}
@@ -25,7 +25,7 @@
     {:else if pageData.discriminator == "FloatingHypothesisPageData"}
       <FloatingHypothesisPage {pageData}></FloatingHypothesisPage>
     {:else if pageData.discriminator == "TheoremPageData"}
-      <TheoremPage {pageData} editorPreview></TheoremPage>
+      <TheoremPage {pageData} editorPreview {externalWindow}></TheoremPage>
     {/if}
   {:else}
     <div class="p-2">Resolve all syntax errors to show the unicode preview.</div>

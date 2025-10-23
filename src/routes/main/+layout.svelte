@@ -5,6 +5,7 @@
   import { setupLinkIntercepter } from "$lib/sharedState/interceptLinks.svelte";
   import { settingsData } from "$lib/sharedState/settingsData.svelte";
   import { setupShortcuts } from "$lib/sharedState/shortcuts.svelte";
+  import { setupMainWindowTabListener } from "$lib/sharedState/tabManager.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
 
@@ -12,6 +13,7 @@
     setupTheoremNumberStyleSheet();
     setupShortcuts();
     setupLinkIntercepter();
+    setupMainWindowTabListener();
     await settingsData.setupSettings();
     await invoke("setup_main_window");
   });

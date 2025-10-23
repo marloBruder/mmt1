@@ -52,7 +52,7 @@
       <div class="custom-height-minus-margin custom-width-minus-margin custom-bg-color m-2 rounded-lg">
         {#if pageDataLoaded}
           <ScrollableContainer>
-            <EditorTabSplitViewComponent {pageData}></EditorTabSplitViewComponent>
+            <EditorTabSplitViewComponent {pageData} externalWindow></EditorTabSplitViewComponent>
           </ScrollableContainer>
         {/if}
       </div>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
+  import { emit } from "@tauri-apps/api/event";
   import { TheoremTab } from "../tabs/TheoremTabComponent.svelte";
   import TheoremNumber from "./TheoremNumber.svelte";
 
@@ -10,6 +11,7 @@
     theoremNumber,
     noUnderline = false,
     openInNewTab = false,
+    externalWindow = false,
   }: {
     label: string;
     text?: string;
@@ -17,10 +19,13 @@
     theoremNumber?: number;
     noUnderline?: boolean;
     openInNewTab?: boolean;
+    externalWindow?: boolean;
   } = $props();
 
   let onclick = async (e: MouseEvent) => {
-    if (openInNewTab) {
+    if (externalWindow) {
+      emit("external-theorem-tab-opened", label);
+    } else if (openInNewTab) {
       tabManager.makeOpenTempTabPermanent();
       await tabManager.openTab(new TheoremTab(label), true);
     } else {
@@ -31,8 +36,12 @@
   let onmouseup = async (e: MouseEvent) => {
     if (e.button === 1) {
       e.preventDefault();
-      tabManager.makeOpenTempTabPermanent();
-      await tabManager.openTab(new TheoremTab(label), true);
+      if (externalWindow) {
+        emit("external-theorem-tab-opened", label);
+      } else {
+        tabManager.makeOpenTempTabPermanent();
+        await tabManager.openTab(new TheoremTab(label), true);
+      }
     }
   };
 

@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { HeaderPageData } from "$lib/sharedState/model.svelte";
 
-  let { pageData }: { pageData: HeaderPageData } = $props();
+  let { pageData, externalWindow = false }: { pageData: HeaderPageData; externalWindow?: boolean } = $props();
 </script>
 
 <div class="text-center">

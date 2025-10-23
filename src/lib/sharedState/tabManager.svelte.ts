@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Tab } from "$lib/sharedState/tab.svelte";
 import { EditorTab } from "$lib/components/tabs/EditorTabComponent.svelte";
+import { TheoremTab } from "$lib/components/tabs/TheoremTabComponent.svelte";
 
 export type SplitTabState = "none" | "splitVertical" | "splitHorizontal" | "externalWindow";
 
@@ -249,11 +250,21 @@ class TabManager {
   }
 }
 
-let tabManager = new TabManager();
-export { tabManager };
+const tabManager = new TabManager();
 
 listen("external-window-close", () => {
   if (tabManager.splitTabState === "externalWindow") {
     tabManager.setSplitTabState("none");
   }
 });
+
+let setupMainWindowTabListener = () => {
+  listen("external-theorem-tab-opened", (event) => {
+    const theoremLabel = event.payload as string;
+
+    tabManager.makeOpenTempTabPermanent();
+    tabManager.openTab(new TheoremTab(theoremLabel), true);
+  });
+};
+
+export { tabManager, setupMainWindowTabListener };

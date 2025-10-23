@@ -11,10 +11,12 @@
   let {
     pageData,
     editorPreview = false,
+    externalWindow = false,
     theoremTab,
   }: {
     pageData: TheoremPageData;
     editorPreview?: boolean;
+    externalWindow?: boolean;
     theoremTab?: TheoremTab;
   } = $props();
 
@@ -120,7 +122,7 @@
     <h2 class="font-bold">Description:</h2>
     <div class="flex flex-col items-center w-full">
       <div class="text-left">
-        <DescriptionParsed descriptionParsed={pageData.descriptionParsed} openLinksInNewTab={editorPreview}></DescriptionParsed>
+        <DescriptionParsed descriptionParsed={pageData.descriptionParsed} openLinksInNewTab={editorPreview} {externalWindow}></DescriptionParsed>
       </div>
     </div>
   </div>
@@ -156,7 +158,7 @@
                 </td>
                 <td class={"border border-gray-600 py-1 px-2 " + proofLineBackground(i, 2)}>
                   {#if proofLine.referenceNumber !== null}
-                    <TheoremLink label={proofLine.reference} theoremNumber={proofLine.referenceNumber} openInNewTab={editorPreview}></TheoremLink>
+                    <TheoremLink label={proofLine.reference} theoremNumber={proofLine.referenceNumber} openInNewTab={editorPreview} {externalWindow}></TheoremLink>
                   {:else}
                     {proofLine.reference}
                   {/if}
@@ -212,7 +214,7 @@
       <div class="text-justify">
         {#each pageData.axiomDependencies as [axiomDependency, dependencyNumber]}
           <span class="mr-2">
-            <TheoremLink label={axiomDependency} theoremNumber={dependencyNumber} openInNewTab={editorPreview}></TheoremLink>
+            <TheoremLink label={axiomDependency} theoremNumber={dependencyNumber} openInNewTab={editorPreview} {externalWindow}></TheoremLink>
           </span>
         {/each}
       </div>
@@ -223,7 +225,7 @@
       <div class="text-justify">
         {#each pageData.definitionDependencies as [definitionDependency, dependencyNumber]}
           <span class="mr-2">
-            <TheoremLink label={definitionDependency} theoremNumber={dependencyNumber} openInNewTab={editorPreview}></TheoremLink>
+            <TheoremLink label={definitionDependency} theoremNumber={dependencyNumber} openInNewTab={editorPreview} {externalWindow}></TheoremLink>
           </span>
         {/each}
       </div>
@@ -236,7 +238,7 @@
       <div class="text-justify">
         {#each pageData.references as [reference, referenceNumber]}
           <span class="mr-2">
-            <TheoremLink label={reference} theoremNumber={referenceNumber} openInNewTab={editorPreview}></TheoremLink>
+            <TheoremLink label={reference} theoremNumber={referenceNumber} openInNewTab={editorPreview} {externalWindow}></TheoremLink>
           </span>
         {/each}
       </div>
