@@ -133,6 +133,7 @@ pub async fn get_theorem_list_local(
     Ok(TheoremListData {
         list,
         page_amount,
+        theorem_amount: metamath_data.optimized_data.theorem_amount,
         page_limits: None,
     })
 }

@@ -113,7 +113,7 @@
         <button class="underline pl-2" onclick={() => pageButtonClick(i)}>{i + 1}</button>
         <TheoremNumber theoremNumber={i * 100 + 1}></TheoremNumber>
         <span class="text-xs">-</span>
-        <TheoremNumber theoremNumber={(i + 1) * 100}></TheoremNumber>
+        <TheoremNumber theoremNumber={i === theoremListData.pageAmount - 1 ? theoremListData.theoremAmount : (i + 1) * 100}></TheoremNumber>
       </span>
     {/each}
   {/if}

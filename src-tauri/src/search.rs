@@ -197,6 +197,7 @@ pub async fn search_theorems(
     Ok(TheoremListData {
         list,
         page_amount,
+        theorem_amount: theorem_amount as u32,
         page_limits: Some(page_limits),
     })
 }

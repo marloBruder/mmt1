@@ -325,9 +325,14 @@ pub struct ProofLine {
     pub old_assertion: Option<String>,
 }
 
+#[derive(Serialize)]
 pub struct TheoremListData {
     pub list: Vec<ListEntry>,
+    #[serde(rename = "pageAmount")]
     pub page_amount: u32,
+    #[serde(rename = "theoremAmount")]
+    pub theorem_amount: u32,
+    #[serde(rename = "pageLimits")]
     pub page_limits: Option<Vec<(u32, u32)>>,
 }
 
@@ -2979,21 +2984,6 @@ impl serde::Serialize for ProofLine {
         state.serialize_field("indention", &self.indention)?;
         state.serialize_field("assertion", &self.assertion)?;
         state.serialize_field("oldAssertion", &self.old_assertion)?;
-        state.end()
-    }
-}
-
-impl serde::Serialize for TheoremListData {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        use serde::ser::SerializeStruct;
-
-        let mut state = serializer.serialize_struct("TheoremListData", 3)?;
-        state.serialize_field("list", &self.list)?;
-        state.serialize_field("pageAmount", &self.page_amount)?;
-        state.serialize_field("pageLimits", &self.page_limits)?;
         state.end()
     }
 }

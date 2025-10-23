@@ -180,6 +180,7 @@ export interface DescriptionHtmlCharacterRef {
 export interface TheoremListData {
   list: ListEntry[];
   pageAmount: number;
+  theoremAmount: number;
   pageLimits: [number, number][] | null;
 }
 
