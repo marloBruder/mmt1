@@ -27,6 +27,7 @@
     definitionDependencies: [],
     references: [],
     descriptionParsed: [],
+    invalidHtml: false,
     discriminator: "TheoremPageData",
     proofIncomplete: false,
   };

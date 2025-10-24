@@ -278,6 +278,7 @@ pub struct HeaderPageData {
     pub header_path: String,
     pub title: String,
     pub description_parsed: Vec<ParsedDescriptionSegment>,
+    pub invalid_html: bool,
 }
 
 pub struct CommentPageData {
@@ -312,6 +313,7 @@ pub struct TheoremPageData {
     pub definition_dependencies: Vec<(String, u32)>,
     pub references: Vec<(String, u32)>,
     pub description_parsed: Vec<ParsedDescriptionSegment>,
+    pub invalid_html: bool,
     pub proof_incomplete: bool,
 }
 
@@ -382,18 +384,6 @@ pub struct TheoremListEntry {
 pub struct FolderData {
     pub path: PathBuf,
     pub file_handles: HashMap<String, File>,
-}
-
-pub enum AddToDatabaseResult {
-    NewHeader {
-        header_title: String,
-        header_path: HeaderPath,
-    },
-    NewStatement {
-        content_rep: HeaderContentRepresentation,
-        header_path: HeaderPath,
-        header_content_i: usize,
-    },
 }
 
 impl MetamathData {
@@ -2518,6 +2508,7 @@ impl Header {
             header_path,
             title: self.title.clone(),
             description_parsed: header_data.description_parsed.clone(),
+            invalid_html: false,
         })
     }
 
@@ -2893,10 +2884,11 @@ impl serde::Serialize for HeaderPageData {
     {
         use serde::ser::SerializeStruct;
 
-        let mut state = serializer.serialize_struct("HeaderPageData", 3)?;
+        let mut state = serializer.serialize_struct("HeaderPageData", 4)?;
         state.serialize_field("headerPath", &self.header_path)?;
         state.serialize_field("title", &self.title)?;
         state.serialize_field("descriptionParsed", &self.description_parsed)?;
+        state.serialize_field("invalidHtml", &self.invalid_html)?;
         state.serialize_field("discriminator", "HeaderPageData")?;
         state.end()
     }
@@ -2984,6 +2976,7 @@ impl serde::Serialize for TheoremPageData {
         state.serialize_field("definitionDependencies", &self.definition_dependencies)?;
         state.serialize_field("references", &self.references)?;
         state.serialize_field("descriptionParsed", &self.description_parsed)?;
+        state.serialize_field("invalidHtml", &self.invalid_html)?;
         state.serialize_field("proofIncomplete", &self.proof_incomplete)?;
         state.serialize_field("discriminator", "TheoremPageData")?;
         state.end()
@@ -3062,40 +3055,6 @@ impl serde::Serialize for ListEntry {
                 state
                     .serialize_field("descriptionParsed", &theorem_list_entry.description_parsed)?;
                 state.serialize_field("discriminator", "TheoremListEntry")?;
-                state.end()
-            }
-        }
-    }
-}
-
-impl serde::Serialize for AddToDatabaseResult {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        use serde::ser::SerializeStruct;
-
-        match self {
-            Self::NewHeader {
-                header_title,
-                header_path,
-            } => {
-                let mut state = serializer.serialize_struct("NewHeader", 2)?;
-                state.serialize_field("headerTitle", header_title)?;
-                state.serialize_field("headerPath", header_path)?;
-                state.serialize_field("discriminator", "NewHeader")?;
-                state.end()
-            }
-            Self::NewStatement {
-                content_rep,
-                header_path,
-                header_content_i,
-            } => {
-                let mut state = serializer.serialize_struct("NewStatement", 3)?;
-                state.serialize_field("contentRep", content_rep)?;
-                state.serialize_field("headerPath", header_path)?;
-                state.serialize_field("headerContentI", header_content_i)?;
-                state.serialize_field("discriminator", "NewStatement")?;
                 state.end()
             }
         }

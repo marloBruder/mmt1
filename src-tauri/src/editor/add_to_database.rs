@@ -3,6 +3,7 @@ use std::{
     io::{BufReader, Read},
 };
 
+use serde::Serialize;
 use sha2::{Digest, Sha256};
 use tauri::async_runtime::Mutex;
 
@@ -16,19 +17,29 @@ use crate::{
         },
     },
     model::{
-        AddToDatabaseResult, DatabaseElement, Header, HeaderPath, Hypothesis, MetamathData,
+        DatabaseElement, Header, HeaderContentRepresentation, HeaderPath, Hypothesis, MetamathData,
         Statement, Theorem,
     },
-    util::{self, StrIterToSpaceSeperatedString},
+    util::{self, description_parser, StrIterToSpaceSeperatedString},
     AppState, Error, ProofFormatOption,
 };
+
+#[derive(Serialize)]
+pub struct AddToDatabasePreviewData {
+    #[serde(rename = "oldFileContent")]
+    old_file_content: String,
+    #[serde(rename = "newFileContent")]
+    new_file_content: String,
+    #[serde(rename = "invalidHtml")]
+    invalid_html: bool,
+}
 
 #[tauri::command]
 pub async fn add_to_database_preview(
     state: tauri::State<'_, Mutex<AppState>>,
     text: &str,
     override_proof_format: Option<ProofFormatOption>,
-) -> Result<(String, String), Error> {
+) -> Result<AddToDatabasePreviewData, Error> {
     let app_state = state.lock().await;
     let mm_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
     let settings = &app_state.settings;
@@ -56,43 +67,84 @@ pub async fn add_to_database_preview(
     let stage_3_theorem = match stage_3_success {
         MmpParserStage3Success::Empty => return Err(Error::MmpFileEmptyError),
         MmpParserStage3Success::Header(stage_3_header) => {
-            return Ok(add_header_preview(
+            let (allowed_tags_and_attributes, allowed_css_properties) =
+                html_validation::create_rule_structs();
+            let invalid_html = !description_parser::parse_description(
+                &stage_3_header.description,
+                &mm_data.database_header,
+                &allowed_tags_and_attributes,
+                &allowed_css_properties,
+            )
+            .1
+            .is_empty();
+
+            let (old_file_content, new_file_content) = add_header_preview(
                 &mm_data.database_path,
                 &mm_data.database_header,
                 stage_3_header,
-            )?)
+            )?;
+
+            return Ok(AddToDatabasePreviewData {
+                old_file_content,
+                new_file_content,
+                invalid_html,
+            });
         }
         MmpParserStage3Success::Comment(stage_3_comment) => {
-            return Ok(add_statement_preview(
+            let (old_file_content, new_file_content) = add_statement_preview(
                 &mm_data.database_path,
                 &mm_data.database_header,
                 stage_2_success.locate_after,
                 Statement::CommentStatement(stage_3_comment.comment),
-            )?);
+            )?;
+
+            return Ok(AddToDatabasePreviewData {
+                old_file_content,
+                new_file_content,
+                invalid_html: false,
+            });
         }
         MmpParserStage3Success::Constants(constants) => {
-            return Ok(add_statement_preview(
+            let (old_file_content, new_file_content) = add_statement_preview(
                 &mm_data.database_path,
                 &mm_data.database_header,
                 stage_2_success.locate_after,
                 Statement::ConstantStatement(constants),
-            )?);
+            )?;
+
+            return Ok(AddToDatabasePreviewData {
+                old_file_content,
+                new_file_content,
+                invalid_html: false,
+            });
         }
         MmpParserStage3Success::Variables(variables) => {
-            return Ok(add_statement_preview(
+            let (old_file_content, new_file_content) = add_statement_preview(
                 &mm_data.database_path,
                 &mm_data.database_header,
                 stage_2_success.locate_after,
                 Statement::VariableStatement(variables),
-            )?);
+            )?;
+
+            return Ok(AddToDatabasePreviewData {
+                old_file_content,
+                new_file_content,
+                invalid_html: false,
+            });
         }
         MmpParserStage3Success::FloatingHypohesis(floating_hypothesis) => {
-            return Ok(add_statement_preview(
+            let (old_file_content, new_file_content) = add_statement_preview(
                 &mm_data.database_path,
                 &mm_data.database_header,
                 stage_2_success.locate_after,
                 Statement::FloatingHypohesisStatement(floating_hypothesis),
-            )?);
+            )?;
+
+            return Ok(AddToDatabasePreviewData {
+                old_file_content,
+                new_file_content,
+                invalid_html: false,
+            });
         }
         MmpParserStage3Success::Theorem(s3t) => s3t,
     };
@@ -120,12 +172,29 @@ pub async fn add_to_database_preview(
         return Err(Error::CantAddToDatabaseError);
     };
 
-    Ok(add_statement_preview(
+    let (allowed_tags_and_attributes, allowed_css_properties) =
+        html_validation::create_rule_structs();
+    let invalid_html = !description_parser::parse_description(
+        &theorem.description,
+        &mm_data.database_header,
+        &allowed_tags_and_attributes,
+        &allowed_css_properties,
+    )
+    .1
+    .is_empty();
+
+    let (old_file_content, new_file_content) = add_statement_preview(
         &mm_data.database_path,
         &mm_data.database_header,
         locate_after,
         Statement::TheoremStatement(theorem),
-    )?)
+    )?;
+
+    return Ok(AddToDatabasePreviewData {
+        old_file_content,
+        new_file_content,
+        invalid_html,
+    });
 }
 
 pub fn database_has_changed(file_path: &str, database_hash: &str) -> Result<bool, Error> {
@@ -153,6 +222,18 @@ pub fn database_has_changed(file_path: &str, database_hash: &str) -> Result<bool
         .collect();
 
     Ok(new_database_hash != database_hash)
+}
+
+pub enum AddToDatabaseResult {
+    NewHeader {
+        header_title: String,
+        header_path: HeaderPath,
+    },
+    NewStatement {
+        content_rep: HeaderContentRepresentation,
+        header_path: HeaderPath,
+        header_content_i: usize,
+    },
 }
 
 #[tauri::command]
@@ -913,4 +994,38 @@ fn add_header_memory(
     }
 
     Ok(())
+}
+
+impl serde::Serialize for AddToDatabaseResult {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        match self {
+            Self::NewHeader {
+                header_title,
+                header_path,
+            } => {
+                let mut state = serializer.serialize_struct("NewHeader", 2)?;
+                state.serialize_field("headerTitle", header_title)?;
+                state.serialize_field("headerPath", header_path)?;
+                state.serialize_field("discriminator", "NewHeader")?;
+                state.end()
+            }
+            Self::NewStatement {
+                content_rep,
+                header_path,
+                header_content_i,
+            } => {
+                let mut state = serializer.serialize_struct("NewStatement", 3)?;
+                state.serialize_field("contentRep", content_rep)?;
+                state.serialize_field("headerPath", header_path)?;
+                state.serialize_field("headerContentI", header_content_i)?;
+                state.serialize_field("discriminator", "NewStatement")?;
+                state.end()
+            }
+        }
+    }
 }

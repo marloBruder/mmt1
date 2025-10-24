@@ -81,6 +81,7 @@ export interface HeaderPageData {
   headerPath: string;
   title: string;
   descriptionParsed: ParsedDescriptionSegment[];
+  invalidHtml: boolean;
   discriminator: "HeaderPageData";
 }
 
@@ -120,6 +121,7 @@ export interface TheoremPageData {
   definitionDependencies: [string, number][];
   references: [string, number][];
   descriptionParsed: ParsedDescriptionSegment[];
+  invalidHtml: boolean;
   proofIncomplete: boolean;
   discriminator: "TheoremPageData";
 }

@@ -10,6 +10,6 @@
     <h1 class="text-3xl">{pageData.headerPath + ": " + pageData.title}</h1>
   </div>
   <div>
-    <DescriptionParsed descriptionParsed={pageData.descriptionParsed} {externalWindow}></DescriptionParsed>
+    <DescriptionParsed descriptionParsed={pageData.descriptionParsed} {externalWindow} invalidHtml={pageData.invalidHtml}></DescriptionParsed>
   </div>
 </div>

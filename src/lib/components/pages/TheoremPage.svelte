@@ -122,7 +122,7 @@
     <h2 class="font-bold">Description:</h2>
     <div class="flex flex-col items-center w-full">
       <div class="text-left">
-        <DescriptionParsed descriptionParsed={pageData.descriptionParsed} openLinksInNewTab={editorPreview} {externalWindow}></DescriptionParsed>
+        <DescriptionParsed descriptionParsed={pageData.descriptionParsed} openLinksInNewTab={editorPreview} {externalWindow} invalidHtml={pageData.invalidHtml}></DescriptionParsed>
       </div>
     </div>
   </div>

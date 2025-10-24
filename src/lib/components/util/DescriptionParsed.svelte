@@ -4,7 +4,17 @@
   import TheoremLink from "./TheoremLink.svelte";
   import type { ParsedDescriptionSegment } from "$lib/sharedState/model.svelte";
 
-  let { descriptionParsed, openLinksInNewTab = false, externalWindow = false }: { descriptionParsed: ParsedDescriptionSegment[]; openLinksInNewTab?: boolean; externalWindow?: boolean } = $props();
+  let {
+    descriptionParsed,
+    openLinksInNewTab = false,
+    externalWindow = false,
+    invalidHtml = false,
+  }: {
+    descriptionParsed: ParsedDescriptionSegment[];
+    openLinksInNewTab?: boolean;
+    externalWindow?: boolean;
+    invalidHtml?: boolean;
+  } = $props();
 
   let openLink = (url: string) => {
     open(url);
@@ -30,7 +40,11 @@
   {:else if descriptionParsedSegement.discriminator == "DescriptionSubscript"}
     <span class="text-xs">{descriptionParsedSegement.subscript}</span>
   {:else if descriptionParsedSegement.discriminator == "DescriptionHtml"}
-    <span class="prose prose-invert">{@html descriptionParsedSegement.html}</span>
+    {#if !invalidHtml}
+      <span class="prose prose-invert">{@html descriptionParsedSegement.html}</span>
+    {:else}
+      <span class="text-red-600">{descriptionParsedSegement.html}</span>
+    {/if}
   {:else if descriptionParsedSegement.discriminator == "DescriptionHtmlCharacterRef"}
     {@html "&" + descriptionParsedSegement.charRef + ";"}
   {/if}

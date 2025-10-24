@@ -500,6 +500,7 @@ pub fn calc_theorem_page_data(
                 definition_dependencies,
                 references,
                 description_parsed,
+                invalid_html: false,
                 proof_incomplete: matches!(res, VerifierCreationResult::IsIncomplete),
             })
         }
@@ -539,6 +540,7 @@ pub fn calc_theorem_page_data(
         definition_dependencies,
         references,
         description_parsed,
+        invalid_html: false,
         proof_incomplete: false,
     })
 }

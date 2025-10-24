@@ -113,19 +113,19 @@ pub async fn on_edit(
             let (html_allowed_tags_and_attributes, css_allowed_properties) =
                 html_validation::create_rule_structs();
 
-            let description_parsed = description_parser::parse_description(
+            let (description_parsed, invalid_html) = description_parser::parse_description(
                 &stage_3_header.description,
                 &mm_data.database_header,
                 &html_allowed_tags_and_attributes,
                 &css_allowed_properties,
-            )
-            .0;
+            );
 
             return Ok(OnEditData {
                 page_data: Some(DatabaseElementPageData::Header(HeaderPageData {
                     header_path: stage_3_header.parent_header_path.to_string(),
                     title: stage_3_header.title,
                     description_parsed,
+                    invalid_html: !invalid_html.is_empty(),
                 })),
                 errors: Vec::new(),
             });
@@ -348,14 +348,16 @@ pub fn calc_theorem_page_data(
         .map(|s| s.to_string())
         .unwrap_or(String::new());
 
+    let (description_parsed, invalid_html) = description_parser::parse_description(
+        &description,
+        &mm_data.database_header,
+        &html_allowed_tags_and_attributes,
+        &css_allowed_properties,
+    );
+
     Ok(DatabaseElementPageData::Theorem(TheoremPageData {
-        description_parsed: description_parser::parse_description(
-            &description,
-            &mm_data.database_header,
-            &html_allowed_tags_and_attributes,
-            &css_allowed_properties,
-        )
-        .0,
+        description_parsed,
+        invalid_html: !invalid_html.is_empty(),
         theorem: Theorem {
             label: stage_3_theorem.label.to_string(),
             description,

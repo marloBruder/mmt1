@@ -17,6 +17,8 @@
 
   let canceled = $state(false);
 
+  let addingInvalidHtml = $state(false);
+
   let onCancelClick = () => {
     canceled = true;
     goto("/main");
@@ -28,16 +30,22 @@
 
   let loading = $state(true);
 
+  interface AddToDatabasePreviewData {
+    oldFileContent: string;
+    newFileContent: string;
+    invalidHtml: boolean;
+  }
+
   onMount(async () => {
     const text = globalState.lastEditorContent;
-    const res = (await invoke("add_to_database_preview", { text, overrideProofFormat: null })) as [string, string] | null;
+    const data = (await invoke("add_to_database_preview", { text, overrideProofFormat: null })) as AddToDatabasePreviewData | null;
 
-    if (res === null || canceled) {
+    if (data === null || canceled) {
       loading = false;
       return;
     }
 
-    const [oldFileContent, newFileContent] = res;
+    addingInvalidHtml = data.invalidHtml;
 
     const editorContainer = document.getElementById("editor-div")!;
     editor = monaco.editor.createDiffEditor(editorContainer, {
@@ -49,8 +57,8 @@
       readOnly: true,
     });
 
-    oldMonacoModel = monaco.editor.createModel(oldFileContent, "text");
-    newMonacoModel = monaco.editor.createModel(newFileContent, "text");
+    oldMonacoModel = monaco.editor.createModel(data.oldFileContent, "text");
+    newMonacoModel = monaco.editor.createModel(data.newFileContent, "text");
 
     editor.setModel({ original: oldMonacoModel, modified: newMonacoModel });
 
@@ -89,21 +97,30 @@
     { label: "Compressed", value: "compressed" },
   ];
 
+  let firstTimeEffect = true;
+
   $effect(() => {
+    let overrideProofFormat = proofFormatOption;
+
+    if (firstTimeEffect) {
+      firstTimeEffect = false;
+      return;
+    }
+
     loading = true;
     const text = globalState.lastEditorContent;
-    invoke("add_to_database_preview", { text, overrideProofFormat: proofFormatOption }).then(async (resUnkown) => {
-      const res = resUnkown as [string, string] | null;
+    invoke("add_to_database_preview", { text, overrideProofFormat }).then(async (resUnkown) => {
+      const data = resUnkown as AddToDatabasePreviewData | null;
 
-      if (res === null) {
+      if (data === null) {
         loading = false;
         return;
       }
 
-      const [oldFileContent, newFileContent] = res;
+      addingInvalidHtml = data.invalidHtml;
 
-      oldMonacoModel?.setValue(oldFileContent);
-      newMonacoModel?.setValue(newFileContent);
+      oldMonacoModel?.setValue(data.oldFileContent);
+      newMonacoModel?.setValue(data.newFileContent);
 
       let changes = editor?.getLineChanges();
       let changeLookups = 1;
@@ -189,6 +206,14 @@
                   <div class="py-2">
                     <hr />
                   </div>
+                  {#if addingInvalidHtml}
+                    <div class="pt-2">
+                      <div class="border rounded-lg p-2">
+                        <div class="text-red-600">WARNING</div>
+                        <div>You are adding html to the database that could potentially be dangerous. This is checked using a whitelist of tags and attributes that is not exhaustive. If the tags and attributes you are using are guaranteed to be safe, please create an issue on Github so that they can be added to the whitelist.</div>
+                      </div>
+                    </div>
+                  {/if}
                   <div class="pt-2">
                     <RoundButton onclick={addToDatabase} additionalClasses="w-full">Confirm Add to Database</RoundButton>
                   </div>
