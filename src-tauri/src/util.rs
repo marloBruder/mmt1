@@ -250,3 +250,12 @@ pub fn str_to_hash_string(str: &str) -> String {
         .map(|byte| format!("{:02x}", byte))
         .collect()
 }
+
+pub fn is_valid_comment_path(str: &str) -> bool {
+    str.split_once('#')
+        .is_some_and(|(header_path, comment_num)| {
+            HeaderPath::from_str(header_path).is_some()
+                && comment_num.parse::<usize>().is_ok_and(|num| num != 0)
+                && !comment_num.contains('+')
+        })
+}

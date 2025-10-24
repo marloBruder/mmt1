@@ -990,7 +990,7 @@ fn add_header_memory(
             },
         );
     } else if stage_3_header.header_i > parent_header.subheaders.len() {
-        return Err(Error::InvalidHeaderPathError);
+        return Err(Error::InternalLogicError);
     }
 
     Ok(())

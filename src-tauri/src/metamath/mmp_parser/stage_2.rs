@@ -594,6 +594,19 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
                 }
 
                 if let Some(locate_after_header) = token_iter.next() {
+                    if HeaderPath::from_str(locate_after_header).is_none() {
+                        let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
+                        let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
+
+                        errors.push(DetailedError {
+                            error_type: Error::InvalidHeaderPathFormatError,
+                            start_line_number: current_line + second_token_start_pos.0 - 1,
+                            start_column: second_token_start_pos.1,
+                            end_line_number: current_line + second_token_end_pos.0 - 1,
+                            end_column: second_token_end_pos.1 + 1,
+                        });
+                    }
+
                     locate_after = Some(LocateAfterRef::LocateAfterHeader(locate_after_header));
                 } else {
                     errors.push(DetailedError {
@@ -635,6 +648,19 @@ pub fn stage_2<'a>(stage_1: &MmpParserStage1Success<'a>) -> Result<MmpParserStag
                 }
 
                 if let Some(locate_after_comment) = token_iter.next() {
+                    if !util::is_valid_comment_path(locate_after_comment) {
+                        let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
+                        let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
+
+                        errors.push(DetailedError {
+                            error_type: Error::InvalidCommentPathFormatError,
+                            start_line_number: current_line + second_token_start_pos.0 - 1,
+                            start_column: second_token_start_pos.1,
+                            end_line_number: current_line + second_token_end_pos.0 - 1,
+                            end_column: second_token_end_pos.1 + 1,
+                        });
+                    }
+
                     locate_after = Some(LocateAfterRef::LocateAfterComment(locate_after_comment));
                 } else {
                     errors.push(DetailedError {

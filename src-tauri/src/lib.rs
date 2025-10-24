@@ -248,12 +248,13 @@ pub enum Error {
     TooFewHeaderTokensError, // Returned if there are less than 2 tokens after $header statement
     InvalidHeaderPathFormatError, // Returned if the token after $header does not have the format of a valid Headerpath
     HeaderPathLengthGreater4Error, // Returned if there is a header path with a length that is greater 4
+    InvalidNewHeaderPathError, // Returned if the token after $header is not a valid new header path in the database
     InvalidHeaderPathError, // Returned if the token after $header is not a valid new header path in the database
     // MissingCommentPathError, // Returned if there is a $comment statement without a follow up token
     // TooManyCommentPathTokensError, // Returned if there is a $comment statement with too many follow up tokens
-    // InvalidCommentPathFormatError, // Returned if the token after $comment does not have the format of a valid comment path
-    // InvalidCommentPathError, // Returned if the token after $comment is not a valid new comment path in the database
-    MissingAxiomLabelError, // Returned if there is a $axiom statement without a follow up token
+    InvalidCommentPathFormatError, // Returned if the token after $comment does not have the format of a valid comment path
+    InvalidCommentPathError, // Returned if the token after $comment is not a valid new comment path in the database
+    MissingAxiomLabelError,  // Returned if there is a $axiom statement without a follow up token
     TooManyAxiomLabelTokensError, // Returned if there is a $axiom statement with too many follow up tokens
     MissingTheoremLabelError, // Returned if there is a $theorem statement without a follow up token
     TooManyTheoremLabelTokensError, // Returned if there is a $theorem statement with too many follow up tokens
@@ -314,6 +315,9 @@ pub enum Error {
     DiscouragedTheoremUsedError, // Returned if a step ref references an discouraged theorem without $allowdiscouraged being present
     IncompleteTheoremUsedError, // Returned if a step ref references an (recursively) incomplete theorem without $allowincomplete being present
     MultipleProofStatementsError, // Returned if there are multiple proof ($=) statements
+    NotAConstantError, // Returned if there is an $locateafterconst statement which parameter is not a constant
+    NotAVariableError, // Returned if there is an $locateaftervar statement which parameter is not a constant
+    NotAValidLabelError, // Returned if there is a $locateafter statement which parameter is not a valid floating hypothesis or theorem label
 
     MissingExpressionError, // Returned when converting str to number vec and skipping the first, but the str is empty
     InvalidTypecodeError,

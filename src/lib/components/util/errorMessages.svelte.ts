@@ -130,13 +130,19 @@ export function getErrorMessage(errorType: string): string {
     case "InvalidHeaderPathFormatError": {
       return "Not a valid header path. Header paths must be a list of dot seperated numbers.\n\nExample: 1.2.3";
     }
-    // case "InvalidCommentPathFormatError": {
-    //   return "Not a valid comment path. Comment paths must be a (possibly empty) list of dot seperated numbers, followed by a # and then the comment number.\n\nExamples: #2 or 1.2.3#4";
-    // }
-    case "InvalidHeaderPathError": {
+    case "InvalidCommentPathFormatError": {
+      return "Not a valid comment path. Comment paths must be a (possibly empty) list of dot seperated numbers, followed by a # and then the comment number.\n\nExamples: #2 or 1.2.3#4";
+    }
+    case "InvalidNewHeaderPathError": {
       return "Not a valid new header path. Either the parent header does not exist or it does not have enough subheaders.\n\nExample: To add header 1.2.3, parent header 1.2 must exist and must already have two subheaders to add the subheader number 3.";
     }
-    // case "InvalidCommentPathError": {
+    case "InvalidHeaderPathError": {
+      return "Not a valid existing header path.";
+    }
+    case "InvalidCommentPathError": {
+      return "Not a valid existing comment path. Either the parent header does not exist or it does not have enough comments.";
+    }
+    // case "InvalidNewCommentPathError": {
     //   return "Not a valid new comment path. Either the parent header does not exist or it does not have enough comments.\n\nExample: To add comment 1.2.3#4, parent header 1.2.3 must exist and must already have three comments to add comment #4.";
     // }
     case "LabelAlreadyExistsError":
@@ -205,6 +211,15 @@ export function getErrorMessage(errorType: string): string {
     }
     case "HeaderPathLengthGreater4Error": {
       return "Header paths may only go 4 levels deep.";
+    }
+    case "NotAConstantError": {
+      return "Not a constant symbol.";
+    }
+    case "NotAVariableError": {
+      return "Not a variable symbol.";
+    }
+    case "NotAValidLabelError": {
+      return "Not a floating hypothesis or theorem label.";
     }
   }
 

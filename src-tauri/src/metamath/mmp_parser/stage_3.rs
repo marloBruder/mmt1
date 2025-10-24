@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use crate::{
     editor::on_edit::DetailedError,
+    metamath::mmp_parser::LocateAfterRef,
     model::{
         Comment, Constant, DatabaseElement, FloatingHypothesis, HeaderPath, MetamathData,
         Statement, Theorem, Variable,
@@ -51,20 +52,15 @@ fn stage_3_header<'a>(
         .pop()
         .ok_or(Error::InternalLogicError)?;
 
-    if let Some(parent_header) = parent_header_path.resolve(&mm_data.database_header) {
+    if parent_header_path
+        .resolve(&mm_data.database_header)
         // Allow header_i == len()
-        if parent_header.subheaders.len() < header_i {
-            errors.push(calc_label_error(
-                stage_1,
-                stage_2,
-                Error::InvalidHeaderPathError,
-            )?);
-        }
-    } else {
+        .is_none_or(|parent_header| parent_header.subheaders.len() < header_i)
+    {
         errors.push(calc_label_error(
             stage_1,
             stage_2,
-            Error::InvalidHeaderPathError,
+            Error::InvalidNewHeaderPathError,
         )?);
     }
 
@@ -81,13 +77,12 @@ fn stage_3_header<'a>(
 }
 
 fn calc_statement_out_of_place_errors(
+    errors: &mut Vec<DetailedError>,
     stage_1: &MmpParserStage1Success,
     stage_2: &MmpParserStage2Success,
     error_type: Error,
     out_of_place_statement_type: MmpStatement,
-) -> Vec<DetailedError> {
-    let mut errors: Vec<DetailedError> = Vec::new();
-
+) {
     for (&statement_str, (statement_type, line_number)) in
         stage_1.statements.iter().zip(&stage_2.statements)
     {
@@ -103,8 +98,6 @@ fn calc_statement_out_of_place_errors(
             });
         }
     }
-
-    errors
 }
 
 fn calc_header_statement_out_of_place_errors(
@@ -114,68 +107,76 @@ fn calc_header_statement_out_of_place_errors(
     let mut errors: Vec<DetailedError> = Vec::new();
 
     if stage_2.constants.is_some() {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::ConstStatementOutOfPlaceError,
             MmpStatement::Constant,
-        ));
+        );
     }
     if !stage_2.variables.is_empty() {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::VarStatementOutOfPlaceError,
             MmpStatement::Variable,
-        ));
+        );
     }
     if !stage_2.floating_hypotheses.is_empty() {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::FloatHypStatementOutOfPlaceError,
             MmpStatement::FloatingHypohesis,
-        ));
+        );
     }
     if stage_2.allow_discouraged {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::AllowDiscouragedOutOfPlaceError,
             MmpStatement::AllowDiscouraged,
-        ));
+        );
     }
     if stage_2.allow_incomplete {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::AllowIncompleteOutOfPlaceError,
             MmpStatement::AllowIncomplete,
-        ));
+        );
     }
     if stage_2.locate_after.is_some() {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::LocateAfterOutOfPlaceError,
             MmpStatement::LocateAfter,
-        ));
+        );
     }
     if !stage_2.distinct_vars.is_empty() {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::DistinctVarOutOfPlaceError,
             MmpStatement::DistinctVar,
-        ));
+        );
     }
     if !stage_2.proof_lines.is_empty() {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::ProofLinesOutOfPlaceError,
             MmpStatement::ProofLine,
-        ));
+        );
     }
 
     errors
@@ -216,12 +217,13 @@ fn stage_3_theorem<'a>(
     let mut errors: Vec<DetailedError> = Vec::new();
 
     if stage_2.constants.is_some() {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::ConstStatementOutOfPlaceError,
             MmpStatement::Constant,
-        ));
+        );
     }
 
     let temp_variable_statements: Vec<Vec<Variable>> = stage_2
@@ -337,6 +339,24 @@ fn stage_3_theorem<'a>(
         });
     }
 
+    if let Some(locate_after) = stage_2.locate_after {
+        let (statement_str, line_number) = calc_statement_str_and_line_number(
+            &stage_1.statements,
+            &stage_2.statements,
+            MmpStatement::LocateAfter,
+            0,
+        )
+        .ok_or(Error::InternalLogicError)?;
+
+        calc_locate_after_errors(
+            &mut errors,
+            locate_after,
+            metamath_data,
+            statement_str,
+            line_number,
+        )?;
+    }
+
     let (axiom_dependencies, definition_dependencies) =
         calc_dependencies(&stage_2.proof_lines, metamath_data);
 
@@ -352,6 +372,128 @@ fn stage_3_theorem<'a>(
     } else {
         MmpParserStage3::Fail(MmpParserStage3Fail { errors })
     })
+}
+
+fn calc_locate_after_errors(
+    errors: &mut Vec<DetailedError>,
+    locate_after: LocateAfterRef,
+    metamath_data: &MetamathData,
+    statement_str: &str,
+    line_number: u32,
+) -> Result<(), Error> {
+    match locate_after {
+        LocateAfterRef::LocateAfterStart => {}
+        LocateAfterRef::LocateAfterHeader(header_path) => {
+            if HeaderPath::from_str(header_path)
+                .ok_or(Error::InternalLogicError)?
+                .resolve(&metamath_data.database_header)
+                .is_none()
+            {
+                let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
+                let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
+
+                errors.push(DetailedError {
+                    error_type: Error::InvalidHeaderPathError,
+                    start_line_number: line_number + second_token_start_pos.0 - 1,
+                    start_column: second_token_start_pos.1,
+                    end_line_number: line_number + second_token_end_pos.0 - 1,
+                    end_column: second_token_end_pos.1 + 1,
+                });
+            }
+        }
+        LocateAfterRef::LocateAfterComment(comment_path) => {
+            let (header_path, comment_i_str) = comment_path
+                .split_once('#')
+                .ok_or(Error::InternalLogicError)?;
+            let comment_i = comment_i_str
+                .parse::<usize>()
+                .map_err(|_| Error::InternalLogicError)?;
+
+            if HeaderPath::from_str(header_path)
+                .ok_or(Error::InternalLogicError)?
+                .resolve(&metamath_data.database_header)
+                .is_none_or(|header| {
+                    header
+                        .content
+                        .iter()
+                        .filter(|s| matches!(s, Statement::CommentStatement(_)))
+                        .count()
+                        < comment_i
+                })
+            {
+                let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
+                let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
+
+                errors.push(DetailedError {
+                    error_type: Error::InvalidCommentPathError,
+                    start_line_number: line_number + second_token_start_pos.0 - 1,
+                    start_column: second_token_start_pos.1,
+                    end_line_number: line_number + second_token_end_pos.0 - 1,
+                    end_column: second_token_end_pos.1 + 1,
+                });
+            }
+        }
+        LocateAfterRef::LocateAfterConst(const_symbol) => {
+            if metamath_data
+                .database_header
+                .constant_iter()
+                .all(|c| c.symbol != const_symbol)
+            {
+                let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
+                let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
+
+                errors.push(DetailedError {
+                    error_type: Error::NotAConstantError,
+                    start_line_number: line_number + second_token_start_pos.0 - 1,
+                    start_column: second_token_start_pos.1,
+                    end_line_number: line_number + second_token_end_pos.0 - 1,
+                    end_column: second_token_end_pos.1 + 1,
+                });
+            }
+        }
+        LocateAfterRef::LocateAfterVar(var_symbol) => {
+            if metamath_data
+                .database_header
+                .variable_iter()
+                .all(|v| v.symbol != var_symbol)
+            {
+                let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
+                let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
+
+                errors.push(DetailedError {
+                    error_type: Error::NotAVariableError,
+                    start_line_number: line_number + second_token_start_pos.0 - 1,
+                    start_column: second_token_start_pos.1,
+                    end_line_number: line_number + second_token_end_pos.0 - 1,
+                    end_column: second_token_end_pos.1 + 1,
+                });
+            }
+        }
+        LocateAfterRef::LocateAfter(label) => {
+            if metamath_data
+                .database_header
+                .floating_hypohesis_iter()
+                .all(|fh| fh.label != label)
+                && metamath_data
+                    .database_header
+                    .theorem_iter()
+                    .all(|t| t.label != label)
+            {
+                let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
+                let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
+
+                errors.push(DetailedError {
+                    error_type: Error::NotAValidLabelError,
+                    start_line_number: line_number + second_token_start_pos.0 - 1,
+                    start_column: second_token_start_pos.1,
+                    end_line_number: line_number + second_token_end_pos.0 - 1,
+                    end_column: second_token_end_pos.1 + 1,
+                });
+            }
+        }
+    }
+
+    Ok(())
 }
 
 fn calc_dependencies(
@@ -419,63 +561,87 @@ fn stage_3_floating_hypothesis<'a>(
     let mut errors: Vec<DetailedError> = Vec::new();
 
     if stage_2.floating_hypotheses.len() > 1 {
-        let mut float_hyp_errors = calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::FloatHypStatementOutOfPlaceError,
             MmpStatement::Constant,
         );
         // The first flaoting hypothesis should not be marked as an error
-        float_hyp_errors.swap_remove(0);
-        errors.append(&mut float_hyp_errors);
+        errors.swap_remove(0);
     }
     if stage_2.constants.is_some() {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::ConstStatementOutOfPlaceError,
             MmpStatement::Constant,
-        ));
+        );
     }
     if !stage_2.variables.is_empty() {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::VarStatementOutOfPlaceError,
             MmpStatement::Variable,
-        ));
+        );
     }
     if stage_2.allow_discouraged {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::AllowDiscouragedOutOfPlaceError,
             MmpStatement::AllowDiscouraged,
-        ));
+        );
     }
     if stage_2.allow_incomplete {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::AllowIncompleteOutOfPlaceError,
             MmpStatement::AllowIncomplete,
-        ));
+        );
     }
     if !stage_2.distinct_vars.is_empty() {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::DistinctVarOutOfPlaceError,
             MmpStatement::DistinctVar,
-        ));
+        );
     }
     if !stage_2.proof_lines.is_empty() {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::ProofLinesOutOfPlaceError,
             MmpStatement::ProofLine,
-        ));
+        );
+    }
+
+    if let Some(locate_after) = stage_2.locate_after {
+        let (statement_str, line_number) = calc_statement_str_and_line_number(
+            &stage_1.statements,
+            &stage_2.statements,
+            MmpStatement::LocateAfter,
+            0,
+        )
+        .ok_or(Error::InternalLogicError)?;
+
+        calc_locate_after_errors(
+            &mut errors,
+            locate_after,
+            mm_data,
+            statement_str,
+            line_number,
+        )?;
     }
 
     let float_hyp_str = *stage_2
@@ -611,55 +777,78 @@ fn stage_3_variables<'a>(
     let mut errors: Vec<DetailedError> = Vec::new();
 
     if stage_2.variables.len() > 1 {
-        let mut variable_errors = calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::VarStatementOutOfPlaceError,
             MmpStatement::Variable,
         );
         // The first flaoting hypothesis should not be marked as an error
-        variable_errors.swap_remove(0);
-        errors.append(&mut variable_errors);
+        errors.swap_remove(0);
     }
     if stage_2.constants.is_some() {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::ConstStatementOutOfPlaceError,
             MmpStatement::Constant,
-        ));
+        );
     }
     if stage_2.allow_discouraged {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::AllowDiscouragedOutOfPlaceError,
             MmpStatement::AllowDiscouraged,
-        ));
+        );
     }
     if stage_2.allow_incomplete {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::AllowIncompleteOutOfPlaceError,
             MmpStatement::AllowIncomplete,
-        ));
+        );
     }
     if !stage_2.distinct_vars.is_empty() {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::DistinctVarOutOfPlaceError,
             MmpStatement::DistinctVar,
-        ));
+        );
     }
     if !stage_2.proof_lines.is_empty() {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::ProofLinesOutOfPlaceError,
             MmpStatement::ProofLine,
-        ));
+        );
+    }
+
+    if let Some(locate_after) = stage_2.locate_after {
+        let (statement_str, line_number) = calc_statement_str_and_line_number(
+            &stage_1.statements,
+            &stage_2.statements,
+            MmpStatement::LocateAfter,
+            0,
+        )
+        .ok_or(Error::InternalLogicError)?;
+
+        calc_locate_after_errors(
+            &mut errors,
+            locate_after,
+            mm_data,
+            statement_str,
+            line_number,
+        )?;
     }
 
     let variables_str = *stage_2.variables.get(0).ok_or(Error::InternalLogicError)?;
@@ -673,12 +862,13 @@ fn stage_3_variables<'a>(
         return Err(Error::InternalLogicError);
     };
 
-    errors.append(&mut calc_non_new_math_symbol_errors(
+    calc_non_new_math_symbol_errors(
+        &mut errors,
         variables_str,
         start_line_number,
         2, // "$v".len()
         mm_data,
-    ));
+    );
 
     let variables: Vec<Variable> = variables_str
         .split_ascii_whitespace()
@@ -695,13 +885,12 @@ fn stage_3_variables<'a>(
 }
 
 fn calc_non_new_math_symbol_errors(
+    errors: &mut Vec<DetailedError>,
     math_symbols_str: &str,
     start_line: u32,
     start_column: u32,
     mm_data: &MetamathData,
-) -> Vec<DetailedError> {
-    let mut errors: Vec<DetailedError> = Vec::new();
-
+) {
     let mut line = start_line;
     let mut column = start_column;
 
@@ -768,8 +957,6 @@ fn calc_non_new_math_symbol_errors(
             current_token.push(char)
         }
     }
-
-    errors
 }
 
 fn stage_3_constants<'a>(
@@ -780,36 +967,58 @@ fn stage_3_constants<'a>(
     let mut errors: Vec<DetailedError> = Vec::new();
 
     if stage_2.allow_discouraged {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::AllowDiscouragedOutOfPlaceError,
             MmpStatement::AllowDiscouraged,
-        ));
+        );
     }
     if stage_2.allow_incomplete {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::AllowIncompleteOutOfPlaceError,
             MmpStatement::AllowIncomplete,
-        ));
+        );
     }
     if !stage_2.distinct_vars.is_empty() {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::DistinctVarOutOfPlaceError,
             MmpStatement::DistinctVar,
-        ));
+        );
     }
     if !stage_2.proof_lines.is_empty() {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::ProofLinesOutOfPlaceError,
             MmpStatement::ProofLine,
-        ));
+        );
+    }
+
+    if let Some(locate_after) = stage_2.locate_after {
+        let (statement_str, line_number) = calc_statement_str_and_line_number(
+            &stage_1.statements,
+            &stage_2.statements,
+            MmpStatement::LocateAfter,
+            0,
+        )
+        .ok_or(Error::InternalLogicError)?;
+
+        calc_locate_after_errors(
+            &mut errors,
+            locate_after,
+            mm_data,
+            statement_str,
+            line_number,
+        )?;
     }
 
     let constants_str = stage_2.constants.ok_or(Error::InternalLogicError)?;
@@ -823,12 +1032,13 @@ fn stage_3_constants<'a>(
         return Err(Error::InternalLogicError);
     };
 
-    errors.append(&mut calc_non_new_math_symbol_errors(
+    calc_non_new_math_symbol_errors(
+        &mut errors,
         constants_str,
         start_line_number,
         2, // "$c".len()
         mm_data,
-    ));
+    );
 
     let constants: Vec<Constant> = constants_str
         .split_ascii_whitespace()
@@ -853,36 +1063,58 @@ fn stage_3_comment<'a>(
     let mut errors: Vec<DetailedError> = Vec::new();
 
     if stage_2.allow_discouraged {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::AllowDiscouragedOutOfPlaceError,
             MmpStatement::AllowDiscouraged,
-        ));
+        );
     }
     if stage_2.allow_incomplete {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::AllowIncompleteOutOfPlaceError,
             MmpStatement::AllowIncomplete,
-        ));
+        );
     }
     if !stage_2.distinct_vars.is_empty() {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::DistinctVarOutOfPlaceError,
             MmpStatement::DistinctVar,
-        ));
+        );
     }
     if !stage_2.proof_lines.is_empty() {
-        errors.append(&mut calc_statement_out_of_place_errors(
+        calc_statement_out_of_place_errors(
+            &mut errors,
             stage_1,
             stage_2,
             Error::ProofLinesOutOfPlaceError,
             MmpStatement::ProofLine,
-        ));
+        );
+    }
+
+    if let Some(locate_after) = stage_2.locate_after {
+        let (statement_str, line_number) = calc_statement_str_and_line_number(
+            &stage_1.statements,
+            &stage_2.statements,
+            MmpStatement::LocateAfter,
+            0,
+        )
+        .ok_or(Error::InternalLogicError)?;
+
+        calc_locate_after_errors(
+            &mut errors,
+            locate_after,
+            mm_data,
+            statement_str,
+            line_number,
+        )?;
     }
 
     let mut parent_header_path = HeaderPath::new();

@@ -107,7 +107,7 @@ impl<'a> Iterator for ConstantIterator<'a> {
             return self.curr_const_vec.unwrap().get(self.next_const_i - 1);
         }
 
-        self.next_const_i = 0;
+        self.next_const_i = 1;
         self.curr_const_vec = Some(self.inner.next()?);
         while self.curr_const_vec.unwrap().is_empty() {
             self.curr_const_vec = Some(self.inner.next()?);
@@ -152,7 +152,7 @@ impl<'a> Iterator for VariableIterator<'a> {
             return self.curr_var_vec.unwrap().get(self.next_var_i - 1);
         }
 
-        self.next_var_i = 0;
+        self.next_var_i = 1;
         self.curr_var_vec = Some(self.inner.next()?);
         while self.curr_var_vec.unwrap().is_empty() {
             self.curr_var_vec = Some(self.inner.next()?);
@@ -294,7 +294,7 @@ impl<'a, 'b> Iterator for HeaderLocateAfterIterator<'a, 'b> {
                     }
                 }
                 Statement::VariableStatement(variables) => {
-                    if let Some(LocateAfterRef::LocateAfterConst(var_str)) = self.locate_after {
+                    if let Some(LocateAfterRef::LocateAfterVar(var_str)) = self.locate_after {
                         if variables.iter().any(|v| v.symbol == var_str) {
                             self.found = true;
                         }
@@ -499,7 +499,7 @@ impl<'a, 'b> Iterator for ConstantLocateAfterIterator<'a, 'b> {
             return self.curr_const_vec.unwrap().get(self.next_const_i - 1);
         }
 
-        self.next_const_i = 0;
+        self.next_const_i = 1;
         self.curr_const_vec = Some(self.inner.next()?);
         while self.curr_const_vec.unwrap().is_empty() {
             self.curr_const_vec = Some(self.inner.next()?);
@@ -552,7 +552,7 @@ impl<'a, 'b> Iterator for VariableLocateAfterIterator<'a, 'b> {
             return self.curr_var_vec.unwrap().get(self.next_var_i - 1);
         }
 
-        self.next_var_i = 0;
+        self.next_var_i = 1;
         self.curr_var_vec = Some(self.inner.next()?);
         while self.curr_var_vec.unwrap().is_empty() {
             self.curr_var_vec = Some(self.inner.next()?);
