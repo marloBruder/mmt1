@@ -15,7 +15,7 @@
     }
 
     async loadData(): Promise<void> {
-      this.#pageData = (await invoke("get_constant_statement_local", { anyConstant: this.#anyConstant })) as ConstantsPageData;
+      this.#pageData = (await invoke("get_constant_statement", { anyConstant: this.#anyConstant })) as ConstantsPageData;
       if (this.#pageData.constants.length > 1) {
         this.#moreThanOneConstant = true;
       }

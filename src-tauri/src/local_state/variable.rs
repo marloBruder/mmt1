@@ -1,28 +1,16 @@
+use std::fs;
+
 use tauri::async_runtime::Mutex;
 
 use crate::{
+    metamath::mmp_parser::LocateAfterRef,
     model::{DatabaseElement, Statement, Variable, VariablesPageData},
-    util::ForEachWhile,
+    util::{self, ForEachWhile},
     AppState, Error,
 };
 
 #[tauri::command]
-pub async fn get_variables_local(
-    state: tauri::State<'_, Mutex<AppState>>,
-) -> Result<Vec<Variable>, Error> {
-    let app_state = state.lock().await;
-    let metamath_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
-
-    Ok(metamath_data
-        .database_header
-        .variable_iter()
-        .map(|v| v.clone())
-        .collect())
-}
-
-// Returns a vec of tuples (a, b), where a is a variable and b is it's typecode (as a String)
-#[tauri::command]
-pub async fn get_variable_statement_local(
+pub async fn get_variable_statement(
     state: tauri::State<'_, Mutex<AppState>>,
     any_variable: &str,
 ) -> Result<VariablesPageData, Error> {
@@ -73,11 +61,35 @@ pub async fn get_variable_statement_local(
     Ok(VariablesPageData { variables })
 }
 
-// pub fn set_variables_local(metamath_data: &mut MetamathData, symbols: &Vec<&str>) {
-//     metamath_data.variables = Vec::new();
-//     for symbol in symbols {
-//         metamath_data.variables.push(Variable {
-//             symbol: symbol.to_string(),
-//         })
-//     }
-// }
+#[tauri::command]
+pub async fn get_variable_mmp_format(
+    state: tauri::State<'_, Mutex<AppState>>,
+    any_variable: &str,
+) -> Result<String, Error> {
+    let app_state = state.lock().await;
+    let mm_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
+
+    util::locate_after_to_mmp_file_format_of_statement_it_refers_to(
+        LocateAfterRef::LocateAfterVar(any_variable),
+        mm_data,
+    )
+}
+
+#[tauri::command]
+pub async fn write_variable_mmp_format_to_file(
+    state: tauri::State<'_, Mutex<AppState>>,
+    any_variable: &str,
+    file_path: &str,
+) -> Result<(), Error> {
+    let app_state = state.lock().await;
+    let mm_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
+
+    let mmp_format = util::locate_after_to_mmp_file_format_of_statement_it_refers_to(
+        LocateAfterRef::LocateAfterVar(any_variable),
+        mm_data,
+    )?;
+
+    fs::write(file_path, mmp_format).map_err(|_| Error::FileWriteError)?;
+
+    Ok(())
+}

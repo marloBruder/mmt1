@@ -10,6 +10,7 @@ where
 impl<T> LastCurrNextIterator<T>
 where
     T: Iterator,
+    T::Item: Copy,
 {
     pub fn new(mut inner: T) -> LastCurrNextIterator<T> {
         LastCurrNextIterator {
@@ -41,18 +42,20 @@ where
     }
 }
 
-pub trait IntoLastCurrNextIterator<T>
+pub trait IntoLastCurrNextIterator
 where
-    T: Iterator,
+    Self: Iterator,
+    Self::Item: Copy,
+    Self: Sized,
 {
-    fn last_curr_next(self) -> LastCurrNextIterator<T>;
-}
-
-impl<T> IntoLastCurrNextIterator<T> for T
-where
-    T: Iterator,
-{
-    fn last_curr_next(self) -> LastCurrNextIterator<T> {
+    fn last_curr_next(self) -> LastCurrNextIterator<Self> {
         LastCurrNextIterator::new(self)
     }
+}
+
+impl<T> IntoLastCurrNextIterator for T
+where
+    T: Iterator,
+    T::Item: Copy,
+{
 }

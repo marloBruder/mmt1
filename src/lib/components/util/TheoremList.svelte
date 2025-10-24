@@ -125,7 +125,7 @@
         <TheoremNumber theoremNumber={pageLimitEnd}></TheoremNumber>
       </span>
     {/each}
-  {:else}
+  {:else if theoremListData.theoremAmount !== 0}
     {#each { length: theoremListData.pageAmount } as _, i}
       <span class="text-nowrap">
         <button class="underline pl-2" onclick={() => pageButtonClick(i)}>{i + 1}</button>

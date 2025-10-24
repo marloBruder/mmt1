@@ -6,6 +6,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import ExplorerButton from "./ExplorerButton.svelte";
   import { TheoremExplorerTab } from "$lib/components/tabs/TheoremExplorerTabComponent.svelte";
+  import { save } from "@tauri-apps/plugin-dialog";
 
   let { headerPath, commentNum }: { headerPath: HeaderPath; commentNum: number } = $props();
 
@@ -18,6 +19,20 @@
 
     tabManager.openTab(new TheoremExplorerTab(pageNum, "comment-list-entry-id-" + util.headerPathToStringRep(headerPath) + "#" + (commentNum + 1)), true);
   };
+
+  let turnIntoMmpFile = async () => {
+    const filePath = await save({ filters: [{ name: "Metamath Proof File", extensions: ["mmp"] }] });
+
+    if (filePath) {
+      await invoke("write_comment_mmp_format_to_file", { headerPath, commentI: commentNum, filePath });
+    }
+  };
+
+  let copyMmpFormatToClipboard = async () => {
+    let mmpFormat = (await invoke("get_comment_mmp_format", { headerPath, commentI: commentNum })) as string;
+
+    navigator.clipboard.writeText(mmpFormat);
+  };
 </script>
 
-<ExplorerButton {newTab} {openInNewTheoremExplorer}>{"Comment " + util.headerPathToStringRep(headerPath) + "#" + (commentNum + 1)}</ExplorerButton>
+<ExplorerButton {newTab} {openInNewTheoremExplorer} {turnIntoMmpFile} {copyMmpFormatToClipboard}>{"Comment " + util.headerPathToStringRep(headerPath) + "#" + (commentNum + 1)}</ExplorerButton>

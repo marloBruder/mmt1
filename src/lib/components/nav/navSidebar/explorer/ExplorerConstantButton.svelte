@@ -5,6 +5,7 @@
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import ExplorerButton from "./ExplorerButton.svelte";
+  import { save } from "@tauri-apps/plugin-dialog";
 
   let { constants }: { constants: string } = $props();
 
@@ -19,9 +20,23 @@
 
     tabManager.openTab(new TheoremExplorerTab(pageNum, "constant-list-entry-id-" + anyConstant), true);
   };
+
+  let turnIntoMmpFile = async () => {
+    const filePath = await save({ filters: [{ name: "Metamath Proof File", extensions: ["mmp"] }] });
+
+    if (filePath) {
+      await invoke("write_constant_mmp_format_to_file", { anyConstant, filePath });
+    }
+  };
+
+  let copyMmpFormatToClipboard = async () => {
+    let mmpFormat = (await invoke("get_constant_mmp_format", { anyConstant })) as string;
+
+    navigator.clipboard.writeText(mmpFormat);
+  };
 </script>
 
-<ExplorerButton {newTab} {openInNewTheoremExplorer}>
+<ExplorerButton {newTab} {openInNewTheoremExplorer} {turnIntoMmpFile} {copyMmpFormatToClipboard}>
   {"Constant" + (constants.includes(" ") ? "s" : "") + ": "}
   {#each constants.split(" ") as constant}
     <div class="inline-block w-1"></div>

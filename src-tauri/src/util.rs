@@ -2,7 +2,12 @@ use std::{collections::HashSet, ops::Deref};
 
 use sha2::{Digest, Sha256};
 
-use crate::{model::HeaderPath, Error};
+use crate::{
+    metamath::mmp_parser::LocateAfterRef,
+    model::{DatabaseElement, HeaderPath, MetamathData, Statement},
+    util::last_curr_next_iterator::IntoLastCurrNextIterator,
+    Error,
+};
 
 pub mod description_parser;
 pub mod earley_parser;
@@ -26,14 +31,14 @@ pub trait StrIterToDelimiterSeperatedString
 where
     Self: Sized,
     Self: Iterator,
-    Self::Item: Deref<Target = str>,
+    Self::Item: AsRef<str>,
 {
     fn fold_to_delimiter_seperated_string(self, delimiter: &str) -> String {
         self.fold((true, String::new()), |(first, mut s), t| {
             if !first {
                 s.push_str(delimiter);
             }
-            s.push_str(&t);
+            s.push_str(t.as_ref());
             (false, s)
         })
         .1
@@ -43,7 +48,7 @@ where
 impl<T> StrIterToDelimiterSeperatedString for T
 where
     T: Iterator,
-    T::Item: Deref<Target = str>,
+    T::Item: AsRef<str>,
 {
 }
 
@@ -51,7 +56,7 @@ pub trait StrIterToSpaceSeperatedString
 where
     Self: Sized,
     Self: Iterator,
-    Self::Item: Deref<Target = str>,
+    Self::Item: AsRef<str>,
 {
     fn fold_to_space_seperated_string(self) -> String {
         self.fold_to_delimiter_seperated_string(" ")
@@ -61,7 +66,7 @@ where
 impl<T> StrIterToSpaceSeperatedString for T
 where
     T: Iterator,
-    T::Item: Deref<Target = str>,
+    T::Item: AsRef<str>,
 {
 }
 
@@ -258,4 +263,77 @@ pub fn is_valid_comment_path(str: &str) -> bool {
                 && comment_num.parse::<usize>().is_ok_and(|num| num != 0)
                 && !comment_num.contains('+')
         })
+}
+
+pub fn locate_after_to_mmp_file_format_of_statement_it_refers_to(
+    locate_after: LocateAfterRef,
+    mm_data: &MetamathData,
+) -> Result<String, Error> {
+    let mut header_path_of_last = HeaderPath::new();
+    let mut comment_i_of_last = 0;
+    let mut statement_and_locate_after: Option<(&Statement, LocateAfterRef)> = None;
+
+    let mut locate_after_ref_string;
+
+    for (last, curr, next) in mm_data
+        .database_header
+        .locate_after_iter(Some(locate_after))
+        .last_curr_next()
+    {
+        if let Some(DatabaseElement::Header(_, depth)) = last {
+            calc_next_header_path(&mut header_path_of_last, depth)?;
+            comment_i_of_last = 0;
+        }
+        if let Some(DatabaseElement::Statement(Statement::CommentStatement(_))) = last {
+            comment_i_of_last += 1;
+        }
+
+        if next.is_none() {
+            let DatabaseElement::Statement(statement) = curr else {
+                return Err(Error::InternalLogicError);
+            };
+
+            let locate_after = match last {
+                None => LocateAfterRef::LocateAfterStart,
+                Some(e) => match e {
+                    DatabaseElement::Header(_, _) => {
+                        locate_after_ref_string = header_path_of_last.to_string();
+                        LocateAfterRef::LocateAfterHeader(&locate_after_ref_string)
+                    }
+                    DatabaseElement::Statement(s) => match s {
+                        Statement::CommentStatement(_) => {
+                            locate_after_ref_string = format!(
+                                "{}#{}",
+                                header_path_of_last.to_string(),
+                                comment_i_of_last
+                            );
+                            LocateAfterRef::LocateAfterComment(&locate_after_ref_string)
+                        }
+                        Statement::ConstantStatement(consts) => {
+                            let c = consts.first().ok_or(Error::InternalLogicError)?;
+                            LocateAfterRef::LocateAfterConst(&c.symbol)
+                        }
+                        Statement::VariableStatement(vars) => {
+                            let v = vars.first().ok_or(Error::InternalLogicError)?;
+                            LocateAfterRef::LocateAfterConst(&v.symbol)
+                        }
+                        Statement::FloatingHypohesisStatement(fh) => {
+                            LocateAfterRef::LocateAfter(&fh.label)
+                        }
+                        Statement::TheoremStatement(theorem) => {
+                            LocateAfterRef::LocateAfter(&theorem.label)
+                        }
+                    },
+                },
+            };
+
+            statement_and_locate_after = Some((statement, locate_after));
+        }
+    }
+
+    if let Some((comment_statement, locate_after)) = statement_and_locate_after {
+        comment_statement.to_mmp_format(locate_after, mm_data)
+    } else {
+        Err(Error::NotFoundError)
+    }
 }

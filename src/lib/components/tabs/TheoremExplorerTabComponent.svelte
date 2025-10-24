@@ -17,7 +17,7 @@
     }
 
     async loadData(): Promise<void> {
-      this.#theoremListData = await invoke("get_theorem_list_local", { page: this.#page });
+      this.#theoremListData = await invoke("get_theorem_list", { page: this.#page });
     }
 
     unloadData(): void {

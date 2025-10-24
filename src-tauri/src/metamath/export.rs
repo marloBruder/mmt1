@@ -1,9 +1,13 @@
-use std::fs;
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+};
 
 use tauri::async_runtime::Mutex;
 
 use crate::{
-    model::{DatabaseElement, MetamathData},
+    model::{DatabaseElement, Header, MetamathData, OptimizedMetamathData, SymbolNumberMapping},
+    util::{self, earley_parser_optimized::Grammar},
     AppState, Error,
 };
 
@@ -14,10 +18,31 @@ pub async fn new_database(
 ) -> Result<(), Error> {
     let mut app_state = state.lock().await;
 
-    fs::write(file_path, "").or(Err(Error::FileWriteError))?;
+    fs::write(file_path, "").map_err(|_| Error::FileWriteError)?;
 
-    app_state.metamath_data = Some(MetamathData::default());
-    app_state.metamath_data.as_mut().unwrap().database_path = file_path.to_string();
+    let metamath_data = MetamathData {
+        alt_variable_colors: Vec::new(),
+        database_id: app_state.id_manager.get_next_id(),
+        database_hash: util::str_to_hash_string(""),
+        database_header: Header::default(),
+        html_representations: Vec::new(),
+        optimized_data: OptimizedMetamathData {
+            floating_hypotheses: Vec::new(),
+            variables: HashSet::new(),
+            theorem_amount: 0,
+            theorem_data: HashMap::new(),
+            header_data: HashMap::new(),
+            symbol_number_mapping: SymbolNumberMapping::default(),
+            grammar: Grammar::default(),
+        },
+        database_path: file_path.to_string(),
+        grammar_calculations_done: true,
+        syntax_typecodes: Vec::new(),
+        logical_typecodes: Vec::new(),
+        variable_colors: Vec::new(),
+    };
+
+    app_state.metamath_data = Some(metamath_data);
 
     Ok(())
 }

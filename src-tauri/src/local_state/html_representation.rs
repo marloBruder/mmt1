@@ -5,7 +5,7 @@ use crate::{
 use tauri::async_runtime::Mutex;
 
 #[tauri::command]
-pub async fn get_html_representations_local(
+pub async fn get_html_representations(
     state: tauri::State<'_, Mutex<AppState>>,
 ) -> Result<(Vec<HtmlRepresentation>, Vec<ColorInformation>), Error> {
     let app_state = state.lock().await;
@@ -16,10 +16,3 @@ pub async fn get_html_representations_local(
         metamath_data.calc_color_information(true),
     ))
 }
-
-// pub fn set_html_representations_local(
-//     metamath_data: &mut MetamathData,
-//     html_representations: &Vec<HtmlRepresentation>,
-// ) {
-//     metamath_data.html_representations = html_representations.clone();
-// }

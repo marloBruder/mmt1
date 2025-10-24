@@ -11,11 +11,14 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
 
 use crate::{
+    editor::format,
     metamath::{
         export::{write_text_wrapped, write_text_wrapped_no_whitespace},
         mm_parser::html_validation,
         mmp_parser::{stage_6::ProofTree, LocateAfterRef},
-        verify::{ProofStep, VerificationResult, Verifier},
+        verify::{
+            ProofStep, Show, StepResult, VerificationResult, Verifier, VerifierCreationResult,
+        },
     },
     util::{
         self, description_parser,
@@ -30,7 +33,7 @@ use crate::{
         },
         parse_tree_node_iterator::ParseTreeNodeIterator,
         work_variable_manager::WorkVariableManager,
-        StrIterToSpaceSeperatedString,
+        StrIterToDelimiterSeperatedString, StrIterToSpaceSeperatedString,
     },
     Error, Settings,
 };
@@ -151,6 +154,7 @@ pub enum Statement {
     TheoremStatement(Theorem),
 }
 
+#[derive(Clone, Copy)]
 pub enum DatabaseElement<'a> {
     Header(&'a Header, u32),
     Statement(&'a Statement),
@@ -1190,6 +1194,219 @@ impl Statement {
         }
     }
 
+    pub fn to_mmp_format(
+        &self,
+        locate_after: LocateAfterRef,
+        metamath_data: &MetamathData,
+    ) -> Result<String, Error> {
+        let mut result_string = String::new();
+
+        match self {
+            Statement::CommentStatement(comment) => {
+                result_string.push('*');
+                result_string.push_str(&comment.text);
+                result_string.push_str("\n\n");
+                locate_after.write_mmp_format(&mut result_string);
+                result_string.push('\n');
+            }
+            Statement::ConstantStatement(constants) => {
+                result_string.push_str("$c");
+                for c in constants {
+                    result_string.push(' ');
+                    result_string.push_str(&c.symbol);
+                }
+                result_string.push_str("\n\n");
+                locate_after.write_mmp_format(&mut result_string);
+                result_string.push('\n');
+            }
+            Statement::VariableStatement(variables) => {
+                result_string.push_str("$v");
+                for v in variables {
+                    result_string.push(' ');
+                    result_string.push_str(&v.symbol);
+                }
+                result_string.push_str("\n\n");
+                locate_after.write_mmp_format(&mut result_string);
+                result_string.push('\n');
+            }
+            Statement::FloatingHypohesisStatement(floating_hypothesis) => {
+                result_string.push_str("$f ");
+                result_string.push_str(&floating_hypothesis.label);
+                result_string.push(' ');
+                result_string.push_str(&floating_hypothesis.typecode);
+                result_string.push(' ');
+                result_string.push_str(&floating_hypothesis.variable);
+                result_string.push_str("\n\n");
+                locate_after.write_mmp_format(&mut result_string);
+                result_string.push('\n');
+            }
+            Statement::TheoremStatement(theorem) => {
+                if theorem.proof.is_some() {
+                    result_string.push_str("$theorem ");
+                } else {
+                    result_string.push_str("$axiom ");
+                }
+                result_string.push_str(&theorem.label);
+                result_string.push_str("\n\n");
+
+                locate_after.write_mmp_format(&mut result_string);
+                result_string.push_str("\n\n");
+
+                if theorem
+                    .description
+                    .split_ascii_whitespace()
+                    .next()
+                    .is_some()
+                {
+                    result_string.push('*');
+                    result_string.push_str(&theorem.description);
+                    result_string.push_str("\n\n");
+                }
+
+                for temp_vars in &theorem.temp_variables {
+                    result_string.push_str("$v");
+                    for v in temp_vars {
+                        result_string.push(' ');
+                        result_string.push_str(&v.symbol);
+                    }
+                    result_string.push('\n');
+                }
+                if !theorem.temp_variables.is_empty() {
+                    result_string.push('\n');
+                }
+
+                for float_hyp in &theorem.temp_floating_hypotheses {
+                    result_string.push_str("$f ");
+                    result_string.push_str(&float_hyp.label);
+                    result_string.push(' ');
+                    result_string.push_str(&float_hyp.typecode);
+                    result_string.push(' ');
+                    result_string.push_str(&float_hyp.variable);
+                    result_string.push('\n');
+                }
+                if !theorem.temp_floating_hypotheses.is_empty() {
+                    result_string.push('\n');
+                }
+
+                for distinct_cond in &theorem.distincts {
+                    result_string.push_str("$d ");
+                    result_string.push_str(distinct_cond);
+                    result_string.push('\n');
+                }
+                if !theorem.distincts.is_empty() {
+                    result_string.push('\n');
+                }
+
+                if theorem.proof.is_some() {
+                    let Ok(VerifierCreationResult::Verifier(mut verifier)) = Verifier::new(
+                        theorem,
+                        metamath_data,
+                        Show::Logical,
+                        None,
+                        None,
+                        None,
+                        None,
+                    ) else {
+                        return Ok(result_string);
+                    };
+
+                    let mut proof_lines = Vec::new();
+
+                    loop {
+                        let step_result = verifier.proccess_next_step(metamath_data)?;
+                        match step_result {
+                            StepResult::VerifierFinished => break,
+                            StepResult::NoProofLine => {}
+                            StepResult::ProofLine(proof_line) => {
+                                proof_lines.push(proof_line);
+                            }
+                        }
+                    }
+
+                    let proof_lines_len = proof_lines.len();
+
+                    let mut step_num_mapping: HashMap<&str, String> = HashMap::new();
+                    let mut next_step_num = 1;
+
+                    for hypothesis in &theorem.hypotheses {
+                        let next_step_num_string = next_step_num.to_string();
+
+                        result_string.push('h');
+                        result_string.push_str(&next_step_num_string);
+                        result_string.push_str("::");
+                        result_string.push_str(&hypothesis.label);
+                        result_string.push(' ');
+                        result_string.push_str(&hypothesis.expression);
+                        result_string.push('\n');
+
+                        step_num_mapping.insert(
+                            proof_lines
+                                .iter()
+                                .find(|pl| pl.reference == hypothesis.label)
+                                .map(|pl| &*pl.step_name)
+                                .unwrap_or(""),
+                            next_step_num_string,
+                        );
+                        next_step_num += 1;
+                    }
+
+                    for proof_line in &proof_lines {
+                        if theorem
+                            .hypotheses
+                            .iter()
+                            .all(|hyp| hyp.label != proof_line.reference)
+                        {
+                            let next_step_num_string = next_step_num.to_string();
+
+                            result_string.push_str(if next_step_num == proof_lines_len {
+                                "qed"
+                            } else {
+                                &next_step_num_string
+                            });
+                            result_string.push(':');
+                            result_string.push_str(
+                                &proof_line
+                                    .hypotheses
+                                    .iter()
+                                    .map(|hyp| step_num_mapping.get(&**hyp).unwrap())
+                                    .fold_to_delimiter_seperated_string(","),
+                            );
+                            result_string.push(':');
+                            result_string.push_str(&proof_line.reference);
+                            result_string.push(' ');
+                            result_string.push_str(&proof_line.assertion);
+                            result_string.push('\n');
+
+                            step_num_mapping.insert(&proof_line.step_name, next_step_num_string);
+                            next_step_num += 1;
+                        }
+                    }
+                } else {
+                    let mut next_step_num = 1;
+
+                    for hypothesis in &theorem.hypotheses {
+                        result_string.push('h');
+                        result_string.push_str(&next_step_num.to_string());
+                        result_string.push_str("::");
+                        result_string.push_str(&hypothesis.label);
+                        result_string.push(' ');
+                        result_string.push_str(&hypothesis.expression);
+                        result_string.push('\n');
+
+                        next_step_num += 1;
+                    }
+                    result_string.push_str("qed:: ");
+                    result_string.push_str(&theorem.assertion);
+                    result_string.push('\n');
+                }
+
+                return format::format_mmp_file(&result_string)?.ok_or(Error::InternalLogicError);
+            }
+        }
+
+        Ok(result_string)
+    }
+
     //     pub fn is_variable(&self) -> bool {
     //         match self {
     //             VariableStatement(_) => true,
@@ -1217,6 +1434,36 @@ impl Statement {
     //             _ => false,
     //         }
     //     }
+}
+
+impl<'a> LocateAfterRef<'a> {
+    pub fn write_mmp_format(&self, string: &mut String) {
+        match self {
+            LocateAfterRef::LocateAfterStart => {
+                string.push_str("$locateafterstart");
+            }
+            LocateAfterRef::LocateAfterHeader(parameter) => {
+                string.push_str("$locateafterheader ");
+                string.push_str(parameter);
+            }
+            LocateAfterRef::LocateAfterComment(parameter) => {
+                string.push_str("$locateaftercomment ");
+                string.push_str(parameter);
+            }
+            LocateAfterRef::LocateAfterConst(parameter) => {
+                string.push_str("$locateafterconst ");
+                string.push_str(parameter);
+            }
+            LocateAfterRef::LocateAfterVar(parameter) => {
+                string.push_str("$locateaftervar ");
+                string.push_str(parameter);
+            }
+            LocateAfterRef::LocateAfter(parameter) => {
+                string.push_str("$locateafter ");
+                string.push_str(parameter);
+            }
+        }
+    }
 }
 
 impl ParseTree {
@@ -2626,13 +2873,24 @@ impl Header {
         Ok(())
     }
 
-    // pub fn count_theorems_and_headers(&self) -> i32 {
-    //     let mut sum = 1 + self.theorems.len() as i32;
-    //     for sub_header in &self.sub_headers {
-    //         sum += sub_header.count_theorems_and_headers();
-    //     }
-    //     sum
-    // }
+    pub fn to_mmp_format(&self, header_path: &HeaderPath) -> String {
+        let mut result_string = String::new();
+
+        result_string.push_str("$header ");
+        result_string.push_str(&header_path.to_string());
+        result_string.push(' ');
+        result_string.push_str(&self.title);
+        result_string.push('\n');
+
+        if self.description.split_ascii_whitespace().next().is_some() {
+            result_string.push('\n');
+            result_string.push('*');
+            result_string.push_str(&self.description);
+            result_string.push('\n');
+        }
+
+        result_string
+    }
 
     pub fn iter<'a>(&'a self) -> HeaderIterator<'a> {
         HeaderIterator::new(self)
@@ -2756,6 +3014,24 @@ impl HeaderPath {
         }
 
         Some(header)
+    }
+
+    pub fn resolve_comment_path<'a>(
+        &self,
+        comment_i: usize,
+        top_header: &'a Header,
+    ) -> Option<&'a Comment> {
+        self.resolve(top_header)?
+            .content
+            .iter()
+            .filter_map(|c| {
+                if let CommentStatement(comment) = c {
+                    Some(comment)
+                } else {
+                    None
+                }
+            })
+            .nth(comment_i)
     }
 }
 

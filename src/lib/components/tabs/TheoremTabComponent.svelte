@@ -46,7 +46,7 @@
     }
 
     async loadData(): Promise<void> {
-      this.#pageData = await invoke("get_theorem_page_data_local", {
+      this.#pageData = await invoke("get_theorem_page_data", {
         label: this.#theoremLabel,
         showAll: this.showAll,
       });

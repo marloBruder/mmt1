@@ -7,7 +7,7 @@ class ExplorerData {
   // intoHeader is given seperately from headerPath for performance reasons
   // Make sure intoHeader is located at headerPath, else there will be bugs
   async loadHeader(headerPath: HeaderPath, intoHeader: NameListHeader) {
-    let headerRepresentation = (await invoke("get_header_local", { headerPath })) as HeaderRepresentation;
+    let headerRepresentation = (await invoke("get_header_representation", { headerPath })) as HeaderRepresentation;
     intoHeader.content = {
       contentTitles: headerRepresentation.contentTitles,
       subheaders: headerRepresentation.subheaderTitles.map((title) => {

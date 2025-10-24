@@ -17,6 +17,8 @@
   import { TheoremExplorerTab } from "$lib/components/tabs/TheoremExplorerTabComponent.svelte";
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { HeaderTab } from "$lib/components/tabs/HeaderTabComponent.svelte";
+  import { save } from "@tauri-apps/plugin-dialog";
+  import ContextMenuDivider from "$lib/components/util/contextMenu/ContextMenuDivider.svelte";
 
   let { header, headerPath }: { header: NameListHeader; headerPath: HeaderPath } = $props();
 
@@ -99,13 +101,27 @@
   };
 
   let open = () => {
-    tabManager.openTab(new HeaderTab(headerPath));
+    tabManager.openTab(new HeaderTab(headerPath), true);
   };
 
   let openInNewTheoremExplorer = async () => {
     let pageNum = (await invoke("get_theorem_list_page_of_header", { headerPath })) as number;
 
     tabManager.openTab(new TheoremExplorerTab(pageNum, "header-list-entry-id-" + util.headerPathToStringRep(headerPath)), true);
+  };
+
+  let turnIntoMmpFile = async () => {
+    const filePath = await save({ filters: [{ name: "Metamath Proof File", extensions: ["mmp"] }] });
+
+    if (filePath) {
+      await invoke("write_header_mmp_format_to_file", { headerPath, filePath });
+    }
+  };
+
+  let copyMmpFormatToClipboard = async () => {
+    let mmpFormat = (await invoke("get_header_mmp_format", { headerPath })) as string;
+
+    navigator.clipboard.writeText(mmpFormat);
   };
 </script>
 
@@ -130,6 +146,9 @@
   {#snippet contextMenu()}
     <ContextMenuButton onclick={open}>Open</ContextMenuButton>
     <ContextMenuButton onclick={openInNewTheoremExplorer}>Open In New Theorem Explorer</ContextMenuButton>
+    <ContextMenuDivider></ContextMenuDivider>
+    <ContextMenuButton onclick={turnIntoMmpFile}>Turn Into Mmp File</ContextMenuButton>
+    <ContextMenuButton onclick={copyMmpFormatToClipboard}>Copy Mmp File Format To Clipboard</ContextMenuButton>
   {/snippet}
 </ContextMenuElement>
 {#if header.content !== null}

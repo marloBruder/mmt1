@@ -15,7 +15,7 @@
     }
 
     async loadData(): Promise<void> {
-      this.#pageData = (await invoke("get_floating_hypothesis_page_data_local", { label: this.#label })) as FloatingHypothesisPageData;
+      this.#pageData = (await invoke("get_floating_hypothesis_page_data", { label: this.#label })) as FloatingHypothesisPageData;
     }
 
     unloadData(): void {

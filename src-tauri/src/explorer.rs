@@ -42,7 +42,7 @@ pub async fn quick_search(
 
 // page starts at 0
 #[tauri::command]
-pub async fn get_theorem_list_local(
+pub async fn get_theorem_list(
     state: tauri::State<'_, Mutex<AppState>>,
     page: u32,
 ) -> Result<TheoremListData, Error> {

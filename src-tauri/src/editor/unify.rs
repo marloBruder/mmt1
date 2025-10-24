@@ -101,7 +101,7 @@ pub async fn unify(
         }
     }
 
-    format::format(&result_text).await
+    format::format_mmp_file(&result_text)
 }
 
 fn write_unify_line(

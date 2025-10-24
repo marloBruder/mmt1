@@ -15,7 +15,7 @@
     }
 
     async loadData(): Promise<void> {
-      this.#pageData = (await invoke("get_variable_statement_local", { anyVariable: this.#anyVariable })) as VariablesPageData;
+      this.#pageData = (await invoke("get_variable_statement", { anyVariable: this.#anyVariable })) as VariablesPageData;
       if (this.#pageData.variables.length > 1) {
         this.#moreThanOneVariable = true;
       }

@@ -16,7 +16,7 @@
     }
 
     async loadData(): Promise<void> {
-      this.#comment = (await invoke("get_comment_local", { headerPath: this.#headerPath, commentNum: this.#commentNum })) as Comment;
+      this.#comment = (await invoke("get_comment", { headerPath: this.#headerPath, commentI: this.#commentNum })) as Comment;
     }
 
     unloadData(): void {

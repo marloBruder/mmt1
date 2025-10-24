@@ -8,6 +8,10 @@ use crate::{
 
 #[tauri::command]
 pub async fn format(text: &str) -> Result<Option<String>, Error> {
+    format_mmp_file(text)
+}
+
+pub fn format_mmp_file(text: &str) -> Result<Option<String>, Error> {
     let stage_0 = mmp_parser::new(text);
 
     let MmpParserStage1::Success(stage_1_success) = stage_0.next_stage()? else {

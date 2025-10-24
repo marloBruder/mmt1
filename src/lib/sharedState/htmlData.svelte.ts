@@ -10,7 +10,7 @@ class HtmlData {
   #htmlRepresentations: Map<string, [string, number]> = $state(new Map());
 
   async load() {
-    let [htmlRepresentations, colorInfo] = (await invoke("get_html_representations_local")) as [HtmlRepresentation[], ColorInformation[]];
+    let [htmlRepresentations, colorInfo] = (await invoke("get_html_representations")) as [HtmlRepresentation[], ColorInformation[]];
     this.loadLocal(htmlRepresentations, colorInfo);
   }
 
