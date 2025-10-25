@@ -354,6 +354,9 @@ export function getMmFileErrorMessage(errorType: string): string {
     case "InvalidProofError": {
       return "There is a proof that could not be successfully verified.";
     }
+    case "TwiceDeclaredLabelError": {
+      return "There is a label which has previously been used as a label or symbol.";
+    }
   }
 
   return "You should not be seeing this error message. Please post a Github issue with a link to your mm file.";

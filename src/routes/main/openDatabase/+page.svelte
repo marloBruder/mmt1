@@ -184,7 +184,7 @@
         <ProgressBar progress={lastGrammarCalculationsProgress}></ProgressBar>
       </div>
       {#if grammarCalculationsError}
-        <div class="border rounded-lg p-2 mx-12 mt-4">
+        <div class="border rounded-lg p-2 mx-12 my-4">
           <h2 class="text-red-600">ERROR</h2>
           An expression could not be successfully parsed. The unifier and other features will not be available.
         </div>

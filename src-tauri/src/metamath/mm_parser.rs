@@ -230,6 +230,7 @@ pub struct MmParser {
     active_hyps: Vec<Vec<Hypothesis>>,
     prev_variables: HashSet<String>,
     prev_float_hyps: Vec<FloatingHypothesis>,
+    used_labels: HashSet<String>,
     next_label: Option<String>,
     next_description: Option<String>,
     // holds the information for all variable statements outside the outermost scope
@@ -296,6 +297,7 @@ impl MmParser {
             active_hyps: vec![Vec::new()],
             prev_variables: HashSet::new(),
             prev_float_hyps: Vec::new(),
+            used_labels: HashSet::new(),
             next_label: None,
             next_description: None,
             temp_active_vars: Vec::new(),
@@ -348,6 +350,19 @@ impl MmParser {
                         if !util::is_valid_label(&label_string) {
                             return Err(Error::InvalidLabelError);
                         }
+
+                        if self.used_labels.contains(&label_string)
+                            || self.active_consts.contains(&label_string)
+                            || self
+                                .active_vars
+                                .iter()
+                                .any(|vars| vars.contains(&label_string))
+                            || self.prev_variables.contains(&label_string)
+                        {
+                            return Err(Error::TwiceDeclaredLabelError);
+                        }
+
+                        self.used_labels.insert(label_string.clone());
 
                         self.next_label = Some(label_string);
 
@@ -888,8 +903,9 @@ impl MmParser {
                     let const_symbol_string = const_symbol.to_string();
 
                     if self.active_consts.contains(&const_symbol_string)
-                        || self.active_vars[0].contains(&const_symbol_string)
+                        || self.is_active_variable(&const_symbol_string)
                         || self.prev_variables.contains(&const_symbol_string)
+                        || self.used_labels.contains(&const_symbol_string)
                     {
                         return Err(Error::TwiceDeclaredConstError);
                     }
@@ -930,11 +946,10 @@ impl MmParser {
 
                     let var_symbol_string = var_symbol.to_string();
 
-                    if self.active_consts.contains(&var_symbol_string) {
-                        return Err(Error::TwiceDeclaredVarError);
-                    }
-
-                    if self.is_active_variable(&var_symbol_string) {
+                    if self.active_consts.contains(&var_symbol_string)
+                        || self.used_labels.contains(&var_symbol_string)
+                        || self.is_active_variable(&var_symbol_string)
+                    {
                         return Err(Error::TwiceDeclaredVarError);
                     }
 
