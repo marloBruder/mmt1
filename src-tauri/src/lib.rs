@@ -203,6 +203,7 @@ pub enum Error {
 
     // Importing Database Errors
     ClosedUnopenedScopeError, // Returned if there is a "$}" statement in the outermost scope
+    UnclosedScopeError,       // Returned if a scope was not closed by the end of the file
     UnclosedCommentError,     // Returned if a comment was not closed
     UnclosedHeaderError,      // Returned if a header title was not closed
     ConstStatementScopeError, // Returned if a constant statement is found outside outermost scope

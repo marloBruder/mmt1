@@ -269,5 +269,92 @@ export function getAddToDatabaseErrorMessage(errorType: string): string {
 }
 
 export function getMmFileErrorMessage(errorType: string): string {
+  switch (errorType) {
+    case "FileReadError": {
+      return "Could not read mm file. Make sure you have the necessary permissions";
+    }
+    case "InvalidCharactersError": {
+      return "The mm file contains non-ascii characters.";
+    }
+    case "TokenOutsideStatementError": {
+      return "There is a token which does not belong to any statement.";
+    }
+    case "UnclosedCommentError": {
+      return "There is an unclosed comment.";
+    }
+    case "AdditionalInfoCommentFormatError": {
+      return "An additional information comment has an invalid format.";
+    }
+    case "InvalidColorCodeError": {
+      return "A color code definied by varcolorcode or altvarcolorcode is not a valid color code string.";
+    }
+    case "TypesettingFormatError": {
+      return "A statement within the typesetting comment has an invalid format.";
+    }
+    case "InvalidHeaderDepthError": {
+      return "A header was an invalid header depth. mmt1 requires that all headers are exactly one depth below their parent header.";
+    }
+    case "UnclosedHeaderError": {
+      return "There is an unclosed header. (A comment that starts with e.g. #### but does not have a another token starting with ####)";
+    }
+    case "ClosedUnopenedScopeError": {
+      return "There is a closing scope statement in the outer most scope.";
+    }
+    case "ConstStatementScopeError": {
+      return "There is a constant statment that is not within the outer most scope.";
+    }
+    case "InvalidSymbolError": {
+      return "There is a symbol declared that does not follow the rules for what characters symbols can use.";
+    }
+    case "TwiceDeclaredConstError": {
+      return "A constant is declared which symbol was already previously declared.";
+    }
+    case "EmptyConstStatementError": {
+      return "There is an empty constant statement.";
+    }
+    case "TwiceDeclaredVarError": {
+      return "A variable is declared which symbol was already previously declared.";
+    }
+    case "EmptyVarStatementError": {
+      return "There is an empty variable statement.";
+    }
+    case "FloatHypStatementFormatError": {
+      return "There is a floating hypothesis statement which does not have exactly two non comment tokens.";
+    }
+    case "MissingLabelError": {
+      return "A statement is missing it's label.";
+    }
+    case "FloatHypTypecodeError": {
+      return "The typecode declared in a floating hypothesis is not an active constant.";
+    }
+    case "FloatHypVariableError": {
+      return "The variable declared in a floating hypothesis is not an active variable.";
+    }
+    case "VarTypeDeclaredTwiceError": {
+      return "The typecode of a variable is declared twice.";
+    }
+    case "VarDeclaredMultipleTypesError": {
+      return "The typecode of a variable is declared as a typecode that differs from the typecode that was previously declared.";
+    }
+    case "NonSymbolInExpressionError": {
+      return "There is a symbol in an expression that is not an active constant or variable.";
+    }
+    case "ZeroOrOneSymbolDisjError": {
+      return "There is a disjoint variable statement with less than two non-comment tokens.";
+    }
+    case "NonVarInDisjError": {
+      return "There is a disjoint variable statement with a non-variable token.";
+    }
+    case "UnclosedScopeError": {
+      return "There is an unclosed scope statement.";
+    }
+    case "InvalidLabelError": {
+      return "There is a label declared that does not follow the rules for what characters labels can use.";
+    }
+    case "InvalidProofError": {
+      return "There is a proof that could not be successfully verified.";
+    }
+  }
+
   return "You should not be seeing this error message. Please post a Github issue with a link to your mm file.";
 }

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { getMmFileErrorMessage } from "$lib/components/util/errorMessages.svelte";
   import InvalidHtmlPopup from "$lib/components/util/InvalidHtmlPopup.svelte";
   import ProgressBar from "$lib/components/util/ProgressBar.svelte";
   import RoundButton from "$lib/components/util/RoundButton.svelte";
@@ -20,6 +21,9 @@
   let databaseId: number | null = null;
   let confirmClicked = false;
   let cancelClicked = false;
+
+  let error: string | null = $state(null);
+  let grammarCalculationsError: boolean = $state(false);
 
   let invalidHtml: HtmlRepresentation[] = $state([]);
   let invalidDescriptionHtml: [string, string][] = $state([]);
@@ -66,15 +70,27 @@
       })
     );
 
-    invoke("open_metamath_database", { mmFilePath: globalState.databaseBeingOpened }).then(async (payload) => {
-      [databaseId, invalidHtml, invalidDescriptionHtml, invalidHeaderDescriptionHtml] = payload as [number, HtmlRepresentation[], [string, string][], [string, string][]];
-      invoke("perform_grammar_calculations", { databaseId }).then(() => {
-        emit("grammar-calculations-performed");
+    invoke("open_metamath_database", { mmFilePath: globalState.databaseBeingOpened })
+      .then(async (payload) => {
+        [databaseId, invalidHtml, invalidDescriptionHtml, invalidHeaderDescriptionHtml] = payload as [number, HtmlRepresentation[], [string, string][], [string, string][]];
+        invoke("perform_grammar_calculations", { databaseId })
+          .then(() => {
+            emit("grammar-calculations-performed");
+          })
+          .catch((_) => {
+            if (globalState.databaseState !== null && globalState.databaseState.databaseId == databaseId) {
+              globalState.databaseState.grammarCalculationsError = true;
+            } else {
+              grammarCalculationsError = true;
+            }
+          });
+        // wait 1 second to avoid bug
+        await new Promise((r) => setTimeout(r, 1000));
+        databaseLoaded = true;
+      })
+      .catch((errorUnknown) => {
+        error = errorUnknown as string;
       });
-      // wait 1 second to avoid bug
-      await new Promise((r) => setTimeout(r, 1000));
-      databaseLoaded = true;
-    });
 
     cancelable = true;
   });
@@ -104,6 +120,7 @@
       emit("mm-db-opened");
       globalState.databaseState = new DatabaseState(databaseId, globalState.databaseBeingOpened, theoremAmount);
       globalState.databaseState.grammarCalculationsProgress = lastGrammarCalculationsProgress;
+      globalState.databaseState.grammarCalculationsError = grammarCalculationsError;
       globalState.databaseBeingOpened = "";
       searchData.resetSearchParameters();
       await tabManager.getOpenTab()?.onTabOpen();
@@ -156,10 +173,22 @@
       <div class="mt-4">
         <RoundButton onclick={onConfirmClick} disabled={!databaseLoaded}>Open database</RoundButton>
       </div>
+      {#if error !== null}
+        <div class="border rounded-lg p-2 mx-12 mt-4">
+          <h2 class="text-red-600">ERROR</h2>
+          {getMmFileErrorMessage(error)}
+        </div>
+      {/if}
       <div class="my-4">
         Calculating parse trees:
         <ProgressBar progress={lastGrammarCalculationsProgress}></ProgressBar>
       </div>
+      {#if grammarCalculationsError}
+        <div class="border rounded-lg p-2 mx-12 mt-4">
+          <h2 class="text-red-600">ERROR</h2>
+          An expression could not be successfully parsed. The unifier and other features will not be available.
+        </div>
+      {/if}
     </div>
   </ScrollableContainer>
 </div>

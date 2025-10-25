@@ -345,6 +345,10 @@ impl MmParser {
                 label => {
                     let label_string = label.to_string();
                     if self.next_label.is_none() {
+                        if !util::is_valid_label(&label_string) {
+                            return Err(Error::InvalidLabelError);
+                        }
+
                         self.next_label = Some(label_string);
 
                         let statement_processed = self.process_next_statement()?;
@@ -399,6 +403,10 @@ impl MmParser {
                     return Err(Error::OpenDatabaseStoppedEarlyError);
                 }
             }
+        }
+
+        if self.scope != 0 {
+            return Err(Error::UnclosedScopeError);
         }
 
         Ok(())
@@ -793,15 +801,18 @@ impl MmParser {
         if header_closed {
             let mut parent_header = &mut self.database_header;
             let mut next_header_path = HeaderPath::default();
-            // let mut actual_depth = 0;
+
             for _ in 0..depth {
                 if parent_header.subheaders.len() != 0 {
                     next_header_path
                         .path
                         .push(parent_header.subheaders.len() - 1);
-                    parent_header = parent_header.subheaders.last_mut().unwrap()
+                    parent_header = parent_header.subheaders.last_mut().unwrap();
+                } else {
+                    return Err(Error::InvalidHeaderDepthError);
                 }
             }
+
             next_header_path.path.push(parent_header.subheaders.len());
             parent_header.subheaders.push(Header {
                 title: header_title,

@@ -703,10 +703,7 @@ impl MetamathData {
                     Ok(match verify_result {
                         VerificationResult::Correct => ProofType::Correct,
                         VerificationResult::Incomplete => ProofType::Incomplete,
-                        VerificationResult::Incorrect => {
-                            println!("Incorrect: {}", theorem.label);
-                            return Err(Error::InvalidProofError);
-                        }
+                        VerificationResult::Incorrect => return Err(Error::InvalidProofError),
                     })
                 },
             )

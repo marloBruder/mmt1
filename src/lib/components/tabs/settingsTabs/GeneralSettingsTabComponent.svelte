@@ -14,6 +14,14 @@
     }
   });
 
+  let grammarCalculationsError = $derived.by(() => {
+    if (globalState.databaseState !== null) {
+      return globalState.databaseState.grammarCalculationsError;
+    } else {
+      return false;
+    }
+  });
+
   let proofFormatOptions: SelectDropdownOption[] = [
     { label: "Uncompressed", value: "uncompressed" },
     { label: "Compressed", value: "compressed" },
@@ -25,6 +33,12 @@
     Progress calculating parse trees:
     <ProgressBar progress={parseTreeProgress}></ProgressBar>
   </div>
+  {#if grammarCalculationsError}
+    <div class="border rounded-lg p-2">
+      <h2 class="text-red-600">ERROR</h2>
+      An expression could not be successfully parsed. The unifier and other features will not be available.
+    </div>
+  {/if}
   <div class="py-2">
     <hr />
   </div>

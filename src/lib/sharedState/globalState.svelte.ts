@@ -11,6 +11,7 @@ export class DatabaseState {
   databaseId: number = $state(0);
   databasePath: string = $state("");
   grammarCalculationsProgress: number = $state(0);
+  grammarCalculationsError: boolean = $state(false);
   theoremAmount: number = $state(0);
 
   constructor(databaseId: number, databasePath: string, theoremAmount: number) {
