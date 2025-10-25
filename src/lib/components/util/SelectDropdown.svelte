@@ -8,7 +8,7 @@
 <script lang="ts">
   import Dropdown from "./Dropdown.svelte";
 
-  let { options, value = $bindable() }: { options: SelectDropdownOption[]; value: string } = $props();
+  let { options, value = $bindable(), disabled = false }: { options: SelectDropdownOption[]; value: string; disabled?: boolean } = $props();
 
   let selectedLabel = $derived.by(() => {
     for (let option of options) {
@@ -24,7 +24,7 @@
   };
 </script>
 
-<Dropdown title={selectedLabel} border>
+<Dropdown title={selectedLabel} border {disabled}>
   {#snippet buttonContent()}
     <div class="px-1">{selectedLabel}</div>{/snippet}
   {#snippet dropdownContent()}

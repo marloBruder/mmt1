@@ -164,7 +164,7 @@
             startColumn: detailedError.startColumn,
             endLineNumber: detailedError.endLineNumber,
             endColumn: detailedError.endColumn,
-            message: getErrorMessage(detailedError.errorType),
+            message: getMmpFileErrorMessage(detailedError.errorType),
           };
         });
 
@@ -212,10 +212,10 @@
   import type * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
   import { invoke } from "@tauri-apps/api/core";
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
-  import { onDestroy, onMount, type Component } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import monaco from "$lib/monaco/monaco";
   import type { DatabaseElementPageData, DetailedError } from "$lib/sharedState/model.svelte";
-  import { getErrorMessage, getErrorSeverity } from "../util/errorMessages.svelte";
+  import { getMmpFileErrorMessage, getErrorSeverity } from "../util/errorMessages.svelte";
   import EditorTabSplitViewComponent from "./EditorTabSplitViewComponent.svelte";
   import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { goto } from "$app/navigation";

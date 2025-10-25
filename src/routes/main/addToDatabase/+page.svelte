@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { getAddToDatabaseErrorMessage } from "$lib/components/util/errorMessages.svelte";
   import HorizontalSplit from "$lib/components/util/HorizontalSplit.svelte";
   import RoundButton from "$lib/components/util/RoundButton.svelte";
   import ScrollableContainer from "$lib/components/util/ScrollableContainer.svelte";
@@ -29,6 +30,8 @@
   let newMonacoModel: monaco.editor.ITextModel | null = null;
 
   let loading = $state(true);
+  let previewError: string | null = $state(null);
+  let addToDatabaseError: string | null = $state(null);
 
   interface AddToDatabasePreviewData {
     oldFileContent: string;
@@ -38,39 +41,47 @@
 
   onMount(async () => {
     const text = globalState.lastEditorContent;
-    const data = (await invoke("add_to_database_preview", { text, overrideProofFormat: null })) as AddToDatabasePreviewData | null;
+    await invoke("add_to_database_preview", { text, overrideProofFormat: null })
+      .then(async (dataUnknown) => {
+        const data = dataUnknown as AddToDatabasePreviewData | null;
 
-    if (data === null || canceled) {
-      loading = false;
-      return;
-    }
+        if (data === null || canceled) {
+          loading = false;
+          return;
+        }
 
-    addingInvalidHtml = data.invalidHtml;
+        addingInvalidHtml = data.invalidHtml;
 
-    const editorContainer = document.getElementById("editor-div")!;
-    editor = monaco.editor.createDiffEditor(editorContainer, {
-      automaticLayout: true,
-      fixedOverflowWidgets: true,
-      theme: "mmp-theme",
-      minimap: { enabled: false },
-      stickyScroll: { enabled: false },
-      readOnly: true,
-    });
+        const editorContainer = document.getElementById("editor-div")!;
+        editor = monaco.editor.createDiffEditor(editorContainer, {
+          automaticLayout: true,
+          fixedOverflowWidgets: true,
+          theme: "mmp-theme",
+          minimap: { enabled: false },
+          stickyScroll: { enabled: false },
+          readOnly: true,
+        });
 
-    oldMonacoModel = monaco.editor.createModel(data.oldFileContent, "text");
-    newMonacoModel = monaco.editor.createModel(data.newFileContent, "text");
+        oldMonacoModel = monaco.editor.createModel(data.oldFileContent, "text");
+        newMonacoModel = monaco.editor.createModel(data.newFileContent, "text");
 
-    editor.setModel({ original: oldMonacoModel, modified: newMonacoModel });
+        editor.setModel({ original: oldMonacoModel, modified: newMonacoModel });
 
-    let changes = editor.getLineChanges();
-    let changeLookups = 1;
-    while (changes === null && changeLookups < 100) {
-      await new Promise((r) => setTimeout(r, 100));
-      changes = editor.getLineChanges();
-      changeLookups += 1;
-    }
-    scrollToChange(changes);
-    loading = false;
+        let changes = editor.getLineChanges();
+        let changeLookups = 1;
+        while (changes === null && changeLookups < 100) {
+          await new Promise((r) => setTimeout(r, 100));
+          changes = editor.getLineChanges();
+          changeLookups += 1;
+        }
+        scrollToChange(changes);
+        loading = false;
+      })
+      .catch((errorUnknown) => {
+        let error = errorUnknown as string;
+
+        previewError = error;
+      });
   });
 
   let scrollToChange = (changes?: monaco.editor.ILineChange[] | null) => {
@@ -136,32 +147,38 @@
 
   let addToDatabase = async () => {
     const text = globalState.lastEditorContent;
-    let tuple = (await invoke("add_to_database", { text, overrideProofFormat: proofFormatOption })) as [AddToDatabaseResult, boolean] | null;
+    invoke("add_to_database", { text, overrideProofFormat: proofFormatOption })
+      .then(async (tupleUnknown) => {
+        const tuple = tupleUnknown as [AddToDatabaseResult, boolean] | null;
 
-    if (tuple !== null) {
-      let [add_to_database_result, redoGrammarCalculations] = tuple;
+        if (tuple !== null) {
+          let [add_to_database_result, redoGrammarCalculations] = tuple;
 
-      if (add_to_database_result.discriminator === "NewHeader") {
-        explorerData.addHeader(add_to_database_result.headerPath, add_to_database_result.headerTitle);
-      } else if (add_to_database_result.discriminator === "NewStatement") {
-        explorerData.addHeaderContent(add_to_database_result.headerPath, add_to_database_result.headerContentI, add_to_database_result.contentRep);
+          if (add_to_database_result.discriminator === "NewHeader") {
+            explorerData.addHeader(add_to_database_result.headerPath, add_to_database_result.headerTitle);
+          } else if (add_to_database_result.discriminator === "NewStatement") {
+            explorerData.addHeaderContent(add_to_database_result.headerPath, add_to_database_result.headerContentI, add_to_database_result.contentRep);
 
-        if (add_to_database_result.contentRep.contentType == "TheoremStatement") {
-          globalState.databaseState!.theoremAmount += 1;
+            if (add_to_database_result.contentRep.contentType == "TheoremStatement") {
+              globalState.databaseState!.theoremAmount += 1;
+            }
+          }
+
+          if (redoGrammarCalculations) {
+            globalState.databaseState!.grammarCalculationsProgress = 0;
+            invoke("perform_grammar_calculations", { databaseId: globalState.databaseState!.databaseId }).then(() => {
+              emit("grammar-calculations-performed");
+            });
+          }
+
+          await tabManager.reloadAllNonEditorTabs();
+
+          await goto("/main");
         }
-      }
-
-      if (redoGrammarCalculations) {
-        globalState.databaseState!.grammarCalculationsProgress = 0;
-        invoke("perform_grammar_calculations", { databaseId: globalState.databaseState!.databaseId }).then(() => {
-          emit("grammar-calculations-performed");
-        });
-      }
-
-      await tabManager.reloadAllNonEditorTabs();
-
-      await goto("/main");
-    }
+      })
+      .catch((errorUnknown) => {
+        addToDatabaseError = errorUnknown as string;
+      });
   };
 </script>
 
@@ -178,14 +195,23 @@
         <VerticalDraggableSplit startPercent={0.8}>
           {#snippet first()}
             <div class="w-full h-full">
-              {#if loading}
+              {#if previewError !== null}
                 <div class="w-full h-full flex justify-center items-center">
-                  <div>Loading...</div>
+                  <div class="p-2 border rounded-lg max-w-96 text-center">
+                    <div class="text-red-600">ERROR</div>
+                    {getAddToDatabaseErrorMessage(previewError)}
+                  </div>
+                </div>
+              {:else}
+                {#if loading}
+                  <div class="w-full h-full flex justify-center items-center">
+                    <div>Loading...</div>
+                  </div>
+                {/if}
+                <div class={"px-2 w-full h-full " + (loading ? " invisible " : "")}>
+                  <div id="editor-div" class="w-full h-full"></div>
                 </div>
               {/if}
-              <div class={"px-2 w-full h-full " + (loading ? " invisible " : "")}>
-                <div id="editor-div" class="w-full h-full"></div>
-              </div>
             </div>
           {/snippet}
           {#snippet second()}
@@ -198,7 +224,7 @@
                   </div>
                   <div class="pt-2">
                     Proof format:
-                    <SelectDropdown bind:value={proofFormatOption} options={proofFormatOptions}></SelectDropdown>
+                    <SelectDropdown bind:value={proofFormatOption} options={proofFormatOptions} disabled={loading}></SelectDropdown>
                   </div>
                   <div class="pt-6">
                     <RoundButton onclick={() => scrollToChange()} additionalClasses="w-full" disabled={loading}>Scroll to change</RoundButton>
@@ -215,8 +241,16 @@
                     </div>
                   {/if}
                   <div class="pt-2">
-                    <RoundButton onclick={addToDatabase} additionalClasses="w-full">Confirm Add to Database</RoundButton>
+                    <RoundButton onclick={addToDatabase} additionalClasses="w-full" disabled={loading}>Confirm Add to Database</RoundButton>
                   </div>
+                  {#if addToDatabaseError !== null}
+                    <div class="pt-2">
+                      <div class="border rounded-lg p-2">
+                        <div class="text-red-600">ERROR</div>
+                        <div>Something went wrong while adding to the database. Please make sure that the file was not moved or deleted.</div>
+                      </div>
+                    </div>
+                  {/if}
                 </div>
               </ScrollableContainer>
             </div>

@@ -175,9 +175,9 @@ pub async fn add_to_database_preview(
     let locate_after = stage_2_success.locate_after;
 
     let Some(theorem) =
-        mmp_parser_stages_to_theorem(stage_2_success, stage_3_theorem, stage_5, stage_6, mm_data)?
+        mmp_parser_stages_to_theorem(stage_2_success, stage_3_theorem, stage_5, stage_6, mm_data)
     else {
-        return Err(Error::CantAddToDatabaseError);
+        return Err(Error::UnfinishedTheoremError);
     };
 
     if mm_data
@@ -433,7 +433,7 @@ pub async fn add_to_database(
     let locate_after = stage_2_success.locate_after;
 
     let Some(theorem) =
-        mmp_parser_stages_to_theorem(stage_2_success, stage_3_theorem, stage_5, stage_6, mm_data)?
+        mmp_parser_stages_to_theorem(stage_2_success, stage_3_theorem, stage_5, stage_6, mm_data)
     else {
         return Ok(None);
     };
@@ -475,18 +475,14 @@ fn mmp_parser_stages_to_theorem(
     stage_5: MmpParserStage5,
     stage_6: MmpParserStage6,
     mm_data: &MetamathData,
-) -> Result<Option<Theorem>, Error> {
+) -> Option<Theorem> {
     let proof = if stage_3_theorem.is_axiom {
         None
     } else {
-        let Some(proof) = stage_6.proof else {
-            return Ok(None);
-        };
-
-        Some(proof)
+        Some(stage_6.proof?)
     };
 
-    Ok(Some(Theorem {
+    Some(Theorem {
         label: stage_3_theorem.label.to_string(),
         description: stage_2_success
             .comments
@@ -507,25 +503,24 @@ fn mmp_parser_stages_to_theorem(
             .iter()
             .filter(|ul| ul.is_hypothesis)
             .map(|ul| {
-                Ok(Hypothesis {
+                Some(Hypothesis {
                     label: ul.step_ref.to_string(),
                     expression: ul
                         .parse_tree
-                        .as_ref()
-                        .ok_or(Error::InternalLogicError)?
+                        .as_ref()?
                         .to_expression(
                             &mm_data.optimized_data.symbol_number_mapping,
                             &mm_data.optimized_data.grammar,
-                        )?,
+                        )
+                        .ok()?,
                 })
             })
-            .collect::<Result<Vec<Hypothesis>, Error>>()?,
+            .collect::<Option<Vec<Hypothesis>>>()?,
         assertion: if stage_3_theorem.is_axiom {
             stage_2_success
                 .proof_lines
                 .iter()
-                .find(|pl| pl.step_name == "qed")
-                .ok_or(Error::InternalLogicError)?
+                .find(|pl| pl.step_name == "qed")?
                 .expression
                 .split_ascii_whitespace()
                 .fold_to_space_seperated_string()
@@ -533,18 +528,17 @@ fn mmp_parser_stages_to_theorem(
             stage_5
                 .unify_result
                 .iter()
-                .find(|ul| ul.step_name == "qed")
-                .ok_or(Error::InternalLogicError)?
+                .find(|ul| ul.step_name == "qed")?
                 .parse_tree
-                .as_ref()
-                .ok_or(Error::InternalLogicError)?
+                .as_ref()?
                 .to_expression(
                     &mm_data.optimized_data.symbol_number_mapping,
                     &mm_data.optimized_data.grammar,
-                )?
+                )
+                .ok()?
         },
         proof,
-    }))
+    })
 }
 
 fn add_statement_preview(
@@ -768,7 +762,14 @@ fn add_statement_locate_after_file(
     };
 
     file_content.insert_str(next_token_i, "\n\n");
-    statement.insert_mm_string(&mut file_content, next_token_i + 2);
+    statement.insert_mm_string(
+        &mut file_content,
+        if matches!(locate_after, LocateAfterRef::LocateAfterStart) {
+            next_token_i
+        } else {
+            next_token_i + 2
+        },
+    );
 
     if write_to_file {
         let new_database_hash = util::str_to_hash_string(&file_content);

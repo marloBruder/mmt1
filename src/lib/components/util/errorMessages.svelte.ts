@@ -1,6 +1,6 @@
 import monaco from "$lib/monaco/monaco";
 
-export function getErrorMessage(errorType: string): string {
+export function getMmpFileErrorMessage(errorType: string): string {
   switch (errorType) {
     case "NonAsciiSymbolError": {
       return ".mmp files may only contain ASCII tokens.";
@@ -241,4 +241,33 @@ export function getErrorSeverity(errorType: string): monaco.MarkerSeverity {
     default:
       return monaco.MarkerSeverity.Error;
   }
+}
+
+export function getAddToDatabaseErrorMessage(errorType: string): string {
+  switch (errorType) {
+    case "CantAddToDatabaseError": {
+      return "Can't add a statement to the database while the editor still contains errors.";
+    }
+    case "UnfinishedTheoremError": {
+      return "The theorem or axiom you are trying to add is not yet finished. Perhaps a hypothesis or the qed step is missing their expression or the proof is simply not yet finished.";
+    }
+    case "MmpFileEmptyError": {
+      return "You cannot add empty mmp files to the database.";
+    }
+    case "DatabaseHasChangedError": {
+      return "The opened mm file has changed since it was loaded. Please reload the database to add statements to the database again.";
+    }
+    case "AddingToInnerScopeError": {
+      return "The location you are trying to add to is inbetween two statements sharing a scope. mmt1 is not yet cappable of handling this case. Please add the statement manually.";
+    }
+    case "FileReadError": {
+      return "Cannot read mm file. Please make sure that the file was not moved or deleted.";
+    }
+  }
+
+  return "You should not be seeing this error message. Please post a Github issue with your mmp file.";
+}
+
+export function getMmFileErrorMessage(errorType: string): string {
+  return "You should not be seeing this error message. Please post a Github issue with a link to your mm file.";
 }
