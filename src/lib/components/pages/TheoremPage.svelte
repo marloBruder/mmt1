@@ -66,8 +66,14 @@
   {/if}
   <div class={"pt-4 " + (editorPreview ? " w-full " : " w-3/5 ")}>
     <h1 class="text-3xl">
-      {#if theorem.proof}Theorem
-      {:else}Axiom
+      {#if pageData.theoremType == "Theorem"}
+        Theorem
+      {:else if pageData.theoremType == "Axiom"}
+        Axiom
+      {:else if pageData.theoremType == "Definition"}
+        Definition
+      {:else if pageData.theoremType == "SyntaxAxiom"}
+        Syntax Axiom
       {/if}
       {theorem.label}
       {#if !editorPreview}

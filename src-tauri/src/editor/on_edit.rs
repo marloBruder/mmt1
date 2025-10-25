@@ -12,8 +12,8 @@ use crate::{
     },
     model::{
         self, CommentPageData, ConstantsPageData, DatabaseElementPageData,
-        FloatingHypothesisPageData, HeaderPageData, Hypothesis, MetamathData, Theorem,
-        TheoremPageData, VariablesPageData,
+        FloatingHypothesisPageData, HeaderPageData, Hypothesis, MetamathData, ProofType, Theorem,
+        TheoremPageData, TheoremType, VariablesPageData,
     },
     util::{self, description_parser},
     AdditionalStopSignals, AppState, Error, Settings,
@@ -187,6 +187,7 @@ pub async fn on_edit(
                         stage_3_theorem,
                         fail.reference_numbers,
                         fail.proof_line_statuses,
+                        fail.is_syntax_axiom,
                         None,
                         None,
                         settings,
@@ -224,6 +225,7 @@ pub async fn on_edit(
             stage_3_theorem,
             stage_4_success.reference_numbers,
             stage_4_success.proof_line_statuses,
+            stage_4_success.is_syntax_axiom,
             Some(stage_5),
             Some(stage_6),
             settings,
@@ -238,6 +240,7 @@ pub fn calc_theorem_page_data(
     stage_3_theorem: MmpParserStage3Theorem,
     reference_numbers: Vec<Option<u32>>,
     proof_line_statuses: Vec<ProofLineStatus>,
+    is_syntax_axiom: bool,
     stage_5: Option<MmpParserStage5>,
     stage_6: Option<MmpParserStage6>,
     settings: &Settings,
@@ -404,6 +407,18 @@ pub fn calc_theorem_page_data(
         definition_dependencies: stage_3_theorem.definition_dependencies,
         references: Vec::new(),
         proof_incomplete: false,
+        theorem_type: if !stage_3_theorem.is_axiom {
+            TheoremType::Theorem(ProofType::Correct) // ProofType doesn't matter, since serialize will ignore it
+        } else if is_syntax_axiom {
+            TheoremType::SyntaxAxiom
+        } else if stage_3_theorem
+            .label
+            .starts_with(&settings.definitons_start_with)
+        {
+            TheoremType::Definition
+        } else {
+            TheoremType::Axiom
+        },
     }))
 }
 

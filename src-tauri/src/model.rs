@@ -81,7 +81,7 @@ pub struct OptimizedTheoremData {
     pub description_parsed: Vec<ParsedDescriptionSegment>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum TheoremType {
     Theorem(ProofType),
     Axiom,
@@ -89,7 +89,7 @@ pub enum TheoremType {
     SyntaxAxiom,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum ProofType {
     Correct,
     CorrectButRecursivelyIncomplete,
@@ -319,6 +319,7 @@ pub struct TheoremPageData {
     pub description_parsed: Vec<ParsedDescriptionSegment>,
     pub invalid_html: bool,
     pub proof_incomplete: bool,
+    pub theorem_type: TheoremType,
 }
 
 #[derive(Debug)]
@@ -3059,6 +3060,20 @@ impl Default for HeaderPath {
     }
 }
 
+impl serde::Serialize for TheoremType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        serializer.serialize_str(match self {
+            TheoremType::Theorem(_) => "Theorem",
+            TheoremType::Axiom => "Axiom",
+            TheoremType::Definition => "Definition",
+            TheoremType::SyntaxAxiom => "SyntaxAxiom",
+        })
+    }
+}
+
 impl serde::Serialize for Theorem {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -3266,6 +3281,7 @@ impl serde::Serialize for TheoremPageData {
         state.serialize_field("descriptionParsed", &self.description_parsed)?;
         state.serialize_field("invalidHtml", &self.invalid_html)?;
         state.serialize_field("proofIncomplete", &self.proof_incomplete)?;
+        state.serialize_field("theoremType", &self.theorem_type)?;
         state.serialize_field("discriminator", "TheoremPageData")?;
         state.end()
     }

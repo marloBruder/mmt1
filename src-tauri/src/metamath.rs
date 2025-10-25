@@ -502,6 +502,7 @@ pub fn calc_theorem_page_data(
                 description_parsed,
                 invalid_html: false,
                 proof_incomplete: matches!(res, VerifierCreationResult::IsIncomplete),
+                theorem_type: optimized_theorem_data.theorem_type,
             })
         }
     };
@@ -542,6 +543,7 @@ pub fn calc_theorem_page_data(
         description_parsed,
         invalid_html: false,
         proof_incomplete: false,
+        theorem_type: optimized_theorem_data.theorem_type,
     })
 }
 

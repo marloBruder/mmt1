@@ -23,6 +23,7 @@ pub fn stage_4(
             errors: Vec::new(),
             reference_numbers: vec![None; stage_2.proof_lines.len()],
             proof_line_statuses: vec![ProofLineStatus::None; stage_2.proof_lines.len()],
+            is_syntax_axiom: false,
         }));
     }
 
@@ -363,12 +364,14 @@ pub fn stage_4(
             proof_lines_parsed,
             reference_numbers,
             proof_line_statuses,
+            is_syntax_axiom: false,
         })
     } else {
         MmpParserStage4::Fail(MmpParserStage4Fail {
             errors,
             reference_numbers,
             proof_line_statuses,
+            is_syntax_axiom: false,
         })
     })
 }
@@ -738,12 +741,14 @@ pub fn stage_4_axiom(
             proof_lines_parsed,
             reference_numbers: Vec::new(),
             proof_line_statuses: Vec::new(),
+            is_syntax_axiom,
         })
     } else {
         MmpParserStage4::Fail(MmpParserStage4Fail {
             errors,
             reference_numbers: Vec::new(),
             proof_line_statuses: Vec::new(),
+            is_syntax_axiom,
         })
     })
 }

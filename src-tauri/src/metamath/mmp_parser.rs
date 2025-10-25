@@ -194,6 +194,7 @@ pub struct MmpParserStage4Success {
     pub proof_lines_parsed: Vec<ProofLineParsed>,
     pub reference_numbers: Vec<Option<u32>>,
     pub proof_line_statuses: Vec<ProofLineStatus>,
+    pub is_syntax_axiom: bool,
 }
 
 #[derive(Debug)]
@@ -215,6 +216,7 @@ pub struct MmpParserStage4Fail {
     pub errors: Vec<DetailedError>,
     pub reference_numbers: Vec<Option<u32>>,
     pub proof_line_statuses: Vec<ProofLineStatus>,
+    pub is_syntax_axiom: bool,
 }
 
 impl MmpParserStage4Success {

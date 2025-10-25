@@ -123,6 +123,7 @@ export interface TheoremPageData {
   descriptionParsed: ParsedDescriptionSegment[];
   invalidHtml: boolean;
   proofIncomplete: boolean;
+  theoremType: "Theorem" | "Axiom" | "SyntaxAxiom" | "Definition";
   discriminator: "TheoremPageData";
 }
 

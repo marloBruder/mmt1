@@ -28,8 +28,9 @@
     references: [],
     descriptionParsed: [],
     invalidHtml: false,
-    discriminator: "TheoremPageData",
     proofIncomplete: false,
+    theoremType: "Theorem",
+    discriminator: "TheoremPageData",
   };
 
   export class TheoremTab extends Tab {
