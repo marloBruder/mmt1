@@ -425,7 +425,22 @@ impl MetamathData {
                 }
                 Statement::TheoremStatement(t) => {
                     for symbol in symbols {
-                        if &t.label == symbol {
+                        for v in t.temp_variables.iter().flatten() {
+                            if v.symbol == *symbol {
+                                return false;
+                            }
+                        }
+                        for fh in &t.temp_floating_hypotheses {
+                            if fh.label == *symbol {
+                                return false;
+                            }
+                        }
+                        for hyp in &t.hypotheses {
+                            if hyp.label == *symbol {
+                                return false;
+                            }
+                        }
+                        if t.label == *symbol {
                             return false;
                         }
                     }

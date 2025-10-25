@@ -357,6 +357,34 @@ fn stage_3_theorem<'a>(
         )?;
     }
 
+    if !metamath_data.symbols_not_already_taken(&vec![label])
+        && metamath_data
+            .database_header
+            .theorem_iter()
+            .find(|t| t.label == label)
+            .is_none()
+    {
+        let Some((statement_str, line_number)) = calc_statement_str_and_line_number(
+            &stage_1.statements,
+            &stage_2.statements,
+            MmpStatement::MmpLabel,
+            0,
+        ) else {
+            return Err(Error::InternalLogicError);
+        };
+
+        let second_token_start_pos = util::nth_token_start_pos(statement_str, 1);
+        let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
+
+        errors.push(DetailedError {
+            error_type: Error::NonTheoremLabelAlreadyExistsError,
+            start_line_number: line_number + second_token_start_pos.0 - 1,
+            start_column: second_token_start_pos.1,
+            end_line_number: line_number + second_token_end_pos.0 - 1,
+            end_column: second_token_end_pos.1 + 1,
+        });
+    }
+
     let (axiom_dependencies, definition_dependencies) =
         calc_dependencies(&stage_2.proof_lines, metamath_data);
 
@@ -683,7 +711,7 @@ fn stage_3_floating_hypothesis<'a>(
         let second_token_end_pos = util::nth_token_end_pos(statement_str, 1);
 
         errors.push(DetailedError {
-            error_type: Error::LabelAlreadyExistsError,
+            error_type: Error::NonFloatHypLabelAlreadyExistsError,
             start_line_number: line_number + second_token_start_pos.0 - 1,
             start_column: second_token_start_pos.1,
             end_line_number: line_number + second_token_end_pos.0 - 1,

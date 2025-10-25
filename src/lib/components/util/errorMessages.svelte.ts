@@ -149,6 +149,12 @@ export function getErrorMessage(errorType: string): string {
     case "SymbolAlreadyExistsError": {
       return "This token already exists as a label or math symbol.";
     }
+    case "NonTheoremLabelAlreadyExistsError": {
+      return "This token already exists as a label or math symbol, which is not a theorem label.";
+    }
+    case "NonFloatHypLabelAlreadyExistsError": {
+      return "This token already exists as a label or math symbol, which is not a floating hypothesis label.";
+    }
     case "TypecodeNotAConstantError": {
       return "Not an active constant. A variable's typecode must always be an active constant.";
     }

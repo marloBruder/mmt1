@@ -133,6 +133,14 @@ pub async fn add_to_database_preview(
             });
         }
         MmpParserStage3Success::FloatingHypohesis(floating_hypothesis) => {
+            if mm_data
+                .database_header
+                .floating_hypohesis_iter()
+                .any(|fh| fh.label == floating_hypothesis.label)
+            {
+                return Err(Error::LabelAlreadyExistsError);
+            }
+
             let (old_file_content, new_file_content) = add_statement_preview(
                 &mm_data.database_path,
                 &mm_data.database_header,
@@ -171,6 +179,14 @@ pub async fn add_to_database_preview(
     else {
         return Err(Error::CantAddToDatabaseError);
     };
+
+    if mm_data
+        .database_header
+        .theorem_iter()
+        .any(|t| t.label == theorem.label)
+    {
+        return Err(Error::LabelAlreadyExistsError);
+    }
 
     let (allowed_tags_and_attributes, allowed_css_properties) =
         html_validation::create_rule_structs();

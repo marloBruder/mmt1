@@ -327,6 +327,8 @@ pub enum Error {
     NotAConstantError, // Returned if there is an $locateafterconst statement which parameter is not a constant
     NotAVariableError, // Returned if there is an $locateaftervar statement which parameter is not a constant
     NotAValidLabelError, // Returned if there is a $locateafter statement which parameter is not a valid floating hypothesis or theorem label
+    NonTheoremLabelAlreadyExistsError, // Returned if there is a $theorem or $axiom statement followed by a token that already exists as a label or math token, which is not a theorem label
+    NonFloatHypLabelAlreadyExistsError, // Returned when adding an float hyp with a label that already exists as a label or math token, which is not a float hyp label
 
     MissingExpressionError, // Returned when converting str to number vec and skipping the first, but the str is empty
     InvalidTypecodeError,
