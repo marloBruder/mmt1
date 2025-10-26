@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { HeaderContentRepresentation, HeaderPath, HeaderRepresentation, NameListHeader } from "./model.svelte";
 
 class ExplorerData {
-  #theoremListHeader: NameListHeader = $state({ title: "Explorer:", content: null });
+  #theoremListHeader: NameListHeader = $state({ title: "No database opened", content: null });
 
   // intoHeader is given seperately from headerPath for performance reasons
   // Make sure intoHeader is located at headerPath, else there will be bugs
@@ -84,12 +84,12 @@ class ExplorerData {
   }
 
   resetExplorer() {
-    this.#theoremListHeader = { title: "Explorer:", content: null };
+    this.#theoremListHeader = { title: "No database opened", content: null };
   }
 
   resetExplorerWithFirstHeader(headerRepresentation: HeaderRepresentation) {
     this.#theoremListHeader = {
-      title: "Explorer:",
+      title: headerRepresentation.title,
       content: {
         contentTitles: headerRepresentation.contentTitles,
         subheaders: headerRepresentation.subheaderTitles.map((title) => {

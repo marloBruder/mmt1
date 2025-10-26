@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     fs,
+    path::PathBuf,
     sync::Arc,
 };
 
@@ -216,6 +217,21 @@ pub async fn perform_grammar_calculations(
     Ok(())
 }
 
+#[tauri::command]
+pub async fn close_metamath_database(
+    state: tauri::State<'_, Mutex<AppState>>,
+) -> Result<(), Error> {
+    let mut app_state = state.lock().await;
+
+    *app_state
+        .stop_database_calculations
+        .lock()
+        .map_err(|_| Error::InternalLogicError)? = true;
+    app_state.metamath_data = None;
+
+    Ok(())
+}
+
 pub struct MmParser {
     file_content: String,
     next_token_i: usize,
@@ -283,10 +299,22 @@ impl MmParser {
         let (html_allowed_tags_and_attributes, css_allowed_properties) =
             html_validation::create_rule_structs();
 
+        let path_buf = PathBuf::from(file_path);
+        let file_name = path_buf.file_name().ok_or(Error::InternalLogicError)?;
+        let file_name_string = file_name
+            .to_str()
+            .ok_or(Error::InternalLogicError)?
+            .to_string();
+
         Ok(MmParser {
             file_content,
             next_token_i: 0,
-            database_header: Header::default(),
+            database_header: Header {
+                title: file_name_string,
+                description: String::new(),
+                content: Vec::new(),
+                subheaders: Vec::new(),
+            },
             database_path: file_path.to_string(),
             curr_header_path: HeaderPath::default(),
             scope: 0,

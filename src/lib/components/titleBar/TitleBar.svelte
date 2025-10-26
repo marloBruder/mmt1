@@ -2,7 +2,7 @@
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { invoke } from "@tauri-apps/api/core";
   import { confirm, open, save } from "@tauri-apps/plugin-dialog";
-  import type { FolderRepresentation } from "$lib/sharedState/model.svelte";
+  import type { FolderRepresentation, HeaderRepresentation } from "$lib/sharedState/model.svelte";
   import { fileExplorerData } from "$lib/sharedState/fileExplorerData.svelte";
   import CloseIcon from "$lib/icons/titleBar/CloseIcon.svelte";
   import MaximizeIcon from "$lib/icons/titleBar/MaximizeIcon.svelte";
@@ -11,8 +11,11 @@
   import UnMaximizeIcon from "$lib/icons/titleBar/UnMaximizeIcon.svelte";
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { globalState } from "$lib/sharedState/globalState.svelte";
+  import { DatabaseState, globalState } from "$lib/sharedState/globalState.svelte";
   import Dropdown from "../util/Dropdown.svelte";
+  import { explorerData } from "$lib/sharedState/explorerData.svelte";
+  import { htmlData } from "$lib/sharedState/htmlData.svelte";
+  import { searchData } from "$lib/sharedState/searchData.svelte";
 
   let { externalWindow = false }: { externalWindow?: boolean } = $props();
 
@@ -47,7 +50,7 @@
 
     if (folderPath) {
       let folderRep = (await invoke("open_folder", { folderPath })) as FolderRepresentation;
-      let folderPathSplit = folderPath.split("\\");
+      let folderPathSplit = folderPath.split(/[/\\]/);
       fileExplorerData.resetDataWithFirstFolder(folderPathSplit[folderPathSplit.length - 1], folderRep);
     }
   };
@@ -73,11 +76,20 @@
     tabManager.getOpenTab()!.renumber();
   };
 
+  let onAddToDatabaseClick = () => {
+    tabManager.getOpenTab()!.addToDatabase();
+  };
+
   let onNewMetamathDatabaseClick = async () => {
     const filePath = await save({ filters: [{ name: "Metamath Database", extensions: ["mm"] }] });
 
     if (filePath) {
-      await invoke("new_database", { filePath });
+      let [headerRep, databaseId] = (await invoke("new_database", { filePath })) as [HeaderRepresentation, number];
+      await tabManager.closeAllNonEditorOrSettingsTabs();
+      explorerData.resetExplorerWithFirstHeader(headerRep);
+      globalState.databaseState = new DatabaseState(databaseId, filePath, 0);
+      htmlData.loadLocal([], []);
+      searchData.resetSearchParameters();
     }
   };
 
@@ -95,16 +107,21 @@
     }
   };
 
-  let onExportMetamathDatabaseClick = async () => {
-    const filePath = await save({ filters: [{ name: "Metamath Database", extensions: ["mm"] }] });
+  // let onExportMetamathDatabaseClick = async () => {
+  //   const filePath = await save({ filters: [{ name: "Metamath Database", extensions: ["mm"] }] });
 
-    if (filePath) {
-      await invoke("export_database", { filePath });
-    }
-  };
+  //   if (filePath) {
+  //     await invoke("export_database", { filePath });
+  //   }
+  // };
 
-  let onAddToDatabaseClick = () => {
-    tabManager.getOpenTab()!.addToDatabase();
+  let onCloseMetamathDatabaseClick = async () => {
+    await invoke("close_metamath_database");
+    await tabManager.closeAllNonEditorOrSettingsTabs();
+    explorerData.resetExplorer();
+    globalState.databaseState = null;
+    htmlData.loadLocal([], []);
+    searchData.resetSearchParameters();
   };
 
   let isMaximized = $state(true);
@@ -161,15 +178,16 @@
           <div><button class="enabled:hover:bg-purple-500 px-2 w-full text-left disabled:text-gray-500" onclick={onUnifyClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.unifyDisabled() : true}>Unify</button></div>
           <div><button class="enabled:hover:bg-purple-500 px-2 w-full text-left disabled:text-gray-500" onclick={onFormatClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.formatDisabled() : true}>Format</button></div>
           <div><button class="enabled:hover:bg-purple-500 px-2 w-full text-left disabled:text-gray-500" onclick={onRenumberClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.renumberDisabled() : true}>Renumber</button></div>
+          <div class="py-1"><hr /></div>
+          <div><button class="enabled:hover:bg-purple-500 px-2 w-full text-left disabled:text-gray-500" onclick={onAddToDatabaseClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.addToDatabaseDisabled() : true}>Add to database</button></div>
         {/snippet}
       </Dropdown>
       <Dropdown title="Metamath" disabled={disableTitleBar} bind:open={dropdown3Open} onmouseenter={() => onmouseenterDropdownButton(2)} customOnclose={customDropdownOnclose}>
         {#snippet dropdownContent()}
           <div><button class="hover:bg-purple-500 px-2 w-full text-left" onclick={onNewMetamathDatabaseClick}>New Metamath Database</button></div>
           <div><button class="hover:bg-purple-500 px-2 w-full text-left" onclick={onOpenMetamathDatabaseClick}>Open Metamath Database</button></div>
-          <div><button class="hover:bg-purple-500 px-2 w-full text-left" onclick={onExportMetamathDatabaseClick}>Export Metamath Database</button></div>
-          <div class="py-1"><hr /></div>
-          <div><button class="enabled:hover:bg-purple-500 px-2 w-full text-left disabled:text-gray-500" onclick={onAddToDatabaseClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.addToDatabaseDisabled() : true}>Add to database</button></div>
+          <!-- <div><button class="hover:bg-purple-500 px-2 w-full text-left" onclick={onExportMetamathDatabaseClick}>Export Metamath Database</button></div> -->
+          <div><button class="enabled:hover:bg-purple-500 px-2 w-full text-left disabled:text-gray-500" onclick={onCloseMetamathDatabaseClick} disabled={globalState.databaseState === null}>Close Metamath Database</button></div>
         {/snippet}
       </Dropdown>
     {:else}

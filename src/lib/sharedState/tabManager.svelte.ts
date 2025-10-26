@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { Tab } from "$lib/sharedState/tab.svelte";
 import { EditorTab } from "$lib/components/tabs/EditorTabComponent.svelte";
 import { TheoremTab } from "$lib/components/tabs/TheoremTabComponent.svelte";
+import { SettingsTab } from "$lib/components/tabs/SettingsTabComponent.svelte";
 
 export type SplitTabState = "none" | "splitVertical" | "splitHorizontal" | "externalWindow";
 
@@ -203,6 +204,10 @@ class TabManager {
     }
 
     await this.#tabs[this.#openTabIndex]?.onTabOpen();
+  }
+
+  async closeAllNonEditorOrSettingsTabs() {
+    await this.closeTabsWithCondition((tab) => !(tab instanceof EditorTab || tab instanceof SettingsTab));
   }
 
   resetTabs() {

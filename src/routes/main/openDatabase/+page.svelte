@@ -123,6 +123,7 @@
       globalState.databaseState.grammarCalculationsError = grammarCalculationsError;
       globalState.databaseBeingOpened = "";
       searchData.resetSearchParameters();
+      await tabManager.closeAllNonEditorOrSettingsTabs();
       await tabManager.getOpenTab()?.onTabOpen();
       await goto("/main");
     }

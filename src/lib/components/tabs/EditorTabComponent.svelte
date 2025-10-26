@@ -9,7 +9,7 @@
 
     #filePath: string = $state("");
     #fileName: string = $derived.by(() => {
-      const segments = this.#filePath.split("\\");
+      const segments = this.#filePath.split(/[/\\]/);
       return segments[segments.length - 1];
     });
     #isMmpFile: boolean = $derived(this.#fileName.endsWith(".mmp"));

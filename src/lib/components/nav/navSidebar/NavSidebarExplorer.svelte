@@ -2,8 +2,6 @@
   import { explorerData } from "$lib/sharedState/explorerData.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import ExplorerHeader from "./explorer/ExplorerHeader.svelte";
-  import ExplorerButton from "./explorer/ExplorerButton.svelte";
-  import { page } from "$app/stores";
   import RoundButton from "$lib/components/util/RoundButton.svelte";
   import { tabManager } from "$lib/sharedState/tabManager.svelte";
   import { TheoremExplorerTab } from "$lib/components/tabs/TheoremExplorerTabComponent.svelte";
@@ -34,7 +32,7 @@
   <div class="p-2">
     <div>Quick Search:</div>
     <div>
-      <input bind:value={filter} oninput={quickSearchInput} class="custom-bg-input-color border border-gray-300 rounded w-full" />
+      <input bind:value={filter} oninput={quickSearchInput} class="custom-bg-input-color border border-gray-300 rounded w-full" spellcheck="false" />
     </div>
   </div>
   {#if filter === ""}

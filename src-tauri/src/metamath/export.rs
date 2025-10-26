@@ -1,12 +1,16 @@
 use std::{
     collections::{HashMap, HashSet},
     fs,
+    path::PathBuf,
 };
 
 use tauri::async_runtime::Mutex;
 
 use crate::{
-    model::{DatabaseElement, Header, MetamathData, OptimizedMetamathData, SymbolNumberMapping},
+    model::{
+        DatabaseElement, Header, HeaderRepresentation, MetamathData, OptimizedMetamathData,
+        SymbolNumberMapping,
+    },
     util::{self, earley_parser_optimized::Grammar},
     AppState, Error,
 };
@@ -15,16 +19,28 @@ use crate::{
 pub async fn new_database(
     state: tauri::State<'_, Mutex<AppState>>,
     file_path: &str,
-) -> Result<(), Error> {
+) -> Result<(HeaderRepresentation, u32), Error> {
     let mut app_state = state.lock().await;
 
     fs::write(file_path, "").map_err(|_| Error::FileWriteError)?;
+
+    let path_buf = PathBuf::from(file_path);
+    let file_name = path_buf.file_name().ok_or(Error::InternalLogicError)?;
+    let file_name_string = file_name
+        .to_str()
+        .ok_or(Error::InternalLogicError)?
+        .to_string();
 
     let metamath_data = MetamathData {
         alt_variable_colors: Vec::new(),
         database_id: app_state.id_manager.get_next_id(),
         database_hash: util::str_to_hash_string(""),
-        database_header: Header::default(),
+        database_header: Header {
+            title: file_name_string,
+            description: String::new(),
+            content: Vec::new(),
+            subheaders: Vec::new(),
+        },
         html_representations: Vec::new(),
         optimized_data: OptimizedMetamathData {
             floating_hypotheses: Vec::new(),
@@ -42,21 +58,12 @@ pub async fn new_database(
         variable_colors: Vec::new(),
     };
 
+    let header_rep = metamath_data.database_header.to_representation();
+    let database_id = metamath_data.database_id;
+
     app_state.metamath_data = Some(metamath_data);
 
-    Ok(())
-}
-
-#[tauri::command]
-pub async fn save_database(state: tauri::State<'_, Mutex<AppState>>) -> Result<(), Error> {
-    let app_state = state.lock().await;
-    let mm_data = app_state.metamath_data.as_ref().ok_or(Error::NoMmDbError)?;
-
-    let database_string = calc_database_string(mm_data);
-
-    fs::write(&mm_data.database_path, database_string).or(Err(Error::FileWriteError))?;
-
-    Ok(())
+    Ok((header_rep, database_id))
 }
 
 #[tauri::command]
