@@ -14,6 +14,7 @@ pub async fn open_external_window(app: AppHandle) -> Result<(), Error> {
     )
     .decorations(false)
     .closable(true)
+    .min_inner_size(600.0, 400.0)
     .build()
     .or(Err(Error::OpenExternalWindowError))?;
 

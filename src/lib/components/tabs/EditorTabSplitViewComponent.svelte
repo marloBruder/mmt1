@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { globalState } from "$lib/sharedState/globalState.svelte";
   import type { DatabaseElementPageData } from "$lib/sharedState/model.svelte";
   import CommentPage from "../pages/CommentPage.svelte";
   import ConstantsPage from "../pages/ConstantsPage.svelte";
@@ -13,7 +14,7 @@
 <div class="w-full h-full">
   {#if pageData != null}
     {#if pageData.discriminator == "EmptyPageData"}
-      <div class="p-2">Nothing to see yet.</div>
+      <div class="p-2 flex items-center justify-center w-full h-full"><div>Nothing to see yet.</div></div>
     {:else if pageData.discriminator == "HeaderPageData"}
       <HeaderPage {pageData} {externalWindow}></HeaderPage>
     {:else if pageData.discriminator == "CommentPageData"}
@@ -27,7 +28,9 @@
     {:else if pageData.discriminator == "TheoremPageData"}
       <TheoremPage {pageData} editorPreview {externalWindow}></TheoremPage>
     {/if}
+  {:else if globalState.databaseState === null}
+    <div class="p-2 flex items-center justify-center w-full h-full"><div>Open a database to show the unicode preview.</div></div>
   {:else}
-    <div class="p-2">Resolve all syntax errors to show the unicode preview.</div>
+    <div class="p-2 flex items-center justify-center w-full h-full"><div>Resolve all syntax errors to show the unicode preview.</div></div>
   {/if}
 </div>
