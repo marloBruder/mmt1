@@ -7,6 +7,13 @@
   import { settingsData } from "$lib/sharedState/settingsData.svelte";
   import RoundButton from "../util/RoundButton.svelte";
   import type { TheoremTab } from "../tabs/TheoremTabComponent.svelte";
+  import Dropdown from "../util/Dropdown.svelte";
+  import MoreIcon from "$lib/icons/MoreIcon.svelte";
+  import ContextMenuButton from "../util/contextMenu/ContextMenuButton.svelte";
+  import { tabManager } from "$lib/sharedState/tabManager.svelte";
+  import { TheoremExplorerTab } from "../tabs/TheoremExplorerTabComponent.svelte";
+  import { invoke } from "@tauri-apps/api/core";
+  import ContextMenuDivider from "../util/contextMenu/ContextMenuDivider.svelte";
 
   let {
     pageData,
@@ -21,6 +28,12 @@
   } = $props();
 
   let theorem = $derived(pageData.theorem);
+
+  let gotoNearbyTheorems = async () => {
+    let pageNum = (await invoke("get_theorem_list_page_of_theorem", { theoremLabel: theorem.label })) as number;
+
+    tabManager.changeTab(new TheoremExplorerTab(pageNum, "theorem-list-entry-id-" + theorem.label));
+  };
 
   let proofLineBackground = (row: number, cell: number): string => {
     if (!editorPreview || !settingsData.settings.colorUnicodePreview) {
@@ -78,6 +91,18 @@
       {theorem.label}
       {#if !editorPreview}
         <TheoremNumber theoremNumber={pageData.theoremNumber} normalTextSize></TheoremNumber>
+        <Dropdown title="More Options" alignDropdownLeft>
+          {#snippet buttonContent()}
+            <MoreIcon></MoreIcon>
+          {/snippet}
+          {#snippet dropdownContent()}
+            <div class="text-base">
+              <ContextMenuButton onclick={gotoNearbyTheorems}>Go To Nearby Theorems</ContextMenuButton>
+              <ContextMenuDivider></ContextMenuDivider>
+              <ContextMenuButton onclick={toggleShowAll} disabled={pageData.proofIncomplete}>Toggle show all proof steps</ContextMenuButton>
+            </div>
+          {/snippet}
+        </Dropdown>
       {/if}
     </h1>
   </div>

@@ -162,9 +162,9 @@ class TabManager {
   async switchToPreviousTab() {
     let openTab = this.getOpenTab();
     if (openTab && openTab.previousTab) {
-      openTab.unloadData();
       await openTab.previousTab.loadData();
       await openTab.previousTab.onTabOpen();
+      openTab.unloadData();
 
       this.#tabs[this.#openTabIndex] = openTab.previousTab;
     }
@@ -173,9 +173,9 @@ class TabManager {
   async switchToNextTab() {
     let openTab = this.getOpenTab();
     if (openTab && openTab.nextTab) {
-      openTab.unloadData();
       await openTab.nextTab.loadData();
       await openTab.nextTab.onTabOpen();
+      openTab.unloadData();
 
       this.#tabs[this.#openTabIndex] = openTab.nextTab;
     }

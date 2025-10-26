@@ -16,6 +16,8 @@
   import { explorerData } from "$lib/sharedState/explorerData.svelte";
   import { htmlData } from "$lib/sharedState/htmlData.svelte";
   import { searchData } from "$lib/sharedState/searchData.svelte";
+  import ContextMenuButton from "../util/contextMenu/ContextMenuButton.svelte";
+  import ContextMenuDivider from "../util/contextMenu/ContextMenuDivider.svelte";
 
   let { externalWindow = false }: { externalWindow?: boolean } = $props();
 
@@ -165,29 +167,29 @@
     {#if !externalWindow}
       <Dropdown title="File" disabled={disableTitleBar} bind:open={dropdown1Open} onmouseenter={() => onmouseenterDropdownButton(0)} customOnclose={customDropdownOnclose}>
         {#snippet dropdownContent()}
-          <div><button class="hover:bg-purple-500 px-2 w-full text-left" onclick={onOpenFolderClick}>Open Folder</button></div>
-          <div><button class="hover:bg-purple-500 px-2 w-full text-left" onclick={onCloseFolderClick}>Close Folder</button></div>
-          <div class="py-1"><hr /></div>
-          <div><button class="enabled:hover:bg-purple-500 px-2 w-full text-left disabled:text-gray-500" onclick={onSaveFileClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.saveFileDisabled() : true}>Save File</button></div>
-          <div class="py-1"><hr /></div>
-          <div><button class="hover:bg-purple-500 px-2 w-full text-left" onclick={closeClick}>Exit</button></div>
+          <ContextMenuButton onclick={onOpenFolderClick}>Open Folder</ContextMenuButton>
+          <ContextMenuButton onclick={onCloseFolderClick}>Close Folder</ContextMenuButton>
+          <ContextMenuDivider></ContextMenuDivider>
+          <ContextMenuButton onclick={onSaveFileClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.saveFileDisabled() : true}>Save File</ContextMenuButton>
+          <ContextMenuDivider></ContextMenuDivider>
+          <ContextMenuButton onclick={closeClick}>Exit</ContextMenuButton>
         {/snippet}
       </Dropdown>
       <Dropdown title="Editor" disabled={disableTitleBar} bind:open={dropdown2Open} onmouseenter={() => onmouseenterDropdownButton(1)} customOnclose={customDropdownOnclose}>
         {#snippet dropdownContent()}
-          <div><button class="enabled:hover:bg-purple-500 px-2 w-full text-left disabled:text-gray-500" onclick={onUnifyClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.unifyDisabled() : true}>Unify</button></div>
-          <div><button class="enabled:hover:bg-purple-500 px-2 w-full text-left disabled:text-gray-500" onclick={onFormatClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.formatDisabled() : true}>Format</button></div>
-          <div><button class="enabled:hover:bg-purple-500 px-2 w-full text-left disabled:text-gray-500" onclick={onRenumberClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.renumberDisabled() : true}>Renumber</button></div>
-          <div class="py-1"><hr /></div>
-          <div><button class="enabled:hover:bg-purple-500 px-2 w-full text-left disabled:text-gray-500" onclick={onAddToDatabaseClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.addToDatabaseDisabled() : true}>Add to database</button></div>
+          <ContextMenuButton onclick={onUnifyClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.unifyDisabled() : true}>Unify</ContextMenuButton>
+          <ContextMenuButton onclick={onFormatClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.formatDisabled() : true}>Format</ContextMenuButton>
+          <ContextMenuButton onclick={onRenumberClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.renumberDisabled() : true}>Renumber</ContextMenuButton>
+          <ContextMenuDivider></ContextMenuDivider>
+          <ContextMenuButton onclick={onAddToDatabaseClick} disabled={tabManager.getOpenTab() ? tabManager.getOpenTab()!.addToDatabaseDisabled() : true}>Add to database</ContextMenuButton>
         {/snippet}
       </Dropdown>
       <Dropdown title="Metamath" disabled={disableTitleBar} bind:open={dropdown3Open} onmouseenter={() => onmouseenterDropdownButton(2)} customOnclose={customDropdownOnclose}>
         {#snippet dropdownContent()}
-          <div><button class="hover:bg-purple-500 px-2 w-full text-left" onclick={onNewMetamathDatabaseClick}>New Metamath Database</button></div>
-          <div><button class="hover:bg-purple-500 px-2 w-full text-left" onclick={onOpenMetamathDatabaseClick}>Open Metamath Database</button></div>
+          <ContextMenuButton onclick={onNewMetamathDatabaseClick}>New Metamath Database</ContextMenuButton>
+          <ContextMenuButton onclick={onOpenMetamathDatabaseClick}>Open Metamath Database</ContextMenuButton>
           <!-- <div><button class="hover:bg-purple-500 px-2 w-full text-left" onclick={onExportMetamathDatabaseClick}>Export Metamath Database</button></div> -->
-          <div><button class="enabled:hover:bg-purple-500 px-2 w-full text-left disabled:text-gray-500" onclick={onCloseMetamathDatabaseClick} disabled={globalState.databaseState === null}>Close Metamath Database</button></div>
+          <ContextMenuButton onclick={onCloseMetamathDatabaseClick} disabled={globalState.databaseState === null}>Close Metamath Database</ContextMenuButton>
         {/snippet}
       </Dropdown>
     {:else}
