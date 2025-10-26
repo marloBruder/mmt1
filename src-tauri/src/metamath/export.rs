@@ -141,6 +141,67 @@ pub fn write_text_wrapped_no_whitespace(target: &mut String, text: &str, line_pr
     }
 }
 
+pub fn write_text_wrapped_maintain_paragraphs(target: &mut String, text: &str, line_prefix: &str) {
+    let max_line_length = 80;
+    let mut curr_line_length = last_line_length(&target);
+
+    let mut i: usize = 0;
+
+    while text.as_bytes().get(i).is_some() {
+        let whitespace_end_i = whitespace_end_starting_at(text, i);
+        let word_end_i = word_end_starting_at(text, whitespace_end_i);
+
+        let whitespace = &text[i..whitespace_end_i];
+        let word = &text[whitespace_end_i..word_end_i];
+
+        if util::new_lines_in_str(whitespace) >= 2 && word != "" {
+            target.push_str("\n\n");
+            target.push_str(line_prefix);
+            target.push_str(word);
+            curr_line_length = line_prefix.len() + word.len();
+        } else if curr_line_length + 1 + word.len() < max_line_length {
+            target.push(' ');
+            target.push_str(word);
+            curr_line_length += 1 + word.len();
+        } else {
+            target.push('\n');
+            target.push_str(line_prefix);
+            target.push_str(word);
+            curr_line_length = line_prefix.len() + word.len();
+        }
+
+        i = word_end_i;
+    }
+}
+
+fn whitespace_end_starting_at(text: &str, start: usize) -> usize {
+    let mut i = start;
+
+    while text
+        .as_bytes()
+        .get(i)
+        .is_some_and(|b| b.is_ascii_whitespace())
+    {
+        i += 1;
+    }
+
+    i
+}
+
+fn word_end_starting_at(text: &str, start: usize) -> usize {
+    let mut i = start;
+
+    while text
+        .as_bytes()
+        .get(i)
+        .is_some_and(|b| !b.is_ascii_whitespace())
+    {
+        i += 1;
+    }
+
+    i
+}
+
 fn last_line_length(text: &str) -> usize {
     let mut len = 0;
     let mut index = text.len() - 1;

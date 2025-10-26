@@ -13,7 +13,10 @@ use tauri::{AppHandle, Emitter};
 use crate::{
     editor::format,
     metamath::{
-        export::{write_text_wrapped, write_text_wrapped_no_whitespace},
+        export::{
+            write_text_wrapped, write_text_wrapped_maintain_paragraphs,
+            write_text_wrapped_no_whitespace,
+        },
         mm_parser::html_validation,
         mmp_parser::{stage_6::ProofTree, LocateAfterRef},
         verify::{
@@ -1059,7 +1062,16 @@ impl Statement {
         match self {
             Self::CommentStatement(comment) => {
                 target.push_str("$(");
-                write_text_wrapped(target, &comment.text, "   ");
+                if comment
+                    .text
+                    .as_bytes()
+                    .first()
+                    .is_some_and(|b| !b.is_ascii_whitespace())
+                {
+                    target.push(' ');
+                }
+                target.push_str(comment.text.trim_ascii_end());
+                // write_text_wrapped(target, &comment.text, "   ");
                 write_text_wrapped(target, "$)", "   ");
             }
             Self::ConstantStatement(constants) => {
@@ -1111,7 +1123,7 @@ impl Statement {
                 if !theorem.description.is_empty() {
                     target.push_str(util::spaces(scoped_offset + 2));
                     target.push_str("$(");
-                    write_text_wrapped(
+                    write_text_wrapped_maintain_paragraphs(
                         target,
                         &theorem.description,
                         util::spaces(scoped_offset + 5),
@@ -2835,7 +2847,7 @@ impl Header {
         if description_not_empty {
             header_mm_string.push_str("\n\n ");
         }
-        write_text_wrapped(&mut header_mm_string, description, "  ");
+        write_text_wrapped_maintain_paragraphs(&mut header_mm_string, description, "  ");
         if description_not_empty {
             header_mm_string.push('\n');
         }
