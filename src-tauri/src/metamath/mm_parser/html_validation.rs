@@ -31,6 +31,7 @@ pub fn verify_html(
         .unwrap_or(Vec::new());
 
     let mut id_sanitized = false;
+    let mut valid_html = true;
 
     while let Some(node) = nodes.pop() {
         nodes.extend(node.children());
@@ -49,14 +50,14 @@ pub fn verify_html(
                         if !allowed_attributes.contains(attr_name.local.as_ref()) {
                             // println!("Non allowed attibute: {}", attr_name.local.as_ref());
                             // println!("{}\n", html);
-                            return (false, None);
+                            valid_html = false;
                         }
                         if attr_name.local.as_ref() == "style"
                             && !verify_inline_css(&attr_value.value, allowed_css_properties)
                         {
                             // println!("Non allowed inline css:");
                             // println!("{}\n", html);
-                            return (false, None);
+                            valid_html = false;
                         }
                     }
                 }
@@ -66,14 +67,14 @@ pub fn verify_html(
             } else {
                 // println!("Non allowed tag: {}", element_name);
                 // println!("{}\n", html);
-                return (false, None);
+                valid_html = false;
             }
         }
     }
 
     if id_sanitized {
         (
-            true,
+            valid_html,
             Some(
                 dom.children()
                     .next()
@@ -82,7 +83,7 @@ pub fn verify_html(
             ),
         )
     } else {
-        (true, None)
+        (valid_html, None)
     }
 }
 
@@ -150,7 +151,8 @@ pub fn create_rule_structs() -> (HashMap<String, HashSet<String>>, HashSet<Strin
     html_allowed_tags_and_attributes.insert(String::from("sub"), HashSet::new());
     html_allowed_tags_and_attributes.insert(String::from("small"), HashSet::new());
     html_allowed_tags_and_attributes.insert(String::from("i"), HashSet::new());
-    html_allowed_tags_and_attributes.insert(String::from("ol"), HashSet::new());
+    html_allowed_tags_and_attributes
+        .insert(String::from("ol"), HashSet::from([String::from("type")]));
     html_allowed_tags_and_attributes.insert(String::from("li"), HashSet::new());
     html_allowed_tags_and_attributes.insert(String::from("code"), HashSet::new());
     html_allowed_tags_and_attributes.insert(String::from("pre"), HashSet::new());
@@ -166,30 +168,48 @@ pub fn create_rule_structs() -> (HashMap<String, HashSet<String>>, HashSet<Strin
     );
     html_allowed_tags_and_attributes.insert(String::from("tbody"), HashSet::new());
     html_allowed_tags_and_attributes.insert(String::from("tr"), HashSet::new());
-    html_allowed_tags_and_attributes
-        .insert(String::from("th"), HashSet::from([String::from("nowrap")]));
-    html_allowed_tags_and_attributes
-        .insert(String::from("td"), HashSet::from([String::from("nowrap")]));
+    html_allowed_tags_and_attributes.insert(
+        String::from("th"),
+        HashSet::from([String::from("nowrap"), String::from("width")]),
+    );
+    html_allowed_tags_and_attributes.insert(
+        String::from("td"),
+        HashSet::from([
+            String::from("nowrap"),
+            String::from("style"),
+            String::from("width"),
+            String::from("rowspan"),
+        ]),
+    );
     html_allowed_tags_and_attributes.insert(String::from("p"), HashSet::new());
     html_allowed_tags_and_attributes.insert(String::from("br"), HashSet::new());
     html_allowed_tags_and_attributes
         .insert(String::from("a"), HashSet::from([String::from("href")]));
     html_allowed_tags_and_attributes.insert(String::from("tt"), HashSet::new());
     html_allowed_tags_and_attributes.insert(String::from("em"), HashSet::new());
+    html_allowed_tags_and_attributes.insert(String::from("h1"), HashSet::new());
+    html_allowed_tags_and_attributes.insert(String::from("h2"), HashSet::new());
+    html_allowed_tags_and_attributes.insert(String::from("h3"), HashSet::new());
+    html_allowed_tags_and_attributes.insert(String::from("it"), HashSet::new()); // todo: remove
+    html_allowed_tags_and_attributes
+        .insert(String::from("div"), HashSet::from([String::from("style")]));
 
     let css_allowed_properties: HashSet<String> = HashSet::from(
         [
             "color",
             "border-bottom",
             "text-decoration",
+            "text-align",
             "overflow",
             "width",
             "height",
             "display",
             "font-size",
+            "font-weight",
             "position",
             "top",
             "left",
+            "line-height",
         ]
         .map(|s| s.to_string()),
     );
