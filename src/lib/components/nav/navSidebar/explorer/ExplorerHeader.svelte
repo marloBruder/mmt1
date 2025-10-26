@@ -4,7 +4,6 @@
   import type { HeaderPath, NameListHeader } from "$lib/sharedState/model.svelte";
   import ChevronDownIcon from "$lib/icons/arrows/ChevronDownIcon.svelte";
   import ChevronRightIcon from "$lib/icons/arrows/ChevronRightIcon.svelte";
-  import PlusIcon from "$lib/icons/PlusIcon.svelte";
   import { explorerData } from "$lib/sharedState/explorerData.svelte";
   import { util } from "$lib/sharedState/util.svelte";
   import ExplorerCommentButton from "./ExplorerCommentButton.svelte";
