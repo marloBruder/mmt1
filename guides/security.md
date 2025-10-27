@@ -1,6 +1,6 @@
 # Security
 
-As part of it's theorem explorer and unicode preview mmt1 renders user input HTML, which obviously always comes with obvious security concerns. In this document I want to describe how mmt1 deals with those.
+As part of it's theorem explorer and unicode preview mmt1 renders user input HTML, which always comes with obvious security concerns. In this document I want to describe how mmt1 deals with those.
 
 ## HTML whitelist
 

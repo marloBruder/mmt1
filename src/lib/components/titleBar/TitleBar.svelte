@@ -28,6 +28,7 @@
   let dropdown1Open = $state(false);
   let dropdown2Open = $state(false);
   let dropdown3Open = $state(false);
+  let dropdown4Open = $state(false);
 
   let minimizeClick = () => {
     appWindow.minimize();
@@ -126,6 +127,18 @@
     searchData.resetSearchParameters();
   };
 
+  let onAboutClick = () => {
+    goto("/main/about");
+  };
+
+  let onGuidesClick = () => {
+    goto("/main/guides");
+  };
+
+  let onCheckForUpdatesClick = () => {
+    goto("/main/updates");
+  };
+
   let isMaximized = $state(true);
 
   appWindow.onResized(async () => {
@@ -137,7 +150,7 @@
   });
 
   let onmouseenterDropdownButton = (num: number) => {
-    if ([dropdown1Open, dropdown2Open, dropdown3Open].some((bool) => bool)) {
+    if ([dropdown1Open, dropdown2Open, dropdown3Open, dropdown4Open].some((bool) => bool)) {
       // reuse function to set everything to false;
       customDropdownOnclose();
       switch (num) {
@@ -150,6 +163,9 @@
         case 2:
           dropdown3Open = true;
           break;
+        case 3:
+          dropdown4Open = true;
+          break;
       }
     }
   };
@@ -158,6 +174,7 @@
     dropdown1Open = false;
     dropdown2Open = false;
     dropdown3Open = false;
+    dropdown4Open = false;
   };
 </script>
 
@@ -190,6 +207,13 @@
           <ContextMenuButton onclick={onOpenMetamathDatabaseClick}>Open Metamath Database</ContextMenuButton>
           <!-- <div><button class="hover:bg-purple-500 px-2 w-full text-left" onclick={onExportMetamathDatabaseClick}>Export Metamath Database</button></div> -->
           <ContextMenuButton onclick={onCloseMetamathDatabaseClick} disabled={globalState.databaseState === null}>Close Metamath Database</ContextMenuButton>
+        {/snippet}
+      </Dropdown>
+      <Dropdown title="About" disabled={disableTitleBar} bind:open={dropdown4Open} onmouseenter={() => onmouseenterDropdownButton(3)} customOnclose={customDropdownOnclose}>
+        {#snippet dropdownContent()}
+          <ContextMenuButton onclick={onAboutClick}>About mmt1</ContextMenuButton>
+          <ContextMenuButton onclick={onGuidesClick}>Guides</ContextMenuButton>
+          <ContextMenuButton onclick={onCheckForUpdatesClick}>Check For Updates</ContextMenuButton>
         {/snippet}
       </Dropdown>
     {:else}
