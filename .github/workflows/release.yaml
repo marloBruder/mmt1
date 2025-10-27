@@ -9,7 +9,7 @@ on:
 jobs:
   release:
     strategy:
-      fail-fast: false # Don't stop if one platform fails
+      fail-fast: true # Don't stop if one platform fails
       matrix:
         platform: [macos-latest, ubuntu-latest, windows-latest]
 
@@ -26,7 +26,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.76.0
+          toolchain: 1.90.0
 
       # Install dependencies (Node.js for frontend, Rust for backend)
       # - name: Install frontend dependencies
