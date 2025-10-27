@@ -31,7 +31,7 @@ jobs:
       # Install dependencies (Node.js for frontend, Rust for backend)
       - name: Install frontend dependencies
         working-directory: .
-        run: npm install
+        run: npm install --no-optional
 
       - name: Install Tauri dependencies (Linux only)
         if: matrix.platform == 'ubuntu-latest'
@@ -51,7 +51,8 @@ jobs:
           # We need to decrypt the private.pem before signing the update.
           # This step uses `base64 --decode` because secrets can sometimes
           # have newline issues when directly used in a file.
-          echo "${{ secrets.TAURI_PRIVATE_KEY_PASSWORD }}" | base64 --decode > private_key_password.txt
+          # echo "${{ secrets.TAURI_PRIVATE_KEY_PASSWORD }}" | base64 --decode > private_key_password.txt
+          printf "%s" "${{ secrets.TAURI_PRIVATE_KEY_PASSWORD }}" > private_key_password.txt
 
       - name: Build and Release
         uses: tauri-apps/tauri-action@v0.5.0
