@@ -5,19 +5,24 @@
   import { relaunch } from "@tauri-apps/plugin-process";
   import { check, Update } from "@tauri-apps/plugin-updater";
 
-  let updateStatus: "notChecked" | "noUpdates" | "updates" = $state("notChecked");
+  let updateStatus: "notChecked" | "error" | "noUpdates" | "updates" = $state("notChecked");
 
   let update: Update | null = $state(null);
 
   let disabled = $state(false);
 
   let onCheckForUpdatesClick = async () => {
-    let newUpdate = await check();
-    if (newUpdate) {
-      updateStatus = "updates";
-      update = newUpdate;
-    } else {
-      updateStatus = "noUpdates";
+    try {
+      let newUpdate = await check();
+      if (newUpdate) {
+        updateStatus = "updates";
+        update = newUpdate;
+      } else {
+        updateStatus = "noUpdates";
+      }
+    } catch (e) {
+      updateStatus = "error";
+      throw e;
     }
   };
 
@@ -43,6 +48,8 @@
           <div>Update found.</div>
           <div><RoundButton onclick={onUpdateClick} {disabled}>Update to mmt1 v{update!.version}</RoundButton></div>
         </div>
+      {:else if updateStatus === "error"}
+        <div class="py-4 text-red-600">There was an error while checking for updates.</div>
       {/if}
       <div class="py-4"><RoundButton onclick={onCheckForUpdatesClick} {disabled}>Check for Updates</RoundButton></div>
       <div class="py-4"><button class="underline" onclick={backClick} {disabled}>Back</button></div>

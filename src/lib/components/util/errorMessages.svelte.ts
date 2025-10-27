@@ -263,6 +263,9 @@ export function getAddToDatabaseErrorMessage(errorType: string): string {
     case "FileReadError": {
       return "Cannot read mm file. Please make sure that the file was not moved or deleted.";
     }
+    case "NoMmDbError": {
+      return "You must first open or create a database before you can add to it.";
+    }
   }
 
   return "You should not be seeing this error message. Please post a Github issue with your mmp file.";

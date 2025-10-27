@@ -8,6 +8,24 @@ mmt1 is a mmj2 style proof assistant for the metamath formal language, created u
 
 ## Installation
 
+Simply head to the latest release and download your required file type:
+
+Note: You will most likely get a popup saying that mmt1 is an untrusted application. This is because I'm not registered as a developer with either Microsoft nor Apple (which would cost quite a lot).
+
+### Windows
+
+For Windows you can either download the `.exe` or `.msi` installer and run it.
+
+### Linux
+
+For Linux you can either download the `.deb`, `.rpm` or `.AppImage` installer and run it.
+
+### MacOS
+
+WARNING: I have not yet been able to test mmt1 on MacOS. In theory, there should be nothing that can go wrong, but nevertheless use with caution.
+
+For MacOS you can either download the `.dmg` or `.app.tar.gz` installer and run it.
+
 ## Features
 
 - A build in theorem explorer: Including all the features you know from the web pages: Such as axiom/definition dependencies, references, indention, theorem numbers, etc.
