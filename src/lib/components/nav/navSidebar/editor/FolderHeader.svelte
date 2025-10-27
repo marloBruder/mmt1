@@ -171,7 +171,7 @@
   <div class="pl-3">
     <HiddenInput bind:visible={addingSubfolder} previousValue="" validInput={validNewName} onconfirm={addSubfolder}></HiddenInput>
     {#each folder.content.subfolders as subfolder (subfolder.name)}
-      <FolderHeader folder={subfolder} folderPath={folderPath + subfolder.name + "\\"} folderName={subfolder.name} reloadParentFolder={reloadFolder} nameExistsInParent={nameExists}></FolderHeader>
+      <FolderHeader folder={subfolder} folderPath={folderPath + subfolder.name + "/"} folderName={subfolder.name} reloadParentFolder={reloadFolder} nameExistsInParent={nameExists}></FolderHeader>
     {/each}
     <HiddenInput bind:visible={addingFile} previousValue="" validInput={validNewName} onconfirm={addFile}></HiddenInput>
     {#each folder.content.fileNames as fileName (fileName)}

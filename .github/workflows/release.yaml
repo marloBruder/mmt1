@@ -9,7 +9,7 @@ on:
 jobs:
   release:
     strategy:
-      fail-fast: true # Don't stop if one platform fails
+      fail-fast: true # Stop if one platform fails
       matrix:
         platform: [macos-latest, ubuntu-latest, windows-latest]
 
@@ -72,7 +72,7 @@ jobs:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: app-v__VERSION__ # The tag name format. __VERSION__ is replaced by the package version.
+          tagName: mmt1-v__VERSION__ # The tag name format. __VERSION__ is replaced by the package version.
           releaseName: "mmt1 v__VERSION__" # The release name.
           releaseBody: "Thank you for using mmt1. This release includes various improvements and bug fixes."
           releaseDraft: false

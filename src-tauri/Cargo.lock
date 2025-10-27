@@ -2462,7 +2462,7 @@ dependencies = [
 
 [[package]]
 name = "mmt1"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "futures",
  "kuchiki",
