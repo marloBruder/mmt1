@@ -29,9 +29,19 @@ jobs:
           toolchain: 1.76.0
 
       # Install dependencies (Node.js for frontend, Rust for backend)
+      # - name: Install frontend dependencies
+      #   working-directory: .
+      #   run: npm install --no-optional
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8 # Or desired version
+          run_install: false # Don't run install here, we do it in the next step
+
       - name: Install frontend dependencies
         working-directory: .
-        run: npm install --no-optional
+        run: pnpm install
 
       - name: Install Tauri dependencies (Linux only)
         if: matrix.platform == 'ubuntu-latest'
