@@ -203,7 +203,7 @@ As you can see, whenever the second parameter is set to `match` your query parse
 
 Within a condition all checks are done indepedent of another. So the query (`all hypotheses`, `match`, `|- ph`) will return a potential theorem with two hypotheses `|- ph` and `|- ps`. WARNING: This implementation detail is likely to change in the future, that is if I figure out an efficiant way to implement it.
 
-As you might be able to guess right now, `Search By Parse Tree` can be quite useful for finding
+As you might be able to guess right now, `Search By Parse Tree` can be quite useful for finding parse trees within singular expressions, but is not very good at finding theorems where need substitutions to be consistant accross multiple expressions. Seaching even for simple theorems (like `ax-mp`) is quite difficult. This is a big weakness of `Search By Parse Tree` central to it's design and will be hard to fix. This is why I'm already planning on implementing metamath-lamps `Seach by Pattern` as one of the first things after the launch of `v1.0`.
 
 ## Add to database
 
