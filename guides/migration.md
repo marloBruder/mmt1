@@ -175,6 +175,8 @@ The unicode preview does a lot more than just showing you a representation of yo
 - <span style="color:oklch(39.6% 0.141 25.723)">■</span> Lighter red: This line will be removed after unifying.
 - <span style="color:oklch(28.2% 0.091 267.935)">■</span> Dark blue: The unifier will make a change in this cell.
 
+(Github unfortunately won't color the squares above correctly. To see the colors, please view this document in a non Github markdown renderer like vscode or view the colors within mmt1 as mentioned below)
+
 You can deactivate the coloring of the Unicode preview (and also lookup the meanings again) in the settings. Another thing the Unicode preview shows you is what the unifier will do. This allows you to for example quickly try out different formulas to see which one the unifier finds an existing theorem for, without having to trigger the unifier each time. This too can be deactivated in the settings if you just want a pure Unicode preview.
 
 Using the indention is another way to extract information out of the Unicode preview. If you for example want to quickly remind yourself which proof steps you have completed but not yet used for anything else, you can look for proof steps with an indention of 1, since that indicates that no other steps depends on them.
@@ -182,6 +184,8 @@ Using the indention is another way to extract information out of the Unicode pre
 ## Add to database
 
 The last step after creating your proof (or statement) is to add it to the database. Luckily mmt1 can do that for you with just a few simple clicks. Navigate to `Editor > Add to Database` in the title-bar, which will bring you to the "Add to database" screen. Here you can see the exact change mmt1 is making to the database using monaco editors diff view. You can also choose the proof format, the default value of which can be changed in the settings. If you accidentally scroll away from the change mmt1 is making, you can use the `Scroll to Change` button to get back to it. If you are adding HTML to the database that is not on the [HTML whitelist](security.md), you will be warned here.
+
+There is one limitation when adding statements to the database, and that is that you cannot insert statements between two theorems sharing a scope. If you try to do that, mmt1 will ask you to insert the statement manually, after which you have to reload the database.
 
 ## Conclusion
 
