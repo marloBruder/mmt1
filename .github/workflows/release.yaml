@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - release # <--- IMPORTANT: This workflow runs when you push to the 'release' branch
+  workflow_dispatch: # Allows manual triggering of the workflow from GitHub UI
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false # Don't stop if one platform fails
+      matrix:
+        platform: [macos-latest, ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.76.0
+
+      # Install dependencies (Node.js for frontend, Rust for backend)
+      - name: Install frontend dependencies
+        working-directory: .
+        run: npm install
+
+      - name: Install Tauri dependencies (Linux only)
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          # Tauri 2.0 may require different/additional dependencies compared to 1.x.
+          # Check Tauri's official documentation for exact Ubuntu dependencies for 2.0.
+          # These are common ones, but verify for your specific use case.
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libgtk-4-dev libsoup-3.0-dev
+          # `webkit2gtk-4.1` is for Tauri 2.0. If you are targeting older,
+          # use `libwebkit2gtk-4.0-dev`.
+
+      - name: Get Tauri private key password
+        id: get_password
+        run: |
+          # The password for your private.pem is stored as a GitHub Secret.
+          # We need to decrypt the private.pem before signing the update.
+          # This step uses `base64 --decode` because secrets can sometimes
+          # have newline issues when directly used in a file.
+          echo "${{ secrets.TAURI_PRIVATE_KEY_PASSWORD }}" | base64 --decode > private_key_password.txt
+
+      - name: Build and Release
+        uses: tauri-apps/tauri-action@v0.5.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Set the private key and password for the updater
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: app-v__VERSION__ # The tag name format. __VERSION__ is replaced by the package version.
+          releaseName: "mmt1 v__VERSION__" # The release name.
+          releaseBody: "Thank you for using mmt1. This release includes various improvements and bug fixes."
+          releaseDraft: false
+          prerelease: false
+          args: --target ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin' || matrix.platform == 'windows-latest' && 'x86_64-pc-windows-msvc' || 'x86_64-unknown-linux-gnu' }} # Specify target for each platform
