@@ -140,6 +140,7 @@ qed:1:idi           |- ph
 
 If your mmp file has an `$theorem` statement, then it represents an theorem. The description is handled in the exact same way as those of headers. The proof steps work almost identical to mmj2 or yamma. There are however a few differences:
 
+- mmt1 features an updated work variable syntax to eliminate the potential for name conflicts. Givin any variable, appending a `$` and number will give you a valid work variable. So in `set.mm` examples of work variables would for be `ph$1`, `y$2` or `C$3`.
 - When there are no `:` at the beginning of the line then the token will be interpreted as the step name. This differs from mmj2 or yamma where it would be interpreted as the step ref, that is unless it starts with an `h`, in which case it would be interpreted as the step name. I decided to make this change so that all theorems are treated the same, regardless of whether they start with `h`, which to me seemed like an inconsistency.
 - Some unifier features are only activated when you put a `!` at the front of the line (specifically the advanced hypothesis finding feature). This works the same as in mmj2, but differs from yamma, where such syntax does not exist.
 - You can use `?` for a hypothesis that is not yet known. Once again this works the same as in mmj2, but differs from yamma, where you cannot do that.
