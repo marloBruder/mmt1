@@ -1,6 +1,6 @@
 {
   "name": "mmt1",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "The javascript/svelte side of mmt1, a tauri application for creating metamath proofs and databases.",
   "type": "module",
   "scripts": {

@@ -26,6 +26,10 @@ WARNING: I have not yet been able to test mmt1 on MacOS. In theory, there should
 
 For MacOS you can either download the `.dmg` or `.app.tar.gz` installer and run it.
 
+### Updates
+
+To check for updates, simply click `About > Check For Updates` in the title-bar. If there is an update available you will be able to install it right from within mmt1. If that doesn't work, simply do the installation process over again, the installer will delete the outdated version for you.
+
 ## Features
 
 - A build in theorem explorer: Including all the features you know from the web pages: Such as axiom/definition dependencies, references, indention, theorem numbers, etc.
