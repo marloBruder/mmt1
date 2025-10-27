@@ -1,5 +1,3 @@
-<span style="color:red">If you are reading this message then that means that mmt1 is not yet officially released and that I am still testing things. Please ignore this repository for now and come back in a few hours.</span>
-
 # mmt1
 
 mmt1 is a mmj2 style proof assistant for the metamath formal language, created using [Tauri 2.0](https://v2.tauri.app). With it you can create not just metamath proofs, but also entire (grammatical) metamath databases.
@@ -27,6 +25,8 @@ WARNING: I have not yet been able to test mmt1 on MacOS. In theory, there should
 For MacOS you can either download the `.dmg` or `.app.tar.gz` installer and run it.
 
 ### Updates
+
+Note: As of mmt1 `v1.0` the automatic updater is not yet working. It will become available in future releases.
 
 To check for updates, simply click `About > Check For Updates` in the title-bar. If there is an update available you will be able to install it right from within mmt1. If that doesn't work, simply do the installation process over again, the installer will delete the outdated version for you.
 
