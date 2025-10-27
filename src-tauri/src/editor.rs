@@ -147,7 +147,7 @@ pub async fn rename_folder(
             (
                 file_path.clone(),
                 format!(
-                    "{}\\{}",
+                    "{}/{}",
                     new_path_str,
                     file_path.split_at(folder_path.len()).1
                 )

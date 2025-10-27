@@ -182,6 +182,29 @@ You can deactivate the coloring of the Unicode preview (and also lookup the mean
 
 Using the indention is another way to extract information out of the Unicode preview. If you for example want to quickly remind yourself which proof steps you have completed but not yet used for anything else, you can look for proof steps with an indention of 1, since that indicates that no other steps depends on them.
 
+## Search by parse tree
+
+While developing proofs using mmt1, you are bound to need to query the database at some point. This is where mmt1s main search feature `Search By Parse Tree` comes in. It allows you to query the database based on the parse trees of statements.
+
+As an input it takes a series of conditions, each of which is evaluated independently. If all conditions match a theorem, the theorem is added to the search result. Each condition takes three parameters:
+
+1. Where to look for the query parse tree. This can either be `any hypothesis`, `all hypotheses`, `the assertion`, `any hypothesis or the assertion` or `all hypotheses and the assetion`.
+2. Whether the theorems parse tree should `match` or `contain` the query parse tree.
+3. The `query parse tree` itself. Note two things here: That variables will match any variables of their type (but the same two query variables has to match the same two underlying variables) and that you can you work variables to represent an arbitrary parse tree.
+
+Let's look at some examples:
+
+- The query parse tree `|- ( ph$1 -> ph$2 )` with the second parameter set to `match` will find all parse trees that have an implication as the outer most syntax axiom.
+- The query parse tree `wff ( ph$1 -> ph$1 )` with the second parameter set to `contain` will find all parse trees that have an implication somewhere in them where both wffs are the same.
+- The query parse tree `class _V` with the second parameter set to `contain` will find all parse trees that make use of the `_V` class.
+- The query parse tree `|- ph` with the second parameter set to `match` will find all parse trees that are just a `wff` variable, no matter which variable.
+
+As you can see, whenever the second parameter is set to `match` your query parse tree is gonna want to start with a logical typecode and if it is set the `contain` your query parse tree is gonna want to start with a syntax typecode.
+
+Within a condition all checks are done indepedent of another. So the query (`all hypotheses`, `match`, `|- ph`) will return a potential theorem with two hypotheses `|- ph` and `|- ps`. WARNING: This implementation detail is likely to change in the future, that is if I figure out an efficiant way to implement it.
+
+As you might be able to guess right now, `Search By Parse Tree` can be quite useful for finding
+
 ## Add to database
 
 The last step after creating your proof (or statement) is to add it to the database. Luckily mmt1 can do that for you with just a few simple clicks. Navigate to `Editor > Add to Database` in the title-bar, which will bring you to the "Add to database" screen. Here you can see the exact change mmt1 is making to the database using monaco editors diff view. You can also choose the proof format, the default value of which can be changed in the settings. If you accidentally scroll away from the change mmt1 is making, you can use the `Scroll to Change` button to get back to it. If you are adding HTML to the database that is not on the [HTML whitelist](security.md), you will be warned here.
