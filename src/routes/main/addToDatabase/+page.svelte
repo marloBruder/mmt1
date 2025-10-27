@@ -223,11 +223,11 @@
                     <hr />
                   </div>
                   <div class="pt-2">
-                    Proof format:
+                    Proof Format:
                     <SelectDropdown bind:value={proofFormatOption} options={proofFormatOptions} disabled={loading}></SelectDropdown>
                   </div>
                   <div class="pt-6">
-                    <RoundButton onclick={() => scrollToChange()} additionalClasses="w-full" disabled={loading}>Scroll to change</RoundButton>
+                    <RoundButton onclick={() => scrollToChange()} additionalClasses="w-full" disabled={loading}>Scroll to Change</RoundButton>
                   </div>
                   <div class="py-2">
                     <hr />

@@ -46,7 +46,7 @@
 
 <div class="py-2">
   <div class="p-2">
-    <RoundButton onclick={searchClick} additionalClasses="w-full">Search</RoundButton>
+    <RoundButton onclick={searchClick} additionalClasses="w-full" disabled={!searchByParseTreeValidInput}>Search</RoundButton>
   </div>
   <div class="p-2">
     <RoundButton onclick={resetClick} additionalClasses="w-full">Reset Search Parameters</RoundButton>

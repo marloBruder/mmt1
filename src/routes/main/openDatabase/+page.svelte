@@ -172,7 +172,7 @@
         </div>
       {/if}
       <div class="mt-4">
-        <RoundButton onclick={onConfirmClick} disabled={!databaseLoaded}>Open database</RoundButton>
+        <RoundButton onclick={onConfirmClick} disabled={!databaseLoaded}>Confirm Open database</RoundButton>
       </div>
       {#if error !== null}
         <div class="border rounded-lg p-2 mx-12 mt-4">

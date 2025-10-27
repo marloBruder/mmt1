@@ -22,7 +22,7 @@
 
   let tabInfo: NavSidebarTabInfo[] = [
     {
-      title: "Explorer",
+      title: "Theorem Explorer",
       scrollTop: 0,
       component: NavSidebarExplorer,
       icon: AlephZeroIcon,
@@ -34,7 +34,7 @@
       icon: SearchIcon,
     },
     {
-      title: "Editor",
+      title: "File Explorer",
       scrollTop: 0,
       component: NavSidebarEditor,
       icon: FileIcon,

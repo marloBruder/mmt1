@@ -9,6 +9,8 @@ export function setupShortcuts() {
 
     if (e.ctrlKey && e.key == "r") {
       e.preventDefault();
+    } else if (e.ctrlKey && e.key == "f") {
+      e.preventDefault();
     } else if (e.ctrlKey && e.key == "p") {
       e.preventDefault();
     } else if (e.ctrlKey && e.key == "w") {
